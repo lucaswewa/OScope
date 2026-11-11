@@ -1,6 +1,6 @@
 # U03: Router composition, custom listeners, HTTP/2
 
-- Status: In review
+- Status: Done (merged 2026-11-11)
 - Branch / PR: `u/u03-router-composition` in `teta-wot` / [lucaswewa/teta-wot#3](https://github.com/lucaswewa/teta-wot/pull/3)
 - Size: estimated ~725, re-sized to L before starting (owner's decision, rather than splitting) · measured **867** hand-written changed lines (+844 −23). Docs and `Cargo.lock` aren't counted.
 
