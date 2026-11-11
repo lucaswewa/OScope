@@ -730,7 +730,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | Status |
 |---|---|---|---|---|
-| U01 | Linux support, Ubuntu CI, licence metadata | — | M | Planned |
+| U01 | Linux support, Ubuntu CI, licence metadata | — | M | In review |
 | U02 | Path parameters for endpoints | U01 | M | Planned |
 | U03 | Router composition, custom listeners, HTTP/2 | U01 | M | Planned |
 | U04 | Binary WebSocket streams | U03 | L | Planned |
@@ -741,7 +741,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | In review |
+| P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | Done |
 | P01 | Rust workspace, layering test, CI | P00, U06 | M | 0005 | Planned |
 | P02 | Core types: units, geometry, time, IDs | P01 | M | 0007 | Planned |
 | P02b | Hardware capability survey (docs only) | P00 | S | — | Planned |
