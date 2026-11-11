@@ -1,7 +1,7 @@
 # P00: Docs scaffolding, working rules, foundational ADRs
 
 - Status: In review
-- Branch / PR: `m1/p00-docs-scaffolding` / pull request to follow
+- Branch / PR: `m1/p00-docs-scaffolding` / [#1](https://github.com/lucaswewa/OScope/pull/1)
 - Size: estimated S (config 30, docs not counted) · measured 35 hand-written lines (`.gitattributes` 11, the pull request template 24). The rest is documentation
 
 ## Summary
@@ -60,7 +60,6 @@ None: docs and configuration only.
 ## Follow-ups and known gaps
 
 - **Automated link checking.** P01 should add a link check to CI (a small `xtask` or an existing checker), so docs-only changes are checked automatically.
-- **The PR number** is added to this file's Branch / PR line once the pull request exists.
 - **Next phase:** U01, in the `teta-wot` repository.
 
 ## Clean room
