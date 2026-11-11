@@ -13,4 +13,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | U01 | Linux support, Ubuntu CI, licence metadata (`teta-wot`) | Done | [U01-linux-ci.md](U01-linux-ci.md) |
 | U02 | Path parameters for endpoints (`teta-wot`) | Done | [U02-path-params.md](U02-path-params.md) |
 | U03 | Router composition, custom listeners, HTTP/2 (`teta-wot`) | Done | [U03-router-composition.md](U03-router-composition.md) |
-| U04 | Binary WebSocket streams (`teta-wot`) | In review | [U04-binary-streams.md](U04-binary-streams.md) |
+| U04 | Binary WebSocket streams (`teta-wot`) | Done | [U04-binary-streams.md](U04-binary-streams.md) |
+| U05 | Pluggable authentication (`teta-wot`) | In review | [U05-pluggable-auth.md](U05-pluggable-auth.md) |

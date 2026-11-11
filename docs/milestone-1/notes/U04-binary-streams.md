@@ -1,6 +1,6 @@
 # U04: Binary WebSocket streams
 
-- Status: In review
+- Status: Done
 - Branch / PR: `u/u04-binary-streams` in `teta-wot` / [lucaswewa/teta-wot#4](https://github.com/lucaswewa/teta-wot/pull/4)
 - Size: planned L, estimated ~620 · measured **733** hand-written changed lines (+730 −3). Docs and `Cargo.lock` aren't counted.
 
