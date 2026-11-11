@@ -1,6 +1,6 @@
 # P00: Docs scaffolding, working rules, foundational ADRs
 
-- Status: In review
+- Status: Done (merged 2026-11-11)
 - Branch / PR: `m1/p00-docs-scaffolding` / [#1](https://github.com/lucaswewa/OScope/pull/1)
 - Size: estimated S (config 30, docs not counted) · measured 35 hand-written lines (`.gitattributes` 11, the pull request template 24). The rest is documentation
 
