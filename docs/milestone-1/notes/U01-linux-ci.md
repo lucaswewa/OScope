@@ -1,6 +1,6 @@
 # U01: Linux support, Ubuntu CI, licence metadata
 
-- Status: In review
+- Status: Done (merged 2026-11-11)
 - Branch / PR: `u/u01-linux-ci` in `teta-wot` / [lucaswewa/teta-wot#1](https://github.com/lucaswewa/teta-wot/pull/1)
 - Size: estimated M · measured **359** hand-written changed lines. The rest is documentation.
   - The signal test is 156, the soak test +43 / −7, `shutdown_signal` +38 / −18, and the service example's new `main` 26. CI, the Cargo manifests and the doc comments make up the rest.

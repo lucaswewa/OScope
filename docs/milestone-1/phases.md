@@ -63,7 +63,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 ### U02: Path parameters for endpoints
 
 **Goal.** Endpoints can declare path parameters and a trailing wildcard, so routes like `dzi/{dataset}_files/{level}/{tile}` fit.
-**Depends on** U01 · **Size** M
+**Depends on** U01 · **Size** L (re-sized from M before it started)
 
 **Scope**
 - `#[endpoint(get, "tiles/{level}/{tile}")]` and `{*rest}`. Values reach the handler through an extractor.
