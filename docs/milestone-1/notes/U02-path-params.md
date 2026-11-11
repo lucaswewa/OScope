@@ -1,6 +1,6 @@
 # U02: Path parameters for endpoints
 
-- Status: In review
+- Status: Done (merged 2026-11-11)
 - Branch / PR: `u/u02-path-params` in `teta-wot` / [lucaswewa/teta-wot#2](https://github.com/lucaswewa/teta-wot/pull/2)
 - Size: estimated ~540, re-sized to L before starting (owner's decision) · measured **745** hand-written changed lines (+681 −64). Docs and `Cargo.lock` aren't counted.
 
