@@ -10,4 +10,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | Phase | Title | Status | Notes |
 |---|---|---|---|
 | P00 | Docs scaffolding, working rules, foundational ADRs | Done | [P00-docs-scaffolding.md](P00-docs-scaffolding.md) |
-| U01 | Linux support, Ubuntu CI, licence metadata (`teta-wot`) | In review | [U01-linux-ci.md](U01-linux-ci.md) |
+| U01 | Linux support, Ubuntu CI, licence metadata (`teta-wot`) | Done | [U01-linux-ci.md](U01-linux-ci.md) |
+| U02 | Path parameters for endpoints (`teta-wot`) | In review | [U02-path-params.md](U02-path-params.md) |
