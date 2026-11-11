@@ -77,7 +77,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 ### U03: Router composition, custom listeners, HTTP/2
 
 **Goal.** An application merges its own axum routes and layers into a `teta-wot` server, under the server's authentication, CORS and graceful shutdown. It serves on a listener it supplies, such as TLS, and over HTTP/2 when that listener is TLS.
-**Depends on** U01 · **Size** M
+**Depends on** U01 · **Size** L (re-sized from M before it started)
 
 **Scope**
 - Builder methods `.merge(Router)` and `.layer(…)`, with documented ordering relative to Thing routes and the fallback.
