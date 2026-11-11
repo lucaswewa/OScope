@@ -1,0 +1,23 @@
+# Architecture decision records
+
+One record per significant decision, so that later phases, and later readers, can see what was decided and why.
+
+## Index
+
+| ADR | Title | Status | Phase |
+|---|---|---|---|
+| [0001](0001-record-architecture-decisions-and-the-delivery-process.md) | Record architecture decisions, and the delivery process | Accepted | P00 |
+| [0002](0002-clean-room-and-dependency-licences.md) | Clean room: what OScope may take from `microscope`, and the dependency licence policy | Accepted | P00 |
+| [0003](0003-platforms-windows-and-ubuntu-x86-64.md) | Platforms: Windows 11 and Ubuntu LTS on x86_64 | Accepted | P00 |
+| [0004](0004-teta-wot-v0-2-0-extended-upstream-first.md) | Depend on `teta-wot` v0.2.0, extended upstream first | Accepted | P00 |
+
+The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
+
+## How ADRs work
+
+- **When.** Write an ADR when a phase makes a decision that later phases will build on or that would be costly to reverse. Examples: a data format, an interface, a protocol, a dependency, a policy.
+- **Where.** In the phase that makes the decision, in the same pull request. Approving the pull request accepts the ADR, so it is merged with the status *Accepted*.
+- **Numbers** run across the whole project (`NNNN`) and are never reused. The plan's §10 reserves numbers for the planned ADRs. An ADR that wasn't planned takes the next free number above the reserved ones, and the plan's change log records it.
+- **Files** are named `NNNN-short-title.md`, from [the template](template.md).
+- **After acceptance,** an ADR is never edited except for its status. A decision that changes gets a new ADR, and the old one is marked "Superseded by ADR-NNNN".
+- **Upstream `teta-wot` phases** record their design decisions in their notes (`docs/milestone-1/notes/UNN-…`), not here, unless the decision is OScope's own.

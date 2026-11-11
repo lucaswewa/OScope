@@ -685,7 +685,7 @@ These are targets on the owner's laptop (RTX 3070 Ti laptop GPU). Each is measur
 **Branch and pull request.**
 
 - OScope phases use the branch `m1/pNN-short-name` and the PR title `PNN: <title>`.
-- Upstream phases use `u/uNN-short-name` in the owner's `teta-wot` clone (`C:\repos\teta-wot`), with the PR title `UNN: <title>` on `lucaswewa/teta-wot`, under the same approval rules.
+- Upstream phases use `u/uNN-short-name` in the owner's `teta-wot` clone, a sibling folder of OScope (`../teta-wot`), with the PR title `UNN: <title>` on `lucaswewa/teta-wot`, under the same approval rules.
   - Each phase runs in a fresh session opened in `teta-wot`, with OScope added (`/add-dir`) for the plan and specs.
   - User-facing changes go into `teta-wot`'s CHANGELOG (*Unreleased*) and guide. The phase notes, with their design decisions, go into OScope as `docs/milestone-1/notes/UNN-short-name.md`.
   - Only phase branches are pushed; v0.2.0 is tagged after the owner approves U06.
@@ -741,7 +741,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | Planned |
+| P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | In review |
 | P01 | Rust workspace, layering test, CI | P00, U06 | M | 0005 | Planned |
 | P02 | Core types: units, geometry, time, IDs | P01 | M | 0007 | Planned |
 | P02b | Hardware capability survey (docs only) | P00 | S | — | Planned |
@@ -1038,3 +1038,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-10 | Revised after the owner's review. Added P02b (hardware survey) and decisions D30–D35: the simulation clock and real-time motion; access without the lease; deep-zoom speed; port 8210; CI on both systems. P11 became "Simulation clock and grblHAL-like stage" (M → L). U03 gained HTTP/2 over TLS. The §13 points are resolved |
 | 2026-11-10 | Approved by the owner. U06 follows `teta-wot`'s release checklist, including its 24-hour soak |
 | 2026-11-10 | How upstream work runs (§6). Phases run in the owner's `teta-wot` clone; their notes live in OScope, and their user-facing docs in `teta-wot`. U01 adds a `CLAUDE.md` to `teta-wot`. Order: P00, then U01–U06, then P01; P02b when the owner is at the instrument |
+| 2026-11-11 | P00: §6 names the `teta-wot` clone as a sibling folder (`../teta-wot`) rather than a Windows path |
