@@ -733,8 +733,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | U01 | Linux support, Ubuntu CI, licence metadata | — | M | Done |
 | U02 | Path parameters for endpoints | U01 | L | Done |
 | U03 | Router composition, custom listeners, HTTP/2 | U01 | L | Done |
-| U04 | Binary WebSocket streams | U03 | L | In review |
-| U05 | Pluggable authentication | U03 | M | Planned |
+| U04 | Binary WebSocket streams | U03 | L | Done |
+| U05 | Pluggable authentication | U03 | L | In review |
 | U06 | Release v0.2.0 | U02–U05 | S | Planned |
 
 ### Stage 1: Groundwork
@@ -1041,3 +1041,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-11 | P00: §6 names the `teta-wot` clone as a sibling folder (`../teta-wot`) rather than a Windows path |
 | 2026-11-11 | U02 re-sized from M to L by the owner, before it started: the estimate was about 540 lines, near M's 600 |
 | 2026-11-11 | U03 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 725 lines |
+| 2026-11-11 | U05 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 840 lines |

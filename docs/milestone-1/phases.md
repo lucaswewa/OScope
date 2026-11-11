@@ -119,7 +119,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 ### U05: Pluggable authentication
 
 **Goal.** An application supplies its own authentication and authorisation, and every affordance knows who is calling.
-**Depends on** U03 · **Size** M
+**Depends on** U03 · **Size** L
 
 **Scope**
 - An `Authenticator` trait: request parts in, a `Principal` or a rejection out.
