@@ -10,7 +10,7 @@
 
 - **The version.** The workspace is `0.2.0`, and the CHANGELOG has its `0.2.0` section. U02–U05 broke two struct literals, so this is a minor release (`0.1.x` → `0.2.0`).
 - **Migration notes.** The guide gains a page, *Migrating*: from LabThings in Python, and from 0.1 to 0.2. The tutorial's two links to `../migration.md`, broken on `main`, now lead to it.
-- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. The hour passed. The 24-hour run ends about 2026-11-12 16:45 PST. If it fails, the fix is released as v0.2.1.
+- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. The hour passed. The 24-hour run had no failure, but was stopped at 19 h 26 min by a restart of the editor that had started it, and wasn't repeated, at the owner's choice.
 - **The tag,** `v0.2.0`, is on `338336f`, pushed on 2026-11-11 at 20:45 PST. `release.yml` published [the release](https://github.com/lucaswewa/teta-wot/releases/tag/v0.2.0) six minutes later.
 - **The README** was rewritten in a follow-up PR ([lucaswewa/teta-wot#7](https://github.com/lucaswewa/teta-wot/pull/7)), which the owner edited. It ships in v0.2.0.
 - **The licence review** found the Windows package shipped no licence texts. As the owner chose:
@@ -64,7 +64,7 @@ The release package was built locally as `release.yml` builds it, without publis
 
 | Run | Command | Started | Result |
 |---|---|---|---|
-| 24 hours | `soak --duration 24h --report soak.csv` (the `tetathing` profile) | 2026-11-11 16:44 PST | running; ends about 2026-11-12 16:45 PST |
+| 24 hours | `soak --duration 24h --report soak.csv` (the `tetathing` profile) | 2026-11-11 16:44 PST | **stopped at minute 1,166 of 1,440 (19 h 26 min), with no failure.** Its processes were ended at about 2026-11-12 12:15 PST by a restart of the editor that had started them, so it wrote no verdict. Until then: 8,567,352 requests, 0 errors, p99 at most 82.8 ms. Private bytes after the warm-up stayed between 24.4 and 36.1 MB: 29.9 MB at hour 1, 32.0 MB at hour 19. Handles stayed between 139 and 141 |
 | 1 hour | `soak --duration 1h --profile wot` | 2026-11-11 16:44 PST | **PASSED** at 17:45 PST |
 
 - **The binaries** are copies of `target/release/simulated-microscope.exe` and `soak.exe`, in `target/soak-0.2.0/`, so later builds can't touch them. Their SHA-256s:
@@ -76,9 +76,9 @@ The release package was built locally as `release.yml` builds it, without publis
   - a p50 latency of 0.2–0.3 ms, with the worst minute's p99 at 82.4 ms;
   - private bytes after the warm-up of 26.6 MB at first and 26.8 MB at the end, against a 49.2 MB limit: steady.
 - **The logs and `soak.csv`** are kept beside them.
-  - **The release's notes** end with a *Soak* section: the 1-hour summary, and the 24-hour run as still going.
+  - **The release's notes** end with a *Soak* section: the 1-hour summary, and the 24-hour run's 19 h 26 min (added on 2026-11-12).
   - **`soak-1h-wot.log`** is attached to the release.
-  - **When the 24-hour run ends,** its summary goes into that section, and its log and `soak.csv` are attached.
+  - **`soak-24h.log` and `soak.csv`** are attached too.
 
 ## Design notes and deviations from the plan
 
@@ -176,7 +176,7 @@ The release package was built locally as `release.yml` builds it, without publis
 
 ## Follow-ups and known gaps
 
-- **The 24-hour soak** ends about 2026-11-12 16:45 PST, after the tag. Its result goes into the release and into these notes. A failure would be fixed in v0.2.1.
+- **The 24-hour soak** stopped at 19 h 26 min with no failure, ended by an editor restart (above). The owner chose to record it rather than repeat it, so v0.2.0 has no complete 24-hour run. A later release's soak should run detached from the editor, for example started from a separate terminal, so that a restart can't end it.
 - **Three examples mention Python scripts that aren't in the repository:**
   - `observe-websocket`: `observe.py`, in its README, `Cargo.toml` description and code comments;
   - `discovery`: `browse.py`, in a code comment; the guide's *Discovery* page says the example finds Things "from Python";

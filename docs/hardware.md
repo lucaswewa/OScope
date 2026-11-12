@@ -91,7 +91,7 @@ The target host is a PC like this one, in CPU, GPU, RAM and SSD (owner). These v
 | GPU | NVIDIA RTX A2000 12 GB: CUDA compute capability 8.6, 12,282 MiB, PCIe gen 4 × 16, driver 596.51 (CUDA 13.2). Also Intel UHD Graphics 770. The CUDA 13.4 toolkit was installed for P07: a 40 MB upload from pinned memory takes 1.64 ms (24.4 GB/s) | host |
 | USB | Intel USB 3.20 and USB 3.10 xHCI host controllers | host |
 | Disk | One NVMe SSD, Micron MTFDKBA1T0TFH, 1 TB (firmware 7006P7LN), which is also the system disk: 528 GB free | host |
-| Sustained write | Needed: about 580 MB/s for full-rate raw recording (§5.5). The measurement runs after U06's soak | **to measure** |
+| Sustained write | Needed: about 580 MB/s for full-rate raw recording (§5.5). Measured on 2026-11-12 by writing 150 GB in 64 MB blocks of random data, flushed every 1 GB. The rate was **1.9 GB/s for the first ~55 GB**, the drive's fast cache by the look of it. **From then on it was 1.10–1.17 GB/s.** Overall 1,332 MB/s, and the slowest 10 GB ran at 1,100 MB/s. That is about **1.9 × the recording rate**, sustained, with the system on the same disk | host |
 | Operating system | Windows 11 Pro, build 26300 | host |
 
 ## The environment
@@ -120,7 +120,6 @@ Applied in P02b's pull request, with a line in the plan's change log.
 - **The lights aren't chosen,** so §5.9's `Illumination` and P09 stay generic, and the simulator provides them.
 - **Still open:**
   - the raw mosaic's frame rate at full resolution, which decides whether 580 MB/s (§5.5, §5.20) holds;
-  - the disk's sustained write rate;
   - whether the camera accepts an ROI;
   - the controller's items, at H0.
 
