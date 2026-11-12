@@ -24,4 +24,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P05 | Logging and the `logs` Thing | Done | [P05-logging.md](P05-logging.md) |
 | P06 | Compute abstraction, CPU backend, benchmark harness | Done | [P06-compute.md](P06-compute.md) |
 | P07 | CUDA backend | Done | [P07-cuda.md](P07-cuda.md) |
-| P08 | Demosaicing on the CPU | In review | [P08-demosaic.md](P08-demosaic.md) |
+| P08 | Demosaicing on the CPU | Done | [P08-demosaic.md](P08-demosaic.md) |
+| P08b | Colour, display transform, crop and binning, writers | In review | [P08b-colour.md](P08b-colour.md) |

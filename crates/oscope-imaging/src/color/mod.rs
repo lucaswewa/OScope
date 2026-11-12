@@ -1,15 +1,29 @@
-//! Raw Bayer mosaics to colour (D5). P08 brings demosaicing on the CPU,
-//! with three methods ([`Demosaic`]), and the test charts that measure
-//! them. P08b adds the colour steps and the writers, and P08c the CUDA twins.
+//! Raw Bayer mosaics to colour (D5), in this order:
+//!
+//! 1. **the black level,** on the mosaic ([`subtract_black`]);
+//! 2. **demosaicing,** with three methods ([`Demosaic`]), of the whole
+//!    mosaic or of a region, binned ([`demosaic_region`]);
+//! 3. **white balance and the colour matrix** ([`correct`]);
+//! 4. **the display transform** to 8 bits ([`to_display`]);
+//! 5. **files:** PNG for viewing, and 16-bit TIFF.
+//!
+//! The test charts measure the methods ([`chart`], [`psnr`]). P08c adds
+//! the CUDA twins.
 
 mod chart;
 mod demosaic;
+mod files;
+mod region;
+mod tone;
 
 pub use chart::{chart, mosaic, psnr};
 pub use demosaic::{Demosaic, demosaic};
+pub use files::{encode_png, encode_tiff16};
+pub use region::{crop, demosaic_region};
+pub use tone::{ColourCorrection, Curve, Display, correct, subtract_black, to_display};
 
 use oscope_compute::{Compute, ComputeError, Image, Lane, Shape};
-use oscope_core::{FrameView, PixelFormat};
+use oscope_core::{FrameView, PixelFormat, PixelRect};
 
 /// What the colour functions can't do.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -32,6 +46,15 @@ pub enum ColorError {
     /// Nothing is left to measure inside the border.
     #[error("the border leaves no pixels to measure")]
     Empty,
+    /// The rectangle is empty, or not inside the image.
+    #[error("{0:?} isn't a non-empty rectangle inside {1:?}")]
+    Region(PixelRect, PixelRect),
+    /// A setting is out of its range.
+    #[error("{0}")]
+    Setting(String),
+    /// A file couldn't be written.
+    #[error("the file: {0}")]
+    File(String),
     /// The compute layer failed.
     #[error(transparent)]
     Compute(#[from] ComputeError),

@@ -1,14 +1,19 @@
 //! `ex-demosaic`: each demosaicing method on a 20 MP test chart of known
 //! colours, mosaicked as the MIChrome 20 sees it: its time, against §5.20's
-//! 80 ms on 8 threads, and its PSNR (P08). See the README.
+//! 80 ms on 8 threads, and its PSNR (P08). Then its images as files: PNG
+//! through the display transform, and 16-bit TIFF (P08b). See the README.
 
+use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, ensure};
-use oscope_compute::{Compute, ComputeConfig, Lane, cpu};
-use oscope_core::{BayerPattern, FrameView, PixelFormat};
-use oscope_imaging::color::{Demosaic, chart, demosaic_frame, mosaic, psnr};
+use oscope_compute::{Compute, ComputeConfig, Image, Lane, cpu};
+use oscope_core::{BayerPattern, FrameView, PixelFormat, PixelRect};
+use oscope_imaging::color::{
+    Demosaic, Display, chart, demosaic_frame, demosaic_region, encode_png, encode_tiff16, mosaic,
+    psnr, to_display,
+};
 
 /// The MIChrome 20's full frame.
 const WIDTH: u32 = 5472;
@@ -16,6 +21,14 @@ const HEIGHT: u32 = 3648;
 
 /// §5.20's budget for a 20 MP demosaic on 8 CPU threads.
 const BUDGET: Duration = Duration::from_millis(80);
+
+/// An image through the display transform, as a PNG file's bytes.
+fn png(rgb: &Image) -> anyhow::Result<Vec<u8>> {
+    let shown = to_display(rgb, &Display::default())?;
+    let mut file = Vec::new();
+    encode_png(&mut file, &shown, rgb.width(), rgb.height())?;
+    Ok(file)
+}
 
 fn main() -> ExitCode {
     match run() {
@@ -76,6 +89,7 @@ fn run() -> anyhow::Result<()> {
     );
     let marks = [21.0, 20.5, 29.0];
     let mut passed = true;
+    let mut images = Vec::new();
     for (method, mark) in Demosaic::ALL.into_iter().zip(marks) {
         let mut times = Vec::with_capacity(runs);
         let mut rgb = None;
@@ -107,10 +121,52 @@ fn run() -> anyhow::Result<()> {
             rgb.width(),
             rgb.height()
         );
+        images.push((method, rgb));
+    }
+
+    // Files: a 512 × 512 region of the fine rings at full resolution, as PNG
+    // and 16-bit TIFF; and without --smoke, the whole image binned by 4.
+    let temporary = smoke.then(tempfile::tempdir).transpose()?;
+    let folder = match &temporary {
+        Some(folder) => folder.path().to_owned(),
+        None => PathBuf::from(".oscope/ex-demosaic"),
+    };
+    std::fs::create_dir_all(&folder)?;
+    println!(
+        "
+files in {}:",
+        folder.display()
+    );
+    let floats = compute.to_f32(Lane::Live, &view)?;
+    let mut written = 0;
+    for (method, rgb) in &images {
+        let (slug, scale) = match method {
+            Demosaic::Superpixel => ("superpixel", 2),
+            Demosaic::Bilinear => ("bilinear", 1),
+            Demosaic::MalvarHeCutler => ("malvar-he-cutler", 1),
+        };
+        // In the method's own pixels: superpixel's are twice as large.
+        let rings = PixelRect::new(4304 / scale, 2480 / scale, 512 / scale, 512 / scale);
+        let region = demosaic_region(&floats, BayerPattern::Rggb, *method, rings, 1)?;
+        let mut tiff = Vec::new();
+        encode_tiff16(&mut tiff, &region)?;
+        let mut files = vec![
+            (format!("{slug}-rings.png"), png(&region)?),
+            (format!("{slug}-rings.tif"), tiff),
+        ];
+        if !smoke {
+            files.push((format!("{slug}.png"), png(&cpu::downsample(rgb, 4)?)?));
+        }
+        for (name, bytes) in files {
+            std::fs::write(folder.join(&name), &bytes)?;
+            println!("  {name:<26} {:>9.1} kB", bytes.len() as f64 / 1e3);
+            written += 1;
+        }
     }
 
     if smoke {
         ensure!(passed, "a method fell below its PSNR mark");
+        ensure!(written == 6, "{written} files written, not 6");
         println!("smoke: ok");
     }
     Ok(())
