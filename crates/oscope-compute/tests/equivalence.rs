@@ -26,14 +26,15 @@ fn equal_images_pass_with_no_error() {
 fn the_largest_error_is_reported_with_its_position_and_values() {
     let expected = image(4, 3, 2, vec![1.0; 24]);
     let mut actual = expected.clone();
-    // x 3, y 2, channel 1 is the last sample; x 1, y 0, channel 0 is the third.
-    actual.data_mut()[23] = 1.5;
+    // Sample 19 is x 1, y 2, channel 1: its index and its column differ
+    // modulo the width. Sample 2 is x 1, y 0, channel 0.
+    actual.data_mut()[19] = 1.5;
     actual.data_mut()[2] = 1.25;
     let comparison = compare_images(&expected, &actual, Tolerance::abs(0.3)).unwrap();
     assert_eq!(comparison.failed, 1);
     assert_eq!(comparison.max_error, 0.5);
     let at = Position {
-        x: 3,
+        x: 1,
         y: 2,
         channel: 1,
     };
@@ -41,7 +42,7 @@ fn the_largest_error_is_reported_with_its_position_and_values() {
     let text = comparison.to_string();
     assert!(text.starts_with("1 of 24 samples outside"), "{text}");
     assert!(
-        text.contains("at x 3, y 2, channel 1: expected 1, got 1.5"),
+        text.contains("at x 1, y 2, channel 1: expected 1, got 1.5"),
         "{text}"
     );
 }
