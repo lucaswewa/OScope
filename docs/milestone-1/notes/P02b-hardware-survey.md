@@ -1,6 +1,6 @@
 # P02b: Hardware capability survey (docs only)
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p02b-hardware-survey` / [#10](https://github.com/lucaswewa/OScope/pull/10)
 - Size: S, docs only, so it isn't counted
 

@@ -745,8 +745,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | Done |
 | P01 | Rust workspace, layering test, CI | P00, U06 | L | 0005 | Done |
 | P02 | Core types: units, geometry, time, IDs | P01 | L | 0007 | Done |
-| P02b | Hardware capability survey (docs only) | P00 | S | — | In review |
-| P03 | Frame model, buffer pool, frame bus | P02, P02b | L | 0008 | Planned |
+| P02b | Hardware capability survey (docs only) | P00 | S | — | Done |
+| P03 | Frame model, buffer pool, frame bus | P02, P02b | L | 0008 | In review |
 | P04 | Server skeleton, `system` Thing, media plane, example helper | P03 | M | 0006 | Planned |
 | P05 | Logging and the `logs` Thing | P04 | M | 0009 | Planned |
 
@@ -1047,3 +1047,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-11 | P02 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 765 lines |
 | 2026-11-11 | P02 measured 1,648 lines, over L's 900; the estimate had left out doc comments, blank lines and formatting. The owner chose to take it in one pull request, with the overrun explained, rather than split it |
 | 2026-11-12 | P02b, the hardware survey. The MIChrome 20 has a rolling shutter, no camera timestamps and no trigger input, and its SDK delivers the raw mosaic already processed. A camera with an external trigger is to replace it, and the lights aren't chosen yet. Updated: §1 and D20; §5.5's frame metadata (line time, optional sensor timestamp, black level); §5.9's camera capabilities and illumination; P03, P09 and P12; M3's H2 and H5; the camera risk |
+| 2026-11-12 | P03 was estimated at about 1,275 lines before it started, counting documentation at P02's measured density: over L's 900. The owner chose one pull request, with the overrun explained, rather than a split |

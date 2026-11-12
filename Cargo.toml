@@ -21,7 +21,9 @@ schemars = { version = "1.2.2", features = ["chrono04", "uuid1"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 thiserror = "2.0.21"
+tokio = "1.53.1"
 uuid = { version = "1.26.1", features = ["serde", "v7"] }
+oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-core = { path = "crates/oscope-core" }
 
 # Every crate takes these with `[lints] workspace = true`, except the crates

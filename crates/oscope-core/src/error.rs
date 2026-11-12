@@ -36,6 +36,24 @@ pub enum Error {
     /// Points that lie on one line, which fix no affine transform.
     #[error("the points lie on one line, so they fix no affine transform")]
     Collinear,
+    /// A buffer too small for the frame it should hold.
+    #[error("the frame needs {needed} bytes, and its buffer has {got}")]
+    BufferTooSmall {
+        /// The bytes the frame needs.
+        needed: usize,
+        /// The bytes the buffer has.
+        got: usize,
+    },
+    /// A rectangle that is empty, or not wholly inside a frame.
+    #[error("{rect:?} isn't a non-empty part of the {width} × {height} frame")]
+    OutsideFrame {
+        /// The rectangle.
+        rect: crate::geometry::PixelRect,
+        /// The frame's width.
+        width: u32,
+        /// The frame's height.
+        height: u32,
+    },
     /// Text that isn't an ID of the expected kind.
     #[error("{text:?} isn't a {kind}")]
     InvalidId {
