@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OScope system</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --text: #1d2125;
+    --muted: #5d6874;
+    --page: #ffffff;
+    --line: #d9dee3;
+    --error: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #e4e7ea;
+      --muted: #9ba6b1;
+      --page: #16191c;
+      --line: #2e353b;
+      --error: #f97066;
+    }
+  }
+  body {
+    margin: 0 auto;
+    max-width: 880px;
+    padding: 24px 16px;
+    font: 15px/1.5 system-ui, sans-serif;
+    color: var(--text);
+    background: var(--page);
+  }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h2 { font-size: 1.1rem; margin: 28px 0 8px; }
+  .muted { color: var(--muted); }
+  .error { color: var(--error); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  td:nth-child(2) { white-space: pre-line; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  code, pre { font: 13px/1.45 ui-monospace, Consolas, monospace; }
+  pre { overflow: auto; max-height: 60vh; padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+</style>
+</head>
+<body>
+<h1>OScope <span id="version"></span></h1>
+<p class="muted">The <code>system</code> Thing's properties, read through its Thing Description every second.</p>
+<table>
+  <thead><tr><th>Property</th><th>Value</th><th>Description</th></tr></thead>
+  <tbody id="properties"></tbody>
+</table>
+<p id="status" class="muted"></p>
+<h2>Thing Description</h2>
+<details>
+  <summary><code>GET /api/v1/system/</code></summary>
+  <pre id="td"></pre>
+</details>
+<script src="app.js"></script>
+</body>
+</html>

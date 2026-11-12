@@ -10,7 +10,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 - **`--smoke`.** Every example takes `--smoke`. It then runs headless for a few seconds, checks what it shows, and exits with 0 only if all went well. CI runs it.
 - **Ports.** An example that serves something listens on a port from 8211 to 8219 by default, the range kept for manual checks. Its `--smoke` run uses a port from 8220 to 8229, or one the system picks.
 - **Data.** An example writes under a data root of its own, `.oscope/ex-<name>/` by default, which Git ignores. Its `--smoke` run uses a temporary folder.
-- **Pages.** A page an example serves is plain HTML and JavaScript, served by `examples/common` next to the API (from P04).
+- **Pages.** A page an example serves is plain HTML and JavaScript, in the example's `page/` folder. [`examples/common`](common/README.md) serves it next to the API, at the same origin, and runs the `--smoke` checks.
 - **Vendored files.** JavaScript libraries go in `examples/vendor/`, each with its licence. That folder isn't a crate, so it must be excluded from the workspace when it arrives (`exclude = ["examples/vendor"]` in the root `Cargo.toml`).
 - **Dependencies.** An example may depend on any OScope crate. No OScope crate may depend on an example; the layering test ([ADR-0005](../docs/adr/0005-layered-crates-and-their-dependency-rules.md)) checks.
 
@@ -20,5 +20,8 @@ Each example is a small crate that shows one thing a phase built, through the cr
 |---|---|---|
 | [`ex-core-tour`](ex-core-tour/README.md) | P02 | Units, an affine map fitted to noisy point pairs, and the clock |
 | [`ex-frame-bus`](ex-frame-bus/README.md) | P03 | A 20 MP source at 14.5 fps through the frame pool and bus, with lossless and latest-wins subscribers |
+| [`ex-server-hello`](ex-server-hello/README.md) | P04 | The server's `system` Thing, and a page beside it that shows its properties and Thing Description |
+
+`examples/common` is the examples' shared library, `ex-common`, not an example.
 
 P01's example is the server's own command line: [`crates/oscope-server/README.md`](../crates/oscope-server/README.md) says how to try it.

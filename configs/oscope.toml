@@ -1,0 +1,18 @@
+# oscope-server's configuration, with every key at its default except the
+# folders, which go in the repository's own .oscope/ folder:
+#
+#     cargo run -p oscope-server -- --config configs/oscope.toml
+#
+# Relative folders are relative to this file's folder.
+
+[server]
+# 127.0.0.1: only this computer can connect.
+address = "127.0.0.1"
+port = 8210
+
+[storage]
+data_root = "../.oscope/data"
+scratch_root = "../.oscope/scratch"
+
+# The devices. Kept, but not read until the device Things (P16).
+[devices]

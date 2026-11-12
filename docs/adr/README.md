@@ -11,6 +11,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0003](0003-platforms-windows-and-ubuntu-x86-64.md) | Platforms: Windows 11 and Ubuntu LTS on x86_64 | Accepted | P00 |
 | [0004](0004-teta-wot-v0-2-0-extended-upstream-first.md) | Depend on `teta-wot` v0.2.0, extended upstream first | Accepted | P00 |
 | [0005](0005-layered-crates-and-their-dependency-rules.md) | Layered crates and their dependency rules | Accepted | P01 |
+| [0006](0006-control-plane-and-media-plane.md) | Control plane and media plane | Accepted | P04 |
 | [0007](0007-units-coordinates-and-the-clock.md) | Units, coordinates and the clock | Accepted | P02 |
 | [0008](0008-the-frame-model-buffer-pool-and-frame-bus.md) | The frame model, buffer pool and frame bus | Accepted | P03 |
 
