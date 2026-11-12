@@ -148,7 +148,9 @@ The spec sets no budget. **A record costs 0.54 µs in memory only, and 2.61 µs 
 
 ### CI
 
-To come.
+- **Windows** (the working tree at `9ac299e`): all 8 CI steps passed, with 54 suites and 74 tests. All four examples' `--smoke` passed.
+- **Ubuntu 24.04.5** (WSL, a fresh clone of `9ac299e` in the Linux file system, 136 files, no CR in any): all 8 steps passed, with the same 54 suites and 74 tests.
+- **GitHub CI:** to come.
 
 ## Follow-ups and known gaps
 
