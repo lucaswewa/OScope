@@ -96,7 +96,7 @@ The display transform's table has 65,536 entries and is built for each call. Tha
 
 - **Windows** (the working tree at `b4e3e03`): all 8 CI steps passed, with 64 suites and 100 tests. All seven examples' `--smoke` passed.
 - **Ubuntu 24.04.5** (WSL, a fresh clone of `b4e3e03`, 175 files, no CR in any): all 8 steps passed, with the same 64 suites and 100 tests.
-- **GitHub CI:** to come.
+- **GitHub CI** passed: Ubuntu in 2 min 30 s, Windows in 4 min 13 s. All seven examples' `--smoke` and `cargo deny` passed.
 
 ## Follow-ups and known gaps
 
