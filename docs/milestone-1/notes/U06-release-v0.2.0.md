@@ -1,16 +1,17 @@
 # U06: Release v0.2.0
 
 - Status: In review
-- Branch / PR: `u/u06-release-v0.2.0` in `teta-wot` / [lucaswewa/teta-wot#6](https://github.com/lucaswewa/teta-wot/pull/6)
+- Branch / PR: `u/u06-release-v0.2.0` in `teta-wot` / [lucaswewa/teta-wot#6](https://github.com/lucaswewa/teta-wot/pull/6), and the README in [lucaswewa/teta-wot#7](https://github.com/lucaswewa/teta-wot/pull/7) · released as [`v0.2.0`](https://github.com/lucaswewa/teta-wot/releases/tag/v0.2.0)
 - Size: planned S, estimated ~20 (code ~5, tests ~10, examples 0, glue ~5) · measured **140** hand-written changed lines (+99 −41): code 58, tests 64, examples 8, glue 10. Docs and `Cargo.lock` aren't counted. Most of it is a race fixed in `teta-wot-core`, found while replaying CI, and the problem types' new URL with its test (below).
 
 ## Summary
 
-`teta-wot` is ready to be tagged v0.2.0, the version OScope will pin ([spec](../phases.md#u06)). The pull request follows `teta-wot`'s `docs/releasing.md` up to its step 5, the tag. The tag waits for the owner's word.
+`teta-wot` v0.2.0 is tagged and released, the version OScope pins ([spec](../phases.md#u06)). The release followed `teta-wot`'s `docs/releasing.md`, and the owner gave the word for the tag. The 24-hour soak was still running when it was tagged.
 
 - **The version.** The workspace is `0.2.0`, and the CHANGELOG has its `0.2.0` section. U02–U05 broke two struct literals, so this is a minor release (`0.1.x` → `0.2.0`).
 - **Migration notes.** The guide gains a page, *Migrating*: from LabThings in Python, and from 0.1 to 0.2. The tutorial's two links to `../migration.md`, broken on `main`, now lead to it.
-- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. The hour passed. The 24-hour run ends about 2026-11-12 16:45 PST, and the tag follows it.
+- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. The hour passed. The 24-hour run ends about 2026-11-12 16:45 PST. If it fails, the fix is released as v0.2.1.
+- **The tag,** `v0.2.0`, is on `338336f`, pushed on 2026-11-11 at 20:45 PST. `release.yml` published [the release](https://github.com/lucaswewa/teta-wot/releases/tag/v0.2.0) six minutes later.
 - **The README** was rewritten in a follow-up PR ([lucaswewa/teta-wot#7](https://github.com/lucaswewa/teta-wot/pull/7)), which the owner edited. It ships in v0.2.0.
 - **The licence review** found the Windows package shipped no licence texts. As the owner chose:
   - the package carries `THIRD_PARTY_LICENSES.txt` again, and the IJG acknowledgement `jpeg-encoder`'s licence asks for;
@@ -53,7 +54,7 @@ cargo run -p counter-server -- --serve --port 8211
 curl -s http://127.0.0.1:8211/openapi.json    # "info": {"title": "teta-wot", "version": "0.2.0"}
 ```
 
-The problem types: [`docs/problems.md`](https://github.com/lucaswewa/teta-wot/blob/main/docs/problems.md), once merged. A `type` such as `…/docs/problems.md#validation-error` leads to its heading.
+The problem types: [`docs/problems.md`](https://github.com/lucaswewa/teta-wot/blob/main/docs/problems.md). A `type` such as `…/docs/problems.md#validation-error` leads to its heading.
 
 The release package was built locally as `release.yml` builds it, without publishing anything: see *Tests*.
 
@@ -74,15 +75,18 @@ The release package was built locally as `release.yml` builds it, without publis
   - 75,100 MJPEG frames, 58,023 events and 139,637 WebSocket messages;
   - a p50 latency of 0.2–0.3 ms, with the worst minute's p99 at 82.4 ms;
   - private bytes after the warm-up of 26.6 MB at first and 26.8 MB at the end, against a 49.2 MB limit: steady.
-- **The logs and `soak.csv`** are kept beside them, for the GitHub release (step 5).
+- **The logs and `soak.csv`** are kept beside them.
+  - **The release's notes** end with a *Soak* section: the 1-hour summary, and the 24-hour run as still going.
+  - **`soak-1h-wot.log`** is attached to the release.
+  - **When the 24-hour run ends,** its summary goes into that section, and its log and `soak.csv` are attached.
 
 ## Design notes and deviations from the plan
 
 - **The soak ran before the tag, after the merge,** as `releasing.md` has it, but on the pull request's build.
   - **After the 1-hour run passed,** #6 was squash-merged into `main` (`bd2982a`). `main`'s code is the soaked code, and its CI passed.
-  - **The owner first chose to tag then,** and then to wait for the 24-hour run.
-  - **The README** joined the release in the meantime (#7), docs only.
-  - **`v0.2.0` is tagged when the 24-hour run passes.** If it fails, the release waits for a fix.
+  - **The owner's choices changed twice.** They chose first to tag then, then to wait for the 24-hour run, and then to tag without waiting for it.
+  - **The README** joined the release in the meantime (#7, docs only). It was squash-merged as `338336f`, and `main`'s CI passed on it before the tag.
+  - **`v0.2.0` was tagged during the 24-hour run.** That run goes on, on the same binaries. If it fails, the fix is released as v0.2.1; a published tag isn't moved (`releasing.md`).
 - **The soak ran before the merge, not after.**
   - **`releasing.md`'s order** is: merge, wait for CI, then soak `main`'s release build.
   - **Here the soak ran on the pull request's code,** so that its results are part of the review. A squash merge of a branch that is up to date with `main` gives `main` the same files, so the soaked build is the released one.
@@ -117,9 +121,13 @@ The release package was built locally as `release.yml` builds it, without publis
   - **The package had shipped no licence texts** since `135f9ff`, while `releasing.md` still said it did. The owner chose to restore `THIRD_PARTY_LICENSES.txt`.
   - **`THIRD_PARTY_NOTICES.md` had never existed,** though `releasing.md` and `licenses.py` refer to it. The owner chose to create it. That records the W3C Software and Document License, outside the usual list but in the sources since 0.1, as accepted.
   - **None of the vendored files is in the binaries.** Neither binary enables `docs-offline` or `validation`.
-- **The CHANGELOG's date** is 2026-11-12, the day of the tag, after the 24-hour run.
-  - **It was briefly 2026-11-11** (`96ef922`), while the tag was to follow the 1-hour run.
-  - **Both changes touch only `CHANGELOG.md`,** not the soaked code.
+- **The CHANGELOG's date** is 2026-11-11, the day of the tag.
+  - **It moved with the owner's choices:**
+    - 2026-11-12 in #6;
+    - 2026-11-11 in `96ef922`;
+    - 2026-11-12 in #7 (`3e2fa8e`);
+    - and 2026-11-11 again (`b8a48a1`).
+  - **Each change touches only `CHANGELOG.md`,** not the soaked code.
 - **The 0.2.0 section was tidied:** one list under each heading, where U01–U05 had each added a group separated by blank lines.
 
 ## Tests
@@ -151,7 +159,7 @@ The release package was built locally as `release.yml` builds it, without publis
 - **`release.yml`, dry run** on `bd90a8c`, with `GITHUB_REF_NAME=v0.2.0`, never publishing:
   - **The version check** passed, and the release notes are the 70-line `0.2.0` section.
   - **Both binaries built.**
-  - **The package holds nine files:**
+  - **The package holds eight files:**
     - the two binaries;
     - `microscope.json` and `demo.py`;
     - the CHANGELOG and `README.txt`, which ends with the IJG sentence;
@@ -159,10 +167,16 @@ The release package was built locally as `release.yml` builds it, without publis
     - `THIRD_PARTY_LICENSES.txt` (1.4 MB, 159 crates).
   - **The source archives and `SHA256SUMS`** were written.
   - **Not run:** 7-Zip (Python's `zipfile` stood in) and `gh release create`.
+- **`release.yml` on the tag** passed in 5 min 28 s, and published:
+  - the Windows package;
+  - the two source archives;
+  - `SHA256SUMS`.
+
+  The downloaded package matches its checksum, and holds the same eight files as the dry run.
 
 ## Follow-ups and known gaps
 
-- **Tagging and publishing** wait for the owner (`releasing.md` step 5). `release.yml`'s version check, build, packaging and checksums were run locally, but its 7-Zip and `gh release create` steps weren't.
+- **The 24-hour soak** ends about 2026-11-12 16:45 PST, after the tag. Its result goes into the release and into these notes. A failure would be fixed in v0.2.1.
 - **Three examples mention Python scripts that aren't in the repository:**
   - `observe-websocket`: `observe.py`, in its README, `Cargo.toml` description and code comments;
   - `discovery`: `browse.py`, in a code comment; the guide's *Discovery* page says the example finds Things "from Python";
@@ -172,7 +186,7 @@ The release package was built locally as `release.yml` builds it, without publis
 - **The W3C licence asks for its full text** to travel with copies of the schema. `THIRD_PARTY_NOTICES.md` gives the short notice and links the full text. The text could be vendored beside the schema.
 - **On this new PC,** the first CI replay's cargo steps failed at once: the rustup proxy couldn't remove `.cargo/bin/rustup-init.exe` ("Access is denied"), most likely left by rustup updating itself during the toolchain step. The file was gone a minute later, and the next replay ran clean.
 
-Next phase: P01 (Rust workspace, layering test, CI), once v0.2.0 is tagged.
+Next phase: P01 (Rust workspace, layering test, CI), which pins `v0.2.0`.
 
 ## Clean room
 
