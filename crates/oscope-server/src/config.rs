@@ -3,6 +3,7 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 
+use oscope_api::logs;
 use serde::Deserialize;
 
 /// The port the server listens on unless told otherwise (plan D34).
@@ -19,6 +20,11 @@ pub const DEFAULT_PORT: u16 = 8210;
 /// data_root = ".oscope/data"      # relative to this file's folder
 /// scratch_root = ".oscope/scratch"
 ///
+/// [logging]
+/// level = "info"                  # tracing's EnvFilter syntax
+/// ring = 50000                    # records kept in memory
+/// keep_days = 30                  # daily files kept, in data_root/logs
+///
 /// [devices]                       # kept for P16, not read yet
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
@@ -28,6 +34,8 @@ pub struct Config {
     pub server: Listen,
     /// Where it keeps its files.
     pub storage: Storage,
+    /// What it logs, and how much it keeps.
+    pub logging: Logging,
     /// The devices, kept as they are until the device Things read them.
     pub devices: toml::Table,
 }
@@ -68,6 +76,30 @@ impl Default for Storage {
         Self {
             data_root: PathBuf::from(".oscope/data"),
             scratch_root: PathBuf::from(".oscope/scratch"),
+        }
+    }
+}
+
+/// What the server logs, and how much it keeps.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Logging {
+    /// What to record, in `tracing`'s `EnvFilter` syntax: `info` by default,
+    /// or for example `info,oscope_api=debug`.
+    pub level: String,
+    /// How many of the newest records to keep in memory, for queries and
+    /// the live tail.
+    pub ring: usize,
+    /// How many days of daily files to keep, today's included.
+    pub keep_days: u32,
+}
+
+impl Default for Logging {
+    fn default() -> Self {
+        Self {
+            level: "info".to_owned(),
+            ring: logs::DEFAULT_RING,
+            keep_days: logs::DEFAULT_KEEP_DAYS,
         }
     }
 }

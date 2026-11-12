@@ -17,9 +17,16 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
+use oscope_api::logs::{self, LogConfig, LogStore};
 use oscope_api::{ApiBuilder, Roots};
+use serde_json::Value;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+
+/// What examples record: `info` and above, and OScope's own records at
+/// every level, so that a `trace` note written with the `logs` Thing's
+/// `emit` is kept.
+pub const LOG_LEVEL: &str = "info,oscope=trace";
 
 /// An example, as its command line asks it to run.
 #[derive(Debug)]
@@ -34,11 +41,15 @@ pub struct Example {
     /// Its data and scratch roots, under `.oscope/{name}/`, or for
     /// `--smoke` under a temporary folder that is removed at the end.
     pub roots: Roots,
+    /// Its logs, at [`LOG_LEVEL`], on the console and in daily files in
+    /// `{data root}/logs`. Its server's `logs` Thing serves them.
+    pub logs: LogStore,
     _temporary: Option<tempfile::TempDir>,
 }
 
 impl Example {
-    /// Reads the command line: `--port N` and `--smoke`.
+    /// Reads the command line, `--port N` and `--smoke`, and starts the
+    /// logs.
     pub fn from_args(name: &str, port: u16) -> anyhow::Result<Self> {
         let mut args = std::env::args().skip(1);
         let (mut chosen, mut smoke) = (None, false);
@@ -54,19 +65,27 @@ impl Example {
             Some(folder) => folder.path().to_owned(),
             None => PathBuf::from(".oscope").join(name),
         };
+        let roots = Roots {
+            data: folder.join("data"),
+            scratch: folder.join("scratch"),
+        };
+        let logs = LogStore::new(&LogConfig {
+            folder: Some(roots.data.join("logs")),
+            ..LogConfig::default()
+        })?;
+        logs::install(&logs, LOG_LEVEL)?;
         Ok(Self {
             name: name.to_owned(),
             port: chosen.unwrap_or(if smoke { 0 } else { port }),
             smoke,
-            roots: Roots {
-                data: folder.join("data"),
-                scratch: folder.join("scratch"),
-            },
+            roots,
+            logs,
             _temporary: temporary,
         })
     }
 
-    /// Serves `api`, with the files in `page` at the same origin. Without
+    /// Serves `api`, with the example's logs and the files in `page` at the
+    /// same origin. Without
     /// `--smoke` it serves until Ctrl-C. With it, it serves until `check`,
     /// given the server's address, finishes, and returns its result.
     pub async fn serve<C, F>(
@@ -82,7 +101,7 @@ impl Example {
         for folder in [&self.roots.data, &self.roots.scratch] {
             std::fs::create_dir_all(folder).with_context(|| folder.display().to_string())?;
         }
-        let api = api.pages(page.as_ref()).build()?;
+        let api = api.logs(self.logs.clone()).pages(page.as_ref()).build()?;
         let listener = TcpListener::bind(("127.0.0.1", self.port))
             .await
             .with_context(|| format!("can't listen on port {}", self.port))?;
@@ -117,7 +136,7 @@ pub struct Answer {
 
 impl Answer {
     /// The body, as JSON.
-    pub fn json(&self) -> anyhow::Result<serde_json::Value> {
+    pub fn json(&self) -> anyhow::Result<Value> {
         serde_json::from_str(&self.body).context("a JSON body")
     }
 }
@@ -125,8 +144,27 @@ impl Answer {
 /// `GET path` from the server at `address`, over HTTP/1.1, for answers
 /// with a length (not chunked), as the API's are.
 pub async fn get(address: SocketAddr, path: &str) -> anyhow::Result<Answer> {
+    request(address, "GET", path, None).await
+}
+
+/// `POST path` with a JSON body, as [`get`].
+pub async fn post(address: SocketAddr, path: &str, body: &Value) -> anyhow::Result<Answer> {
+    request(address, "POST", path, Some(body)).await
+}
+
+async fn request(
+    address: SocketAddr,
+    method: &str,
+    path: &str,
+    body: Option<&Value>,
+) -> anyhow::Result<Answer> {
     let mut stream = TcpStream::connect(address).await?;
-    let request = format!("GET {path} HTTP/1.1\r\nhost: {address}\r\nconnection: close\r\n\r\n");
+    let body = body.map(Value::to_string).unwrap_or_default();
+    let request = format!(
+        "{method} {path} HTTP/1.1\r\nhost: {address}\r\nconnection: close\r\n\
+         content-type: application/json\r\ncontent-length: {}\r\n\r\n{body}",
+        body.len()
+    );
     stream.write_all(request.as_bytes()).await?;
     let mut text = String::new();
     stream.read_to_string(&mut text).await?;

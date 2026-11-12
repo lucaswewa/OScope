@@ -340,6 +340,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-logs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "futures-util",
+ "oscope-api",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+]
+
+[[package]]
 name = "ex-server-hello"
 version = "0.1.0"
 dependencies = [
@@ -763,6 +777,7 @@ dependencies = [
 name = "oscope-api"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "fs4",
  "futures-util",
  "schemars",
@@ -774,6 +789,8 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-tungstenite",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -821,6 +838,7 @@ version = "0.1.0"
 name = "oscope-server"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "clap",
  "oscope-api",
  "serde",

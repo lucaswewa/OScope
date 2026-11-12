@@ -14,5 +14,13 @@ port = 8210
 data_root = "../.oscope/data"
 scratch_root = "../.oscope/scratch"
 
+[logging]
+# What to record, in tracing's EnvFilter syntax, such as "info,oscope_api=debug".
+level = "info"
+# How many of the newest records to keep in memory, for queries and the tail.
+ring = 50000
+# How many days of daily files to keep, in data_root/logs.
+keep_days = 30
+
 # The devices. Kept, but not read until the device Things (P16).
 [devices]
