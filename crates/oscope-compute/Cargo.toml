@@ -16,15 +16,27 @@ unsafe_code = "allow"
 all = { level = "warn", priority = -1 }
 undocumented_unsafe_blocks = "warn"
 
+[features]
+# The CUDA backend: needs the CUDA toolkit's nvcc to build (ADR-0011).
+cuda = ["dep:cudarc"]
+
 [dependencies]
+cudarc = { workspace = true, optional = true }
 oscope-core.workspace = true
 rayon.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+tracing.workspace = true
+
+# On Windows, nvcc needs MSVC's cl.exe, which isn't on PATH outside a
+# developer prompt.
+[target.'cfg(windows)'.build-dependencies]
+find-msvc-tools.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
 rand.workspace = true
+tracing-subscriber.workspace = true
 serde_json.workspace = true
 
 [[bench]]

@@ -210,6 +210,18 @@ fn a_rectangle_must_be_non_empty_and_inside() {
 }
 
 #[test]
+fn a_views_data_runs_from_its_first_pixel_to_its_last() {
+    let data = image(PixelFormat::Rgb16, 10, 8);
+    let view = FrameView::new(&data, PixelFormat::Rgb16, 10, 8).unwrap();
+    assert_eq!(view.data(), &data[..]);
+    let part = view.roi(PixelRect::new(2, 3, 4, 2)).unwrap();
+    // Two rows of 4 pixels, 60 bytes apart, starting at (2, 3).
+    let start = 3 * 60 + 2 * 6;
+    assert_eq!(part.data(), &data[start..start + 60 + 4 * 6]);
+    assert_eq!(part.data()[..24], *part.row(0).unwrap());
+}
+
+#[test]
 fn a_rolling_shutter_exposes_each_row_a_line_time_later() {
     let mut meta = meta(0, RGGB16, 5472, 3648);
     meta.exposure_start = Timestamp(1_000_000_000);

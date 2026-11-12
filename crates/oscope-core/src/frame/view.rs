@@ -56,6 +56,16 @@ impl<'a> FrameView<'a> {
         self.stride
     }
 
+    /// Its bytes, from its first pixel to its last, rows `stride` apart: one
+    /// span to copy, for example to a GPU. Empty for an empty view.
+    pub fn data(&self) -> &'a [u8] {
+        let row = self.width as usize * self.format.pixel_bytes();
+        match self.height {
+            0 => &[],
+            h => &self.data[..(h as usize - 1) * self.stride + row],
+        }
+    }
+
     /// Row `y`'s pixels, or `None` past the last row.
     pub fn row(&self, y: u32) -> Option<&'a [u8]> {
         let start = y as usize * self.stride;
