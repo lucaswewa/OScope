@@ -150,7 +150,7 @@ The spec sets no budget. **A record costs 0.54 µs in memory only, and 2.61 µs 
 
 - **Windows** (the working tree at `9ac299e`): all 8 CI steps passed, with 54 suites and 74 tests. All four examples' `--smoke` passed.
 - **Ubuntu 24.04.5** (WSL, a fresh clone of `9ac299e` in the Linux file system, 136 files, no CR in any): all 8 steps passed, with the same 54 suites and 74 tests.
-- **GitHub CI:** to come.
+- **GitHub CI** passed: Ubuntu in 1 min 22 s, Windows in 3 min 0 s. All four examples printed `smoke: ok` on both, and the `cargo deny` step passed.
 
 ## Follow-ups and known gaps
 
