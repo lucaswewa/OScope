@@ -112,7 +112,13 @@ The GPU's times include uploading the 40 MB frame (about 1.6 ms from pinned memo
 
 ### CI
 
-To come.
+- **Windows** (the working tree at `8a93e6d`, default features, as CI): all 8 steps passed, with 65 suites and 100 tests. All seven examples' `--smoke` passed.
+- **Ubuntu 24.04.5** (WSL, a fresh clone of `8a93e6d`, 182 files, no CR in any): all 8 steps passed, with the same 65 suites and 100 tests.
+- **With the feature and the GPU on Windows:**
+  - `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` passed 108 tests;
+  - clippy with the feature is clean on the four crates the weekly job checks;
+  - `ex-demosaic --features cuda -- --smoke` passed, in release.
+- **GitHub CI, and the *CUDA build* on Ubuntu with the feature and no GPU:** to come.
 
 ## Follow-ups and known gaps
 
