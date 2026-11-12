@@ -734,8 +734,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | U02 | Path parameters for endpoints | U01 | L | Done |
 | U03 | Router composition, custom listeners, HTTP/2 | U01 | L | Done |
 | U04 | Binary WebSocket streams | U03 | L | Done |
-| U05 | Pluggable authentication | U03 | L | In review |
-| U06 | Release v0.2.0 | U02–U05 | S | Planned |
+| U05 | Pluggable authentication | U03 | L | Done |
+| U06 | Release v0.2.0 | U02–U05 | S | In review |
 
 ### Stage 1: Groundwork
 
