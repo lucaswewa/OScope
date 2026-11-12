@@ -1,6 +1,6 @@
 # P02: Core types: units, geometry, time, IDs
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p02-core-types` / [#9](https://github.com/lucaswewa/OScope/pull/9)
 - Size: planned M, re-sized to L by the owner before it started · estimated ~765 (code ~430, tests ~220, examples ~85, glue ~30) · measured **1,648** hand-written lines (code 962, tests 527, examples 125, glue 34). Docs and `Cargo.lock` aren't counted. **That is 748 over L's 900.** The owner chose to take it in one pull request, with the overrun explained, rather than split it (see *Design notes*).
 

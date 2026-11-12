@@ -743,8 +743,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | Done |
 | P01 | Rust workspace, layering test, CI | P00, U06 | L | 0005 | Done |
-| P02 | Core types: units, geometry, time, IDs | P01 | L | 0007 | In review |
-| P02b | Hardware capability survey (docs only) | P00 | S | — | Planned |
+| P02 | Core types: units, geometry, time, IDs | P01 | L | 0007 | Done |
+| P02b | Hardware capability survey (docs only) | P00 | S | — | In progress |
 | P03 | Frame model, buffer pool, frame bus | P02, P02b | L | 0008 | Planned |
 | P04 | Server skeleton, `system` Thing, media plane, example helper | P03 | M | 0006 | Planned |
 | P05 | Logging and the `logs` Thing | P04 | M | 0009 | Planned |
