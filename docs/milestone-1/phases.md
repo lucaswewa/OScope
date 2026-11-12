@@ -536,7 +536,10 @@ P08 was split into three before it started (P08, P08b, P08c), with the owner's a
   - a rolling shutter: rows are exposed one after another over the readout (about 60 ms at full resolution), so motion shears a frame;
   - gain, full well, black level;
   - shot, read and dark noise.
-- **Modes:** the MIChrome 20's three, at their measured rates (5472 × 3648 at 14.5 fps, 2736 × 1824 at 53.2 fps, 1824 × 1216 at 67.3 fps: P02b), binning and ROIs. Exposure and gain.
+- **Modes:** the MIChrome 20's three, at their measured rates for each bit depth (`hardware.md`). Exposure and gain.
+  - 5472 × 3648 at 14.49 fps in 8 bits and 7.24 fps in 16; 2736 × 1824 at 53.14 and 26.57 fps; 1824 × 1216 at 67.26 and 33.87 fps.
+  - **A design rate:** 16 bits at 14.5 fps at full resolution, the 580 MB/s that P29 records (§5.20). It stands in for the camera that will replace the MIChrome 20.
+  - **Binning and ROIs.** As on the MIChrome 20, an ROI crops the frame but doesn't raise the rate.
 - **Acquisition:** free-running, software trigger, and a hardware trigger fed by the simulated stage's trigger output. Frames are paced by the simulation clock at the mode's frame interval.
   - The hardware trigger stands in for the camera that will replace the MIChrome 20, which has none (P02b).
   - Frames carry host timestamps only, as the MIChrome 20's do.
