@@ -10,7 +10,8 @@
 
 - **The version.** The workspace is `0.2.0`, and the CHANGELOG has its `0.2.0` section. U02–U05 broke two struct literals, so this is a minor release (`0.1.x` → `0.2.0`).
 - **Migration notes.** The guide gains a page, *Migrating*: from LabThings in Python, and from 0.1 to 0.2. The tutorial's two links to `../migration.md`, broken on `main`, now lead to it.
-- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. They are running: results by 2026-11-12 16:45 PST.
+- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. The hour passed. The 24-hour run ends about 2026-11-12 16:45 PST, and the tag follows it.
+- **The README** was rewritten in a follow-up PR ([lucaswewa/teta-wot#7](https://github.com/lucaswewa/teta-wot/pull/7)), which the owner edited. It ships in v0.2.0.
 - **The licence review** found the Windows package shipped no licence texts. As the owner chose:
   - the package carries `THIRD_PARTY_LICENSES.txt` again, and the IJG acknowledgement `jpeg-encoder`'s licence asks for;
   - a new `THIRD_PARTY_NOTICES.md` lists the vendored files.
@@ -63,16 +64,25 @@ The release package was built locally as `release.yml` builds it, without publis
 | Run | Command | Started | Result |
 |---|---|---|---|
 | 24 hours | `soak --duration 24h --report soak.csv` (the `tetathing` profile) | 2026-11-11 16:44 PST | running; ends about 2026-11-12 16:45 PST |
-| 1 hour | `soak --duration 1h --profile wot` | 2026-11-11 16:44 PST | running; ends about 17:45 PST |
+| 1 hour | `soak --duration 1h --profile wot` | 2026-11-11 16:44 PST | **PASSED** at 17:45 PST |
 
 - **The binaries** are copies of `target/release/simulated-microscope.exe` and `soak.exe`, in `target/soak-0.2.0/`, so later builds can't touch them. Their SHA-256s:
   - `simulated-microscope.exe`: `83820fd5…28a3c070`;
   - `soak.exe`: `642f0192…a6986aa`.
+- **The 1-hour run in numbers:**
+  - 439,770 requests, 0 errors, and 0 streams ended early;
+  - 75,100 MJPEG frames, 58,023 events and 139,637 WebSocket messages;
+  - a p50 latency of 0.2–0.3 ms, with the worst minute's p99 at 82.4 ms;
+  - private bytes after the warm-up of 26.6 MB at first and 26.8 MB at the end, against a 49.2 MB limit: steady.
 - **The logs and `soak.csv`** are kept beside them, for the GitHub release (step 5).
 
 ## Design notes and deviations from the plan
 
-- **The tag isn't made here.** `releasing.md` step 5 tags `main` and pushes the tag, which runs `release.yml` on GitHub Actions; its minutes are back. The owner decides when.
+- **The soak ran before the tag, after the merge,** as `releasing.md` has it, but on the pull request's build.
+  - **After the 1-hour run passed,** #6 was squash-merged into `main` (`bd2982a`). `main`'s code is the soaked code, and its CI passed.
+  - **The owner first chose to tag then,** and then to wait for the 24-hour run.
+  - **The README** joined the release in the meantime (#7), docs only.
+  - **`v0.2.0` is tagged when the 24-hour run passes.** If it fails, the release waits for a fix.
 - **The soak ran before the merge, not after.**
   - **`releasing.md`'s order** is: merge, wait for CI, then soak `main`'s release build.
   - **Here the soak ran on the pull request's code,** so that its results are part of the review. A squash merge of a branch that is up to date with `main` gives `main` the same files, so the soaked build is the released one.
@@ -107,7 +117,9 @@ The release package was built locally as `release.yml` builds it, without publis
   - **The package had shipped no licence texts** since `135f9ff`, while `releasing.md` still said it did. The owner chose to restore `THIRD_PARTY_LICENSES.txt`.
   - **`THIRD_PARTY_NOTICES.md` had never existed,** though `releasing.md` and `licenses.py` refer to it. The owner chose to create it. That records the W3C Software and Document License, outside the usual list but in the sources since 0.1, as accepted.
   - **None of the vendored files is in the binaries.** Neither binary enables `docs-offline` or `validation`.
-- **The CHANGELOG's date** is 2026-11-12, the day the 24-hour soak ends. If the tag will be later, the date can be changed before merging; that is a docs change, and doesn't touch the soaked code.
+- **The CHANGELOG's date** is 2026-11-12, the day of the tag, after the 24-hour run.
+  - **It was briefly 2026-11-11** (`96ef922`), while the tag was to follow the 1-hour run.
+  - **Both changes touch only `CHANGELOG.md`,** not the soaked code.
 - **The 0.2.0 section was tidied:** one list under each heading, where U01–U05 had each added a group separated by blank lines.
 
 ## Tests
