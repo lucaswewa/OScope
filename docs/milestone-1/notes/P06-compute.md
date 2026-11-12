@@ -127,7 +127,7 @@ Measured on the owner's PC (i9-12900, 24 threads, AVX2) with release builds, on 
 
 - **Windows** (the working tree at `d432bc4`): all 8 CI steps passed, with 58 suites and 88 tests. All five examples' `--smoke` passed.
 - **Ubuntu 24.04.5** (WSL, a fresh clone of `d432bc4` in the Linux file system, 150 files, no CR in any): all 8 steps passed, with the same 58 suites and 88 tests.
-- **GitHub CI:** to come.
+- **GitHub CI** passed: Ubuntu in 2 min 56 s, Windows in 4 min 16 s. All five examples printed `smoke: ok` on both, and the `cargo deny` step passed.
 
 ## Follow-ups and known gaps
 
