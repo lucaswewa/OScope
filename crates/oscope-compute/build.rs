@@ -39,7 +39,15 @@ fn main() {
         let mut command = Command::new(&nvcc);
         host_compiler(&mut command);
         let status = command
-            .args(["--fatbin", "-O3", &format!("-arch={ARCH}"), "-o"])
+            // No fused multiply-adds: each product and sum rounds as the CPU
+            // twin's does, so that the twins agree to the bit.
+            .args([
+                "--fatbin",
+                "-O3",
+                "--fmad=false",
+                &format!("-arch={ARCH}"),
+                "-o",
+            ])
             .arg(&binary)
             .arg(&kernel)
             .status()

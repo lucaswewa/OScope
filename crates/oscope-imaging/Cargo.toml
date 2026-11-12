@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# The colour steps on the GPU: their CUDA twins are in oscope-compute.
+cuda = ["oscope-compute/cuda"]
+
 [dependencies]
 oscope-compute.workspace = true
 oscope-core.workspace = true

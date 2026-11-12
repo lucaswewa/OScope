@@ -11,17 +11,23 @@ use super::ColorError;
 /// and stretches the rest back to 0–1: `(v − black) / (1 − black)`, and 0
 /// below black. It works on a mosaic, before demosaicing, as on RGB.
 pub fn subtract_black(image: &mut Image, black: f32) -> Result<(), ColorError> {
-    if !(0.0..1.0).contains(&black) {
-        return Err(ColorError::Setting(format!(
-            "a black level of {black}: it must be from 0 to below 1"
-        )));
-    }
+    check_black(black)?;
     let scale = 1.0 / (1.0 - black);
     image
         .data_mut()
         .par_iter_mut()
         .for_each(|v| *v = ((*v - black) * scale).max(0.0));
     Ok(())
+}
+
+/// Refuses a black level outside 0 to below 1.
+pub(crate) fn check_black(black: f32) -> Result<(), ColorError> {
+    match (0.0..1.0).contains(&black) {
+        true => Ok(()),
+        false => Err(ColorError::Setting(format!(
+            "a black level of {black}: it must be from 0 to below 1"
+        ))),
+    }
 }
 
 /// White-balance gains and a colour matrix, for RGB: each pixel becomes
@@ -109,12 +115,9 @@ impl Default for Display {
     }
 }
 
-/// An image's samples for an 8-bit display, interleaved as they are.
-///
-/// Each sample is first taken to 16 bits, from 0–1, and then looked up in a
-/// table of 65,536 entries. Each entry stretches `black`–`white` to 0–1,
-/// clamps it, applies the curve, and rounds to 0–255.
-pub fn to_display(image: &Image, display: &Display) -> Result<Vec<u8>, ColorError> {
+/// The display transform's table: for each of the 65,536 16-bit levels,
+/// its 8-bit value.
+pub(crate) fn display_table(display: &Display) -> Result<Vec<u8>, ColorError> {
     let Display {
         black,
         white,
@@ -125,12 +128,21 @@ pub fn to_display(image: &Image, display: &Display) -> Result<Vec<u8>, ColorErro
             "white ({white}) must be above black ({black})"
         )));
     }
-    let table: Vec<u8> = (0..=u16::MAX)
+    Ok((0..=u16::MAX)
         .map(|code| {
             let t = ((f32::from(code) / 65_535.0 - black) / (white - black)).clamp(0.0, 1.0);
             (curve.apply(t) * 255.0).round() as u8
         })
-        .collect();
+        .collect())
+}
+
+/// An image's samples for an 8-bit display, interleaved as they are.
+///
+/// Each sample is first taken to 16 bits, from 0–1, and then looked up in a
+/// table of 65,536 entries. Each entry stretches `black`–`white` to 0–1,
+/// clamps it, applies the curve, and rounds to 0–255.
+pub fn to_display(image: &Image, display: &Display) -> Result<Vec<u8>, ColorError> {
+    let table = display_table(display)?;
     Ok(image
         .data()
         .par_iter()

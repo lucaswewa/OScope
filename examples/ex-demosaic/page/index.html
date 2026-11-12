@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demosaicing compared</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --text: #1d2125;
+    --muted: #5d6874;
+    --page: #ffffff;
+    --line: #d9dee3;
+    --good: #1a7f37;
+    --bad: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #e4e7ea;
+      --muted: #9ba6b1;
+      --page: #16191c;
+      --line: #2e353b;
+      --good: #4ac26b;
+      --bad: #f97066;
+    }
+  }
+  body {
+    margin: 0 auto;
+    max-width: 1200px;
+    padding: 24px 16px;
+    font: 15px/1.5 system-ui, sans-serif;
+    color: var(--text);
+    background: var(--page);
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 28px 0 8px; }
+  .muted { color: var(--muted); }
+  .good { color: var(--good); }
+  .bad { color: var(--bad); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  td { font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); }
+  .rings img { image-rendering: pixelated; }
+  figcaption { margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>Demosaicing compared</h1>
+<p id="summary" class="muted">Loading…</p>
+<table>
+  <thead>
+    <tr><th>Method</th><th>CPU</th><th>GPU</th><th>PSNR</th><th>GPU against CPU</th><th>Size</th></tr>
+  </thead>
+  <tbody id="results"></tbody>
+</table>
+<h2>The fine rings, at full resolution</h2>
+<p class="muted">A 512 × 512 region where the rings are finest, demosaiced on its own. Grey rings should stay grey; colour in them is the method's error.</p>
+<div id="rings" class="grid rings"></div>
+<h2>The whole chart, binned by 4</h2>
+<p class="muted">Patches, a gradient and the rings. The rings' moiré here comes from the binning.</p>
+<div id="whole" class="grid"></div>
+<script src="app.js"></script>
+</body>
+</html>

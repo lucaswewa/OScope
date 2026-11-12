@@ -495,10 +495,13 @@ name = "ex-demosaic"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ex-common",
+ "oscope-api",
  "oscope-compute",
  "oscope-core",
  "oscope-imaging",
- "tempfile",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
