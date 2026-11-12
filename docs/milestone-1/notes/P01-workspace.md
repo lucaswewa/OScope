@@ -82,6 +82,7 @@ Not relevant to this phase: there is no code on a §5.20 path yet.
   - So OScope builds on the versions `teta-wot` was released and soaked with, rather than on whatever was newest.
   - All of them are at least two weeks old: see *Tests*.
 - **The licences in `deny.toml`** are ADR-0002's list, in SPDX: `MIT`, `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `Zlib` and `Unicode-3.0`. For "public domain" the list has `CC0-1.0` and `Unlicense`.
+  - **The owner chose to keep these rules for now,** when reviewing #8. Two crates use `Unlicense`, `aho-corasick` and `memchr`, and both also offer MIT.
   - **Two other licences appear only as alternatives.** `Apache-2.0 WITH LLVM-exception` (`rustix`, `linux-raw-sys`) and `BSL-1.0` (`ryu`) are each offered beside MIT or Apache-2.0, so they aren't added.
   - **No crate needs `MIT-0` or `MPL-2.0`.**
   - **Licences no crate uses yet** (ISC, Zlib, CC0-1.0) stay in the list: it is the policy, so the "not encountered" warning is turned off.
