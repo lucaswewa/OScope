@@ -157,7 +157,7 @@ The spec sets no budget. **Shutting down with a media WebSocket open** takes mil
 
 - **Windows** (the working tree at `dbe26e4`): all 8 CI steps passed, with 52 suites and 65 tests. All three examples' `--smoke` passed.
 - **Ubuntu 24.04.5** (WSL, a fresh clone of `dbe26e4` in the Linux file system, 118 files, no CR in any): all 8 steps passed, with the same 52 suites and 65 tests.
-- **GitHub CI:** to come.
+- **GitHub CI** passed: Ubuntu in 1 min 34 s, Windows in 4 min 6 s. All three examples printed `smoke: ok` on both, and `cargo deny` was ok.
 
 ## Follow-ups and known gaps
 
