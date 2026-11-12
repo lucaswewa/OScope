@@ -23,6 +23,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-server-hello`](ex-server-hello/README.md) | P04 | The server's `system` Thing, and a page beside it that shows its properties and Thing Description |
 | [`ex-logs`](ex-logs/README.md) | P05 | The logs' live tail with filters, a button that writes a note at each level, and the daily files |
 | [`ex-compute-info`](ex-compute-info/README.md) | P06 | The compute backends, the processor and its live and batch pools, and microbenchmarks of the first kernels at 20 MP |
+| [`ex-cuda-check`](ex-cuda-check/README.md) | P07 | The GPU, the CUDA twins against their CPU references with their times, and pinned against ordinary uploads (feature `cuda`) |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

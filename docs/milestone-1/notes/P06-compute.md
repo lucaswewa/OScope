@@ -1,6 +1,6 @@
 # P06: Compute abstraction, CPU backend, benchmark harness
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p06-compute` / [#14](https://github.com/lucaswewa/OScope/pull/14)
 - Size: M · estimated ~1,480 before it started: code ~620, tests and benchmarks ~400, examples ~145, glue ~30, plus a quarter. That is over L's 900, and the owner chose one pull request · measured **1,413** hand-written lines added (code 713, tests and benchmarks 528, examples 153, glue 19), and 4 removed. Docs and `Cargo.lock` aren't counted. **That is 813 over M's 600 and 513 over L's 900, and 67 under the estimate.**
 

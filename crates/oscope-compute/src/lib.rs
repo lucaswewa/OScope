@@ -25,13 +25,15 @@
 //!   one. CI compiles them but doesn't run them.
 
 pub mod cpu;
+#[cfg(feature = "cuda")]
+pub mod cuda;
 pub mod equivalence;
 mod image;
 mod info;
 mod pools;
 
 pub use image::{Image, Shape};
-pub use info::{Backend, BackendInfo, ComputeInfo, SimdLevel};
+pub use info::{Backend, BackendInfo, ComputeInfo, GpuInfo, SimdLevel};
 pub use pools::{Lane, Pools};
 
 use oscope_core::frame::{FrameView, PixelFormat};
@@ -65,6 +67,9 @@ pub enum ComputeError {
     /// A thread pool couldn't start.
     #[error("a thread pool couldn't start: {0}")]
     Pool(String),
+    /// CUDA failed, or isn't available.
+    #[error("CUDA: {0}")]
+    Cuda(String),
 }
 
 /// How to divide the processor between the pools.
@@ -75,6 +80,8 @@ pub struct ComputeConfig {
     pub live_threads: Option<usize>,
     /// The batch pool's threads: by default the rest, and at least 1.
     pub batch_threads: Option<usize>,
+    /// The GPU for CUDA, by the driver's number: 0 by default.
+    pub cuda_device: Option<usize>,
 }
 
 /// The compute layer: its backends, its pools, and the kernels.
@@ -82,7 +89,51 @@ pub struct ComputeConfig {
 pub struct Compute {
     info: ComputeInfo,
     pools: Pools,
+    #[cfg(feature = "cuda")]
+    cuda: Option<cuda::Cuda>,
 }
+
+/// Opens the GPU if the build has CUDA; otherwise, or if that fails, why
+/// not. A failure is logged once in the process's life.
+fn open_gpu(config: &ComputeConfig) -> (Option<GpuInfo>, String, Option<Gpu>) {
+    #[cfg(feature = "cuda")]
+    {
+        match cuda::Cuda::open(config.cuda_device.unwrap_or(0)) {
+            Ok(gpu) => {
+                let info = gpu.info().clone();
+                let detail = format!(
+                    "{}, compute {}.{}, {} MB; the driver supports CUDA {}",
+                    info.name,
+                    info.compute_capability.0,
+                    info.compute_capability.1,
+                    info.memory_bytes >> 20,
+                    info.driver_cuda
+                );
+                (Some(info), detail, Some(gpu))
+            }
+            Err(error) => {
+                static WARNED: std::sync::Once = std::sync::Once::new();
+                WARNED.call_once(|| {
+                    tracing::warn!("CUDA isn't available, so OScope computes on the CPU: {error}");
+                });
+                (None, error.to_string(), None)
+            }
+        }
+    }
+    #[cfg(not(feature = "cuda"))]
+    {
+        let _ = config;
+        let detail = "not in this build: build with the `cuda` feature".to_owned();
+        (None, detail, None)
+    }
+}
+
+/// The GPU, if the build has CUDA.
+#[cfg(feature = "cuda")]
+type Gpu = cuda::Cuda;
+/// No GPU, in a build without CUDA.
+#[cfg(not(feature = "cuda"))]
+type Gpu = std::convert::Infallible;
 
 impl Compute {
     /// Finds the backends and starts the pools.
@@ -97,7 +148,8 @@ impl Compute {
             .unwrap_or(cpu_threads.saturating_sub(live))
             .max(1);
         let simd = SimdLevel::detect();
-        let backends = vec![
+        let (gpu, detail, _opened) = open_gpu(config);
+        let mut backends = vec![
             BackendInfo {
                 backend: Backend::Cpu,
                 available: true,
@@ -105,10 +157,12 @@ impl Compute {
             },
             BackendInfo {
                 backend: Backend::Cuda,
-                available: false,
-                detail: "not in this build: CUDA arrives with P07".to_owned(),
+                available: gpu.is_some(),
+                detail,
             },
         ];
+        // The one in use first.
+        backends.sort_by_key(|backend| !backend.available || backend.backend == Backend::Cpu);
         Ok(Self {
             info: ComputeInfo {
                 backends,
@@ -116,8 +170,11 @@ impl Compute {
                 simd,
                 live_threads: live,
                 batch_threads: batch,
+                gpu,
             },
             pools: Pools::new(live, batch)?,
+            #[cfg(feature = "cuda")]
+            cuda: _opened,
         })
     }
 
@@ -129,6 +186,13 @@ impl Compute {
     /// The pools, for work of other kinds.
     pub fn pools(&self) -> &Pools {
         &self.pools
+    }
+
+    /// The GPU, for work that stays on it: its kernels take and give
+    /// [`cuda::DeviceImage`]s (ADR-0011).
+    #[cfg(feature = "cuda")]
+    pub fn cuda(&self) -> Option<&cuda::Cuda> {
+        self.cuda.as_ref()
     }
 
     /// [`cpu::to_f32`], in `lane`.

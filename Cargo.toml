@@ -39,6 +39,9 @@ toml = { version = "1.1.8", default-features = false, features = ["parse", "serd
 # New in P06.
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 rayon = "1.12.0"
+# New in P07: CUDA, loaded at run time (ADR-0011).
+find-msvc-tools = "0.1.14"
+cudarc = { version = "0.19.10", default-features = false, features = ["std", "driver", "nvrtc", "cufft", "dynamic-loading", "cuda-13040"] }
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }

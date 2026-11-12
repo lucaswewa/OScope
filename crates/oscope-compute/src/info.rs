@@ -65,6 +65,27 @@ pub struct BackendInfo {
     pub detail: String,
 }
 
+/// A GPU that CUDA can use.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GpuInfo {
+    /// The driver's number for it.
+    pub ordinal: usize,
+    /// Its name, such as `NVIDIA RTX A2000 12GB`.
+    pub name: String,
+    /// Its compute capability: (8, 6) for Ampere.
+    pub compute_capability: (i32, i32),
+    /// Its memory.
+    pub memory_bytes: u64,
+    /// The newest CUDA version the driver supports, such as `13.2`.
+    pub driver_cuda: String,
+    /// Whether freed memory is kept in the device's pool for reuse.
+    pub memory_pool: bool,
+    /// Whether NVRTC, CUDA's run-time compiler, can be loaded.
+    pub nvrtc: bool,
+    /// Whether cuFFT can be loaded.
+    pub cufft: bool,
+}
+
 /// What the compute layer found, and how it divided the processor.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComputeInfo {
@@ -79,6 +100,8 @@ pub struct ComputeInfo {
     pub live_threads: usize,
     /// The batch pool's threads, for jobs.
     pub batch_threads: usize,
+    /// The GPU, if CUDA can use one.
+    pub gpu: Option<GpuInfo>,
 }
 
 impl ComputeInfo {

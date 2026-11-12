@@ -11,6 +11,7 @@ fn compute(live: usize, batch: usize) -> Compute {
     let config = ComputeConfig {
         live_threads: Some(live),
         batch_threads: Some(batch),
+        ..ComputeConfig::default()
     };
     Compute::new(&config).unwrap()
 }
@@ -108,6 +109,7 @@ fn the_pools_have_the_threads_asked_for_and_name_them_by_lane() {
     let tiny = compute_with(ComputeConfig {
         live_threads: Some(0),
         batch_threads: Some(0),
+        ..ComputeConfig::default()
     });
     assert_eq!(
         (tiny.info().live_threads, tiny.info().batch_threads),
@@ -135,10 +137,16 @@ fn the_info_lists_the_backends_and_divides_the_processor() {
         .iter()
         .map(|b| (b.backend, b.available))
         .collect();
-    assert_eq!(backends, [(Backend::Cpu, true), (Backend::Cuda, false)]);
-    assert_eq!(info.backend(), Backend::Cpu);
+    // The one in use first: CUDA when it has a GPU, else the CPU.
+    let (expected, first) = match info.gpu.is_some() {
+        true => ([(Backend::Cuda, true), (Backend::Cpu, true)], "cuda"),
+        false => ([(Backend::Cpu, true), (Backend::Cuda, false)], "cpu"),
+    };
+    assert_eq!(backends, expected);
+    assert_eq!(info.backend(), expected[0].0);
+    assert!(cfg!(feature = "cuda") || info.gpu.is_none());
     #[cfg(target_arch = "x86_64")]
     assert!(info.simd >= SimdLevel::Sse2);
     let json = serde_json::to_value(info).unwrap();
-    assert_eq!(json["backends"][0]["backend"], "cpu");
+    assert_eq!(json["backends"][0]["backend"], first);
 }
