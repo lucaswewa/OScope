@@ -30,7 +30,7 @@
 
 OScope (OpenScope) is the control and analysis software for a motorised brightfield microscope:
 
-- **Camera:** Tucsen MIChrome 20, a 20 MP colour camera (5472 × 3648, 2.4 µm pixels, rolling shutter, 14.5 fps at full resolution), on USB with no trigger input. A camera with an external trigger is to replace it.
+- **Camera:** Tucsen MIChrome 20, a 20 MP colour camera (5472 × 3648, 2.4 µm pixels, rolling shutter, 14.5 fps at full resolution in 8 bits and 7.2 fps in 16), on USB with no trigger input. A camera with an external trigger is to replace it.
 - **Stage:** an XYZ stage on a grblHAL controller, with homing switches, linear encoders, and an aux output for a camera trigger.
 - **Objectives:** Mitutoyo long-working-distance objectives (5×, 10×, 20×, 50×) in a single mount, swapped by hand.
 - **Light:** transmitted and reflected sources, not chosen yet; simulated until they are.
@@ -289,7 +289,7 @@ camera ─▶ frame pool (Bayer16) ─▶ frame bus ─┬─▶ recorder (lossl
 **Raw stream.** Raw frames never leave Rust except through an explicit download or export.
 
 - During acquisition, the recorder appends frames to a frame log on the scratch NVMe: preallocated, sequential and uncompressed, with an index.
-- The full sensor rate is about 580 MB/s. Logging never compresses on the hot path.
+- The design rate is 580 MB/s: 16-bit full frames at 14.5 fps (§5.20). The MIChrome 20 delivers 289 MB/s (`hardware.md`), so the budget is headroom for the camera that replaces it. Logging never compresses on the hot path.
 - An ingest job then writes the frames into the project's OME-Zarr store, compressed with zstd.
 
 **Preview stream** (ADR-0014):
@@ -300,7 +300,7 @@ camera ─▶ frame pool (Bayer16) ─▶ frame bus ─┬─▶ recorder (lossl
   - It encodes JPEG with SIMD and sends the result.
 - **Falling behind.** Each client has a one-slot mailbox, so a slow client always gets the newest frame.
 - **Adapting to the link.** If the link is slow, the server lowers the size or quality.
-- **Rate.** The preview rate is the camera's rate, never more: 14.5 fps at full resolution, and more with binning or an ROI.
+- **Rate.** The preview rate is the camera's rate, never more: on the MIChrome 20, 14.5 fps at full resolution in 8 bits and 7.2 fps in 16, and more in its binned modes. Its ROIs don't raise the rate (`hardware.md`).
   - At 20× and 50× the optics, not the sensor, limit resolution, so 2 × 2 binning loses little.
   - At 50×, a pixel is 0.048 µm and the diffraction limit about 0.6 µm.
 
@@ -648,7 +648,7 @@ These are targets on the owner's laptop (RTX 3070 Ti laptop GPU). Each is measur
 |---|---|
 | Preview: a 20 MP frame to a JPEG sent at 1920 px | ≤ 30 ms with CUDA, ≤ 60 ms on the CPU (P17) |
 | Demosaic, 20 MP | ≤ 10 ms with CUDA (P08c), ≤ 80 ms on 8 CPU threads (P08) |
-| Scratch recording | 580 MB/s for 10 minutes with no dropped frames (P29) |
+| Scratch recording | 580 MB/s for 10 minutes with no dropped frames (P29). That is the design rate; the MIChrome 20 delivers 289 MB/s |
 | Simulated camera at full resolution | ≥ 14.5 fps with CUDA, ≥ 5 fps on the CPU (P15) |
 | Phase correlation of a 2048² pair | ≤ 15 ms with CUDA (P31) |
 | Post-stitching | ≥ 10 tiles/s for 20 MP tiles, at bounded memory (P39) |
@@ -961,7 +961,7 @@ docs/
 | Risk | Impact | Mitigation |
 |---|---|---|
 | **Scope.** M1 is 56 phases plus 6 upstream, and estimates ran low in `microscope` | A long milestone, or phases over budget | Six checkpoints give usable increments. Estimate tests and glue explicitly and split early. If time runs short, the cut line is P45 (stain analysis), P37 (histo scan) and P14's imports, which can move to M1.5 |
-| **The 20 MP data rate:** 580 MB/s raw, plus processing | Dropped frames, a slow preview | A pooled, pinned frame model from P03; latest-wins subscribers; binning and ROIs for preview; budgets measured from P08, P08c and P17; NVMe scratch with no compression on the hot path |
+| **The 20 MP data rate:** 580 MB/s raw by design (the MIChrome 20 delivers 289 MB/s), plus processing | Dropped frames, a slow preview | A pooled, pinned frame model from P03; latest-wins subscribers; binning and ROIs for preview; budgets measured from P08, P08c and P17; NVMe scratch with no compression on the hot path |
 | **Upstream `teta-wot` work delays OScope** | Stage 0 blocks P01 | Small, separate PRs. P00 can proceed in parallel. If a feature stalls, OScope can mount its own routes temporarily, recorded in an ADR |
 | **CUDA builds, drivers and CI without a GPU** | Fragile builds, untested GPU paths | Runtime loading with CPU fallback; a CPU twin for every kernel; `OSCOPE_CUDA=1` runs on the owner's machine before merge; a weekly CUDA build in CI |
 | **Extension ABI stability** | Old extensions break, or crash the server | A versioned C ABI with compatibility checks at install; panics caught at the boundary; ABI tests built against older SDK versions; Python workers isolated in their own processes |
@@ -1056,3 +1056,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | P07 was estimated at about 1,550 lines before it started: about 1,240 at the measured density, plus a quarter. That is over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the CUDA foundation (~800) and the kernels with their twins and example (~750). The owner had the CUDA 13.4 toolkit installed on their PC, which stands in for the laptop that P07's *Done when* names |
 | 2026-11-12 | P08 was estimated at about 2,500 lines before it started: about 2,030 at the measured density, plus a quarter. That is nearly three times L's 900. With the owner's agreement it was split into three, each within L:<ul><li>**P08:** demosaicing on the CPU, the PSNR tests, the benchmarks and the CPU budget (~900);</li><li>**P08b:** the colour steps, the display transform, crop and binning, and the TIFF and PNG writers (~800);</li><li>**P08c:** the CUDA twins, equivalence, the CUDA budget and `ex-demosaic`'s comparison page (~900).</li></ul>P17 and P22 now depend on P08c |
 | 2026-11-12 | P08c was estimated at about 1,100 lines before it started, over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the CUDA twins (~700) and the comparison page (~400) |
+| 2026-11-12 | The MIChrome 20 was connected and measured (P02b's steps 1–3, `hardware.md`). In 16 bits it gives 7.24 fps at full resolution, 289 MB/s, half the 580 MB/s that §5.5 assumed; 14.5 fps holds only in 8 bits. The owner kept 580 MB/s as the design budget (§5.5, §5.20, P29), as headroom for the camera that replaces it. So P12's simulated camera runs its modes at the measured rates for each bit depth, plus a design rate for P29. An ROI is accepted but doesn't raise the rate, so §5.5's preview rate no longer counts on ROIs, and P12's ROIs crop without speeding up |

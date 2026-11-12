@@ -2,6 +2,7 @@
 
 - Status: Done
 - Branch / PR: `m1/p02b-hardware-survey` / [#10](https://github.com/lucaswewa/OScope/pull/10)
+- The camera, measured: `m1/p02b-camera-measured` / [#19](https://github.com/lucaswewa/OScope/pull/19), on 2026-11-12
 - Size: S, docs only, so it isn't counted
 
 ## Summary
@@ -14,7 +15,9 @@
 - the host, a PC like the target one;
 - the owner's answers.
 
-**Nothing in hardware was connected.** The camera isn't connected to the host yet. The stage controller isn't either, so at the owner's word OScope runs on the simulated stage until M3, and the controller's items wait for M3's bring-up (H0). The lights aren't chosen, and are simulated until they are.
+**Nothing in hardware was connected.** The camera wasn't connected to the host yet. The stage controller isn't either, so at the owner's word OScope runs on the simulated stage until M3, and the controller's items wait for M3's bring-up (H0). The lights aren't chosen, and are simulated until they are.
+
+**The camera was connected on 2026-11-12,** after P08c, and measured in its own pull request (#19). Its results are in `hardware.md`'s [*Measured on the host*](../../hardware.md#measured-on-the-host).
 
 **What the survey found, and how the plan changes:**
 
@@ -27,7 +30,9 @@
   - it is linear at gamma 128 and contrast 32.
 
   M3's driver sets that up, and P12 simulates the same output.
-- **The measured frame rates:** 14.5, 53.2 and 67.3 fps in its three modes.
+- **The measured frame rates:** 14.5, 53.2 and 67.3 fps in its three modes, in 8 bits.
+  - **Measured on the host, 16 bits halve them:** 7.24 fps at full resolution, 289 MB/s, not the 580 MB/s that §5.5 assumed. At the owner's word, 580 MB/s stays the design budget, and P12 gains a design rate for P29 (#19).
+  - **An ROI is accepted, but doesn't raise the rate** (#19).
 - **The lights aren't chosen,** so `Illumination` stays generic (§5.9, P09).
 
 ## What was built
@@ -49,11 +54,11 @@
 
 How to take, or repeat, each measurement that is still open.
 
-**The camera, once it is connected.** No OScope code is needed: the owner's test tool, or the SDK's samples, will do.
+**The camera,** measured on 2026-11-12 (#19). No OScope code is needed: the owner's test tool, extended as `hardware.md` describes, does it. To repeat:
 
-1. **The raw mosaic's frame rate at full resolution,** 16-bit, with a 1 ms exposure. Record whether it reaches 14.5 fps, about 580 MB/s. The 16-bit colour output gives only 7.3 fps.
-2. **ROI:** whether the camera accepts one, and its frame rate.
-3. **USB:** which port and controller the camera is on.
+1. **Frame rates:** `michrome bench --seconds 30 --bits 8` for every mode, then with `--bits 16`, each with and without `--sensor-raw`. Then 10 minutes at full rate, each frame copied out: `michrome bench -r 0 --seconds 600 --bits 16 --sensor-raw --copy --every 60`.
+2. **ROI:** `michrome bench -r 0 --seconds 20 --bits 16 --sensor-raw --roi X,Y,WIDTH,HEIGHT`. It prints the ROI the camera read back.
+3. **USB:** Device Manager's *Devices by connection* shows the camera's port and controller.
 
 **The stage controller, at M3's bring-up (H0).** Connect a serial terminal (PuTTY, or `python -m serial.tools.miniterm COM<n> 115200`) with the stage idle and clear. Opening the port can reset some boards.
 
@@ -96,7 +101,14 @@ with serial.Serial(port, 115200, timeout=0.5) as s:
 
 ## Performance
 
-The camera's frame rates come from the owner's test tool (`hardware.md`).
+**The camera's frame rates** were measured on the host on 2026-11-12, with the owner's test tool ([`hardware.md`](../../hardware.md#measured-on-the-host)). In 16-bit raw, at full resolution:
+
+| Run | Frames | Rate | Interval: median, p99, max | Gaps | Broken |
+|---|---|---|---|---|---|
+| 30 s | 218 | 7.24 fps, 289 MB/s | 138, 149, 151 ms | 0 | 0 |
+| 10 minutes, each frame copied out | 4,346 | 7.24 fps in every minute, 289 MB/s | 138.1, 147.6, 159.5 ms | 0 | 0 |
+
+In 8 bits the same mode gives 14.49 fps, also 289 MB/s.
 
 **The disk's sustained write rate** was measured on 2026-11-12, after U06's soak, as step 10 describes. It ran in P08's branch:
 
@@ -107,14 +119,15 @@ The camera's frame rates come from the owner's test tool (`hardware.md`).
 | 60–150 GB | 1,100–1,170 MB/s |
 | Overall | 1,332 MB/s over 121 s |
 
-**Full-rate raw recording needs about 580 MB/s** (§5.5). The disk sustains about 1.9 times that, as the system disk too. The file was deleted afterwards.
+**§5.20's recording budget is 580 MB/s** (§5.5), and the MIChrome 20 delivers 289 MB/s. The disk sustains about 1.9 times the budget, as the system disk too. The file was deleted afterwards.
 
 ## Hardware
 
 - **The host** was surveyed without opening any port or sending anything to a device.
 - **The SDK** was read from its installed documents and headers. Nothing in it was run, and nothing from it is committed.
 - **The owner's test tool** was read for its documented measurements and findings. Its code wasn't used, and the tool and its images aren't committed: the folder is excluded in this clone's `.git/info/exclude`.
-- **The camera and the stage controller** weren't connected.
+- **The stage controller** wasn't connected.
+- **The camera** was connected on 2026-11-12, on the microscope, for #19's measurements. They ran through the owner's test tool, which loads the installed SDK. Its `bench` command was extended for them in the tool's own folder, outside this repository. None of its code is in OScope, and no frame was saved.
 
 ## Design notes and deviations from the plan
 
@@ -128,7 +141,7 @@ The camera's frame rates come from the owner's test tool (`hardware.md`).
 - **The camera's successor shapes the HAL,** at the owner's word: external triggering stays a camera capability, though the MIChrome 20 has none. P11 and P12 keep their trigger output and input, standing in for the new camera.
 - **The lights stay generic and simulated,** at the owner's word, until they are chosen.
 - **The specs were changed only where a finding contradicted them,** as the spec asks.
-  - **§5.20's budgets aren't changed.** The raw mosaic's rate at full resolution is unmeasured, so the 580 MB/s recording budget stands until it is.
+  - **§5.20's budgets aren't changed.** Measured on 2026-11-12, the raw mosaic gives 289 MB/s at full resolution. At the owner's word, 580 MB/s stays the design budget: headroom for the camera that replaces the MIChrome 20 (#19).
   - **P17 isn't changed.** Nothing found affects the preview.
 - **The 49 Hz shake of the test table** is recorded in `hardware.md`, but changes no spec. The final table may differ. Autofocus, live stitching and long exposures will show any shake that remains.
 - **The test tool and the SDK's documents are described in our own words.** They are the owner's and Tucsen's, and no file of either is copied into the repository (ADR-0002).
@@ -140,11 +153,11 @@ Docs only. The relative links and anchors are checked.
 
 ## Follow-ups and known gaps
 
-- **When the camera is connected:** the raw mosaic's frame rate at full resolution, ROI, and the USB port (steps 1–3).
 - **At H0:** the stage controller (steps 4–9).
-- **The host's sustained write** (step 10), after U06's soak. Its result goes into `hardware.md` and these notes, in this pull request.
 - **A camera with an external trigger,** to be chosen; and the lights.
-- **U06's 24-hour soak** ends about 2026-11-12 16:45 PST. Its result goes into the U06 notes in this pull request.
+- **Done since:**
+  - the host's sustained write (step 10), and U06's soak, recorded in P08's pull request (#16);
+  - the camera's frame rates, ROI and USB port (steps 1–3), measured in #19.
 
 ## Clean room
 
@@ -152,6 +165,6 @@ Written for this phase from the sources cited in `hardware.md`:
 
 - Tucsen's public pages, and the TUCam SDK's installed documents and headers;
 - grblHAL's wiki;
-- the owner's test tool's README.
+- the owner's test tool's README, and the output of its `bench` command (#19).
 
 Nothing was copied from them, from `microscope`, or from any other codebase.
