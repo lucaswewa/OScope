@@ -131,7 +131,13 @@ The round trips decided where `Compute`'s host methods run (ADR-0011). The plan'
 - **Windows** (the working tree at `ce75e67`, default features, as CI): all 8 steps passed, with 61 suites and 89 tests. All six examples' `--smoke` passed.
 - **Ubuntu 24.04.5** (WSL, a fresh clone of `ce75e67`, 161 files, no CR in any): all 8 steps passed, with the same 61 suites and 89 tests.
 - **With the feature and the GPU on Windows:** `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` passed 94 tests, and clippy with the feature is clean.
-- **GitHub CI, and the new *CUDA build* on Ubuntu with the feature and no GPU:** to come.
+- **GitHub CI** passed: Ubuntu in 1 min 53 s, Windows in 3 min 23 s.
+- **The new *CUDA build*** passed on Ubuntu in 1 min 40 s:
+  - it installed `cuda-nvcc-13-4` (13.4.92) and built the fat binary;
+  - clippy with the feature passed;
+  - every test passed, with the GPU tests skipping themselves;
+  - the fallback test met a missing driver;
+  - `ex-cuda-check --smoke` reported "CUDA: no CUDA driver was found" and fell back to the CPU.
 
 ## Follow-ups and known gaps
 
