@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 oscope-compute.workspace = true
 oscope-core.workspace = true
+png.workspace = true
 rayon.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -16,6 +17,8 @@ thiserror.workspace = true
 [dev-dependencies]
 criterion.workspace = true
 rand.workspace = true
+tempfile.workspace = true
+tiff.workspace = true
 
 
 [[bench]]
