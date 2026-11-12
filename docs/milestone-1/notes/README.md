@@ -18,4 +18,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | U06 | Release v0.2.0 (`teta-wot`) | Done | [U06-release-v0.2.0.md](U06-release-v0.2.0.md) |
 | P01 | Rust workspace, layering test, CI | Done | [P01-workspace.md](P01-workspace.md) |
 | P02 | Core types: units, geometry, time, IDs | Done | [P02-core-types.md](P02-core-types.md) |
-| P02b | Hardware capability survey (docs only) | In review | [P02b-hardware-survey.md](P02b-hardware-survey.md) |
+| P02b | Hardware capability survey (docs only) | Done | [P02b-hardware-survey.md](P02b-hardware-survey.md) |
+| P03 | Frame model, buffer pool, frame bus | In review | [P03-frame-model.md](P03-frame-model.md) |

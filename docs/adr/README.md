@@ -12,6 +12,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0004](0004-teta-wot-v0-2-0-extended-upstream-first.md) | Depend on `teta-wot` v0.2.0, extended upstream first | Accepted | P00 |
 | [0005](0005-layered-crates-and-their-dependency-rules.md) | Layered crates and their dependency rules | Accepted | P01 |
 | [0007](0007-units-coordinates-and-the-clock.md) | Units, coordinates and the clock | Accepted | P02 |
+| [0008](0008-the-frame-model-buffer-pool-and-frame-bus.md) | The frame model, buffer pool and frame bus | Accepted | P03 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

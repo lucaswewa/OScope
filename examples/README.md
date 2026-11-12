@@ -14,4 +14,11 @@ Each example is a small crate that shows one thing a phase built, through the cr
 - **Vendored files.** JavaScript libraries go in `examples/vendor/`, each with its licence. That folder isn't a crate, so it must be excluded from the workspace when it arrives (`exclude = ["examples/vendor"]` in the root `Cargo.toml`).
 - **Dependencies.** An example may depend on any OScope crate. No OScope crate may depend on an example; the layering test ([ADR-0005](../docs/adr/0005-layered-crates-and-their-dependency-rules.md)) checks.
 
-P01's example is the server's own command line, so this folder has no crate yet. [`crates/oscope-server/README.md`](../crates/oscope-server/README.md) says how to try it.
+## The examples
+
+| Example | Phase | What it shows |
+|---|---|---|
+| [`ex-core-tour`](ex-core-tour/README.md) | P02 | Units, an affine map fitted to noisy point pairs, and the clock |
+| [`ex-frame-bus`](ex-frame-bus/README.md) | P03 | A 20 MP source at 14.5 fps through the frame pool and bus, with lossless and latest-wins subscribers |
+
+P01's example is the server's own command line: [`crates/oscope-server/README.md`](../crates/oscope-server/README.md) says how to try it.

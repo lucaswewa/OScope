@@ -9,9 +9,11 @@
 //! - [`ids`]: [`FrameId`], [`JobId`], [`ProjectId`], [`AcquisitionId`] and [`ResultId`].
 //! - [`error`]: this crate's [`Error`], and the error conventions of every crate.
 //! - [`version`]: documents that carry their schema's version.
+//! - [`frame`]: frames in pooled memory, their metadata, and views of them.
 
 pub mod clock;
 pub mod error;
+pub mod frame;
 pub mod geometry;
 pub mod ids;
 pub mod units;
@@ -19,7 +21,11 @@ pub mod version;
 
 pub use clock::{Clock, FakeClock, SystemClock, Timestamp};
 pub use error::{Error, Result};
-pub use geometry::{Affine2, Point2, Rect, Size2, Xyz};
+pub use frame::{
+    BayerColour, BayerPattern, Frame, FrameBuffer, FrameMeta, FramePool, FrameView, HeapAllocator,
+    LightState, PixelFormat, PoolStats, Slab, SlabAllocator,
+};
+pub use geometry::{Affine2, PixelRect, Point2, Rect, Size2, Xyz};
 pub use ids::{AcquisitionId, FrameId, JobId, ProjectId, ResultId};
 pub use units::{Ms, Um};
 pub use version::{Versioned, from_document, to_document};

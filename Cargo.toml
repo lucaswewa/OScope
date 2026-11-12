@@ -14,14 +14,17 @@ publish = false
 [workspace.dependencies]
 # Only oscope-api may depend on teta-wot (ADR-0005); the layering test checks.
 teta-wot = { git = "https://github.com/lucaswewa/teta-wot", tag = "v0.2.0" }
-# The versions teta-wot v0.2.0 locks, with the features OScope needs.
+# The versions teta-wot v0.2.0 locks, except tokio's fixed 1.53.3, with the
+# features OScope needs.
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std", "serde"] }
 rand = "0.9.5"
 schemars = { version = "1.2.2", features = ["chrono04", "uuid1"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 thiserror = "2.0.21"
+tokio = "1.53.3"
 uuid = { version = "1.26.1", features = ["serde", "v7"] }
+oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-core = { path = "crates/oscope-core" }
 
 # Every crate takes these with `[lints] workspace = true`, except the crates

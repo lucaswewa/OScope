@@ -120,6 +120,41 @@ impl Rect {
     }
 }
 
+/// A rectangle of whole pixels: the column and row of its top-left pixel, and
+/// its size.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+pub struct PixelRect {
+    /// The column of its left edge.
+    pub x: u32,
+    /// The row of its top edge.
+    pub y: u32,
+    /// Its width in pixels.
+    pub width: u32,
+    /// Its height in pixels.
+    pub height: u32,
+}
+
+impl PixelRect {
+    /// A rectangle from its top-left pixel and its size.
+    pub const fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    /// Whether `other` lies wholly inside this rectangle.
+    pub fn contains(&self, other: &PixelRect) -> bool {
+        let end = |start: u32, len: u32| u64::from(start) + u64::from(len);
+        other.x >= self.x
+            && other.y >= self.y
+            && end(other.x, other.width) <= end(self.x, self.width)
+            && end(other.y, other.height) <= end(self.y, self.height)
+    }
+}
+
 /// A stage position, or a displacement, in micrometres.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Xyz {
