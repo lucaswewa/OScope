@@ -121,7 +121,7 @@ Not relevant to this phase: there is no code on a §5.20 path yet.
   - the clone has 71 files and no CR in any;
   - all 7 steps passed on `e7a4a32`, from an empty target folder;
   - the same 37 suites and 10 tests.
-- **GitHub CI:** on the pull request, below.
+- **GitHub CI** passed on `448cf28`, the workflow's first run: Ubuntu in 1 min 57 s, Windows in 2 min 43 s. Every step ran, with 37 suites and 10 tests on each, `cargo deny` ok in all four checks, and the example's version printed.
 
 ## Follow-ups and known gaps
 
