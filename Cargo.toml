@@ -24,7 +24,19 @@ serde_json = "1.0.151"
 thiserror = "2.0.21"
 tokio = "1.53.3"
 uuid = { version = "1.26.1", features = ["serde", "v7"] }
+# Also in teta-wot v0.2.0's lock.
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
+tempfile = "3.27.0"
+tokio-tungstenite = "0.29.0"
+# New in P04.
+fs4 = "1.1.0"
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
+ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
+oscope-api = { path = "crates/oscope-api" }
 oscope-core = { path = "crates/oscope-core" }
 
 # Every crate takes these with `[lints] workspace = true`, except the crates
