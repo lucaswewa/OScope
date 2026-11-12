@@ -96,7 +96,18 @@ with serial.Serial(port, 115200, timeout=0.5) as s:
 
 ## Performance
 
-The camera's frame rates come from the owner's test tool (`hardware.md`). The disk's sustained write rate is still to come: DISK_RESULT
+The camera's frame rates come from the owner's test tool (`hardware.md`).
+
+**The disk's sustained write rate** was measured on 2026-11-12, after U06's soak, as step 10 describes. It ran in P08's branch:
+
+| Written | Rate |
+|---|---|
+| 0–50 GB | 1,890–1,936 MB/s, the drive's fast cache by the look of it |
+| 50–60 GB | 1,256 MB/s |
+| 60–150 GB | 1,100–1,170 MB/s |
+| Overall | 1,332 MB/s over 121 s |
+
+**Full-rate raw recording needs about 580 MB/s** (§5.5). The disk sustains about 1.9 times that, as the system disk too. The file was deleted afterwards.
 
 ## Hardware
 

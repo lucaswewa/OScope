@@ -16,7 +16,7 @@ Examples live in `examples/<name>/` as small crates, run with `cargo run -p <nam
 
 - [Stage 0: teta-wot v0.2.0](#stage-0-teta-wot-v020-upstream): [U01](#u01) [U02](#u02) [U03](#u03) [U04](#u04) [U05](#u05) [U06](#u06)
 - [Stage 1: Groundwork](#stage-1-groundwork): [P00](#p00) [P01](#p01) [P02](#p02) [P02b](#p02b) [P03](#p03) [P04](#p04) [P05](#p05)
-- [Stage 2: Compute](#stage-2-compute): [P06](#p06) [P07](#p07) [P08](#p08)
+- [Stage 2: Compute](#stage-2-compute): [P06](#p06) [P07](#p07) [P08](#p08) [P08b](#p08b) [P08c](#p08c)
 - [Stage 3: Hardware abstraction and simulator](#stage-3-hardware-abstraction-and-simulator): [P09](#p09) [P10](#p10) [P11](#p11) [P12](#p12) [P13](#p13) [P14](#p14) [P15](#p15)
 - [Stage 4: Live microscope](#stage-4-live-microscope): [P16](#p16) [P17](#p17) [P18](#p18) [P19](#p19)
 - [Stage 5: Jobs and pipelines](#stage-5-jobs-and-pipelines): [P20](#p20) [P21](#p21) [P22](#p22) [P23](#p23)
@@ -379,14 +379,31 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 **Tests**
 - Equivalence (`OSCOPE_CUDA=1`), the forced fallback, and the weekly build.
 
-<a id="p08"></a>
-### P08: Raw Bayer and colour processing
+P08 was split into three before it started (P08, P08b, P08c), with the owner's agreement: it was estimated at about 2,500 lines (plan, Appendix C).
 
-**Goal.** Turn raw Bayer16 into colour images, fast, on the CPU and with CUDA (D5).
+<a id="p08"></a>
+### P08: Demosaicing on the CPU
+
+**Goal.** Turn raw Bayer mosaics into RGB images on the CPU (D5). The result is the reference for P08c's CUDA twins.
 **Depends on** P07 · **Size** L · **ADRs** —
 
 **Scope** (`oscope-imaging::color`)
-- **Demosaicing:** 2 × 2 superpixel, bilinear, and Malvar–He–Cutler.
+- **Demosaicing:** 2 × 2 superpixel, bilinear, and Malvar–He–Cutler, for each Bayer pattern, from 8- and 16-bit mosaics, in `Compute`'s lanes.
+- **Benchmarks:** each method at 20 MP, with criterion. §5.20's CPU budget is measured: ≤ 80 ms on 8 threads.
+
+**Example** — `ex-demosaic`: each method on a synthetic scene, with its PSNR and its time.
+
+**Tests**
+- Each method's PSNR on synthetic scenes (known colours under a mosaic) passes a threshold.
+- Every Bayer pattern, edges and odd sizes.
+
+<a id="p08b"></a>
+### P08b: Colour, display transform, crop and binning, writers
+
+**Goal.** Make demosaiced images look right, and save them (D5).
+**Depends on** P08 · **Size** L · **ADRs** —
+
+**Scope** (`oscope-imaging::color`)
 - **Colour:**
   - black-level subtraction;
   - white-balance gains;
@@ -395,12 +412,28 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 - **ROI crop and binning,** combined with demosaicing.
 - **Writers** for 16-bit TIFF and 8-bit PNG.
 
-**Example** — `ex-demosaic`: each method's output with timings, and a page comparing them side by side.
+**Example** — `ex-demosaic` also writes each method's output as a PNG and a 16-bit TIFF.
 
 **Tests**
-- Each method's PSNR on synthetic scenes (known colours under a mosaic) passes a threshold.
-- CPU and CUDA give equivalent results.
-- The §5.20 budgets are measured.
+- The colour steps' values, and the display transform's curves.
+- Crop and binning with demosaicing match cropping and binning afterwards.
+- The written files read back.
+
+<a id="p08c"></a>
+### P08c: CUDA twins of the colour pipeline, the budgets, the comparison page
+
+**Goal.** The same pipeline with CUDA, within §5.20's budget (D5, D7).
+**Depends on** P08b · **Size** L · **ADRs** —
+
+**Scope** (CUDA kernels in `oscope-compute`, which may use unsafe code; their use in `oscope-imaging::color`)
+- **CUDA twins** of the three demosaicing methods and of the colour steps.
+- **§5.20's CUDA budget** is measured: ≤ 10 ms for a 20 MP demosaic.
+
+**Example** — `ex-demosaic`'s page, comparing the methods side by side, with their times on the CPU and the GPU.
+
+**Tests**
+- CPU and CUDA give equivalent results (`OSCOPE_CUDA=1`).
+- The budget is measured.
 
 ---
 
@@ -625,7 +658,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 ### P17: Preview service and binary WebSocket protocol
 
 **Goal.** The light half of the dual stream: viewport-sized JPEG frames to every client (D6, §5.5).
-**Depends on** P16, P08 · **Size** L · **ADRs** 0014
+**Depends on** P16, P08c · **Size** L · **ADRs** 0014
 
 **Scope** (`oscope-acquire`, `oscope-api`)
 - **Sessions:** one preview session per client, on U04's binary streams.
@@ -758,7 +791,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 ### P22: Stock nodes I: correction and display; live recipes
 
 **Goal.** The nodes the live view and every acquisition need, and a live recipe on the preview.
-**Depends on** P21, P08 · **Size** M · **ADRs** —
+**Depends on** P21, P08c · **Size** M · **ADRs** —
 
 **Scope**
 - **Nodes:** demosaic, dark subtraction, flat-field division, white balance, colour matrix, levels and gamma, resize and bin, crop, LUT and false colour, histogram and statistics, format conversion.
@@ -767,7 +800,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 **Example** — `ex-live-recipe`: the live page with a choice of live recipes, such as flat field plus false colour.
 
 **Tests**
-- The nodes agree with P08's functions, and the live latency budget holds.
+- The nodes agree with P08–P08c's functions, and the live latency budget holds.
 
 <a id="p23"></a>
 ### P23: Stock nodes II: filters, enhancement, threshold, morphology

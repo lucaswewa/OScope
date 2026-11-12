@@ -647,7 +647,7 @@ These are targets on the owner's laptop (RTX 3070 Ti laptop GPU). Each is measur
 | Path | Budget |
 |---|---|
 | Preview: a 20 MP frame to a JPEG sent at 1920 px | ≤ 30 ms with CUDA, ≤ 60 ms on the CPU (P17) |
-| Demosaic, 20 MP | ≤ 10 ms with CUDA, ≤ 80 ms on 8 CPU threads (P08) |
+| Demosaic, 20 MP | ≤ 10 ms with CUDA (P08c), ≤ 80 ms on 8 CPU threads (P08) |
 | Scratch recording | 580 MB/s for 10 minutes with no dropped frames (P29) |
 | Simulated camera at full resolution | ≥ 14.5 fps with CUDA, ≥ 5 fps on the CPU (P15) |
 | Phase correlation of a 2048² pair | ≤ 15 ms with CUDA (P31) |
@@ -725,7 +725,7 @@ These are targets on the owner's laptop (RTX 3070 Ti laptop GPU). Each is measur
 
 ## 7. Milestone 1 phase overview
 
-The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status runs Planned → In progress → In review → Done. The milestone has 56 OScope phases (P00–P54, plus P02b) and 6 upstream phases (U01–U06).
+The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status runs Planned → In progress → In review → Done. The milestone has 58 OScope phases (P00–P54, plus P02b, P08b and P08c) and 6 upstream phases (U01–U06).
 
 ### Stage 0: `teta-wot` v0.2.0 (upstream, in the `teta-wot` repository)
 
@@ -755,8 +755,10 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
 | P06 | Compute abstraction, CPU backend, benchmark harness | P03 | M | 0010 | Done |
-| P07 | CUDA backend | P06 | L | 0011 | In review |
-| P08 | Raw Bayer and colour processing | P07 | L | — | Planned |
+| P07 | CUDA backend | P06 | L | 0011 | Done |
+| P08 | Demosaicing on the CPU | P07 | L | — | In review |
+| P08b | Colour, display transform, crop and binning, writers | P08 | L | — | Planned |
+| P08c | CUDA twins of the colour pipeline, the budgets, the comparison page | P08b | L | — | Planned |
 
 ### Stage 3: Hardware abstraction and simulator
 
@@ -775,7 +777,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
 | P16 | Device Things: camera, stage, illumination, objective, simulation | P05, P15 | L | — | Planned |
-| P17 | Preview service and binary WebSocket protocol | P16, P08 | L | 0014 | Planned |
+| P17 | Preview service and binary WebSocket protocol | P16, P08c | L | 0014 | Planned |
 | P18 | Live statistics and overlay data | P17 | M | — | Planned |
 | P19 | Sidecar contract, service mode, shared-memory preview | P17 | M | 0015 | Planned |
 
@@ -787,7 +789,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P20 | Job service and the `jobs` Thing | P16 | L | 0016 | Planned |
 | P21 | Pipeline engine | P20, P07 | L | 0017 | Planned |
-| P22 | Stock nodes I: correction and display; live recipes | P21, P08 | M | — | Planned |
+| P22 | Stock nodes I: correction and display; live recipes | P21, P08c | M | — | Planned |
 | P23 | Stock nodes II: filters, enhancement, threshold, morphology | P22 | L | — | Planned |
 
 ### Stage 6: Extensions (ends with Checkpoint B)
@@ -959,7 +961,7 @@ docs/
 | Risk | Impact | Mitigation |
 |---|---|---|
 | **Scope.** M1 is 56 phases plus 6 upstream, and estimates ran low in `microscope` | A long milestone, or phases over budget | Six checkpoints give usable increments. Estimate tests and glue explicitly and split early. If time runs short, the cut line is P45 (stain analysis), P37 (histo scan) and P14's imports, which can move to M1.5 |
-| **The 20 MP data rate:** 580 MB/s raw, plus processing | Dropped frames, a slow preview | A pooled, pinned frame model from P03; latest-wins subscribers; binning and ROIs for preview; budgets measured from P08 and P17; NVMe scratch with no compression on the hot path |
+| **The 20 MP data rate:** 580 MB/s raw, plus processing | Dropped frames, a slow preview | A pooled, pinned frame model from P03; latest-wins subscribers; binning and ROIs for preview; budgets measured from P08, P08c and P17; NVMe scratch with no compression on the hot path |
 | **Upstream `teta-wot` work delays OScope** | Stage 0 blocks P01 | Small, separate PRs. P00 can proceed in parallel. If a feature stalls, OScope can mount its own routes temporarily, recorded in an ADR |
 | **CUDA builds, drivers and CI without a GPU** | Fragile builds, untested GPU paths | Runtime loading with CPU fallback; a CPU twin for every kernel; `OSCOPE_CUDA=1` runs on the owner's machine before merge; a weekly CUDA build in CI |
 | **Extension ABI stability** | Old extensions break, or crash the server | A versioned C ABI with compatibility checks at install; panics caught at the boundary; ABI tests built against older SDK versions; Python workers isolated in their own processes |
@@ -1052,3 +1054,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | P05 was estimated at about 1,760 lines before it started: about 1,410 at the measured density, plus a quarter. That is about three times M's 600. The owner chose one pull request, with the overrun explained, rather than a split into the logging core (~960) and the `logs` Thing with the live tail and `ex-logs` (~800). The owner also chose that queries cover the in-memory ring only, with older history in the downloadable daily files |
 | 2026-11-12 | P06 was estimated at about 1,480 lines before it started: about 1,190 at the measured density, plus a quarter. That is over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the backends, `ComputeInfo` and the pools (~590) and the kernels, the equivalence helper and the benchmarks (~900) |
 | 2026-11-12 | P07 was estimated at about 1,550 lines before it started: about 1,240 at the measured density, plus a quarter. That is over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the CUDA foundation (~800) and the kernels with their twins and example (~750). The owner had the CUDA 13.4 toolkit installed on their PC, which stands in for the laptop that P07's *Done when* names |
+| 2026-11-12 | P08 was estimated at about 2,500 lines before it started: about 2,030 at the measured density, plus a quarter. That is nearly three times L's 900. With the owner's agreement it was split into three, each within L:<ul><li>**P08:** demosaicing on the CPU, the PSNR tests, the benchmarks and the CPU budget (~900);</li><li>**P08b:** the colour steps, the display transform, crop and binning, and the TIFF and PNG writers (~800);</li><li>**P08c:** the CUDA twins, equivalence, the CUDA budget and `ex-demosaic`'s comparison page (~900).</li></ul>P17 and P22 now depend on P08c |

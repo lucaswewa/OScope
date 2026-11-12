@@ -24,6 +24,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-logs`](ex-logs/README.md) | P05 | The logs' live tail with filters, a button that writes a note at each level, and the daily files |
 | [`ex-compute-info`](ex-compute-info/README.md) | P06 | The compute backends, the processor and its live and batch pools, and microbenchmarks of the first kernels at 20 MP |
 | [`ex-cuda-check`](ex-cuda-check/README.md) | P07 | The GPU, the CUDA twins against their CPU references with their times, and pinned against ordinary uploads (feature `cuda`) |
+| [`ex-demosaic`](ex-demosaic/README.md) | P08 | Each demosaicing method on a 20 MP test chart: its time against the 80 ms budget, and its PSNR |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

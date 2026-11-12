@@ -1,6 +1,6 @@
 # P07: CUDA backend
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p07-cuda` / [#15](https://github.com/lucaswewa/OScope/pull/15)
 - Size: L · estimated ~1,550 before it started: about 1,240 at the measured density, plus a quarter. That is over L's 900, and the owner chose one pull request · measured **1,209** hand-written lines added (code 632, of which 71 are CUDA C; tests 276; examples 240; glue 61), and 7 removed. Docs and `Cargo.lock` aren't counted. **That is 309 over L's 900, and 341 under the estimate.**
 
