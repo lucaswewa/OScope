@@ -1,17 +1,25 @@
 # P02b: Hardware capability survey (docs only)
 
-- Status: In progress: the documentation and the host are surveyed; the instrument's measurements wait for the owner
+- Status: In progress: the documentation, the installed SDK and the host are surveyed. The camera's measurements wait for it to be attached
 - Branch / PR: `m1/p02b-hardware-survey` / not opened yet
 - Size: S, docs only, so it isn't counted
 
 ## Summary
 
-[`docs/hardware.md`](../../hardware.md) records what the real camera, SDK, stage controller, lights and host offer ([spec](../phases.md#p02b)). This draft holds what the vendors publish, and the host PC, which the owner confirmed will run the instrument. The measurements below wait for the owner at the instrument. The pull request opens once they are in.
+[`docs/hardware.md`](../../hardware.md) records what the real camera, SDK, stage controller, lights and host offer ([spec](../phases.md#p02b)). So far it holds:
 
-Two findings may change the plan already:
+- **the vendors' documentation;**
+- **the TUCam SDK,** installed on the host, with its documents and headers;
+- **the host:** a PC like the target one, as the owner said.
 
-- **the camera has a rolling shutter,** which the plan doesn't mention;
-- **its published specifications list no hardware trigger,** which the plan assumes.
+**The stage controller isn't connected to the host.** At the owner's word, OScope runs on the simulated stage until M3, and the controller's items are recorded at M3's bring-up (H0). The pull request opens once the camera's measurements are in.
+
+**Findings that change the plan:**
+
+- **The camera has a rolling shutter,** which the plan doesn't mention.
+- **It gives no timestamps of its own:** frames are timed on the host.
+- **It probably has no hardware trigger,** which the plan assumes.
+- **The SDK starts with automatic exposure, automatic white balance and a vertical flip on Windows,** so the driver must set each explicitly.
 
 ## What was built
 
@@ -20,48 +28,43 @@ Two findings may change the plan already:
 
 ## How to try it
 
-**The checklist for the session at the instrument.** Each step says what to record in `hardware.md`. Nothing here needs OScope's code. The camera steps use the vendor's own software and SDK samples; the controller steps use a serial terminal and the script below.
+How to take, or repeat, each measurement.
 
-**Camera and SDK**
+**The camera, attached to the host.** These need no code in OScope. A short script against the installed SDK (`runtime\x64\TUCam.dll`), or the SDK's own samples, is enough; such a script isn't part of OScope.
 
-1. **Install the SDK and the driver.** Use the "Tucsen SDK Kit for Windows" (`TUCam_FV2.0.8.0_PV2.0.151.0`) and the TUCam camera driver from the MIChrome 20 page. Record:
-   - the versions installed;
-   - the kit's licence file, and whether it lets OScope ship the SDK's libraries.
-2. **Modes and frame rates.** In Mosaic, or the SDK's sample, with a short exposure (1 ms), stream for 10 s at each of:
-   - full resolution;
-   - 2 × 2, 3 × 3 and 4 × 4 binning;
-   - a small ROI, if one can be set.
-
-   Record the frame rate each shows, and whether an ROI can be set.
-3. **Raw data.** In the SDK's documentation or sample, find whether a raw (not demosaiced) frame can be read, and its pixel format. Save one raw 16-bit frame of a bright, even field. Record:
-   - the Bayer pattern;
+1. **Modes and frame rates.** With a 1 ms exposure, stream for 10 s in each mode: 5472 × 3648, 2736 × 1824 and 1824 × 1216. Then try software binning, and a small ROI. Record:
+   - each frame rate;
+   - whether the ROI is accepted;
+   - whether the smaller modes bin, or resample.
+2. **Raw data.** Ask for a raw frame (the SDK's raw format), 16-bit, of a bright, even field. Record:
+   - its size and channels: one channel means a Bayer mosaic;
+   - the Bayer pattern, from the colours of a red and a green target;
    - whether the values are all multiples of 16 (12 significant bits, aligned high), of 4 (14 bits), or neither.
-4. **Exposure and gain.** Record the ranges, and the gain modes, the SDK reports.
-5. **Timestamps.** Record whether a frame carries a timestamp from the camera or from the host, and its resolution.
-6. **The line time.** Record the SDK's figure, if it reports one. If not, image a fast-moving edge and measure the shear.
-7. **The trigger.** Look for a trigger connector on the camera body, and for trigger modes in the SDK. Record what exists: input, output, edge or level, and the delay if stated.
-8. **Other controls.** Record white balance, temperature readout, and anything else the SDK offers.
+3. **Exposure and gain.** Record the exposure range the SDK reports for each mode, and the gain's effect: the mean of a dark and a bright frame at gain 0, 30 and 240.
+4. **Timestamps.** Record what a frame's time field holds, by comparing it with the host's clock over 100 frames.
+5. **The line time.** Record the SDK's figure, if it gives one. If not, image a fast-moving edge and measure the shear.
+6. **The trigger.** Check whether the SDK's trigger calls succeed on this camera.
+7. **The defaults.** Confirm that automatic exposure, automatic white balance and the vertical flip are on at start, and that each can be turned off.
 
-**Stage controller (grblHAL)**
+**For the owner to check.**
 
-Connect a serial terminal (PuTTY, or `python -m serial.tools.miniterm COM<n> 115200`) with the stage idle and clear. Opening the port can reset some boards.
+8. **The camera body:** is there any connector besides USB (trigger, GPIO)?
+9. **Lights:** what is fitted (transmitted, reflected), the make and model, and how each is switched and dimmed today: by hand, a controller, USB, or a grblHAL output.
+10. **USB:** which port the camera is on.
 
-9. **Build information.** Send `$I`, then `$I+`. Copy both replies into `hardware.md`.
-10. **Settings.** Send `$$`. Record:
+**The stage controller, at M3's bring-up (H0).** Connect a serial terminal (PuTTY, or `python -m serial.tools.miniterm COM<n> 115200`) with the stage idle and clear. Opening the port can reset some boards.
+
+11. **Build information.** Send `$I`, then `$I+`. Copy both replies into `hardware.md`.
+12. **Settings.** Send `$$`. Record:
     - per axis: `$100`–`$102` (steps per mm), `$110`–`$112` (maximum rate), `$120`–`$122` (acceleration) and `$130`–`$132` (travel);
-    - `$10` (the report mask), `$21` (hard limits) and `$22` (homing).
-11. **Homing and limits.** Record which switches are fitted, on which axes, and where homing goes.
-12. **Encoders.** Record how the linear encoders are read today: through grblHAL (a plugin, and in which report?), or a separate readout. Send `?` while jogging slowly, and copy a few replies.
-13. **The status-report rate.** Run the script below for each rate. Record, at each requested rate, the replies per second and their median and 99th-percentile delay.
-14. **Aux outputs and the trigger wiring.** Record the `[AUX IO:…]` counts, and which output, if any, is wired to the camera. With the camera unplugged, check `M64 P0` / `M65 P0` switch it.
+    - `$10`, `$21` and `$22`.
+13. **Homing and limits.** Record which switches are fitted, on which axes, and where homing goes.
+14. **Encoders.** Record how the linear encoders are read. Send `?` while jogging slowly, and copy a few replies.
+15. **The status-report rate.** Run the script below at 10, 50, 100 and 200 Hz. Record the replies per second, and their median and 99th-percentile delay.
+16. **Aux outputs.** Record the `[AUX IO:…]` counts, and what is wired to them.
 
-**Lights**
+**The host.**
 
-15. Record what is fitted (transmitted, reflected), its make and model, and how each is switched and dimmed today: by hand, a controller, USB, or a grblHAL output.
-
-**Host**
-
-16. **USB.** Record which port and controller the camera is on (USB 3.2 or 3.1).
 17. **Sustained write.** Run after the 24-hour soak, so that it doesn't disturb it. Write 150 GB sequentially to the NVMe, in 64 MB blocks, flushed. Record the rate for each 10 GB, to see where the drive's cache runs out, and the rate after it. Delete the file afterwards.
 
 **The status-report script** (Python 3 with `pyserial`). It is a tool for this survey, not part of OScope.
@@ -88,22 +91,28 @@ with serial.Serial(port, 115200, timeout=0.5) as s:
           f"p99 {delays[int(0.99 * (len(delays) - 1))] * 1e3:.2f} ms")
 ```
 
-Run it at 10, 50, 100 and 200 Hz.
-
 ## Performance
 
 The measurements above are the performance this phase records. None are in yet.
 
 ## Hardware
 
-The host was surveyed without opening any port or sending anything to a device. The camera and the controller weren't connected.
+- **The host** was surveyed without opening any port or sending anything to a device.
+- **The SDK** was read from its installed documents and headers. Nothing in it was run, and nothing from it is committed.
+- **The camera** wasn't attached, and **the stage controller** isn't connected to this host.
 
 ## Design notes and deviations from the plan
 
-- **The survey was split in two,** at the owner's choice: the documentation and the host first, the instrument when the owner is there. One pull request covers both.
-- **The SDK wasn't downloaded or installed yet.** Its licence is unknown, and its documentation ships inside the kit; it is the first step of the session.
-- **Tucsen's series specification PDF** linked from older pages returned 404. The product page lists a newer one (2026-05-26), still to read.
-- **The facts come from the vendors' public pages and grblHAL's wiki,** as listed in `hardware.md`. Where a page doesn't state something, `hardware.md` says so rather than guessing.
+- **The survey runs in steps,** at the owner's choice:
+  - the documentation and the host first;
+  - the camera when it is attached;
+  - the stage controller at M3's bring-up, because it isn't connected to the host.
+
+  One pull request covers the first two. The controller's items are marked "unknown until H0", which the spec's *Done when* allows.
+- **The host is a stand-in.** The owner said the target host is a PC like this one, in CPU, GPU, RAM and SSD, so `hardware.md` records this PC.
+- **The SDK's documents were read where they are installed,** and described in our own words. They are Tucsen's, and no SDK file is copied into the repository (ADR-0002).
+- **Tucsen's series specification PDF,** linked from older pages, returned 404. The SDK's own MIChrome document took its place.
+- **Where no source states a fact,** `hardware.md` says so, rather than guessing.
 
 ## Tests
 
@@ -111,10 +120,13 @@ Docs only. The relative links and anchors are checked.
 
 ## Follow-ups and known gaps
 
-- **Everything marked to measure or to check** in `hardware.md`.
-- **The consequences for the plan** (rolling shutter, the trigger, encoders, the scratch disk), applied to the specs once the measurements are in.
+- **The camera's measurements,** steps 1–7, once it is attached.
+- **The owner's checks,** steps 8–10.
+- **The stage controller,** steps 11–16, at M3's bring-up (H0).
+- **The host's sustained write,** step 17, after the soak.
+- **The consequences for the plan** (rolling shutter, timestamps, the trigger, the SDK's defaults, encoders, the scratch disk), applied to the specs in this pull request.
 - **U06's 24-hour soak** ends about 2026-11-12 16:45 PST. Its result goes into the U06 notes in this pull request.
 
 ## Clean room
 
-Written for this phase from the vendors' public documentation, cited in `hardware.md`. Nothing was copied from `microscope` or any other codebase.
+Written for this phase from the vendors' documentation: Tucsen's public pages, the TUCam SDK's installed documents and headers, and grblHAL's wiki, all cited in `hardware.md`. Nothing was copied from them, from `microscope`, or from any other codebase.
