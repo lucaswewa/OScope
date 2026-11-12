@@ -1,3 +1,5 @@
+[![CI](https://github.com/lucaswewa/OScope/actions/workflows/ci.yml/badge.svg)](https://github.com/lucaswewa/OScope/actions/workflows/ci.yml)
+
 # OScope
 
 OScope (OpenScope) is control and analysis software for a motorised brightfield microscope. It runs the instrument, from live view and stage control to scans, stitching, 3D and analysis, through a Rust service and a Vue 3 app that works in a browser or as a Tauri 2 desktop application.
@@ -8,7 +10,19 @@ OScope (OpenScope) is control and analysis software for a motorised brightfield 
 
 - The plan was approved on 2026-11-10.
 - Work proceeds one reviewed phase at a time, as the [implementation plan](docs/implementation-plan.md#7-milestone-1-phase-overview) shows.
-- No code yet: the Rust workspace arrives in P01, after `teta-wot` v0.2.0 is released.
+- The Rust workspace is in place (P01): a skeleton of every Milestone 1 crate, with the layering rules checked and CI on Windows and Ubuntu. The crates fill in from P02.
+
+## Building
+
+Install [rustup](https://rustup.rs/): on Windows, with the MSVC toolchain; on Ubuntu, with `build-essential` and `pkg-config` first. Cargo then uses the toolchain that `rust-toolchain.toml` pins.
+
+```sh
+cargo build --workspace
+cargo test --workspace                     # the layering test among them
+cargo run -p oscope-server -- --version
+```
+
+The checks that CI runs are listed in [`CLAUDE.md`](CLAUDE.md#checks-before-opening-a-pull-request).
 
 ## The instrument
 

@@ -15,4 +15,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | U03 | Router composition, custom listeners, HTTP/2 (`teta-wot`) | Done | [U03-router-composition.md](U03-router-composition.md) |
 | U04 | Binary WebSocket streams (`teta-wot`) | Done | [U04-binary-streams.md](U04-binary-streams.md) |
 | U05 | Pluggable authentication (`teta-wot`) | Done | [U05-pluggable-auth.md](U05-pluggable-auth.md) |
-| U06 | Release v0.2.0 (`teta-wot`) | In review | [U06-release-v0.2.0.md](U06-release-v0.2.0.md) |
+| U06 | Release v0.2.0 (`teta-wot`) | Done | [U06-release-v0.2.0.md](U06-release-v0.2.0.md) |
+| P01 | Rust workspace, layering test, CI | In review | [P01-workspace.md](P01-workspace.md) |

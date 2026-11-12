@@ -1,6 +1,6 @@
 # U06: Release v0.2.0
 
-- Status: In review
+- Status: Done
 - Branch / PR: `u/u06-release-v0.2.0` in `teta-wot` / [lucaswewa/teta-wot#6](https://github.com/lucaswewa/teta-wot/pull/6), and the README in [lucaswewa/teta-wot#7](https://github.com/lucaswewa/teta-wot/pull/7) · released as [`v0.2.0`](https://github.com/lucaswewa/teta-wot/releases/tag/v0.2.0)
 - Size: planned S, estimated ~20 (code ~5, tests ~10, examples 0, glue ~5) · measured **140** hand-written changed lines (+99 −41): code 58, tests 64, examples 8, glue 10. Docs and `Cargo.lock` aren't counted. Most of it is a race fixed in `teta-wot-core`, found while replaying CI, and the problem types' new URL with its test (below).
 

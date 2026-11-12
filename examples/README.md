@@ -1,0 +1,17 @@
+# Examples
+
+Each example is a small crate that shows one thing a phase built, through the crates' public API. The phase specs name them ([`phases.md`](../docs/milestone-1/phases.md)), and every phase has one.
+
+## Conventions
+
+- **Where it lives.** `examples/ex-<name>/`, as a crate called `ex-<name>`, such as `ex-core-tour`. The workspace takes every folder in `examples/` as a member, so an example needs no change to the root `Cargo.toml`.
+- **Running it.** `cargo run -p ex-<name>` runs it with its defaults, which need no hardware: the simulator, or a fake.
+- **Its README** says what it shows, then *How to try it*: the commands, the pages to open, and what you should see.
+- **`--smoke`.** Every example takes `--smoke`. It then runs headless for a few seconds, checks what it shows, and exits with 0 only if all went well. CI runs it.
+- **Ports.** An example that serves something listens on a port from 8211 to 8219 by default, the range kept for manual checks. Its `--smoke` run uses a port from 8220 to 8229, or one the system picks.
+- **Data.** An example writes under a data root of its own, `.oscope/ex-<name>/` by default, which Git ignores. Its `--smoke` run uses a temporary folder.
+- **Pages.** A page an example serves is plain HTML and JavaScript, served by `examples/common` next to the API (from P04).
+- **Vendored files.** JavaScript libraries go in `examples/vendor/`, each with its licence. That folder isn't a crate, so it must be excluded from the workspace when it arrives (`exclude = ["examples/vendor"]` in the root `Cargo.toml`).
+- **Dependencies.** An example may depend on any OScope crate. No OScope crate may depend on an example; the layering test ([ADR-0005](../docs/adr/0005-layered-crates-and-their-dependency-rules.md)) checks.
+
+P01's example is the server's own command line, so this folder has no crate yet. [`crates/oscope-server/README.md`](../crates/oscope-server/README.md) says how to try it.
