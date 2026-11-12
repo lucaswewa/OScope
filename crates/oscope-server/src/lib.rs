@@ -9,12 +9,13 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
+use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
 use serde_json::Value;
 
 mod config;
 
-pub use config::{Config, ConfigError, DEFAULT_PORT, Listen, Storage};
+pub use config::{Config, ConfigError, DEFAULT_PORT, Listen, Logging, Storage};
 
 /// The command line.
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
@@ -66,6 +67,9 @@ pub enum Error {
     /// The server couldn't be built or failed.
     #[error(transparent)]
     Api(#[from] ApiError),
+    /// The logs couldn't be started.
+    #[error(transparent)]
+    Log(#[from] LogError),
     /// A folder couldn't be created.
     #[error("can't create {}: {source}", path.display())]
     Folder {
@@ -89,7 +93,7 @@ impl Error {
     /// line; 1 otherwise.
     pub fn exit_code(&self) -> ExitCode {
         match self {
-            Self::Config(_) => ExitCode::from(2),
+            Self::Config(_) | Self::Log(LogError::Filter { .. }) => ExitCode::from(2),
             _ => ExitCode::FAILURE,
         }
     }
@@ -98,23 +102,24 @@ impl Error {
 /// Does what the command line asks: prints a document, or serves until the
 /// process is asked to stop (Ctrl-C, or the service manager).
 ///
-/// When it serves, it creates the data and scratch roots, then prints one
-/// line on stdout: `oscope-server {version} serving on http://{address}/`.
+/// When it serves, it creates the data and scratch roots, and starts the
+/// logs: on stderr, and in daily files in `{data_root}/logs`. Then it prints
+/// one line on stdout: `oscope-server {version} serving on
+/// http://{address}/`.
 pub fn run(cli: &Cli) -> Result<(), Error> {
     let config = cli.config()?;
     let roots = Roots {
         data: config.storage.data_root.clone(),
         scratch: config.storage.scratch_root.clone(),
     };
-    let api = Api::builder(&roots).build()?;
     let address = SocketAddr::new(config.server.address, config.server.port);
-    if cli.print_openapi {
-        print(&api.openapi());
-        return Ok(());
-    }
-    if cli.print_td {
+    if cli.print_openapi || cli.print_td {
+        let api = Api::builder(&roots).build()?;
         let base = format!("http://{address}/");
-        print(&Value::Object(api.thing_descriptions(&base)?));
+        match cli.print_openapi {
+            true => print(&api.openapi()),
+            false => print(&Value::Object(api.thing_descriptions(&base)?)),
+        }
         return Ok(());
     }
     for path in [&roots.data, &roots.scratch] {
@@ -123,6 +128,18 @@ pub fn run(cli: &Cli) -> Result<(), Error> {
             source,
         })?;
     }
+    let log_folder = roots.data.join("logs");
+    let store = LogStore::new(&LogConfig {
+        ring: config.logging.ring,
+        folder: Some(log_folder.clone()),
+        keep_days: config.logging.keep_days,
+    })
+    .map_err(|source| Error::Folder {
+        path: log_folder,
+        source,
+    })?;
+    logs::install(&store, &config.logging.level)?;
+    let api = Api::builder(&roots).logs(store).build()?;
     let runtime =
         tokio::runtime::Runtime::new().map_err(|source| Error::Listen { address, source })?;
     runtime.block_on(async {

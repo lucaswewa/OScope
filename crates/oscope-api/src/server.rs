@@ -11,6 +11,7 @@ use teta_wot::prelude::FromConfig;
 use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuilder};
 use tokio::net::TcpListener;
 
+use crate::logs::{LogStore, Logs};
 use crate::system::{System, VERSION};
 use crate::{media, pages};
 
@@ -68,6 +69,7 @@ pub enum ApiError {
 pub struct ApiBuilder {
     things: ThingServerBuilder,
     pages: Option<PathBuf>,
+    logs: LogStore,
 }
 
 impl ApiBuilder {
@@ -88,15 +90,24 @@ impl ApiBuilder {
         self
     }
 
+    /// Serves `store`: the `logs` Thing queries it, and the media plane
+    /// tails it. Without this, the server has a store of its own, in
+    /// memory, that nothing records into.
+    pub fn logs(mut self, store: LogStore) -> Self {
+        self.logs = store;
+        self
+    }
+
     /// Builds the server. Nothing starts until [`Api::serve`].
     pub fn build(self) -> Result<Api, ApiError> {
         let mut routes = Router::new()
             .route("/health", get(|| async { Json(json!({"status": "ok"})) }))
-            .merge(media::router());
+            .merge(media::router(self.logs.clone()));
         if let Some(folder) = &self.pages {
             routes = routes.merge(pages::router(folder)?);
         }
-        let server = self.things.merge(routes).build()?;
+        let things = self.things.thing("logs", Logs::new(self.logs));
+        let server = things.merge(routes).build()?;
         Ok(Api { server })
     }
 }
@@ -109,7 +120,7 @@ pub struct Api {
 
 impl Api {
     /// Starts building the server, with the `system` Thing reporting on
-    /// `roots`.
+    /// `roots`, and the `logs` Thing.
     pub fn builder(roots: &Roots) -> ApiBuilder {
         let things = ThingServer::builder()
             .api_prefix(API_PREFIX)
@@ -118,6 +129,7 @@ impl Api {
         ApiBuilder {
             things,
             pages: None,
+            logs: LogStore::default(),
         }
     }
 

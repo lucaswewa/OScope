@@ -67,6 +67,29 @@ fn print_openapi_and_print_td_describe_the_api_and_create_nothing() {
 }
 
 #[test]
+fn a_wrong_log_level_fails_with_exit_code_2() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("oscope.toml");
+    std::fs::write(
+        &path,
+        "[logging]
+level = \"oscope=loud\"
+",
+    )
+    .unwrap();
+    let data = folder.path().join("data");
+    let output = run(&[
+        "--config",
+        path.to_str().unwrap(),
+        "--data-root",
+        data.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("oscope=loud"), "{stderr}");
+}
+
+#[test]
 fn a_wrong_configuration_file_fails_with_where_and_why() {
     let folder = tempfile::tempdir().unwrap();
     let path = folder.path().join("oscope.toml");
@@ -102,6 +125,7 @@ fn it_serves_from_its_configuration_and_creates_its_folders() {
         .args(["--config", config.to_str().unwrap(), "--port", "0"])
         .args(["--data-root", data.to_str().unwrap()])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
 
@@ -123,6 +147,16 @@ fn it_serves_from_its_configuration_and_creates_its_folders() {
             std::path::absolute(&data).unwrap().display().to_string()
         );
         assert!(data.is_dir() && folder.path().join("scratch").is_dir());
+        // Its logs: teta-wot's serving record, in today's daily file.
+        let (status, body) = get(&address, "/api/v1/logs/records?text=serving");
+        assert_eq!(status, "HTTP/1.1 200 OK");
+        let page: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(page["records"][0]["level"], "info", "{page}");
+        let today = data
+            .join("logs")
+            .join(format!("oscope-{}.jsonl", chrono::Utc::now().date_naive()));
+        let file = std::fs::read_to_string(&today).unwrap();
+        assert!(file.contains("serving"), "{file}");
     });
     server.kill().unwrap();
     server.wait().unwrap();

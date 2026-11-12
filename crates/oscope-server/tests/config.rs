@@ -4,7 +4,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use oscope_server::{Cli, Config, ConfigError, DEFAULT_PORT};
+use oscope_server::{Cli, Config, ConfigError, DEFAULT_PORT, Logging};
 
 /// Writes `text` to `oscope.toml` in `folder`, and returns its path.
 fn write(folder: &Path, text: &str) -> PathBuf {
@@ -21,6 +21,12 @@ fn the_defaults_listen_on_this_computer_only_at_8210() {
     assert_eq!(config.storage.data_root, Path::new(".oscope/data"));
     assert_eq!(config.storage.scratch_root, Path::new(".oscope/scratch"));
     assert!(config.devices.is_empty());
+    let logging = (
+        config.logging.level.as_str(),
+        config.logging.ring,
+        config.logging.keep_days,
+    );
+    assert_eq!(logging, ("info", 50_000, 30));
 
     // An empty file means the defaults, with folders beside it.
     let folder = tempfile::tempdir().unwrap();
@@ -43,6 +49,11 @@ port = 8300
 data_root = "projects"
 scratch_root = '{}'
 
+[logging]
+level = "info,oscope_api=debug"
+ring = 1000
+keep_days = 7
+
 [devices]
 camera = {{ kind = "simulated" }}
 "#,
@@ -54,6 +65,12 @@ camera = {{ kind = "simulated" }}
     assert_eq!(config.storage.data_root, folder.path().join("projects"));
     assert_eq!(config.storage.scratch_root, scratch);
     assert_eq!(config.devices["camera"]["kind"].as_str(), Some("simulated"));
+    let logging = Logging {
+        level: "info,oscope_api=debug".into(),
+        ring: 1000,
+        keep_days: 7,
+    };
+    assert_eq!(config.logging, logging);
 }
 
 #[test]
@@ -134,6 +151,7 @@ fn the_sample_configuration_loads() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../configs/oscope.toml");
     let config = Config::load(&path).unwrap();
     assert_eq!(config.server, Config::default().server);
+    assert_eq!(config.logging, Logging::default());
     assert!(config.storage.data_root.ends_with("../.oscope/data"));
     assert!(config.storage.scratch_root.ends_with("../.oscope/scratch"));
 }
