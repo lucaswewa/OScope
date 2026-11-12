@@ -1,6 +1,6 @@
 # P03: Frame model, buffer pool, frame bus
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p03-frame-model` / [#11](https://github.com/lucaswewa/OScope/pull/11)
 - Size: L · estimated ~1,275 before it started (code ~755, tests ~340, examples ~165, glue ~15), over L's 900; the owner chose one pull request · measured **1,602** hand-written lines (code 973, tests 433, examples 186, glue 10). Docs and `Cargo.lock` aren't counted. **That is 702 over L's 900, and 327 over the estimate.**
 

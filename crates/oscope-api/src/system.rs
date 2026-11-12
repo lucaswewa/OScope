@@ -85,7 +85,7 @@ impl System {
         VERSION.to_owned()
     }
 
-    /// The Git commit OScope was built from, or `unknown`.
+    /// The Git commit OScope was built from, or "unknown".
     #[property]
     async fn git_commit(&self) -> String {
         GIT_COMMIT.to_owned()

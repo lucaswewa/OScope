@@ -19,4 +19,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P01 | Rust workspace, layering test, CI | Done | [P01-workspace.md](P01-workspace.md) |
 | P02 | Core types: units, geometry, time, IDs | Done | [P02-core-types.md](P02-core-types.md) |
 | P02b | Hardware capability survey (docs only) | Done | [P02b-hardware-survey.md](P02b-hardware-survey.md) |
-| P03 | Frame model, buffer pool, frame bus | In review | [P03-frame-model.md](P03-frame-model.md) |
+| P03 | Frame model, buffer pool, frame bus | Done | [P03-frame-model.md](P03-frame-model.md) |
+| P04 | Server skeleton, `system` Thing, media plane, example helper | In review | [P04-server-skeleton.md](P04-server-skeleton.md) |
