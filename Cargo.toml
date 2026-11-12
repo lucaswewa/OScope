@@ -36,9 +36,13 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
 fs4 = "1.1.0"
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
 toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
+# New in P06.
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+rayon = "1.12.0"
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
+oscope-compute = { path = "crates/oscope-compute" }
 oscope-core = { path = "crates/oscope-core" }
 
 # Every crate takes these with `[lints] workspace = true`, except the crates
