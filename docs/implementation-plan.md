@@ -756,8 +756,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P06 | Compute abstraction, CPU backend, benchmark harness | P03 | M | 0010 | Done |
 | P07 | CUDA backend | P06 | L | 0011 | Done |
-| P08 | Demosaicing on the CPU | P07 | L | — | In review |
-| P08b | Colour, display transform, crop and binning, writers | P08 | L | — | Planned |
+| P08 | Demosaicing on the CPU | P07 | L | — | Done |
+| P08b | Colour, display transform, crop and binning, writers | P08 | L | — | In review |
 | P08c | CUDA twins of the colour pipeline, the budgets, the comparison page | P08b | L | — | Planned |
 
 ### Stage 3: Hardware abstraction and simulator

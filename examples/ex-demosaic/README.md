@@ -1,6 +1,6 @@
 # ex-demosaic
 
-Demosaicing on the CPU (P08). It makes a 20 MP test chart of known colours, and mosaics it as the MIChrome 20's RGGB sensor would see it, in 16 bits. Then each method turns the raw frame back into RGB.
+Demosaicing on the CPU (P08), and its images as files (P08b). It makes a 20 MP test chart of known colours, and mosaics it as the MIChrome 20's RGGB sensor would see it, in 16 bits. Then each method turns the raw frame back into RGB.
 
 **The methods:**
 
@@ -12,6 +12,11 @@ Demosaicing on the CPU (P08). It makes a 20 MP test chart of known colours, and 
 
 - **its time,** in a live pool of 8 threads, against §5.20's budget of 80 ms;
 - **its PSNR** against the chart's true colours.
+
+**Then it writes, for each method,** in `.oscope/ex-demosaic/`:
+
+- **`{method}.png`:** the whole image, binned by 4, through the sRGB display transform;
+- **`{method}-rings.png` and `{method}-rings.tif`:** a 512 × 512 region of the fine rings, demosaiced at full resolution on its own. The TIFF has 16 bits per sample.
 
 P08c adds the CUDA twins, and a page that shows the images side by side.
 
@@ -42,7 +47,9 @@ the median of 10 runs, from the raw frame to RGB:
 
 **Superpixel's PSNR** is measured against the chart averaged over 2 × 2 cells, since its image is half size.
 
-**`--smoke`** runs each method three times, and checks that each meets its PSNR mark. It doesn't check the times, which a debug build misses:
+**The files.** Open the rings' PNGs side by side: bilinear leaves colour fringes on the grey rings, and Malvar–He–Cutler few. Superpixel's rings are half the size, and alias. The whole images show the chart: 24 patches, the gradient, and the rings, whose moiré comes from binning by 4.
+
+**`--smoke`** runs each method three times, and writes only the rings' files, to a temporary folder. It checks that each method meets its PSNR mark, and that the six files were written. It doesn't check the times, which a debug build misses:
 
 ```sh
 cargo run -p ex-demosaic -- --smoke

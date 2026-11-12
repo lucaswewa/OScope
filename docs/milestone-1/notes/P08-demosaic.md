@@ -1,6 +1,6 @@
 # P08: Demosaicing on the CPU
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p08-bayer-colour` / [#16](https://github.com/lucaswewa/OScope/pull/16)
 - Size: L · P08 was estimated at ~2,500 before it started, and the owner agreed to split it into three: this phase, P08b and P08c. This phase's share was ~900 · measured **819** hand-written lines added (code 401, tests and benchmarks 268, examples 133, glue 17), and 1 removed. Docs and `Cargo.lock` aren't counted. **Within L's 900.**
 
