@@ -46,5 +46,16 @@ jobs:
           tool: cargo-deny@0.20.2
       - name: Licences, advisories, bans and sources
         run: cargo deny --locked check
-      - name: The example
+      - name: The server's version
         run: cargo run -p oscope-server --locked -- --version
+      # Every example with a binary, headless (examples/README.md).
+      - name: The examples' --smoke runs
+        shell: bash
+        run: |
+          for manifest in examples/*/Cargo.toml; do
+            [ -f "$(dirname "$manifest")/src/main.rs" ] || continue
+            name=$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -1)
+            echo "::group::$name --smoke"
+            cargo run -q -p "$name" --locked -- --smoke
+            echo "::endgroup::"
+          done

@@ -207,7 +207,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 ### P02: Core types: units, geometry, time, IDs
 
 **Goal.** The shared vocabulary every crate uses (§5.5).
-**Depends on** P01 · **Size** M · **ADRs** 0007
+**Depends on** P01 · **Size** L (re-sized from M before it started) · **ADRs** 0007
 
 **Scope** (`oscope-core`)
 - **Units:** µm as `f64` newtypes at every API, with conversions (mm, nm); durations.

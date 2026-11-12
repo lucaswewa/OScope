@@ -742,8 +742,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
 | P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | Done |
-| P01 | Rust workspace, layering test, CI | P00, U06 | L | 0005 | In review |
-| P02 | Core types: units, geometry, time, IDs | P01 | M | 0007 | Planned |
+| P01 | Rust workspace, layering test, CI | P00, U06 | L | 0005 | Done |
+| P02 | Core types: units, geometry, time, IDs | P01 | L | 0007 | In review |
 | P02b | Hardware capability survey (docs only) | P00 | S | — | Planned |
 | P03 | Frame model, buffer pool, frame bus | P02, P02b | L | 0008 | Planned |
 | P04 | Server skeleton, `system` Thing, media plane, example helper | P03 | M | 0006 | Planned |
@@ -1043,3 +1043,5 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-11 | U03 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 725 lines |
 | 2026-11-11 | U05 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 840 lines |
 | 2026-11-11 | P01 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 695 lines, of which about 200 are the 17 crates' manifests |
+| 2026-11-11 | P02 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 765 lines |
+| 2026-11-11 | P02 measured 1,648 lines, over L's 900; the estimate had left out doc comments, blank lines and formatting. The owner chose to take it in one pull request, with the overrun explained, rather than split it |
