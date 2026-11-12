@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `u/u06-release-v0.2.0` in `teta-wot` / [lucaswewa/teta-wot#6](https://github.com/lucaswewa/teta-wot/pull/6)
-- Size: planned S, estimated ~20 (code ~5, tests ~10, examples 0, glue ~5) · measured **99** hand-written changed lines (+67 −32): code 48, tests 41, glue 10. Docs and `Cargo.lock` aren't counted. Most of it is a race fixed in `teta-wot-core`, found while replaying CI (below).
+- Size: planned S, estimated ~20 (code ~5, tests ~10, examples 0, glue ~5) · measured **140** hand-written changed lines (+99 −41): code 58, tests 64, examples 8, glue 10. Docs and `Cargo.lock` aren't counted. Most of it is a race fixed in `teta-wot-core`, found while replaying CI, and the problem types' new URL with its test (below).
 
 ## Summary
 
@@ -10,10 +10,13 @@
 
 - **The version.** The workspace is `0.2.0`, and the CHANGELOG has its `0.2.0` section. U02–U05 broke two struct literals, so this is a minor release (`0.1.x` → `0.2.0`).
 - **Migration notes.** The guide gains a page, *Migrating*: from LabThings in Python, and from 0.1 to 0.2. The tutorial's two links to `../migration.md`, broken on `main`, now lead to it.
-- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. They are running: results by 2026-11-12 16:30 PST.
+- **The soak runs** on the release build: 24 hours, and an hour in the `wot` profile. They are running: results by 2026-11-12 16:45 PST.
 - **The licence review** found the Windows package shipped no licence texts. As the owner chose:
   - the package carries `THIRD_PARTY_LICENSES.txt` again, and the IJG acknowledgement `jpeg-encoder`'s licence asks for;
   - a new `THIRD_PARTY_NOTICES.md` lists the vendored files.
+- **Two fixes the owner asked for during review:**
+  - **the problem types' URL** moved to `lucaswewa/teta-wot`, with a page that documents them;
+  - **the `conformance/` project,** which isn't in the repository, is no longer referenced.
 
 ## What was built
 
@@ -25,6 +28,8 @@ All of it is in `teta-wot`.
 | **The default OpenAPI version** is the crate's (`env!("CARGO_PKG_VERSION")`), where it was a hard-coded `"0.1.0"` that would have been wrong in every later release | `crates/teta-wot-http/src/lib.rs`, `crates/teta-wot-server/src/lib.rs` (its doc) |
 | **`RouteError::ForeignEndpoint`'s message** named the old crate, `wot_http::Endpoint`; it now names `teta_wot::http::Endpoint` | `crates/teta-wot-http/src/lib.rs` |
 | **A panicking device call faults the device before its caller is answered.** The device thread used to send `DeviceError::Panicked` first, and only then set `Faulted`, so `Device::state()` could still say `Ready` to a caller that had just been told of the panic. `Call::run` now takes a `faulted` callback, which runs before the reply is sent | `crates/teta-wot-core/src/device.rs` |
+| **Problem types under `lucaswewa/teta-wot`,** as the owner asked:<ul><li>`PROBLEM_TYPES_URL` is `https://github.com/lucaswewa/teta-wot/blob/main/docs/problems.md`, where `…/lucaswewa/wot/…` didn't resolve;</li><li>a new `docs/problems.md` describes the six types (`validation-error`, `global-lock-busy`, `cancelled`, `failed`, `not-cancellable`, `no-output`), each under a heading that is its anchor;</li><li>the OpenAPI document's description and the guide's *Wire profiles* link follow;</li><li>`teta-wot`'s `CLAUDE.md` now gives the URL among the identifiers that must not change.</li></ul> | `crates/teta-wot-http/src/problem.rs`, `openapi.rs`, `docs/problems.md`, `docs/guide/src/wire_profiles.md`, `CLAUDE.md` |
+| **No `conformance/` project,** as the owner asked:<ul><li>the Python instructions say `pip install labthings-fastapi==0.3.0 httpx`, then `python examples/simulated-microscope/demo.py`;</li><li>two rustdoc comments no longer cite its fixtures;</li><li>`demo.py` and its README no longer say CI runs it.</li></ul> | `tutorial/installing.md`, `examples.md`, `examples/simulated-microscope/README.md` and `demo.py`, `examples/observe-websocket/README.md`, `settings.rs`, `teta-wot-http/src/lib.rs` |
 | **The CHANGELOG's `0.2.0` section:**<ul><li>a summary that links the migration page;</li><li>the U01–U05 entries as one list per heading;</li><li>this phase's entries, including a new *Fixed* heading;</li><li>the `[0.2.0]` link.</li></ul>An empty *Unreleased* sits above it. | `CHANGELOG.md` |
 | **The guide's *Migrating* page:**<ul><li>*From LabThings in Python:* the tutorial's table, extended with settings, slots, the global lock, arrays, the command line, the configuration file and the client. Every row is one the guide already describes.</li><li>*From 0.1 to 0.2:* the new tag; what is unchanged; the two struct literals; the four behaviour changes to check; what's new, with links.</li></ul> | `docs/guide/src/migration.md`, `SUMMARY.md` |
 | **Other guide fixes:**<ul><li>the dependency's tag is `v0.2.0`;</li><li>the features table lists `tls`;</li><li>"depending on `wot`" names `teta-wot`;</li><li>the tutorial's sentences about the migration guide match the page.</li></ul> | `tutorial/installing.md`, `tutorial/index.md`, `tutorial/writing_a_thing.md` |
@@ -47,37 +52,42 @@ cargo run -p counter-server -- --serve --port 8211
 curl -s http://127.0.0.1:8211/openapi.json    # "info": {"title": "teta-wot", "version": "0.2.0"}
 ```
 
+The problem types: [`docs/problems.md`](https://github.com/lucaswewa/teta-wot/blob/main/docs/problems.md), once merged. A `type` such as `…/docs/problems.md#validation-error` leads to its heading.
+
 The release package was built locally as `release.yml` builds it, without publishing anything: see *Tests*.
 
 ## Performance
 
-**The soak** (`releasing.md` step 3), on the release build of `bd90a8c`, on the owner's new PC: Windows 11, an Intel Core i9-12900 (16 cores, 24 threads), 64 GB.
+**The soak** (`releasing.md` step 3), on the release build of `b6da70b`, on the owner's new PC: Windows 11, an Intel Core i9-12900 (16 cores, 24 threads), 64 GB.
 
 | Run | Command | Started | Result |
 |---|---|---|---|
-| 24 hours | `soak --duration 24h --report soak.csv` (the `tetathing` profile) | 2026-11-11 16:29 PST | running; ends about 2026-11-12 16:30 PST |
-| 1 hour | `soak --duration 1h --profile wot` | 2026-11-11 16:29 PST | running; ends about 17:30 PST |
+| 24 hours | `soak --duration 24h --report soak.csv` (the `tetathing` profile) | 2026-11-11 16:44 PST | running; ends about 2026-11-12 16:45 PST |
+| 1 hour | `soak --duration 1h --profile wot` | 2026-11-11 16:44 PST | running; ends about 17:45 PST |
 
 - **The binaries** are copies of `target/release/simulated-microscope.exe` and `soak.exe`, in `target/soak-0.2.0/`, so later builds can't touch them. Their SHA-256s:
-  - `simulated-microscope.exe`: `e15f6988…51786be`;
+  - `simulated-microscope.exe`: `83820fd5…28a3c070`;
   - `soak.exe`: `642f0192…a6986aa`.
 - **The logs and `soak.csv`** are kept beside them, for the GitHub release (step 5).
 
 ## Design notes and deviations from the plan
 
-- **The tag isn't made here.** `releasing.md` step 5 tags `main` and pushes the tag, which runs `release.yml` on GitHub Actions. The account's minutes are used up, so the workflow can't run. The owner decides when to tag, and how to publish:
-  - when the minutes return;
-  - or by hand, from a package built as the dry run below builds it.
+- **The tag isn't made here.** `releasing.md` step 5 tags `main` and pushes the tag, which runs `release.yml` on GitHub Actions; its minutes are back. The owner decides when.
 - **The soak ran before the merge, not after.**
   - **`releasing.md`'s order** is: merge, wait for CI, then soak `main`'s release build.
   - **Here the soak ran on the pull request's code,** so that its results are part of the review. A squash merge of a branch that is up to date with `main` gives `main` the same files, so the soaked build is the released one.
-  - **Before tagging,** check that nothing the binaries are built from changed since the soaked commit: `git diff --stat <soaked commit> main -- crates examples tools Cargo.toml Cargo.lock rust-toolchain.toml` prints nothing.
+  - **Before tagging,** check that nothing the binaries are built from changed since the soaked commit: `git diff --stat b6da70b main -- crates examples tools Cargo.toml Cargo.lock rust-toolchain.toml` prints nothing.
 - **The two soak runs ran side by side,** not one after the other. Each has its own server, its own port (0) and its own temporary folder. Running them together loads the machine more than the checklist asks, and saves an hour.
 - **A race fixed in `teta-wot-core`,** beyond the spec.
   - **How it was found.** The first Windows CI replay ran with both soak runs going, and the `device-actor` example failed: after a call panicked, it found the device `Ready` rather than `Faulted`.
   - **The cause.** The device thread answered the caller first, and marked the device faulted after. It has been so since 0.1.0. The integration test had worked around it: a second call waited for the state to change.
   - **Why here.** A release whose CI example can fail by chance shouldn't ship. The fix is small, and the soak had run for only about 15 minutes when it was found.
   - **The soaks were restarted** on the fixed build. The first runs' logs are kept (`target/soak-aborted-356324b`); they had no errors in 18 minutes.
+- **The soaks were restarted a second time** for the problem types' URL, which is compiled into the binary. The runs on `bd90a8c` had no errors in 15 minutes (`target/soak-aborted-bd90a8c`).
+- **The problem types' URL changed,** at the owner's word.
+  - **It is one of the identifiers that must not change** (`teta-wot`'s `CLAUDE.md`), because clients compare problem `type`s. So the change is breaking.
+  - **The CHANGELOG and the migration page** give the old and new prefixes, and say clients must use the new one. The names after the `#` didn't change.
+  - **The TD `id` namespace** (`https://github.com/lucaswewa/wot#td-id`) wasn't touched. It only seeds the UUIDs and was never meant to resolve; changing it would change every TD `id`.
 - **Small fixes beyond the spec,** each found while preparing the release:
   - the default OpenAPI version, which would otherwise have said `0.1.0` in 0.2.0;
   - the stale `wot_http` in an error message, and `wot` in two docs;
@@ -106,12 +116,18 @@ The release package was built locally as `release.yml` builds it, without publis
   - **A unit test** (`device::tests::a_panicking_call_faults_the_device_before_its_caller_is_answered`) runs a panicking call directly. It checks that the device is marked faulted while the caller's reply channel is still empty, so it doesn't depend on timing.
   - **The integration test** `panic_faults_calls_until_reset_recreates_the_driver` asserts `Faulted` right after the `Panicked` reply. It used to make a second call first, to wait for the state.
 - **The API version:** `the_default_api_version_is_the_crate_version` (`teta-wot-http/tests/options.rs`) reads the OpenAPI document's `info`.
+- **The problem types:** `every_problem_type_is_documented_where_its_url_points` (`problem.rs`) pins `PROBLEM_TYPES_URL`, and finds a `## name` heading in `docs/problems.md` for each of the six types.
 - **Mutation checks:**
   - **Answering before faulting,** as before the fix, fails the unit test: the callback saw the answer already sent.
   - **A hard-coded `"0.1.0"`** fails the API-version test.
-  - Both files were restored.
-- **The guide's links.** A script checked every relative link and anchor in the built guide: 353 links, none broken. Run against `main`, it finds exactly the two broken `../migration.html` links.
-- **CI replayed locally on `bd90a8c`:**
+  - **Renaming the `## no-output` heading** fails the problem-types test.
+  - All files were restored.
+- **Links.** A script checked every relative link and anchor:
+  - **the built guide:** 354 links, none broken. Run against `main`, it finds exactly the two broken `../migration.html` links;
+  - **`teta-wot`'s Markdown:** 80 files, 130 links, none broken.
+- **The Python instructions** were followed in a fresh virtualenv (`pip install labthings-fastapi==0.3.0 httpx`). `demo.py --spawn target\debug\simulated-microscope.exe` ran end to end: moves, autofocus, a 24 KB capture and two MJPEG frames.
+- **GitHub CI,** now that Actions minutes are back, passed on `bd90a8c` (Ubuntu 3 min 27 s, Windows 6 min 11 s). On `b6da70b` it passed too (Ubuntu 3 min 13 s, Windows 5 min 22 s). Locally, `b6da70b` passed fmt, clippy and the tests (78 suites).
+- **CI replayed locally on `bd90a8c`,** before the minutes came back:
 
   | Job | Result |
   |---|---|
@@ -134,18 +150,13 @@ The release package was built locally as `release.yml` builds it, without publis
 
 ## Follow-ups and known gaps
 
-- **Tagging and publishing** wait for the owner (`releasing.md` step 5). `release.yml` needs GitHub Actions minutes. Its version check, build, packaging and checksums were run locally, but its 7-Zip and `gh release create` steps weren't.
-- **The problem types' URL doesn't resolve.** `PROBLEM_TYPES_URL` is `https://github.com/lucaswewa/wot/blob/main/docs/problems.md`, and the guide's *Wire profiles* page links to it.
-  - **The `wot` repository** isn't found on GitHub.
-  - **`teta-wot` has no `docs/problems.md`.**
-  - **The identifier must not change** (`teta-wot`'s `CLAUDE.md`). Problem `type`s don't have to resolve, but RFC 9457 suggests they should.
-  - **Options:** a `lucaswewa/wot` repository holding the page, or a `docs/problems.md` in `teta-wot` with the guide linking to it instead.
-- **The `conformance/` project doesn't exist in the repository,** though the docs use it:
-  - `tutorial/installing.md` and `examples.md` run the Python scripts through it;
-  - `demo.py`'s docstring and the `observe-websocket` README do too;
-  - `settings.rs` and `teta-wot-http`'s crate docs cite its fixtures.
+- **Tagging and publishing** wait for the owner (`releasing.md` step 5). `release.yml`'s version check, build, packaging and checksums were run locally, but its 7-Zip and `gh release create` steps weren't.
+- **Three examples mention Python scripts that aren't in the repository:**
+  - `observe-websocket`: `observe.py`, in its README, `Cargo.toml` description and code comments;
+  - `discovery`: `browse.py`, in a code comment; the guide's *Discovery* page says the example finds Things "from Python";
+  - `blob-camera`: `blob_client.py`, in a code comment.
 
-  Those commands fail on a fresh clone. They need a `requirements` list, or the project itself.
+  They probably lived with the `conformance/` project. Only `demo.py` exists.
 - **The W3C licence asks for its full text** to travel with copies of the schema. `THIRD_PARTY_NOTICES.md` gives the short notice and links the full text. The text could be vendored beside the schema.
 - **On this new PC,** the first CI replay's cargo steps failed at once: the rustup proxy couldn't remove `.cargo/bin/rustup-init.exe` ("Access is denied"), most likely left by rustup updating itself during the toolchain step. The file was gone a minute later, and the next replay ran clean.
 
