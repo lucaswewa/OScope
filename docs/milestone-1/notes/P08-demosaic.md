@@ -120,7 +120,9 @@ These figures are from the owner's PC, with release builds, on a 5472 × 3648 RG
 
 ### CI
 
-To come.
+- **Windows** (the working tree at `833a93f`): all 8 CI steps passed, with 63 suites and 95 tests. All seven examples' `--smoke` passed.
+- **Ubuntu 24.04.5** (WSL, a fresh clone of `833a93f`, 170 files, no CR in any): all 8 steps passed, with the same 63 suites and 95 tests.
+- **GitHub CI:** to come.
 
 ## Follow-ups and known gaps
 
