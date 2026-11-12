@@ -748,13 +748,13 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P02b | Hardware capability survey (docs only) | P00 | S | — | Done |
 | P03 | Frame model, buffer pool, frame bus | P02, P02b | L | 0008 | Done |
 | P04 | Server skeleton, `system` Thing, media plane, example helper | P03 | M | 0006 | Done |
-| P05 | Logging and the `logs` Thing | P04 | M | 0009 | In review |
+| P05 | Logging and the `logs` Thing | P04 | M | 0009 | Done |
 
 ### Stage 2: Compute
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P06 | Compute abstraction, CPU backend, benchmark harness | P03 | M | 0010 | Planned |
+| P06 | Compute abstraction, CPU backend, benchmark harness | P03 | M | 0010 | In review |
 | P07 | CUDA backend | P06 | L | 0011 | Planned |
 | P08 | Raw Bayer and colour processing | P07 | L | — | Planned |
 
@@ -1050,3 +1050,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | P03 was estimated at about 1,275 lines before it started, counting documentation at P02's measured density: over L's 900. The owner chose one pull request, with the overrun explained, rather than a split |
 | 2026-11-12 | P04 was estimated at about 1,820 lines before it started: about 1,460 at the measured density, plus a quarter, since P03 measured that much over its estimate. That is three times M's 600, and twice L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the control plane (~1,090) and the media plane with the examples' helper (~730) |
 | 2026-11-12 | P05 was estimated at about 1,760 lines before it started: about 1,410 at the measured density, plus a quarter. That is about three times M's 600. The owner chose one pull request, with the overrun explained, rather than a split into the logging core (~960) and the `logs` Thing with the live tail and `ex-logs` (~800). The owner also chose that queries cover the in-memory ring only, with older history in the downloadable daily files |
+| 2026-11-12 | P06 was estimated at about 1,480 lines before it started: about 1,190 at the measured density, plus a quarter. That is over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the backends, `ComputeInfo` and the pools (~590) and the kernels, the equivalence helper and the benchmarks (~900) |

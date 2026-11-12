@@ -1,6 +1,6 @@
 # P05: Logging and the `logs` Thing
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p05-logging` / [#13](https://github.com/lucaswewa/OScope/pull/13)
 - Size: M · estimated ~1,760 before it started: code ~740, tests ~380, examples ~266, glue ~25, plus a quarter. That is over L's 900, and the owner chose one pull request · measured **1,928** hand-written lines added (code 936, tests 551, examples 426, glue 15), and 37 removed. Docs and `Cargo.lock` aren't counted. **That is 1,328 over M's 600 and 1,028 over L's 900, and 168 (10%) over the estimate.**
 
