@@ -70,6 +70,14 @@ pub enum ComputeError {
     /// CUDA failed, or isn't available.
     #[error("CUDA: {0}")]
     Cuda(String),
+    /// An image has the wrong number of channels for a kernel.
+    #[error("an image of {got} channels where {expected} are needed")]
+    Channels {
+        /// The kernel's.
+        expected: usize,
+        /// The image's.
+        got: usize,
+    },
 }
 
 /// How to divide the processor between the pools.

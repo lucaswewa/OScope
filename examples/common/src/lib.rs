@@ -12,6 +12,7 @@
 //! # }
 //! ```
 
+use std::collections::BTreeMap;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -44,6 +45,7 @@ pub struct Example {
     /// Its logs, at [`LOG_LEVEL`], on the console and in daily files in
     /// `{data root}/logs`. Its server's `logs` Thing serves them.
     pub logs: LogStore,
+    numbers: BTreeMap<String, usize>,
     _temporary: Option<tempfile::TempDir>,
 }
 
@@ -51,13 +53,26 @@ impl Example {
     /// Reads the command line, `--port N` and `--smoke`, and starts the
     /// logs.
     pub fn from_args(name: &str, port: u16) -> anyhow::Result<Self> {
+        Self::from_args_with(name, port, &[])
+    }
+
+    /// As [`from_args`](Self::from_args), and the example's own options,
+    /// each a name and a number, such as `--runs 20`; [`number`](Self::number)
+    /// gives them.
+    pub fn from_args_with(name: &str, port: u16, numbers: &[&str]) -> anyhow::Result<Self> {
         let mut args = std::env::args().skip(1);
-        let (mut chosen, mut smoke) = (None, false);
+        let (mut chosen, mut smoke, mut given) = (None, false, BTreeMap::new());
         while let Some(arg) = args.next() {
+            let mut value = || args.next().with_context(|| format!("{arg} needs a number"));
             match arg.as_str() {
                 "--smoke" => smoke = true,
-                "--port" => chosen = Some(args.next().unwrap_or_default().parse()?),
-                other => anyhow::bail!("`{other}`: the options are --port N and --smoke"),
+                "--port" => chosen = Some(value()?.parse()?),
+                own if numbers.contains(&own) => {
+                    given.insert(own.to_owned(), value()?.parse()?);
+                }
+                other => {
+                    anyhow::bail!("`{other}`: the options are --port N, --smoke, and {numbers:?}")
+                }
             }
         }
         let temporary = smoke.then(tempfile::tempdir).transpose()?;
@@ -80,8 +95,14 @@ impl Example {
             smoke,
             roots,
             logs,
+            numbers: given,
             _temporary: temporary,
         })
+    }
+
+    /// The number given with one of the example's own options, if it was.
+    pub fn number(&self, option: &str) -> Option<usize> {
+        self.numbers.get(option).copied()
     }
 
     /// Serves `api`, with the example's logs and the files in `page` at the
@@ -130,7 +151,8 @@ pub struct Answer {
     pub status: u16,
     /// Its `Content-Type`, or empty.
     pub content_type: String,
-    /// Its body, as text.
+    /// Its body, as text; bytes that aren't UTF-8, as in an image, are
+    /// replaced.
     pub body: String,
 }
 
@@ -166,9 +188,15 @@ async fn request(
         body.len()
     );
     stream.write_all(request.as_bytes()).await?;
-    let mut text = String::new();
-    stream.read_to_string(&mut text).await?;
-    let (head, body) = text.split_once("\r\n\r\n").context("an HTTP answer")?;
+    let mut bytes = Vec::new();
+    stream.read_to_end(&mut bytes).await?;
+    // The head is text; the body may be an image.
+    let end = bytes
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .context("an HTTP answer")?;
+    let head = String::from_utf8_lossy(&bytes[..end]);
+    let body = String::from_utf8_lossy(&bytes[end + 4..]);
     let status = head.split(' ').nth(1).and_then(|s| s.parse().ok());
     let content_type = head.lines().find_map(|line| {
         let (name, value) = line.split_once(':')?;
@@ -178,6 +206,6 @@ async fn request(
     Ok(Answer {
         status: status.context("a status code")?,
         content_type: content_type.unwrap_or_default(),
-        body: body.to_owned(),
+        body: body.into_owned(),
     })
 }

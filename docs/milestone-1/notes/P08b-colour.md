@@ -1,6 +1,6 @@
 # P08b: Colour, display transform, crop and binning, writers
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p08b-colour` / [#17](https://github.com/lucaswewa/OScope/pull/17)
 - Size: L · estimated ~800 when P08 was split, and ~735 from the work itself just before starting · measured **586** hand-written lines added (code 332, tests 187, examples 61, glue 6), and 8 removed. Docs and `Cargo.lock` aren't counted. **Within L's 900.**
 

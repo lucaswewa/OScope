@@ -16,10 +16,17 @@ use oscope_core::{FrameView, HeapAllocator, Slab, SlabAllocator};
 
 use crate::{ComputeError, GpuInfo, Image, Lane, Shape, cpu};
 
+mod color;
+
+pub use color::DemosaicKernel;
+
 /// The image kernels, compiled from `kernels/image.cu` by `build.rs`.
 const IMAGE_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/image.fatbin"));
 
-/// Threads in a block, along a row.
+/// The colour kernels, compiled from `kernels/color.cu`.
+const COLOR_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/color.fatbin"));
+
+/// Threads in a block.
 const BLOCK: u32 = 256;
 
 impl From<DriverError> for ComputeError {
@@ -49,6 +56,11 @@ struct Kernels {
     to_f32_u8: CudaFunction,
     bin2x2: CudaFunction,
     downsample: CudaFunction,
+    superpixel: CudaFunction,
+    demosaic: CudaFunction,
+    subtract_black: CudaFunction,
+    correct: CudaFunction,
+    display: CudaFunction,
 }
 
 /// A GPU, ready for kernels.
@@ -81,11 +93,17 @@ impl Cuda {
         let live = context.new_stream_with_priority(greatest)?;
         let batch = context.new_stream_with_priority(least)?;
         let module = context.load_module(Ptx::from_binary(IMAGE_KERNELS.to_vec()))?;
+        let color = context.load_module(Ptx::from_binary(COLOR_KERNELS.to_vec()))?;
         let kernels = Kernels {
             to_f32_u16: module.load_function("to_f32_u16")?,
             to_f32_u8: module.load_function("to_f32_u8")?,
             bin2x2: module.load_function("bin2x2")?,
             downsample: module.load_function("downsample")?,
+            superpixel: color.load_function("superpixel")?,
+            demosaic: color.load_function("demosaic")?,
+            subtract_black: color.load_function("subtract_black")?,
+            correct: color.load_function("correct")?,
+            display: color.load_function("display")?,
         };
         let memory_pool = keep_freed_memory(&context).is_ok();
         let mut version = 0;

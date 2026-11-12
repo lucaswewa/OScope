@@ -7,12 +7,15 @@
 //! 4. **the display transform** to 8 bits ([`to_display`]);
 //! 5. **files:** PNG for viewing, and 16-bit TIFF.
 //!
-//! The test charts measure the methods ([`chart`], [`psnr`]). P08c adds
-//! the CUDA twins.
+//! The test charts measure the methods ([`chart`], [`psnr`]). With the
+//! `cuda` feature, the module `gpu` runs the same steps on the GPU, through their
+//! CUDA twins in `oscope-compute`.
 
 mod chart;
 mod demosaic;
 mod files;
+#[cfg(feature = "cuda")]
+pub mod gpu;
 mod region;
 mod tone;
 

@@ -757,8 +757,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P06 | Compute abstraction, CPU backend, benchmark harness | P03 | M | 0010 | Done |
 | P07 | CUDA backend | P06 | L | 0011 | Done |
 | P08 | Demosaicing on the CPU | P07 | L | — | Done |
-| P08b | Colour, display transform, crop and binning, writers | P08 | L | — | In review |
-| P08c | CUDA twins of the colour pipeline, the budgets, the comparison page | P08b | L | — | Planned |
+| P08b | Colour, display transform, crop and binning, writers | P08 | L | — | Done |
+| P08c | CUDA twins of the colour pipeline, the budgets, the comparison page | P08b | L | — | In review |
 
 ### Stage 3: Hardware abstraction and simulator
 
@@ -1055,3 +1055,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | P06 was estimated at about 1,480 lines before it started: about 1,190 at the measured density, plus a quarter. That is over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the backends, `ComputeInfo` and the pools (~590) and the kernels, the equivalence helper and the benchmarks (~900) |
 | 2026-11-12 | P07 was estimated at about 1,550 lines before it started: about 1,240 at the measured density, plus a quarter. That is over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the CUDA foundation (~800) and the kernels with their twins and example (~750). The owner had the CUDA 13.4 toolkit installed on their PC, which stands in for the laptop that P07's *Done when* names |
 | 2026-11-12 | P08 was estimated at about 2,500 lines before it started: about 2,030 at the measured density, plus a quarter. That is nearly three times L's 900. With the owner's agreement it was split into three, each within L:<ul><li>**P08:** demosaicing on the CPU, the PSNR tests, the benchmarks and the CPU budget (~900);</li><li>**P08b:** the colour steps, the display transform, crop and binning, and the TIFF and PNG writers (~800);</li><li>**P08c:** the CUDA twins, equivalence, the CUDA budget and `ex-demosaic`'s comparison page (~900).</li></ul>P17 and P22 now depend on P08c |
+| 2026-11-12 | P08c was estimated at about 1,100 lines before it started, over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the CUDA twins (~700) and the comparison page (~400) |
