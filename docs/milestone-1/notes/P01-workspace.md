@@ -1,6 +1,6 @@
 # P01: Rust workspace, layering test, CI
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p01-workspace` / [#8](https://github.com/lucaswewa/OScope/pull/8)
 - Size: planned M, re-sized to L by the owner before it started · estimated ~695 (code ~250, tests ~110, examples 0, glue ~335) · measured **761** hand-written lines (code 259, tests 158, examples 0, glue 344). Docs and `Cargo.lock` aren't counted. The tests came out about 50 lines over the estimate: rustfmt wrapped the assertions, and there are three more cases than planned.
 
