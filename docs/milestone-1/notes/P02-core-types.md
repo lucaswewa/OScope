@@ -131,7 +131,7 @@ Not relevant to this phase: nothing here is on a §5.20 path. `Affine2::fit` is 
 
 - **Windows** (the working tree): all 8 CI steps passed on `6cadaaa`, the examples' `--smoke` among them, with 42 suites and 33 tests.
 - **Ubuntu 24.04.5** (WSL): a fresh clone of `6cadaaa` in the Linux file system, with 86 files and no CR in any. All 8 steps passed, with the same 42 suites and 33 tests. The target folder was its own, kept from P01's run.
-- **GitHub CI:** CI_RESULT
+- **GitHub CI** passed on the pull request: Ubuntu in 1 min 11 s, Windows in 2 min 20 s. Every step succeeded, and `ex-core-tour --smoke` printed `smoke: ok` on both.
 
 ## Follow-ups and known gaps
 
