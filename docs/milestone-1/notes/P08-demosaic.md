@@ -122,7 +122,7 @@ These figures are from the owner's PC, with release builds, on a 5472 × 3648 RG
 
 - **Windows** (the working tree at `833a93f`): all 8 CI steps passed, with 63 suites and 95 tests. All seven examples' `--smoke` passed.
 - **Ubuntu 24.04.5** (WSL, a fresh clone of `833a93f`, 170 files, no CR in any): all 8 steps passed, with the same 63 suites and 95 tests.
-- **GitHub CI:** to come.
+- **GitHub CI** passed: Ubuntu in 2 min 12 s, Windows in 5 min 52 s. All seven examples' `--smoke` and `cargo deny` passed. The *CUDA build* didn't run, since nothing in the compute crate changed.
 
 ## Follow-ups and known gaps
 
