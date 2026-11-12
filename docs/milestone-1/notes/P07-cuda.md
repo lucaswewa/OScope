@@ -128,7 +128,10 @@ The round trips decided where `Compute`'s host methods run (ADR-0011). The plan'
 
 ### CI
 
-To come.
+- **Windows** (the working tree at `ce75e67`, default features, as CI): all 8 steps passed, with 61 suites and 89 tests. All six examples' `--smoke` passed.
+- **Ubuntu 24.04.5** (WSL, a fresh clone of `ce75e67`, 161 files, no CR in any): all 8 steps passed, with the same 61 suites and 89 tests.
+- **With the feature and the GPU on Windows:** `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` passed 94 tests, and clippy with the feature is clean.
+- **GitHub CI, and the new *CUDA build* on Ubuntu with the feature and no GPU:** to come.
 
 ## Follow-ups and known gaps
 
