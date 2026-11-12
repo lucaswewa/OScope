@@ -125,7 +125,9 @@ Measured on the owner's PC (i9-12900, 24 threads, AVX2) with release builds, on 
 
 ### CI
 
-To come.
+- **Windows** (the working tree at `d432bc4`): all 8 CI steps passed, with 58 suites and 88 tests. All five examples' `--smoke` passed.
+- **Ubuntu 24.04.5** (WSL, a fresh clone of `d432bc4` in the Linux file system, 150 files, no CR in any): all 8 steps passed, with the same 58 suites and 88 tests.
+- **GitHub CI:** to come.
 
 ## Follow-ups and known gaps
 
