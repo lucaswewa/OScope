@@ -118,7 +118,12 @@ The GPU's times include uploading the 40 MB frame (about 1.6 ms from pinned memo
   - `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` passed 108 tests;
   - clippy with the feature is clean on the four crates the weekly job checks;
   - `ex-demosaic --features cuda -- --smoke` passed, in release.
-- **GitHub CI, and the *CUDA build* on Ubuntu with the feature and no GPU:** to come.
+- **GitHub CI** passed: Ubuntu in 2 min 37 s, Windows in 6 min 2 s.
+- **The *CUDA build*** passed on Ubuntu in 4 min 15 s, with the feature and no GPU:
+  - `nvcc` 13.4.92 built both fat binaries;
+  - clippy passed on the four crates;
+  - `oscope-compute`'s and `oscope-imaging`'s tests passed, the GPU ones skipping themselves;
+  - both examples fell back to the CPU, saying "no CUDA driver was found".
 
 ## Follow-ups and known gaps
 
