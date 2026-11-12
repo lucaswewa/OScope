@@ -1,6 +1,6 @@
 # U05: Pluggable authentication
 
-- Status: In review
+- Status: Done
 - Branch / PR: `u/u05-pluggable-auth` in `teta-wot` / [lucaswewa/teta-wot#5](https://github.com/lucaswewa/teta-wot/pull/5)
 - Size: planned M, re-sized to L by the owner, estimated ~840 · measured **1,202** hand-written changed lines (+1,123 −79). That is **over L's 900**: the library is 832, the tests 227 and the example 143. Docs and `Cargo.lock` aren't counted.
 
