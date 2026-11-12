@@ -17,4 +17,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | U05 | Pluggable authentication (`teta-wot`) | Done | [U05-pluggable-auth.md](U05-pluggable-auth.md) |
 | U06 | Release v0.2.0 (`teta-wot`) | Done | [U06-release-v0.2.0.md](U06-release-v0.2.0.md) |
 | P01 | Rust workspace, layering test, CI | Done | [P01-workspace.md](P01-workspace.md) |
-| P02 | Core types: units, geometry, time, IDs | In review | [P02-core-types.md](P02-core-types.md) |
+| P02 | Core types: units, geometry, time, IDs | Done | [P02-core-types.md](P02-core-types.md) |
+| P02b | Hardware capability survey (docs only) | In review | [P02b-hardware-survey.md](P02b-hardware-survey.md) |

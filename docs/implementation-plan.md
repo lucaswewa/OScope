@@ -30,10 +30,10 @@
 
 OScope (OpenScope) is the control and analysis software for a motorised brightfield microscope:
 
-- **Camera:** Tucsen MIChrome 20, a 20 MP colour camera (5472 × 3648, 2.4 µm pixels, 14.5 fps at full resolution).
-- **Stage:** an XYZ stage on a grblHAL controller, with homing switches, linear encoders, and a trigger line to the camera.
+- **Camera:** Tucsen MIChrome 20, a 20 MP colour camera (5472 × 3648, 2.4 µm pixels, rolling shutter, 14.5 fps at full resolution), on USB with no trigger input. A camera with an external trigger is to replace it.
+- **Stage:** an XYZ stage on a grblHAL controller, with homing switches, linear encoders, and an aux output for a camera trigger.
 - **Objectives:** Mitutoyo long-working-distance objectives (5×, 10×, 20×, 50×) in a single mount, swapped by hand.
-- **Light:** transmitted and reflected sources.
+- **Light:** transmitted and reflected sources, not chosen yet; simulated until they are.
 
 The backend is a layered Rust service. It serves the instrument over HTTP through [`teta-wot`](https://github.com/lucaswewa/teta-wot) and keeps every pristine 16-bit raw frame in Rust memory or on an NVMe scratch disk. It sends the UI only light, viewport-sized JPEG previews. Image work runs as a graph of processing nodes, on a CUDA GPU when one is present and on the CPU otherwise. Third parties extend it with `.omext` packages, written in Rust or Python.
 
@@ -100,7 +100,7 @@ These came from the planning Q&A on 2026-11-10 (D1–D29) and from the owner's r
 | D17 | Hardware in hand | The camera, the Tucsen SDK, the grblHAL XYZ stage and a separate NVMe scratch disk are all available now | M3 hardware.md |
 | D18 | Objectives | A single mount, swapped by hand. The user says which objective is fitted, and each objective has its own calibration | ADR-0012 (P09), ADR-0023 (P32) |
 | D19 | Lights | Transmitted brightfield and reflected/coaxial light. The controller isn't decided yet: M1 has an `Illumination` interface with a manual implementation, and the real driver comes in M3 | ADR-0012 (P09) |
-| D20 | grblHAL features | Homing switches, linear encoders, and an aux output wired to the camera's trigger input | ADR-0012 (P09), M3 |
+| D20 | grblHAL features | Homing switches, linear encoders, and an aux output for the camera's trigger input. The MIChrome 20 has none, so the trigger waits for the camera that replaces it (P02b) | ADR-0012 (P09), M3 |
 | D21 | Desktop app | The backend stays a separate service (sidecar). The Tauri app gets a local fast path: preview frames through shared memory, and tiles read from disk through a custom protocol, with no HTTP and no re-encoding | ADR-0015 (P19) |
 | D22 | Remote access | Login with a password; one client holds the control lease, and the others view read-only and may ask for control. The local desktop app is trusted | ADR-0031 (P49) |
 | D23 | Simulated samples | Procedural 3D samples in the style of goal.md's three reference images (pathology, confocal, super-resolution), plus a reflective surface. Deterministic from a seed. Your own images or stacks can be loaded at run time. Tucsen's pictures are never committed | ADR-0013 (P10) |
@@ -258,8 +258,9 @@ OScope/
 - `PixelFormat` covers `Bayer16 { pattern, significant_bits }`, Bayer8, Mono8/16, Rgb8/16, Rgba8 and planar F32.
 - A `Frame` is a pooled buffer plus `FrameMeta`:
   - sequence number;
-  - sensor and host timestamps, and the exposure's start, end and midpoint;
-  - exposure, gain, mode, binning and ROI;
+  - the host timestamp, and the sensor's when the camera gives one (the MIChrome 20 doesn't); the exposure's start, end and midpoint;
+  - for a rolling shutter, the line time, which places each row's exposure in time;
+  - exposure, gain, mode, binning, ROI and black level;
   - the objective, and a snapshot of the lights;
   - the stage position interpolated at the exposure's midpoint;
   - the count of dropped frames.
@@ -384,9 +385,9 @@ The client draws the crosshair, ROI, profile, false colour, saturation and histo
 
 | Device | Operations | Capabilities |
 |---|---|---|
-| **Camera** | Modes (resolution, binning, ROI, frame-rate table), exposure, gain, pixel format, start and stop streaming, software and hardware trigger | Sensor timestamps, trigger input, temperature, the pixel formats it offers |
+| **Camera** | Modes (resolution, binning, ROI, frame-rate table), exposure, gain, pixel format, start and stop streaming, software and hardware trigger | Sensor timestamps, external trigger (input modes, and an output), rolling or global shutter and its line time, temperature, the pixel formats it offers |
 | **Stage** | Position in µm (f64), absolute and relative moves, continuous jog, stop, home, soft limits, a moving flag | Homing, encoders, a trigger output, position-report rate |
-| **Illumination** | Channels (transmitted, reflected), intensity, on/off | A manual implementation records what the user set |
+| **Illumination** | Channels (transmitted, reflected, and any others a controller offers), intensity, on/off | The lights aren't chosen yet (P02b): the simulator's lights, and a manual implementation that records what the user set |
 | **ObjectiveMount** | Which objective is fitted, from a catalogue | Manual in M1 (D18) |
 
 **Objective catalogue.** Its defaults are Mitutoyo's published values, confirmed in M3:
@@ -743,8 +744,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P00 | Docs scaffolding, working rules, foundational ADRs | — | S | 0001–0004 | Done |
 | P01 | Rust workspace, layering test, CI | P00, U06 | L | 0005 | Done |
-| P02 | Core types: units, geometry, time, IDs | P01 | L | 0007 | In review |
-| P02b | Hardware capability survey (docs only) | P00 | S | — | Planned |
+| P02 | Core types: units, geometry, time, IDs | P01 | L | 0007 | Done |
+| P02b | Hardware capability survey (docs only) | P00 | S | — | In review |
 | P03 | Frame model, buffer pool, frame bus | P02, P02b | L | 0008 | Planned |
 | P04 | Server skeleton, `system` Thing, media plane, example helper | P03 | M | 0006 | Planned |
 | P05 | Logging and the `logs` Thing | P04 | M | 0009 | Planned |
@@ -886,10 +887,10 @@ Specified when M2 nears its end. Every driver phase is Done only after the owner
 |---|---|
 | **H0 Bring-up** | Bring `docs/hardware.md` (from P02b) up to date with what bring-up finds: wiring, axis travel, steps per mm, encoders, the Tucsen SDK version. Hardware tests gated by environment variables |
 | **H1 grblHAL driver** | `oscope-grbl`: line protocol and real-time commands (`?` status, `!` hold, `~` resume, jog cancel, soft reset), `$J=` jogging, `$H` homing, alarms and settings, encoder positions, aux outputs (M62–M65) for triggers. A protocol fake, recorded sessions, and calibration of report latency |
-| **H2 Tucsen driver** | `oscope-tucsen`: the TUCam SDK loaded at run time (user-installed); modes and the real frame-rate table; raw Bayer; timestamps; software and hardware triggers; reconnecting; a recorded-session fake |
+| **H2 Tucsen driver** | `oscope-tucsen`: the TUCam SDK loaded at run time (user-installed); modes and the real frame-rate table; raw Bayer, which the SDK delivers already processed (P02b); host timestamps; the SDK's defaults (automatic exposure and white balance, a vertical flip) set explicitly; broken frames detected; software triggers, and hardware triggers on cameras that have them; reconnecting; a recorded-session fake |
 | **H3 Lights** | The illumination driver, once the controller is chosen (D19) |
 | **H4 Real microscope** | Calibrating each objective on real optics, flat fields, autofocus tuning, scans of real slides and surfaces, objective plausibility checks |
-| **H5 Continuous scanning** | On-the-fly scans: grblHAL fires the camera at positions and frames are matched by trigger; motion-blur limits; checked against stop-and-go |
+| **H5 Continuous scanning** | On-the-fly scans. With a trigger-capable camera, grblHAL fires it at positions and frames are matched by trigger. With the MIChrome 20, frames are matched by host timestamps and the position track, allowing for the rolling shutter. Motion-blur limits; checked against stop-and-go |
 | **H6 Performance** | End-to-end latency, the raw path at the full sensor rate, GPU tuning, memory, multiple clients, remote bandwidth (with H.264 only if needed) |
 | **H7 Release 1.0** | Signed installers, the user guide, the M3 retrospective |
 
@@ -963,7 +964,7 @@ docs/
 | **CUDA builds, drivers and CI without a GPU** | Fragile builds, untested GPU paths | Runtime loading with CPU fallback; a CPU twin for every kernel; `OSCOPE_CUDA=1` runs on the owner's machine before merge; a weekly CUDA build in CI |
 | **Extension ABI stability** | Old extensions break, or crash the server | A versioned C ABI with compatibility checks at install; panics caught at the boundary; ABI tests built against older SDK versions; Python workers isolated in their own processes |
 | **Python environments on locked-down lab PCs** | Extensions fail to install offline | uv bundled with the installers, offline wheelhouses, clear errors |
-| **The Tucsen SDK's real capabilities are unknown** (raw Bayer access, timestamps, binning frame rates, triggers) | The frame model or preview targets need rework in M3 | Capabilities are reported, not assumed; the P02b survey records them before the frame model is fixed |
+| **The camera's real capabilities.** P02b found a rolling shutter, a raw mosaic the SDK has already processed, no camera timestamps and no trigger; the raw rate at full resolution is still unmeasured | The frame model or preview targets need rework in M3 | Capabilities are reported, not assumed. `docs/hardware.md` records them, and the frame model carries the line time and an optional sensor timestamp |
 | **Matching positions to timestamps** in live stitching | Misplaced tiles before refinement | Exposure-midpoint interpolation, latency estimation, encoders, then hardware triggers in M3; the post-acquisition stitch always refines |
 | **Simulator speed at 20 MP** | Slow examples and tests | Cached, pre-blurred levels of detail, rayon, the CUDA path; a scaled-down sensor in tests (P15) |
 | **Browser rendering at 30–60 fps at high resolution** | Jank in M2's live view | Worker decoding and WebGL; viewport-sized frames; the desktop fast path |
@@ -1045,3 +1046,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-11 | P01 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 695 lines, of which about 200 are the 17 crates' manifests |
 | 2026-11-11 | P02 re-sized from M to L by the owner, before it started, rather than split: the estimate was about 765 lines |
 | 2026-11-11 | P02 measured 1,648 lines, over L's 900; the estimate had left out doc comments, blank lines and formatting. The owner chose to take it in one pull request, with the overrun explained, rather than split it |
+| 2026-11-12 | P02b, the hardware survey. The MIChrome 20 has a rolling shutter, no camera timestamps and no trigger input, and its SDK delivers the raw mosaic already processed. A camera with an external trigger is to replace it, and the lights aren't chosen yet. Updated: §1 and D20; §5.5's frame metadata (line time, optional sensor timestamp, black level); §5.9's camera capabilities and illumination; P03, P09 and P12; M3's H2 and H5; the camera risk |

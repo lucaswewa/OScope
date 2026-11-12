@@ -28,10 +28,10 @@ The checks that CI runs are listed in [`CLAUDE.md`](CLAUDE.md#checks-before-open
 
 | Part | What |
 |---|---|
-| Camera | Tucsen MIChrome 20: colour, 5472 × 3648 (20 MP), 2.4 µm pixels, 14.5 fps at full resolution, 16-bit output |
-| Stage | Motorised XYZ on a grblHAL controller over a serial port, with homing switches, linear encoders, and a trigger line to the camera |
+| Camera | Tucsen MIChrome 20: colour, 5472 × 3648 (20 MP), 2.4 µm pixels, rolling shutter, 14.5 fps at full resolution, 16-bit output, USB only. A camera with an external trigger is to replace it |
+| Stage | Motorised XYZ on a grblHAL controller over a serial port, with homing switches, linear encoders, and an aux output for a camera trigger |
 | Objectives | Mitutoyo long-working-distance 5×, 10×, 20× and 50×, in a single mount |
-| Light | Transmitted brightfield and reflected (coaxial) |
+| Light | Transmitted brightfield and reflected (coaxial); the sources aren't chosen yet, so they are simulated for now |
 
 Everything also runs **without hardware.** A simulator stands in for every device, with procedural 3D samples (H&E tissue, a reflective surface, fluorescent cells, sub-diffraction structures) and real-time motion.
 
