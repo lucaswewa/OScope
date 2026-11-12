@@ -122,7 +122,7 @@ The run's last line reports 14.34 fps, because it divides by the time to the end
   - **`<` for `<=` passed.** No frame was exposed exactly at the moment waited for. The test now also waits for a frame's own moment.
 - **Windows** (the working tree): all 8 CI steps passed on `4278bab`, with 45 suites and 48 tests. Both examples' `--smoke` passed. The first replay, on `5da8241`, failed only `cargo deny`'s advisories (see *Design notes*).
 - **Ubuntu 24.04.5** (WSL, a fresh clone of `4278bab` in the Linux file system, 102 files, no CR in any): all 8 steps passed, with the same 45 suites and 48 tests.
-- **GitHub CI:** CI_RESULT
+- **GitHub CI** passed: Ubuntu in 1 min 17 s, Windows in 3 min 16 s, with `smoke: ok` from both examples and `cargo deny` ok.
 
 ## Follow-ups and known gaps
 
