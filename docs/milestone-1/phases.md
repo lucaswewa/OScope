@@ -178,7 +178,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 ### P01: Rust workspace, layering test, CI
 
 **Goal.** A buildable workspace with the crate boundaries of plan §5.2, enforced, and CI on Windows and Ubuntu.
-**Depends on** P00, U06 · **Size** M · **ADRs** 0005
+**Depends on** P00, U06 · **Size** L (re-sized from M before it started) · **ADRs** 0005
 
 **Scope**
 - **Workspace `Cargo.toml`:**

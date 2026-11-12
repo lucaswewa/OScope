@@ -10,6 +10,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0002](0002-clean-room-and-dependency-licences.md) | Clean room: what OScope may take from `microscope`, and the dependency licence policy | Accepted | P00 |
 | [0003](0003-platforms-windows-and-ubuntu-x86-64.md) | Platforms: Windows 11 and Ubuntu LTS on x86_64 | Accepted | P00 |
 | [0004](0004-teta-wot-v0-2-0-extended-upstream-first.md) | Depend on `teta-wot` v0.2.0, extended upstream first | Accepted | P00 |
+| [0005](0005-layered-crates-and-their-dependency-rules.md) | Layered crates and their dependency rules | Accepted | P01 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 
