@@ -12,6 +12,7 @@ What the examples share (P04). It is a library, not an example, so it has no `--
 - **`Example::serve(api, page, check)`** serves the example's API with its logs, and its page folder at the same origin, through `oscope_api::ApiBuilder::pages`.
   - **Normally:** it prints the address to open, and serves until Ctrl-C.
   - **With `--smoke`:** it runs `check` against the server, stops it, and prints `smoke: ok` if the check passed.
-- **`get(address, path)`** and **`post(address, path, json)`** are a small HTTP client for the smoke checks.
+- **`Example::from_args_with(name, port, options)`** also takes the example's own options, each a name and a number, such as `--runs 20`. `Example::number(option)` gives them.
+- **`get(address, path)`** and **`post(address, path, json)`** are a small HTTP client for the smoke checks. They read binary answers too, such as images.
 
-[`ex-server-hello`](../ex-server-hello/README.md) and [`ex-logs`](../ex-logs/README.md) use them.
+[`ex-server-hello`](../ex-server-hello/README.md), [`ex-logs`](../ex-logs/README.md) and [`ex-demosaic`](../ex-demosaic/README.md) use them.
