@@ -476,6 +476,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-demosaic"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-imaging",
+]
+
+[[package]]
 name = "ex-frame-bus"
 version = "0.1.0"
 dependencies = [
@@ -1019,6 +1029,15 @@ version = "0.1.0"
 [[package]]
 name = "oscope-imaging"
 version = "0.1.0"
+dependencies = [
+ "criterion",
+ "oscope-compute",
+ "oscope-core",
+ "rand",
+ "rayon",
+ "serde",
+ "thiserror",
+]
 
 [[package]]
 name = "oscope-jobs"

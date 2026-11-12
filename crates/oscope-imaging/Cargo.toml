@@ -6,5 +6,21 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[dependencies]
+oscope-compute.workspace = true
+oscope-core.workspace = true
+rayon.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+rand.workspace = true
+
+
+[[bench]]
+name = "demosaic"
+harness = false
+
 [lints]
 workspace = true
