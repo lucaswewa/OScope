@@ -1,6 +1,6 @@
 # P04: Server skeleton, `system` Thing, media plane, example helper
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p04-server-skeleton` / [#12](https://github.com/lucaswewa/OScope/pull/12)
 - Size: M · estimated ~1,820 before it started: code ~705, tests ~380, examples ~325, glue ~50, plus a quarter. That is over L's 900, and the owner chose one pull request · measured **1,734** hand-written lines added (code 824, tests 484, examples 370, glue 56), and 29 removed. Docs and `Cargo.lock` aren't counted. **That is 1,134 over M's 600 and 834 over L's 900, and 86 under the estimate.**
 
