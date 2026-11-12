@@ -1,7 +1,7 @@
 # P03: Frame model, buffer pool, frame bus
 
 - Status: In review
-- Branch / PR: `m1/p03-frame-model` / #PR
+- Branch / PR: `m1/p03-frame-model` / [#11](https://github.com/lucaswewa/OScope/pull/11)
 - Size: L · estimated ~1,275 before it started (code ~755, tests ~340, examples ~165, glue ~15), over L's 900; the owner chose one pull request · measured **1,602** hand-written lines (code 973, tests 433, examples 186, glue 10). Docs and `Cargo.lock` aren't counted. **That is 702 over L's 900, and 327 over the estimate.**
 
 ## Summary
@@ -81,6 +81,11 @@ The run's last line reports 14.34 fps, because it divides by the time to the end
 - **`next_frame_after` starts waiting when it is called,** not when its future is first polled. Writing the tests showed the difference: otherwise a frame published between the call and the first poll is missed.
 - **Planar frames:** `Frame::plane(i)` gives each plane's view, and `view()` gives the first.
 - **Views read samples as `u16`,** from bytes, so `oscope-core` keeps forbidding unsafe code. Fast paths that reinterpret whole rows belong in `oscope-compute` (P06).
+- **tokio moved from 1.53.1 to 1.53.3, beyond the spec.**
+  - **What failed.** The CI replay's `cargo deny` failed on a new advisory, RUSTSEC-2026-0386: tokio's `AsyncFd` constructors are unsound. That is Unix only, and nothing in OScope or `teta-wot` uses `AsyncFd`.
+  - **Where tokio came from.** It has been in the lock since P01, through `teta-wot`, so `main` fails the same check now.
+  - **The fix.** 1.53.3 is fixed. It was released on 2026-10-13, so it meets the two-week rule. The workspace now requires it, and the lock changed only tokio's version.
+  - **It is a separate commit** in this pull request.
 
 ## Tests
 
@@ -115,12 +120,13 @@ The run's last line reports 14.34 fps, because it divides by the time to the end
   **Two of them found weak tests,** which were then fixed:
   - **Turning waiting into dropping made the test hang,** not fail. It waited for frames that were gone, because the test still held the bus. Now the producer owns the bus, so the queue ends and the test fails.
   - **`<` for `<=` passed.** No frame was exposed exactly at the moment waited for. The test now also waits for a frame's own moment.
-- **Windows:** WINDOWS_RESULT
-- **Ubuntu 24.04:** WSL_RESULT
+- **Windows** (the working tree): all 8 CI steps passed on `4278bab`, with 45 suites and 48 tests. Both examples' `--smoke` passed. The first replay, on `5da8241`, failed only `cargo deny`'s advisories (see *Design notes*).
+- **Ubuntu 24.04.5** (WSL, a fresh clone of `4278bab` in the Linux file system, 102 files, no CR in any): all 8 steps passed, with the same 45 suites and 48 tests.
 - **GitHub CI:** CI_RESULT
 
 ## Follow-ups and known gaps
 
+- **`teta-wot`'s own lock** still has tokio 1.53.1. That matters only for the binaries `teta-wot` builds itself, such as v0.2.0's Windows package, where the unsound Unix API can't be reached. A later `teta-wot` release can take 1.53.3.
 - **Pinned memory** (P07) plugs in as a `SlabAllocator`.
 - **The pool's size** is fixed at creation; the server's configuration will choose it (§5.5's default is 24).
 - **Recording at 580 MB/s to disk** is P29's. The host's sustained write rate is P02b's last measurement, running after U06's soak.
