@@ -2,14 +2,19 @@
 
 What the real camera, SDK, stage controller, lights and host offer, so that the frame model, the HAL and the simulator fit them (D31). Written in P02b; M3's bring-up (H0) keeps it up to date.
 
-> **Draft.** The vendors' documentation, the installed SDK and the host are in. What needs the camera attached, or the owner's eyes on the instrument, is marked **to measure** or **to check**; the [P02b notes](milestone-1/notes/P02b-hardware-survey.md) say how. The stage controller isn't connected to the host yet, so OScope uses the simulated stage until M3, and the controller's items wait for M3's bring-up.
+**Where things stand:**
+
+- **The camera** isn't connected to the host yet. Its facts come from the vendor's documentation, the installed SDK, and the owner's earlier test tool, run on another PC. What none of them answers is measured when the camera is connected, at H0 at the latest.
+- **The stage controller** isn't connected either. OScope runs on the simulated stage until M3, and the controller's items are recorded at H0.
+- **The lights** aren't chosen. They are simulated until they are.
 
 Each fact gives its source:
 
 - **doc:** the vendor's published documentation (listed under *Sources*);
 - **SDK:** the TUCam SDK's own documentation and headers, as installed on the host;
+- **tool:** measured with the owner's MIChrome 20 test tool, on an earlier PC with USB 3.1;
 - **host:** read or measured on the host PC;
-- **instrument:** measured on the instrument.
+- **owner:** stated by the owner.
 
 ## Camera: Tucsen MIChrome 20
 
@@ -18,37 +23,43 @@ Each fact gives its source:
 | Sensor | Sony IMX183, colour CMOS, **rolling shutter**. 15.86 mm diagonal (1″); effective area 13.1 × 8.8 mm | doc [1] |
 | Resolution | 5472 × 3648 (20 MP), 2.4 × 2.4 µm pixels | doc [1] |
 | Interface | USB 3.0; C-mount; 3 W | doc [1] |
+| Connectors | **USB only:** no trigger or other I/O | owner |
 | Size and weight | 68 × 68 × 46 mm, 330 g | doc [1] |
 | Pixel clock | 72 MHz | SDK [3] |
-| Modes | Three resolutions: 5472 × 3648, 2736 × 1824 and 1824 × 1216. The SDK doesn't say whether the two smaller ones bin or resample. Software binning by summing (1–4) is offered too. The product page lists 2 × 2, 3 × 3 and 4 × 4 binning | SDK [3], doc [1] |
-| Frame rates | 14.5 fps at full resolution; the other modes' rates aren't stated | doc [1]; **to measure** |
-| ROI | The SDK has an ROI call; whether this camera accepts one isn't stated | SDK [4]; **to measure** |
-| Bit depth | 8- or 16-bit data, 8 by default. The ADC's depth, and where its bits sit in a 16-bit word, aren't stated. The SDK can show any 8 consecutive bits of the 16 | SDK [3]; **to measure** |
-| Raw data | The SDK asks for a frame as raw, "usual" or RGB888 data. Whether raw is the Bayer mosaic, and its pattern, isn't stated | SDK [4]; **to measure** |
-| Exposure | 18 µs to 15 s. The SDK gives the range for the current mode at run time. **Automatic exposure is on by default** | doc [1], SDK [3] |
-| Gain | A global gain of 0–240, default 30, its unit not stated. Gains per colour channel are 0–1366, default 256. **Automatic white balance is on by default** | SDK [3] |
+| Modes and frame rates | With 1 ms exposure, 8-bit:<ul><li>0: 5472 × 3648, 14.5 fps (about 870 MB/s from the SDK);</li><li>1: 2736 × 1824, 53.2 fps (about 800 MB/s);</li><li>2: 1824 × 1216, 67.3 fps (about 450 MB/s).</li></ul>In 16-bit colour, mode 0 gives only 7.3 fps. Software binning by summing (1–4) is offered too. The product page lists 2 × 2, 3 × 3 and 4 × 4 binning | tool [8], SDK [3], doc [1] |
+| Frame rate and exposure | Under automatic exposure, the rate falls to 1 / exposure in a dim scene | tool [8] |
+| ROI | The SDK has an ROI call; whether this camera accepts one is unknown | SDK [4]; when connected |
+| Raw mosaic | One sample per pixel, **RGGB**, 16-bit, on request. **The SDK has already processed it:**<ul><li>gamma and contrast are applied. At gamma 128 and contrast 32 it is linear, to ±1% over an 8× range of exposure;</li><li>the white-balance gains are applied;</li><li>it is rescaled to fill 16 bits (about 58,000 levels), with a black offset of about 2,000.</li></ul>So it is not the ADC's 12-bit counts. **Its frame rate at full resolution is unmeasured** | tool [8], SDK [4] |
+| Processed data | 8-bit, or 16-bit little-endian, BGR. Rows come bottom-up, because the SDK's Windows default flips them vertically | tool [8], SDK [3] |
+| Exposure | 18.4 µs to 19,340 ms (the product page says 18 µs to 15 s). The range depends on the mode. **Automatic exposure is on by default** | tool [8], doc [1], SDK [3] |
+| Gain | Analogue gain 0–240, default 30. Gains per colour channel are 0–1366, with 256 neutral. **Automatic white balance is on by default** | SDK [3], tool [8] |
 | Image processing in the SDK | Mirroring and rotation. **A vertical flip is on by default on Windows.** Also flat-field and defect-pixel correction, HDR, levels, gamma, contrast, saturation, hue, sharpness, a monochrome mode, and 50/60 Hz anti-flicker | SDK [3] |
-| Timestamps | **None from the camera:** the SDK's timestamp capability is listed for the MIChrome 20BW, not the 20. Frames carry a time field; it is presumably the host's, **to check** | SDK [3], [4] |
-| Trigger input and output | **Probably none.** Neither the product pages nor the SDK's MIChrome document mention one. The SDK has trigger calls, which other Tucsen series use | doc [1], SDK [3], [4]; **to check** on the camera body |
+| Settings | The SDK remembers the last settings used, per camera, in a file under `%LOCALAPPDATA%`; a driver must set each one explicitly | tool [8] |
+| Timestamps | **None from the camera.** The SDK's timestamp capability is listed for the MIChrome 20BW, not the 20 | SDK [3] |
+| Frame numbers | **The SDK's frame index stays 0,** so dropped frames can't be found from it | tool [8] |
+| Faults seen | **In mode 1, some frames arrive with the green channel missing,** wholly or in part: 0 to about 90 frames in 4 s, anywhere in a run. Modes 0 and 2 never showed it. There is also a faint periodic pattern (about 4 px), and occasional coloured dashed rows | tool [8] |
+| Trigger input and output | **None** | owner; doc [1], SDK [3] |
 | Buffers and callbacks | The SDK allocates frame buffers, or attaches the caller's. Frames are taken by a blocking wait with a timeout, or by a callback | SDK [4] |
 | Cooling | None listed | doc [1] |
 | Vendor software | Mosaic V3, with live stitching and live EDF, on Windows 10/11 (64-bit) and macOS | doc [1] |
 
 **The rolling shutter** exposes the sensor's rows one after another.
-- If readout limits the frame rate, a row starts about 1 / (14.5 × 3648) ≈ 19 µs after the one above it, and the last row starts about 69 ms after the first. The line time is **to measure**.
-- In a frame taken while the stage moves, each row sees a slightly different position, and the image is sheared along the motion.
+- The readout takes about 60 ms at full resolution and about 15 ms in mode 2. That is from the test tool's tracking bands, each about 2.5 ms of readout: 24 at full resolution, 6 in mode 2.
+- In a frame taken while the stage moves or the table shakes, each row sees a slightly different position, so the image is sheared, or bent.
+
+**The camera that replaces it** will have an external trigger (owner). Its model isn't chosen.
 
 ## Camera SDK: TUCam
 
 | Item | Value | Source |
 |---|---|---|
-| Version | TUCam 2.0.8.0. The kit is `TUCam_FV2.0.8.0_PV2.0.151.0`, and the camera driver is V2.1.6.1 | host, doc [1] |
-| Where it is | `C:\Program Files (x86)\TUCam_SDK`. The 64-bit runtime is `runtime\x64`, with `TUCam.dll` and its dependencies: OpenCV 2.4.10 libraries, the Visual C++ 2013 runtime, and frame-grabber libraries. The headers are `library\inc`, and the import libraries `library\lib` | host |
+| Version | TUCam 2.0.8.0. The kit is `TUCam_FV2.0.8.0_PV2.0.151.0`, and the camera driver (TUUSB3) is V2.1.6.1 | host, doc [1], tool [8] |
+| Where it is | `C:\Program Files (x86)\TUCam_SDK`. The 64-bit runtime is `runtime\x64`: `TUCam.dll` and its dependencies, namely OpenCV 2.4.10 libraries, the Visual C++ 2013 runtime, and frame-grabber libraries. The installer copies only the 32-bit `TUCam.dll` into Windows, so a 64-bit program loads the runtime from that folder. Headers are in `library\inc` | host, tool [8] |
 | Platforms | Windows and Linux kits | doc [2] |
 | Languages | C and C++ (`TUCamApi.h`, `TUDefine.h`), C#, Python; DirectShow and TWAIN; Micro-Manager, MATLAB and LabVIEW | SDK, doc [1], [2] |
 | Documentation | API and sample guides in English and Chinese, and a properties-and-capabilities document per camera series | SDK |
 | Cameras at once | Up to 4, sharing the USB bandwidth | doc [1], SDK [3] |
-| Licence and redistribution | **No licence file in the kit**, and none published. So users install the SDK themselves, and OScope loads it at run time (ADR-0002) | host, doc [2] |
+| Licence and redistribution | **No licence file in the kit,** and none published. So users install the SDK themselves, and OScope loads it at run time (ADR-0002) | host, doc [2] |
 
 ## Stage controller: grblHAL
 
@@ -63,48 +74,55 @@ Each fact gives its source:
 | Status-report rate | Not stated | unknown until H0 |
 | Encoders | grblHAL's core status report has **no encoder field**. How the linear encoders are read (a plugin, the controller, or a separate readout) is unknown | doc [5]; unknown until H0 |
 | Aux outputs | `M62`–`M65` are "digital output control" where the driver supports them; `[AUX IO:…]` in `$I+` counts the ports | doc [6]; count unknown until H0 |
-| Camera trigger wiring | Moot if the camera has no trigger input (above) | **to check** |
+| Camera trigger wiring | None for the MIChrome 20; an aux output, for the camera that replaces it | owner |
 
 ## Lights
 
-| Item | Value | Source |
-|---|---|---|
-| Fitted | Transmitted brightfield and reflected (coaxial), per the plan | **to confirm** |
-| Switching and dimming today | Unknown | **to check** |
+**Not chosen yet** (owner). OScope uses the simulator's lights, through generic HAL traits: channels, on/off and intensity (P09). The real driver comes in M3 (H3), once the lights and their controller are chosen.
 
 ## Host
 
-The target host is a PC like this one, in CPU, GPU, RAM and SSD. These values were read on this PC.
+The target host is a PC like this one, in CPU, GPU, RAM and SSD (owner). These values were read on this PC.
 
 | Item | Value | Source |
 |---|---|---|
 | CPU | Intel Core i9-12900: 16 cores (8 performance, 8 efficient), 24 threads | host |
 | RAM | 64 GB | host |
 | GPU | NVIDIA RTX A2000 12 GB: CUDA compute capability 8.6, 12,282 MiB, PCIe gen 4 × 16, driver 596.51. Also Intel UHD Graphics 770 | host |
-| USB | Intel USB 3.20 and USB 3.10 xHCI host controllers. The port the camera uses is **to note** | host |
+| USB | Intel USB 3.20 and USB 3.10 xHCI host controllers | host |
 | Disk | One NVMe SSD, Micron MTFDKBA1T0TFH, 1 TB (firmware 7006P7LN), which is also the system disk: 528 GB free | host |
-| Sustained write | Needed: about 580 MB/s for full-rate recording (§5.5). Writing far past the drive's cache finds its sustained rate | **to measure** |
+| Sustained write | Needed: about 580 MB/s for full-rate raw recording (§5.5). The measurement runs after U06's soak | **to measure** |
 | Operating system | Windows 11 Pro, build 26300 | host |
+
+## The environment
+
+**The test table shook at about 49 Hz.** At full resolution, frame-to-frame jitter was 8.1 px horizontally and 5.9 px vertically (RMS), from something on the 50 Hz mains nearby (tool [8]). The rolling shutter turns fast shake into bending within a frame. That table may not be the instrument's final one, but autofocus, live stitching and long exposures will feel any shake on the final table too.
 
 ## Consequences for the plan
 
-These are the findings so far that may change the plan. The P02b pull request updates the affected specs, and adds a line to the plan's change log.
+Applied in P02b's pull request, with a line in the plan's change log.
 
-- **The rolling shutter is not in the plan.**
-  - **P03:** the frame metadata needs the line time, to place each row's exposure in time.
-  - **P12:** the simulated camera should expose its rows one after another.
-  - **P38, live stitching:** frames taken while moving are sheared.
-  - **M3, continuous scanning:** the stage's speed must allow for the 69 ms from the first row to the last.
-- **The camera gives no timestamps of its own.**
-  - Frames are timed when they reach the host, less an estimated latency, as §5.5 already does for the stage's reports.
-  - P03 keeps a sensor timestamp optional, and P12 simulates the host's arrival time.
-- **A hardware trigger probably doesn't exist.**
-  - The plan assumes one: D20, P11 and P12, and M3's continuous scanning.
-  - Without one, M3's on-the-fly scans rely on host timestamps and the position track, or on stop-and-go.
-  - P11's trigger output and P12's trigger input remain useful for testing that logic, but nothing on this instrument would use them.
-- **The SDK's defaults** are automatic exposure, automatic white balance and a vertical flip on Windows. M3's Tucsen driver must set each of them explicitly, so that frames mean the same on every platform (ADR-0007's image coordinates).
-- **Encoder positions** may not reach OScope through grblHAL's status report. That affects P11's "true versus commanded position", and M3's grblHAL driver. It is unknown until H0.
-- **The scratch disk is the system disk,** on a host like this one. If its sustained write rate is below 580 MB/s, or if recording should not share the system disk, full-rate recording needs a second NVMe.
+- **The rolling shutter.**
+  - The plan's camera and §5.5's frame metadata now carry the line time.
+  - P12's simulated camera exposes its rows one after another, and tests the shear.
+  - M3's continuous scanning allows for it.
+- **No camera timestamps.**
+  - Frames are timed on the host. A sensor timestamp is optional in the frame metadata (§5.5, P03), and P12 simulates host timestamps only.
+  - Because the SDK's frame index stays 0, M3's driver finds dropped frames from their timing.
+- **No trigger on the MIChrome 20, but on its successor.**
+  - The HAL's camera keeps external triggering, as a capability (§5.9, P09).
+  - P11's trigger output and P12's trigger input stand in for the future camera.
+  - D20 and M3's continuous scanning (H5) say which camera each path needs.
+- **The raw mosaic is processed.**
+  - M3's driver sets gamma 128, contrast 32 and fixed white-balance gains to keep it linear, and P08 subtracts its black level.
+  - P12 simulates the same rescaled 16-bit output, and the frame metadata carries the black level.
+- **The SDK's defaults** (automatic exposure, automatic white balance, a vertical flip on Windows, remembered settings) are set explicitly by M3's driver (H2), which also detects mode 1's broken frames.
+- **The lights aren't chosen,** so §5.9's `Illumination` and P09 stay generic, and the simulator provides them.
+- **Still open:**
+  - the raw mosaic's frame rate at full resolution, which decides whether 580 MB/s (§5.5, §5.20) holds;
+  - the disk's sustained write rate;
+  - whether the camera accepts an ROI;
+  - the controller's items, at H0.
 
 ## Sources
 
@@ -115,3 +133,4 @@ These are the findings so far that may change the plan. The P02b pull request up
 5. grblHAL core wiki, *Report extensions*: <https://github.com/grblHAL/core/wiki/Report-extensions>.
 6. grblHAL core wiki, *Additional G- and M-codes*: <https://github.com/grblHAL/core/wiki/Additional-G--and-M-codes>.
 7. grblHAL core wiki, *Additional or extended settings*: <https://github.com/grblHAL/core/wiki/Additional-or-extended-settings>.
+8. The owner's MIChrome 20 test tool (`michrome`), and the measurements in its README, taken on an earlier PC with USB 3.1. It is kept outside the repository.

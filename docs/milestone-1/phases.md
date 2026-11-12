@@ -264,7 +264,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 **Scope** (`oscope-core`, `oscope-acquire`)
 - **Frame types:**
   - `PixelFormat`: `Bayer16 { pattern, significant_bits }`, Bayer8, Mono8/16, Rgb8/16, Rgba8, planar F32;
-  - `FrameMeta`: all the fields in §5.5;
+  - `FrameMeta`: all the fields in §5.5, including a rolling shutter's line time and an optional sensor timestamp (P02b);
   - `Frame`: a reference-counted pooled buffer plus its metadata;
   - strided views and ROI sub-views, without copying.
 - **`FramePool`:**
@@ -414,6 +414,8 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 
 **Scope** (`oscope-hal`)
 - **Traits:** `Camera`, `Stage`, `Illumination`, `ObjectiveMount`, each with a capability report.
+  - **`Camera`** supports external triggering, as a capability: the MIChrome 20 has none, and the camera that replaces it will (P02b).
+  - **`Illumination`** stays generic (channels, on/off, intensity), because the lights aren't chosen yet (P02b).
 - **Supporting types:**
   - `CameraMode` tables;
   - `StageStatus`: idle, moving, homing, alarm, hold;
@@ -423,7 +425,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 - **Manual implementations:** `ManualIllumination` and `ManualObjectiveMount`.
 - **Fakes:** a scripted fake for each trait.
 - **A HAL conformance suite** that any driver runs: the simulator now, the real drivers in M3.
-- **The ADR** works through three targets and shows each one fits: the Tucsen camera, the grblHAL stage, and another vendor's camera arriving as an extension.
+- **The ADR** works through three targets and shows each one fits: the Tucsen camera (no trigger), the grblHAL stage, a camera with an external trigger, and another vendor's camera arriving as an extension.
 
 **Example** — `ex-hal-fakes`: drives the fakes and prints their capability reports.
 
@@ -497,11 +499,14 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 **Scope** (`oscope-sim`)
 - **Sensor:**
   - 5472 × 3648 RGGB, 2.4 µm pixels;
-  - a 12-bit ADC in 16-bit words;
+  - a 12-bit ADC, delivered as the MIChrome 20's SDK delivers its raw mosaic: rescaled to 16 bits, with a black offset (P02b);
+  - a rolling shutter: rows are exposed one after another over the readout (about 60 ms at full resolution), so motion shears a frame;
   - gain, full well, black level;
   - shot, read and dark noise.
-- **Modes:** full, 2 × 2 binning and ROIs, with frame times from a placeholder table. Exposure and gain.
+- **Modes:** the MIChrome 20's three, at their measured rates (5472 × 3648 at 14.5 fps, 2736 × 1824 at 53.2 fps, 1824 × 1216 at 67.3 fps: P02b), binning and ROIs. Exposure and gain.
 - **Acquisition:** free-running, software trigger, and a hardware trigger fed by the simulated stage's trigger output. Frames are paced by the simulation clock at the mode's frame interval.
+  - The hardware trigger stands in for the camera that will replace the MIChrome 20, which has none (P02b).
+  - Frames carry host timestamps only, as the MIChrome 20's do.
 - **The camera mounting (ground truth):**
   - rotation, flip and offset of the sensor relative to the stage axes, set in the simulator's configuration; scale follows the fitted objective;
   - each frame shows the field at the stage's true positions through this mounting, so the image moves in live view as it would on the instrument;
@@ -522,6 +527,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
 - Trigger timing; at 1×, frames arrive at the mode's frame interval.
 - During a constant-speed jog, the image shifts by v · Δt ÷ pixel size between frames, in the mounting's direction (checked against the renderer's ground truth).
 - Blur length equals speed × exposure.
+- During a jog, each row is offset from the one above by speed × line time: the rolling shutter's shear.
 - Rendering slower than real time drops frames, and doesn't slow the motion.
 - The conformance suite.
 
