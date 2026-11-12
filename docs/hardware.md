@@ -88,7 +88,7 @@ The target host is a PC like this one, in CPU, GPU, RAM and SSD (owner). These v
 |---|---|---|
 | CPU | Intel Core i9-12900: 16 cores (8 performance, 8 efficient), 24 threads | host |
 | RAM | 64 GB | host |
-| GPU | NVIDIA RTX A2000 12 GB: CUDA compute capability 8.6, 12,282 MiB, PCIe gen 4 × 16, driver 596.51. Also Intel UHD Graphics 770 | host |
+| GPU | NVIDIA RTX A2000 12 GB: CUDA compute capability 8.6, 12,282 MiB, PCIe gen 4 × 16, driver 596.51 (CUDA 13.2). Also Intel UHD Graphics 770. The CUDA 13.4 toolkit was installed for P07: a 40 MB upload from pinned memory takes 1.64 ms (24.4 GB/s) | host |
 | USB | Intel USB 3.20 and USB 3.10 xHCI host controllers | host |
 | Disk | One NVMe SSD, Micron MTFDKBA1T0TFH, 1 TB (firmware 7006P7LN), which is also the system disk: 528 GB free | host |
 | Sustained write | Needed: about 580 MB/s for full-rate raw recording (§5.5). The measurement runs after U06's soak | **to measure** |

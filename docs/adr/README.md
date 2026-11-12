@@ -16,6 +16,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0008](0008-the-frame-model-buffer-pool-and-frame-bus.md) | The frame model, buffer pool and frame bus | Accepted | P03 |
 | [0009](0009-logging.md) | Logging | Accepted | P05 |
 | [0010](0010-compute-backends-the-cpu-reference-and-cuda.md) | Compute backends: the CPU reference and CUDA through `cudarc` | Accepted | P06 |
+| [0011](0011-building-loading-and-redistributing-cuda-kernels.md) | Building, loading and redistributing CUDA kernels | Accepted | P07 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 
