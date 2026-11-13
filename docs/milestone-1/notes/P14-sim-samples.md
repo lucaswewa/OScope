@@ -133,7 +133,20 @@ The example's [README](../../../examples/ex-sim-samples/README.md) shows what it
 - `weezl` 0.1.12, November 2025;
 - `jpeg-encoder` 0.6.0, October 2023.
 
-**The workspace,** with every step CI runs: REPLAYS
+**The workspace,** with every step CI runs:
+
+- `cargo fmt`;
+- `clippy -D warnings`;
+- `cargo test`;
+- `cargo doc -D warnings`;
+- `cargo deny`;
+- the server's `--version`;
+- every example's `--smoke`.
+
+Results:
+
+- **With `scripts/ci-local.sh` on Windows:** all 21 steps passed; 96 test suites, 223 tests.
+- **With `scripts/ci-clone.sh` under WSL (Ubuntu 24.04):** the same, on a fresh LF clone of the commit.
 
 P14 touches no CUDA path.
 
