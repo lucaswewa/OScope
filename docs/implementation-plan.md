@@ -769,8 +769,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P10 | Simulated world, optics, H&E tissue | P09 | L | 0013 | Done |
 | P11 | Simulation clock and grblHAL-like stage | P09b | L | — | Done |
 | P12 | Simulated camera: sensor, modes, timing, triggers | P10, P11 | L | — | Done |
-| P13 | Samples II: reflective surface, fluorescent cell volume | P12 | L | — | In review |
-| P14 | Samples III: sub-diffraction structures, imports, load and unload | P13 | M | — | Planned |
+| P13 | Samples II: reflective surface, fluorescent cell volume | P12 | L | — | Done |
+| P14 | Samples III: sub-diffraction structures, imports, load and unload | P13 | M | — | In review |
 | P15 | Simulator at full resolution | P14, P07 | M | — | Planned |
 
 ### Stage 4: Live microscope (ends with Checkpoint A)
@@ -1064,3 +1064,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | P11 was estimated at about 2,100 lines before it started, from P10's measured densities: over twice L's 900. The owner chose one pull request, with the overrun explained, since the stage's tests need the clock and the motion, and a split's second half (~1,300) would still be over L |
 | 2026-11-12 | The owner auto-approves P12–P23: each pull request is merged once CI passes, and the owner reviews them together after P23. Decided up front: one pull request for each phase, with any overrun explained; a §5.20 budget not met is recorded and followed up; P17 encodes JPEG with `jpeg-encoder`; a change teta-wot would need is worked around in OScope and recorded in an ADR; P17's visual check is measured, and watched at review; a conflict with a spec is decided, recorded and flagged in the pull request. P12 was estimated at about 2,000 lines |
 | 2026-11-12 | P13 was estimated at about 1,900 lines before it started (code ~1,000, tests ~500, `ex-sim-3d` ~450), from P12's measured densities: over twice L's 900. One pull request, with the overrun explained, as the owner decided for P12–P23 |
+| 2026-11-12 | P14 was estimated at about 1,700 lines before it started (code ~900, tests ~550, `ex-sim-samples` ~250), from P13's measured densities (P13 came in at 2,511 against ~1,900): nearly three times M's 600. One pull request, with the overrun explained |

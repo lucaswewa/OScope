@@ -1,6 +1,9 @@
 //! What the camera's tests share: a camera over an exact stage, and
 //! streaming into a channel.
 
+// Each test file uses only some of it.
+#![allow(dead_code)]
+
 use std::sync::mpsc::{Receiver, channel};
 use std::sync::{Arc, RwLock};
 

@@ -17,12 +17,15 @@ png.workspace = true
 rayon.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+tiff = { workspace = true, features = ["deflate", "jpeg", "lzw"] }
+zune-core.workspace = true
+zune-jpeg.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
 rand.workspace = true
+jpeg-encoder.workspace = true
 tempfile.workspace = true
-tiff.workspace = true
 
 
 [[bench]]

@@ -1,6 +1,6 @@
 # P13: Samples II: reflective surface, fluorescent cell volume
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p13-sim-3d-samples` / [#26](https://github.com/lucaswewa/OScope/pull/26)
 - Size: L · estimated ~1,900 before it started (code ~1,000, tests ~500, `ex-sim-3d` ~450); one pull request, at the owner's standing choice for P12–P23 · measured **2,511** hand-written lines added (code 1,074; tests 815; examples 622), and 71 removed. Docs and `Cargo.lock` aren't counted. **That is 1,611 over L's 900, and about 600 over the estimate:** the tests and the example's depth from focus and page took more than estimated.
 
