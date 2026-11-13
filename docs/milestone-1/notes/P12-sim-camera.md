@@ -1,6 +1,6 @@
 # P12: Simulated camera: sensor, modes, timing, triggers
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p12-sim-camera` / [#25](https://github.com/lucaswewa/OScope/pull/25)
 - Size: L · estimated ~2,000 before it started; one pull request, at the owner's standing choice for P12–P23 · measured **1,913** hand-written lines added (code 940; tests 717; examples 256), and 11 removed. Docs and `Cargo.lock` aren't counted. **That is 1,013 over L's 900, and 87 under the estimate.**
 

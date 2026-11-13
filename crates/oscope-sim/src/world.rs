@@ -7,6 +7,8 @@ use oscope_compute::{Image, Shape};
 use oscope_core::{Point2, Rect, Size2, Um};
 use rayon::prelude::*;
 
+use crate::blur::gaussian;
+use crate::fluorescence::{Excitation, optical_section, sectioning};
 use crate::noise::coverage;
 use crate::optics::Optics;
 use crate::sample::{LayerKind, Sample};
@@ -28,6 +30,14 @@ pub enum Light {
     Transmitted,
     /// From above, reflected back into the objective.
     Reflected,
+    /// Fluorescence, in the simulator only: dyes excited by `line`, seen in
+    /// widefield or through a confocal's pinhole (`fluorescence`).
+    Fluorescence {
+        /// The excitation line.
+        line: Excitation,
+        /// Whether a confocal's pinhole sections the light.
+        confocal: bool,
+    },
 }
 
 /// A 75 × 25 mm slide carrying a sample under a 50 × 24 mm coverslip.
@@ -80,56 +90,6 @@ pub struct World {
     pub focus: Um,
 }
 
-/// Blurs an RGB image with a Gaussian of standard deviation `sigma`
-/// pixels, one axis after the other, repeating the edge pixels.
-fn blur(image: &mut Image, sigma: f64) {
-    if sigma < 0.2 {
-        return;
-    }
-    let radius = (3.0 * sigma).ceil() as i64;
-    let raw: Vec<f64> = (-radius..=radius)
-        .map(|k| (-(k * k) as f64 / (2.0 * sigma * sigma)).exp())
-        .collect();
-    let total: f64 = raw.iter().sum();
-    let weights: Vec<f32> = raw.iter().map(|w| (w / total) as f32).collect();
-    let (w, h) = (image.width() as i64, image.height() as i64);
-    let row = w as usize * 3;
-    let clamp = |v: i64, n: i64| v.clamp(0, n - 1) as usize;
-
-    let source = image.data().to_vec();
-    image
-        .data_mut()
-        .par_chunks_mut(row)
-        .enumerate()
-        .for_each(|(y, out)| {
-            let line = &source[y * row..(y + 1) * row];
-            for x in 0..w {
-                let mut acc = [0.0_f32; 3];
-                for (k, weight) in weights.iter().enumerate() {
-                    let at = clamp(x + k as i64 - radius, w) * 3;
-                    for c in 0..3 {
-                        acc[c] += weight * line[at + c];
-                    }
-                }
-                out[x as usize * 3..x as usize * 3 + 3].copy_from_slice(&acc);
-            }
-        });
-    let source = image.data().to_vec();
-    image
-        .data_mut()
-        .par_chunks_mut(row)
-        .enumerate()
-        .for_each(|(y, out)| {
-            out.fill(0.0);
-            for (k, weight) in weights.iter().enumerate() {
-                let from = clamp(y as i64 + k as i64 - radius, h) * row;
-                for (o, s) in out.iter_mut().zip(&source[from..from + row]) {
-                    *o += weight * s;
-                }
-            }
-        });
-}
-
 /// Multiplies `into` by `by`, sample by sample.
 fn multiply(into: &mut Image, by: &Image) {
     for (a, b) in into.data_mut().iter_mut().zip(by.data()) {
@@ -159,10 +119,19 @@ impl World {
     /// RGB, 1 where the light passes or is reflected unhindered.
     ///
     /// Each layer is blurred by its own distance from the focal plane
-    /// (`Optics::blur`). In transmitted light, the layers' transmittances
-    /// multiply, with a reflective layer passing what it doesn't reflect. In
-    /// reflected light, each reflective layer's reflection passes twice
-    /// through the absorbing layers above it.
+    /// (`Optics::blur`).
+    ///
+    /// - **Transmitted:** the layers' transmittances multiply, with a
+    ///   reflective layer passing what it doesn't reflect.
+    /// - **Reflected:** each reflective layer's reflection passes twice
+    ///   through the absorbing layers above it (ADR-0013).
+    /// - **Fluorescence:** each fluorescent layer's dye, blurred at its
+    ///   emission's wavelength, gives its colour in proportion to how well
+    ///   the line excites it; a confocal passes less of it the further it is
+    ///   from focus.
+    ///
+    /// Each light sees only its own layers: dyes in fluorescence, stains and
+    /// reflections otherwise.
     pub fn render(&self, field: &Field, optics: &Optics, light: Light) -> Image {
         let p = optics.pixel_size().0;
         let (w, h) = (field.width, field.height);
@@ -181,16 +150,42 @@ impl World {
             return image;
         };
 
-        // The layers, and how far each is from the focal plane, in pixels.
+        // The layers this light sees, and how far each is from the focal
+        // plane, in pixels: a dye's at its emission's wavelength. A dye the
+        // line hardly excites is left out.
+        let fluorescence = match light {
+            Light::Fluorescence { line, confocal } => Some((line, confocal)),
+            _ => None,
+        };
         let focal = field.z.0 - self.focus.0;
         let layers = slide.sample.layers();
+        let seen: Vec<bool> = layers
+            .iter()
+            .map(|l| match (l.kind, fluorescence) {
+                (LayerKind::Fluorescent(dye), Some((line, _))) => dye.excited_by(line) > 1e-6,
+                (LayerKind::Fluorescent(_), None) => false,
+                (_, light) => light.is_none(),
+            })
+            .collect();
         let sigmas: Vec<f64> = layers
             .iter()
-            .map(|l| optics.blur(Um(focal - l.z.0)).0 / p)
+            .map(|l| {
+                let wavelength = match l.kind {
+                    LayerKind::Fluorescent(dye) => dye.peaks().1,
+                    _ => optics.wavelength,
+                };
+                let at = Optics {
+                    wavelength,
+                    ..*optics
+                };
+                at.blur(Um(focal - l.z.0)).0 / p
+            })
             .collect();
         let margin = sigmas
             .iter()
-            .fold(0.0_f64, |m, s| m.max(*s))
+            .zip(&seen)
+            .filter(|(_, seen)| **seen)
+            .fold(0.0_f64, |m, (s, _)| m.max(*s))
             .mul_add(3.0, 1.0)
             .ceil() as u32;
         let (we, he) = (w + 2 * margin, h + 2 * margin);
@@ -199,29 +194,39 @@ impl World {
             corner.y - f64::from(margin) * p - slide.origin.y,
         );
 
-        let mut passed = Image::zeros(Shape::new(we, he, 3));
-        passed.data_mut().fill(1.0);
-        let mut reflected = Image::zeros(Shape::new(we, he, 3));
+        let filled = |value: f32| {
+            let mut image = Image::zeros(Shape::new(we, he, 3));
+            image.data_mut().fill(value);
+            image
+        };
+        // What passes all the layers so far, what passes only their stains,
+        // what they reflect, and what their dyes emit.
+        let (mut passed, mut absorbed) = (filled(1.0), filled(1.0));
+        let (mut reflected, mut emitted) = (filled(0.0), filled(0.0));
         // From the top down, so each reflection is dimmed by what is above.
-        let mut order: Vec<usize> = (0..layers.len()).collect();
+        let mut order: Vec<usize> = (0..layers.len()).filter(|i| seen[*i]).collect();
         order.sort_by(|a, b| layers[*b].z.0.total_cmp(&layers[*a].z.0));
         for index in order {
             let mut layer = slide.sample.render(index, origin, Um(p), we, he);
-            match layers[index].kind {
-                LayerKind::Absorbing => {
+            if layer.data().iter().all(|v| *v == 0.0) {
+                continue;
+            }
+            match (layers[index].kind, fluorescence) {
+                (LayerKind::Absorbing, _) => {
                     for v in layer.data_mut() {
                         *v = 10f32.powf(-*v);
                     }
-                    blur(&mut layer, sigmas[index]);
+                    gaussian(&mut layer, sigmas[index]);
                     multiply(&mut passed, &layer);
+                    multiply(&mut absorbed, &layer);
                 }
-                LayerKind::Reflective => {
-                    blur(&mut layer, sigmas[index]);
+                (LayerKind::Reflective, _) => {
+                    gaussian(&mut layer, sigmas[index]);
                     for ((r, l), t) in reflected
                         .data_mut()
                         .iter_mut()
                         .zip(layer.data())
-                        .zip(passed.data())
+                        .zip(absorbed.data())
                     {
                         *r += l * t * t;
                     }
@@ -230,6 +235,27 @@ impl World {
                     }
                     multiply(&mut passed, &layer);
                 }
+                (LayerKind::Fluorescent(dye), Some((line, confocal))) => {
+                    // The dye's amount, blurred once, then given its colour.
+                    let amounts = layer.data().iter().step_by(3).copied().collect();
+                    let mut amount = Image::from_vec(Shape::new(we, he, 1), amounts)
+                        .expect("one channel of the layer's size");
+                    gaussian(&mut amount, sigmas[index]);
+                    let kept = if confocal {
+                        let section = optical_section(optics, dye.peaks().1);
+                        sectioning(Um(focal - layers[index].z.0), section)
+                    } else {
+                        1.0
+                    };
+                    let excited = dye.excited_by(line) * kept;
+                    let gain = dye.colour().map(|c| (c * excited) as f32);
+                    for (out, a) in emitted.data_mut().chunks_mut(3).zip(amount.data()) {
+                        for (o, g) in out.iter_mut().zip(gain) {
+                            *o += a * g;
+                        }
+                    }
+                }
+                (LayerKind::Fluorescent(_), None) => {}
             }
         }
 
@@ -264,6 +290,7 @@ impl World {
                                 (REFLECTED * on_slide.max(covered)) as f32
                                     + reflected.data()[at + c]
                             }
+                            Light::Fluorescence { .. } => emitted.data()[at + c],
                         };
                     }
                 }
