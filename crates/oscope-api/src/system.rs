@@ -2,6 +2,7 @@
 //! folders.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use schemars::JsonSchema;
@@ -9,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{CpuRefreshKind, RefreshKind, System as Host};
 use teta_wot::prelude::*;
 
-use crate::Roots;
+use crate::{Restart, Roots};
 
 /// OScope's version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -75,10 +76,36 @@ pub struct System {
     data_root: PathBuf,
     #[thing(init = absolute(&config.scratch))]
     scratch_root: PathBuf,
+    #[thing(init = OnceLock::new())]
+    restart: OnceLock<Arc<Restart>>,
 }
 
 #[thing_impl]
 impl System {
+    #[on_start]
+    async fn connect(&self, ctx: ThingCtx) -> anyhow::Result<()> {
+        if let Some(restart) = ctx.server().service::<Restart>() {
+            let _ = self.restart.set(restart);
+        }
+        Ok(())
+    }
+
+    /// Restarts the server.
+    ///
+    /// It stops as it does when asked to, then exits with code 75, which
+    /// its supervisor (the desktop app, systemd, or Windows' service
+    /// manager) takes as a request to start it again (ADR-0015). Run by
+    /// hand, it just stops.
+    #[action]
+    async fn restart(&self) -> Result<(), ActionError> {
+        let restart = self
+            .restart
+            .get()
+            .ok_or_else(|| ActionError::handled("the server can't restart"))?;
+        restart.request();
+        Ok(())
+    }
+
     /// OScope's version.
     #[property]
     async fn version(&self) -> String {

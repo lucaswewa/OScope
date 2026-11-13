@@ -3,7 +3,9 @@
 use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
+use oscope_shm::RingWriter;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use teta_wot::http::axum::middleware;
@@ -12,6 +14,7 @@ use teta_wot::http::axum::{Json, Router};
 use teta_wot::prelude::FromConfig;
 use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuilder};
 use tokio::net::TcpListener;
+use tokio::sync::Notify;
 
 use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
@@ -76,7 +79,45 @@ pub struct ApiBuilder {
     things: ThingServerBuilder,
     pages: Option<PathBuf>,
     logs: LogStore,
+    restart: Arc<Restart>,
 }
+
+/// A request to restart the server, which the `system` Thing's `restart`
+/// action makes, and whoever serves the [`Api`] waits for
+/// ([`Api::restart`]). The sidecar contract (ADR-0015) exits with code 75
+/// for it.
+#[derive(Debug, Default)]
+pub struct Restart {
+    asked: AtomicBool,
+    notify: Notify,
+}
+
+impl Restart {
+    /// Asks for a restart.
+    pub fn request(&self) {
+        self.asked.store(true, Ordering::SeqCst);
+        self.notify.notify_waiters();
+    }
+
+    /// Whether a restart was asked for.
+    pub fn is_requested(&self) -> bool {
+        self.asked.load(Ordering::SeqCst)
+    }
+
+    /// Completes when a restart is asked for.
+    pub async fn requested(&self) {
+        loop {
+            let asked = self.notify.notified();
+            if self.is_requested() {
+                return;
+            }
+            asked.await;
+        }
+    }
+}
+
+/// The preview ring, until the `preview` Thing starts publishing to it.
+pub(crate) struct RingSlot(pub(crate) std::sync::Mutex<Option<RingWriter>>);
 
 impl ApiBuilder {
     /// Checks every request with `authenticator`: the Things', the media
@@ -131,6 +172,15 @@ impl ApiBuilder {
         self
     }
 
+    /// Publishes previews of the camera's newest frames to `ring`, the
+    /// desktop app's fast path (ADR-0015), at the `preview` Thing's
+    /// defaults. Needs [`devices`](Self::devices).
+    pub fn ring(mut self, ring: RingWriter) -> Self {
+        let slot = RingSlot(std::sync::Mutex::new(Some(ring)));
+        self.things = self.things.service(Arc::new(slot));
+        self
+    }
+
     /// Builds the server. Nothing starts until [`Api::serve`].
     pub fn build(self) -> Result<Api, ApiError> {
         let mut routes = Router::new()
@@ -144,7 +194,10 @@ impl ApiBuilder {
             .thing("logs", Logs::new(self.logs))
             .layer(middleware::from_fn(statuses));
         let server = things.merge(routes).build()?;
-        Ok(Api { server })
+        Ok(Api {
+            server,
+            restart: self.restart,
+        })
     }
 }
 
@@ -152,21 +205,30 @@ impl ApiBuilder {
 #[derive(Debug)]
 pub struct Api {
     server: ThingServer,
+    restart: Arc<Restart>,
 }
 
 impl Api {
     /// Starts building the server, with the `system` Thing reporting on
     /// `roots`, and the `logs` Thing.
     pub fn builder(roots: &Roots) -> ApiBuilder {
+        let restart = Arc::new(Restart::default());
         let things = ThingServer::builder()
             .api_prefix(API_PREFIX)
             .api_info(TITLE, VERSION)
+            .service(Arc::clone(&restart))
             .thing("system", System::from_config(roots.clone()));
         ApiBuilder {
             things,
             pages: None,
             logs: LogStore::default(),
+            restart,
         }
+    }
+
+    /// The server's restart request: whoever serves waits for it, and stops.
+    pub fn restart(&self) -> Arc<Restart> {
+        Arc::clone(&self.restart)
     }
 
     /// The OpenAPI document of the control plane, as the server serves it

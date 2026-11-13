@@ -52,11 +52,51 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 | `--data-root FOLDER` | Uses another data root, relative to where you run the program |
 | `--print-openapi` | Prints the OpenAPI document and exits |
 | `--print-td` | Prints each Thing's Thing Description, by name, and exits |
+| `--managed` | Runs under a supervisor, such as the desktop app, by the sidecar contract below |
+| `service install`, `uninstall`, `run` | Windows service mode, below |
 | `--version`, `--help` | Prints the version or the usage |
 
 **Exit codes:**
+- 0 when it stopped as asked;
+- **75 when it stopped to be started again:** the `system` Thing's `restart` asks for it;
 - 2 for a wrong command line or configuration file, a wrong log level among them, with a message that says what is wrong and where;
 - 1 if the server can't serve, for example because the port is taken.
+
+**Each start writes a new local token,** 32 random bytes in hex, to `{data_root}/run/local.token`. Only the account the server runs as can read it: mode 0600 on Linux, a one-entry access list on Windows. It is for the desktop app, which proves itself with it once authentication comes (ADR-0031).
+
+## The sidecar contract
+
+`--managed` is how a supervisor, such as the desktop app, runs the server ([ADR-0015](../../docs/adr/0015-the-sidecar-contract-service-mode-and-the-desktop-fast-path.md)):
+
+- **It listens on any free port,** unless `--port` gives one.
+- **Its only line on stdout,** once it is ready, is JSON; its logs go to stderr:
+
+  ```json
+  {"ready":true,"version":"0.1.0","port":53647,"pid":14316,"token":"C:\\oscope\\data\\run\\local.token","shm":"preview-14316"}
+  ```
+
+- **Closing its stdin stops it,** as Ctrl-C does.
+- **Exit code 75 asks to be started again;** 0 means it stopped as asked.
+- **It publishes previews to a shared-memory ring,** named in `shm`, for the desktop app's fast path.
+
+[`ex-sidecar`](../../examples/ex-sidecar/README.md) is a small supervisor; [`ex-shm-reader`](../../examples/ex-shm-reader/README.md) reads the ring.
+
+## Service mode
+
+**On Windows,** from an administrator's console:
+
+```powershell
+oscope-server --config C:\oscope\oscope.toml service install    # registers the service "oscope"
+Start-Service oscope
+Stop-Service oscope
+oscope-server service uninstall
+```
+
+- **`install` records** the configuration, the data root as an absolute path, and `--port` if given. `--name` names the service.
+- **The service runs as LocalSystem,** started on demand, and is started again 2 s after it fails or exits with 75.
+- **`service run`** is what the service manager starts.
+
+**On Linux,** systemd runs the server as it is: [`packaging/linux/oscope.service`](../../packaging/linux/oscope.service), with a configuration such as [`packaging/linux/oscope.toml`](../../packaging/linux/oscope.toml). [`packaging/README.md`](../../packaging/README.md) says how to install both, and how to try each service.
 
 ## The configuration file
 
@@ -76,7 +116,13 @@ level = "info"                    # tracing's EnvFilter syntax, such as "info,os
 ring = 50000                      # records kept in memory, for queries and the tail
 keep_days = 30                    # days of daily files kept, in data_root/logs
 
-[devices]                         # kept for the device Things (P16)
+[devices]                         # each device's driver (P16)
+
+[shm]                             # the desktop app's preview ring (P19)
+enabled = true                    # by default only with --managed
+name = "preview"                  # by default; preview-{pid} with --managed
+slots = 3
+slot_bytes = 8388608              # the largest preview
 ```
 
 - **Relative folders** are relative to the file's own folder.

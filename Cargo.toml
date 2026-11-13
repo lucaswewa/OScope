@@ -49,6 +49,10 @@ insta = { version = "1.49.0", default-features = false }
 # New in P07: CUDA, loaded at run time (ADR-0011).
 find-msvc-tools = "0.1.14"
 cudarc = { version = "0.19.10", default-features = false, features = ["std", "driver", "nvrtc", "cufft", "dynamic-loading", "cuda-13040"] }
+# New in P19: shared memory and a private file (oscope-shm). Both are already in
+# the lock, through tokio.
+libc = "0.2.189"
+windows-sys = "0.61.2"
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
@@ -56,6 +60,8 @@ oscope-compute = { path = "crates/oscope-compute" }
 oscope-hal = { path = "crates/oscope-hal" }
 oscope-imaging = { path = "crates/oscope-imaging" }
 oscope-sim = { path = "crates/oscope-sim" }
+oscope-server = { path = "crates/oscope-server" }
+oscope-shm = { path = "crates/oscope-shm" }
 oscope-core = { path = "crates/oscope-core" }
 
 # Every crate takes these with `[lints] workspace = true`, except the crates

@@ -346,13 +346,14 @@ function connect() {
   };
 }
 
-// The light, the exposure, and focus.
+// The light, the exposure, and the stage's jogs.
 $("light").addEventListener("change", (event) =>
   send("POST", "illumination/set_light", { channel: "transmitted", on: true, intensity: Number(event.target.value) }));
 $("exposure").addEventListener("change", (event) => send("PUT", "camera/exposure", Number(event.target.value)));
-for (const button of document.querySelectorAll("button[data-z]")) {
+for (const button of document.querySelectorAll("button[data-axis]")) {
+  const { axis, sign } = button.dataset;
   button.addEventListener("pointerdown", () =>
-    send("POST", "stage/jog", { axis: "z", towards_max: button.dataset.z === "+", speed: Number($("speed").value) }));
+    send("POST", "stage/jog", { axis, towards_max: sign === "+", speed: Number($("speed").value) }));
   for (const end of ["pointerup", "pointerleave"]) button.addEventListener(end, () => send("POST", "stage/halt", {}));
 }
 

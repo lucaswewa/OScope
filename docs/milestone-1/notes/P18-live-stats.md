@@ -1,6 +1,6 @@
 # P18: Live statistics and overlay data
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p18-live-stats` / [#31](https://github.com/lucaswewa/OScope/pull/31)
 - Size: M · estimated ~1,400 before it started (the statistics ~370; their blocks on the preview stream and the sessions ~120; tests ~350; `ex-live-overlays` with its page ~550); one pull request, at the owner's standing choice for P12–P23 · measured **1,955** hand-written lines added (code 749, with 3 in `.gitignore`; tests 592; examples 614), and 47 removed. Docs, `Cargo.lock`, the generated snapshot and P17's stray pending snapshot (429 lines, deleted) aren't counted. **That is 1,355 over M's 600, and about 555 over the estimate:** the statistics module came to 599 lines against ~370, rustfmt spreading its folds over rows across many lines, and the tests to 592 against ~350.
 

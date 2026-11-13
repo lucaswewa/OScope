@@ -1,5 +1,6 @@
 //! What the examples share: serving an example's page beside OScope's API,
-//! at one origin, and its `--smoke` checks over HTTP.
+//! at one origin, and its `--smoke` checks over HTTP; and, for the examples
+//! that supervise a server, running one as a [`sidecar`].
 //!
 //! ```no_run
 //! # async fn example() -> anyhow::Result<()> {
@@ -23,6 +24,8 @@ use oscope_api::{ApiBuilder, Roots};
 use serde_json::Value;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+
+pub mod sidecar;
 
 /// What examples record: `info` and above, and OScope's own records at
 /// every level, so that a `trace` note written with the `logs` Thing's

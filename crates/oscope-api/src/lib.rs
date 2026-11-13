@@ -23,8 +23,12 @@ pub mod preview;
 mod server;
 pub mod system;
 
-pub use server::{API_PREFIX, Api, ApiBuilder, ApiError, MEDIA_PREFIX, Roots};
+pub use server::{API_PREFIX, Api, ApiBuilder, ApiError, MEDIA_PREFIX, Restart, Roots};
 pub use system::{GIT_COMMIT, VERSION};
+/// Running as a Windows service: `teta-wot`'s (P19, ADR-0015), which only
+/// this crate may depend on.
+#[cfg(windows)]
+pub use teta_wot::server::service;
 /// Completes when the process is asked to stop: Ctrl-C, and on Windows the
 /// console closing, logging off or shutting down; on Linux `SIGTERM` and
 /// `SIGHUP`.

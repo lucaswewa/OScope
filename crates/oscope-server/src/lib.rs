@@ -2,22 +2,40 @@
 //! command line, service mode and the sidecar contract.
 //!
 //! Layer L6 of ADR-0005. It reads its configuration ([`Config`]) and command
-//! line ([`Cli`]), then serves OScope's [`Api`] until it is asked to stop.
+//! line ([`Cli`]), then serves OScope's [`Api`] until it is asked to stop:
+//!
+//! - **in a console,** until Ctrl-C;
+//! - **managed** (`--managed`), under a supervisor such as the desktop app,
+//!   by the sidecar contract (ADR-0015): a JSON ready line, stop when stdin
+//!   closes, and exit code 75 to be restarted;
+//! - **as a Windows service** (`service install`, `uninstall`, `run`), or
+//!   under systemd (`packaging/linux/oscope.service`).
 
+use std::future::Future;
+use std::io::Read;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
-use serde_json::Value;
+use oscope_shm::{RingConfig, RingWriter, ShmError};
+use serde_json::{Value, json};
 
 mod config;
 
-pub use config::{Config, ConfigError, DEFAULT_PORT, Listen, Logging, Storage};
+pub use config::{Config, ConfigError, DEFAULT_PORT, Listen, Logging, Ring, Storage};
+
+/// The exit code that asks a supervisor to start the server again
+/// (ADR-0015): `EX_TEMPFAIL`.
+pub const RESTART: u8 = 75;
+
+/// The Windows service's name, unless told otherwise.
+pub const SERVICE: &str = "oscope";
 
 /// The command line.
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
@@ -39,16 +57,62 @@ pub struct Cli {
     /// Print each Thing's Thing Description, by name, and exit.
     #[arg(long)]
     pub print_td: bool,
+    /// Run under a supervisor, such as the desktop app (ADR-0015): on any
+    /// free port unless one is given, one JSON line on stdout when ready,
+    /// stop when stdin closes, and exit with code 75 to be restarted.
+    #[arg(long, conflicts_with_all = ["print_openapi", "print_td"])]
+    pub managed: bool,
+    /// Service mode.
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+/// What else the server can do.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Command {
+    /// Windows service mode: install, uninstall, and what the service
+    /// manager runs. On Linux, systemd runs the server as it is
+    /// (`packaging/linux/oscope.service`).
+    #[command(subcommand)]
+    Service(ServiceCommand),
+}
+
+/// Windows service mode.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum ServiceCommand {
+    /// Registers the server as a service, with this command line's
+    /// configuration and data root, restarted when it exits with code 75.
+    /// Needs an administrator.
+    Install {
+        /// The service's name.
+        #[arg(long, default_value = SERVICE)]
+        name: String,
+    },
+    /// Stops the service and removes it. Needs an administrator.
+    Uninstall {
+        /// The service's name.
+        #[arg(long, default_value = SERVICE)]
+        name: String,
+    },
+    /// Runs as the service: what the service manager starts.
+    Run {
+        /// The service's name.
+        #[arg(long, default_value = SERVICE)]
+        name: String,
+    },
 }
 
 impl Cli {
     /// The configuration: the file's, or the defaults, with the command
-    /// line's overrides.
+    /// line's overrides. Managed, the port is any free one unless given.
     pub fn config(&self) -> Result<Config, ConfigError> {
         let mut config = match &self.config {
             Some(path) => Config::load(path)?,
             None => Config::default(),
         };
+        if self.managed {
+            config.server.port = 0;
+        }
         if let Some(port) = self.port {
             config.server.port = port;
         }
@@ -56,6 +120,25 @@ impl Cli {
             config.storage.data_root = root.clone();
         }
         Ok(config)
+    }
+}
+
+/// How the server stopped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stopped {
+    /// As it was asked to, or after a command that doesn't serve.
+    Asked,
+    /// For a restart: the `system` Thing's `restart` asked for one.
+    Restart,
+}
+
+impl Stopped {
+    /// Its exit code: 0, or [`RESTART`].
+    pub fn exit_code(self) -> ExitCode {
+        match self {
+            Stopped::Asked => ExitCode::SUCCESS,
+            Stopped::Restart => ExitCode::from(RESTART),
+        }
     }
 }
 
@@ -72,10 +155,10 @@ pub enum Error {
     /// The logs couldn't be started.
     #[error(transparent)]
     Log(#[from] LogError),
-    /// A folder couldn't be created.
+    /// A folder or file couldn't be created.
     #[error("can't create {}: {source}", path.display())]
     Folder {
-        /// The folder.
+        /// The folder or file.
         path: PathBuf,
         /// Why.
         source: std::io::Error,
@@ -91,6 +174,12 @@ pub enum Error {
         /// Why.
         source: std::io::Error,
     },
+    /// The preview ring couldn't be made.
+    #[error(transparent)]
+    Ring(#[from] ShmError),
+    /// Service mode failed, or isn't this platform's.
+    #[error("service mode: {0}")]
+    Service(String),
 }
 
 impl Error {
@@ -106,23 +195,47 @@ impl Error {
     }
 }
 
-/// Does what the command line asks: prints a document, or serves until the
-/// process is asked to stop (Ctrl-C, or the service manager).
+/// Does what the command line asks: prints a document, runs a service
+/// command, or serves until the process is asked to stop (Ctrl-C, the
+/// service manager, or, managed, stdin closing) or to restart.
 ///
-/// When it serves, it creates the data and scratch roots, and starts the
-/// logs: on stderr, and in daily files in `{data_root}/logs`. Then it prints
-/// one line on stdout: `oscope-server {version} serving on
-/// http://{address}/`.
-pub fn run(cli: &Cli) -> Result<(), Error> {
+/// When it serves, it creates the data and scratch roots, writes a new
+/// local token, and starts the logs: on stderr, and in daily files in
+/// `{data_root}/logs`. Then it prints one line on stdout: `oscope-server
+/// {version} serving on http://{address}/`, or managed, the JSON ready line
+/// (ADR-0015).
+pub fn run(cli: &Cli) -> Result<Stopped, Error> {
+    if let Some(Command::Service(command)) = &cli.command {
+        return service(cli, command);
+    }
     let config = cli.config()?;
-    let roots = Roots {
-        data: config.storage.data_root.clone(),
-        scratch: config.storage.scratch_root.clone(),
-    };
     let address = SocketAddr::new(config.server.address, config.server.port);
     let runtime =
         tokio::runtime::Runtime::new().map_err(|source| Error::Listen { address, source })?;
-    // The devices: imports' paths are from the configuration file's folder.
+    if cli.print_openapi || cli.print_td {
+        let roots = roots(&config);
+        let devices = runtime.block_on(devices(cli, &config))?;
+        let api = Api::builder(&roots).devices(devices).build()?;
+        let base = format!("http://{address}/");
+        match cli.print_openapi {
+            true => print(&api.openapi()),
+            false => print(&Value::Object(api.thing_descriptions(&base)?)),
+        }
+        return Ok(Stopped::Asked);
+    }
+    runtime.block_on(serve(cli, config, oscope_api::shutdown_signal()))
+}
+
+fn roots(config: &Config) -> Roots {
+    Roots {
+        data: config.storage.data_root.clone(),
+        scratch: config.storage.scratch_root.clone(),
+    }
+}
+
+/// The devices the configuration's `[devices]` names: imports' paths are
+/// from the configuration file's folder.
+async fn devices(cli: &Cli, config: &Config) -> Result<Arc<Devices>, Error> {
     let devices_config: DevicesConfig = toml::Value::Table(config.devices.clone())
         .try_into()
         .map_err(|e: toml::de::Error| Error::Devices(e.to_string()))?;
@@ -131,19 +244,20 @@ pub fn run(cli: &Cli) -> Result<(), Error> {
         .as_deref()
         .and_then(Path::parent)
         .map_or_else(|| PathBuf::from("."), Path::to_owned);
-    let devices = runtime
-        .block_on(Devices::from_config(&devices_config, &base))
+    let devices = Devices::from_config(&devices_config, &base)
+        .await
         .map_err(Error::Devices)?;
-    let devices = Arc::new(devices);
-    if cli.print_openapi || cli.print_td {
-        let api = Api::builder(&roots).devices(devices).build()?;
-        let base = format!("http://{address}/");
-        match cli.print_openapi {
-            true => print(&api.openapi()),
-            false => print(&Value::Object(api.thing_descriptions(&base)?)),
-        }
-        return Ok(());
-    }
+    Ok(Arc::new(devices))
+}
+
+/// Serves until `stop` completes, a restart is asked for, or, managed,
+/// stdin closes.
+async fn serve(
+    cli: &Cli,
+    config: Config,
+    stop: impl Future<Output = ()> + Send + 'static,
+) -> Result<Stopped, Error> {
+    let roots = roots(&config);
     for path in [&roots.data, &roots.scratch] {
         std::fs::create_dir_all(path).map_err(|source| Error::Folder {
             path: path.clone(),
@@ -161,19 +275,197 @@ pub fn run(cli: &Cli) -> Result<(), Error> {
         source,
     })?;
     logs::install(&store, &config.logging.level)?;
-    let api = Api::builder(&roots)
+    let devices = devices(cli, &config).await?;
+    let token = write_token(&roots)?;
+    let ring = ring(cli, &config)?;
+    let ring_name = ring.as_ref().map(|r| r.name().to_owned());
+    let mut api = Api::builder(&roots)
         .logs(store)
         .settings(roots.data.join("settings"))
-        .devices(devices)
-        .build()?;
-    runtime.block_on(async {
-        let listener = tokio::net::TcpListener::bind(address)
-            .await
-            .map_err(|source| Error::Listen { address, source })?;
-        let bound = listener.local_addr().unwrap_or(address);
-        println!("oscope-server {VERSION} serving on http://{bound}/");
-        Ok(api.serve(listener, oscope_api::shutdown_signal()).await?)
+        .devices(devices);
+    if let Some(ring) = ring {
+        api = api.ring(ring);
+    }
+    let api = api.build()?;
+    let address = SocketAddr::new(config.server.address, config.server.port);
+    let listener = tokio::net::TcpListener::bind(address)
+        .await
+        .map_err(|source| Error::Listen { address, source })?;
+    let bound = listener.local_addr().unwrap_or(address);
+    let closed: Pin<Box<dyn Future<Output = ()> + Send>> = match cli.managed {
+        true => {
+            let ready = json!({
+                "ready": true,
+                "version": VERSION,
+                "port": bound.port(),
+                "pid": std::process::id(),
+                "token": token,
+                "shm": ring_name,
+            });
+            println!("{ready}");
+            Box::pin(stdin_closed())
+        }
+        false => {
+            println!("oscope-server {VERSION} serving on http://{bound}/");
+            Box::pin(std::future::pending())
+        }
+    };
+    let restart = api.restart();
+    let asked = Arc::clone(&restart);
+    let shutdown = async move {
+        tokio::select! {
+            () = stop => {}
+            () = asked.requested() => tracing::info!("restarting, as asked"),
+            () = closed => tracing::info!("stdin closed: stopping, as the supervisor asks"),
+        }
+    };
+    api.serve(listener, shutdown).await?;
+    Ok(match restart.is_requested() {
+        true => Stopped::Restart,
+        false => Stopped::Asked,
     })
+}
+
+/// Completes when stdin closes: the supervisor's way to stop the server.
+fn stdin_closed() -> impl Future<Output = ()> {
+    let (closed, wait) = tokio::sync::oneshot::channel::<()>();
+    std::thread::spawn(move || {
+        let (mut stdin, mut buffer) = (std::io::stdin().lock(), [0; 256]);
+        while matches!(stdin.read(&mut buffer), Ok(n) if n > 0) {}
+        let _ = closed.send(());
+    });
+    async move {
+        let _ = wait.await;
+    }
+}
+
+/// Writes a new local token for the desktop app (ADR-0015): 32 random
+/// bytes, in hex, in `{data_root}/run/local.token`, readable by this
+/// account alone. Its absolute path.
+fn write_token(roots: &Roots) -> Result<PathBuf, Error> {
+    let path = roots.data.join("run").join("local.token");
+    let failed = |source| Error::Folder {
+        path: path.clone(),
+        source,
+    };
+    std::fs::create_dir_all(roots.data.join("run")).map_err(failed)?;
+    let token: [u8; 32] = rand::random();
+    let hex: String = token.iter().map(|b| format!("{b:02x}")).collect();
+    oscope_shm::write_private(&path, hex.as_bytes()).map_err(failed)?;
+    std::path::absolute(&path).map_err(failed)
+}
+
+/// The preview ring, if the configuration's `[shm]` asks for one: by
+/// default only when managed.
+fn ring(cli: &Cli, config: &Config) -> Result<Option<RingWriter>, Error> {
+    let shm = &config.shm;
+    if !shm.enabled.unwrap_or(cli.managed) {
+        return Ok(None);
+    }
+    let name = match (&shm.name, cli.managed) {
+        (Some(name), _) => name.clone(),
+        (None, true) => format!("preview-{}", std::process::id()),
+        (None, false) => "preview".to_owned(),
+    };
+    let size = RingConfig {
+        slots: shm.slots,
+        slot_bytes: shm.slot_bytes,
+    };
+    Ok(Some(RingWriter::create(&name, size)?))
+}
+
+/// The service commands, on Windows.
+#[cfg(windows)]
+fn service(cli: &Cli, command: &ServiceCommand) -> Result<Stopped, Error> {
+    use std::ffi::OsString;
+    use std::time::Duration;
+
+    use oscope_api::service;
+
+    let failed = |e: &dyn std::fmt::Display| Error::Service(e.to_string());
+    match command {
+        ServiceCommand::Install { name } => {
+            let config = cli.config()?;
+            let absolute = |path: &Path| std::path::absolute(path).map_err(|e| failed(&e));
+            let mut arguments: Vec<OsString> = Vec::new();
+            if let Some(path) = &cli.config {
+                arguments.extend(["--config".into(), absolute(path)?.into()]);
+            }
+            let data = absolute(&config.storage.data_root)?;
+            arguments.extend(["--data-root".into(), data.into()]);
+            if let Some(port) = cli.port {
+                arguments.extend(["--port".into(), port.to_string().into()]);
+            }
+            arguments.extend(["service", "run", "--name"].map(OsString::from));
+            arguments.push(name.into());
+            let options = service::InstallOptions {
+                name: name.clone(),
+                display_name: format!("OScope ({name})"),
+                description: "Serves the OScope microscope.".to_owned(),
+                executable: std::env::current_exe().map_err(|e| failed(&e))?,
+                arguments,
+                automatic: false,
+            };
+            service::install(&options).map_err(|e| failed(&e))?;
+            // Restarted when it fails, exit code 75 included: teta-wot's
+            // install leaves recovery unset, so sc.exe sets it (ADR-0015).
+            for arguments in [
+                &[
+                    "failure",
+                    name,
+                    "reset=",
+                    "86400",
+                    "actions=",
+                    "restart/2000",
+                ][..],
+                &["failureflag", name, "1"],
+            ] {
+                let status = std::process::Command::new("sc.exe")
+                    .args(arguments)
+                    .output()
+                    .map_err(|e| failed(&e))?;
+                if !status.status.success() {
+                    let said = String::from_utf8_lossy(&status.stdout).trim().to_owned();
+                    return Err(Error::Service(format!("sc.exe {}: {said}", arguments[0])));
+                }
+            }
+            println!("installed the service {name}");
+            Ok(Stopped::Asked)
+        }
+        ServiceCommand::Uninstall { name } => {
+            service::uninstall(name).map_err(|e| failed(&e))?;
+            println!("removed the service {name}");
+            Ok(Stopped::Asked)
+        }
+        ServiceCommand::Run { name } => {
+            let (cli, config) = (cli.clone(), cli.config()?);
+            let stop_hint = Duration::from_secs(30);
+            service::run_as_service(name, stop_hint, move |_, stop| {
+                Box::pin(async move {
+                    match serve(&cli, config, stop).await {
+                        Ok(stopped) => stopped.exit_code(),
+                        Err(error) => {
+                            tracing::error!("the service failed: {error}");
+                            error.exit_code()
+                        }
+                    }
+                })
+            })
+            .map_err(|e| failed(&e))?;
+            Ok(Stopped::Asked)
+        }
+    }
+}
+
+/// The service commands, which are Windows': systemd runs the server as it
+/// is.
+#[cfg(not(windows))]
+fn service(_: &Cli, _: &ServiceCommand) -> Result<Stopped, Error> {
+    Err(Error::Service(
+        "the service commands are for Windows; on Linux, systemd runs oscope-server \
+         as it is (packaging/linux/oscope.service)"
+            .to_owned(),
+    ))
 }
 
 /// Prints a JSON document, indented, on stdout.
@@ -183,9 +475,10 @@ fn print(document: &Value) {
 
 /// Parses the command line, as `main` does: for `--help`, `--version` and
 /// wrong arguments, clap prints and exits (with 2 for wrong arguments).
+/// Exits with 0 when stopped as asked, 75 for a restart.
 pub fn main() -> ExitCode {
     match run(&Cli::parse()) {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(stopped) => stopped.exit_code(),
         Err(error) => {
             eprintln!("oscope-server: {error}");
             error.exit_code()
