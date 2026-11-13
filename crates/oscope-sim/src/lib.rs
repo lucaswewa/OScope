@@ -12,6 +12,8 @@
 //! - [`motion`]: [`Segment`]s, straight moves with grblHAL's acceleration;
 //! - [`stage`]: the [`SimStage`], a grblHAL-like stage on the clock;
 //!
+//! - [`tiles`]: the [`TileCache`] of rendered tiles the camera samples, so
+//!   that it renders each piece of the world once, not every frame;
 //! - [`world`]: the [`World`], a [`Slide`] with its coverslip and sample on
 //!   the stage, and [`World::render`], which gives the image of a [`Field`]
 //!   in transmitted, reflected or fluorescent [`Light`];
@@ -45,6 +47,8 @@ pub mod catalogue;
 pub mod cells;
 pub mod clock;
 pub mod fluorescence;
+#[cfg(feature = "cuda")]
+mod gpu;
 pub mod import;
 pub mod motion;
 pub mod noise;
@@ -55,6 +59,7 @@ pub mod stage;
 pub mod structures;
 pub mod surface;
 pub mod target;
+pub mod tiles;
 pub mod tissue;
 pub mod world;
 
@@ -72,5 +77,6 @@ pub use stage::{LostSteps, Pulse, Settling, SimStage, SimStageConfig};
 pub use structures::Structures;
 pub use surface::Surface;
 pub use target::TestTarget;
+pub use tiles::{CacheStats, TileCache, TiledField};
 pub use tissue::{HeTissue, Nucleus};
 pub use world::{Field, Light, Slide, World};

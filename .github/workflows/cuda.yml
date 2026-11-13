@@ -13,8 +13,10 @@ on:
     paths:
       - "crates/oscope-compute/**"
       - "crates/oscope-imaging/**"
+      - "crates/oscope-sim/**"
       - "examples/ex-cuda-check/**"
       - "examples/ex-demosaic/**"
+      - "examples/ex-sim-bench/**"
       - ".github/workflows/cuda.yml"
 
 permissions:
@@ -40,13 +42,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Clippy, with the feature
         run: >-
-          cargo clippy -p oscope-compute -p oscope-imaging -p ex-cuda-check -p ex-demosaic
+          cargo clippy -p oscope-compute -p oscope-imaging -p oscope-sim
+          -p ex-cuda-check -p ex-demosaic -p ex-sim-bench
           --locked --all-targets
-          --features oscope-compute/cuda,oscope-imaging/cuda,ex-cuda-check/cuda,ex-demosaic/cuda
+          --features oscope-compute/cuda,oscope-imaging/cuda,oscope-sim/cuda
+          --features ex-cuda-check/cuda,ex-demosaic/cuda,ex-sim-bench/cuda
           -- -D warnings
       - name: Tests, with the feature
-        run: cargo test -p oscope-compute -p oscope-imaging --features oscope-compute/cuda,oscope-imaging/cuda --locked
+        run: >-
+          cargo test -p oscope-compute -p oscope-imaging -p oscope-sim --locked
+          --features oscope-compute/cuda,oscope-imaging/cuda,oscope-sim/cuda
       - name: The examples, which fall back to the CPU
         run: |
           cargo run -p ex-cuda-check --features cuda --locked -- --smoke
           cargo run -p ex-demosaic --features cuda --locked -- --smoke
+          cargo run -p ex-sim-bench --features cuda --locked -- --smoke

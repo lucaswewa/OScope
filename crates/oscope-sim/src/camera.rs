@@ -8,7 +8,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use oscope_core::{
-    BayerPattern, Clock, FrameId, FrameMeta, FramePool, Ms, PixelFormat, PixelRect, Point2,
+    BayerPattern, Clock, FrameId, FrameMeta, FramePool, Ms, PixelFormat, PixelRect, Point2, Rect,
     Timestamp, Um,
 };
 use oscope_hal::{
@@ -18,11 +18,14 @@ use oscope_hal::{
 use rayon::prelude::*;
 
 use crate::clock::SimClock;
+#[cfg(feature = "cuda")]
+use crate::gpu::GpuFrame;
 use crate::noise::hash;
 use crate::optics::Optics;
 use crate::sensor::{Random, SensorModel};
 use crate::stage::SimStage;
-use crate::world::{Field, Light, World};
+use crate::tiles::{CacheStats, TileCache};
+use crate::world::{Light, World};
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
@@ -84,6 +87,8 @@ pub struct SimCameraConfig {
     pub readout: [Ms; 3],
     /// The seed for the noise.
     pub seed: u64,
+    /// The bytes of rendered tiles the camera keeps (`tiles`).
+    pub cache: usize,
 }
 
 impl Default for SimCameraConfig {
@@ -99,6 +104,7 @@ impl Default for SimCameraConfig {
             mounting: Mounting::default(),
             readout: [Ms(60.0), Ms(18.0), Ms(15.0)],
             seed: 1,
+            cache: 2 << 30,
         }
     }
 }
@@ -110,6 +116,19 @@ impl SimCameraConfig {
         Self {
             width,
             height,
+            cache: 256 << 20,
+            ..Self::default()
+        }
+    }
+
+    /// The MIChrome 20 scaled down for tests: a quarter of its pixels each
+    /// way, 1368 × 912, each four times as large, so it sees the same field.
+    pub fn quarter() -> Self {
+        Self {
+            width: 1368,
+            height: 912,
+            pixel_size: Um(9.6),
+            cache: 512 << 20,
             ..Self::default()
         }
     }
@@ -208,6 +227,10 @@ struct Inner {
     world: Arc<RwLock<World>>,
     settings: Mutex<CameraSettings>,
     view: Mutex<View>,
+    tiles: TileCache,
+    /// The GPU's tiles, when frames are exposed there.
+    #[cfg(feature = "cuda")]
+    gpu: Mutex<Option<crate::gpu::GpuTiles>>,
 }
 
 struct Stream {
@@ -249,6 +272,7 @@ impl SimCamera {
         optics: Optics,
     ) -> Self {
         let capabilities = config.capabilities();
+        let tiles = TileCache::new(config.cache);
         let settings = CameraSettings {
             mode: "full".to_owned(),
             format: BAYER16,
@@ -265,6 +289,9 @@ impl SimCamera {
                 stage,
                 world,
                 settings: Mutex::new(settings),
+                tiles,
+                #[cfg(feature = "cuda")]
+                gpu: Mutex::new(None),
                 view: Mutex::new(View {
                     optics,
                     light: 1.0,
@@ -285,6 +312,33 @@ impl SimCamera {
         let mut view = lock(&self.inner.view);
         view.light = intensity.clamp(0.0, 1.0);
         view.path = path;
+    }
+
+    /// Exposes frames on `cuda`'s GPU from now on, holding up to `slots`
+    /// rendered tiles there: 345 cover a full frame. If the GPU fails, the
+    /// camera goes back to the CPU.
+    #[cfg(feature = "cuda")]
+    pub fn use_gpu(&self, cuda: oscope_compute::cuda::Cuda, slots: usize) -> Result<(), String> {
+        let tiles = crate::gpu::GpuTiles::new(cuda, slots).map_err(|e| e.to_string())?;
+        *lock(&self.inner.gpu) = Some(tiles);
+        Ok(())
+    }
+
+    /// Whether frames are exposed on the GPU.
+    pub fn on_gpu(&self) -> bool {
+        #[cfg(feature = "cuda")]
+        {
+            lock(&self.inner.gpu).is_some()
+        }
+        #[cfg(not(feature = "cuda"))]
+        {
+            false
+        }
+    }
+
+    /// How its cache of rendered tiles has done.
+    pub fn cache_stats(&self) -> CacheStats {
+        self.inner.tiles.stats()
     }
 
     /// The world it looks at, to load or unload slides.
@@ -353,7 +407,9 @@ impl Inner {
     /// Renders the frame whose first row starts at `start`, at the stage's
     /// true positions, as 12-bit counts.
     fn render(&self, settings: &CameraSettings, start: Timestamp, frame: u64) -> Option<Counts> {
-        let view = *lock(&self.view);
+        let mut view = *lock(&self.view);
+        // The sensor's pixel is the camera's own, whatever the optics say.
+        view.optics.sensor_pixel = self.config.pixel_size;
         let mode = self.capabilities.mode(&settings.mode).ok()?;
         let (roi, width, height) = self.capabilities.frame_shape(settings).ok()?;
         let k = mode.binning.max(1);
@@ -394,19 +450,14 @@ impl Inner {
                 hi = Point2::new(hi.x.max(s.x.0 + c.x), hi.y.max(s.y.0 + c.y));
             }
         }
-        let margin = 3.0 * p;
-        let (fw, fh) = (
-            ((hi.x - lo.x + 2.0 * margin) / p).ceil() as u32,
-            ((hi.y - lo.y + 2.0 * margin) / p).ceil() as u32,
+        let margin = 2.0 * p;
+        let region = Rect::new(
+            lo.x - margin,
+            lo.y - margin,
+            hi.x - lo.x + 2.0 * margin,
+            hi.y - lo.y + 2.0 * margin,
         );
-        let centre = Point2::new((lo.x + hi.x) / 2.0, (lo.y + hi.y) / 2.0);
         let middle = start + line_d * (height / 2) + exposure / 2;
-        let field = Field {
-            centre,
-            z: self.stage.true_position(middle).z,
-            width: fw,
-            height: fh,
-        };
         let optics = Optics {
             sensor_pixel: view.optics.sensor_pixel * f64::from(k),
             ..view.optics
@@ -416,47 +467,82 @@ impl Inner {
             .read()
             .unwrap_or_else(PoisonError::into_inner)
             .clone();
-        let image = world.render(&field, &optics, view.path);
-        let corner = Point2::new(
-            centre.x - f64::from(fw) * p / 2.0,
-            centre.y - f64::from(fh) * p / 2.0,
-        );
-        let data = image.data();
-        let sample = |x: f64, y: f64, c: usize| -> f64 {
-            let fx = ((x - corner.x) / p - 0.5).clamp(0.0, f64::from(fw) - 1.0);
-            let fy = ((y - corner.y) / p - 0.5).clamp(0.0, f64::from(fh) - 1.0);
-            let (x0, y0) = (fx.floor() as usize, fy.floor() as usize);
-            let (x1, y1) = ((x0 + 1).min(fw as usize - 1), (y0 + 1).min(fh as usize - 1));
-            let (ax, ay) = (fx - x0 as f64, fy - y0 as f64);
-            let at = |x: usize, y: usize| f64::from(data[(y * fw as usize + x) * 3 + c]);
-            let top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * ax;
-            let bottom = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * ax;
-            top + (bottom - top) * ay
-        };
+        // The rendered tiles, from the cache: only those it lacks are
+        // rendered now.
+        let z = self.stage.true_position(middle).z;
+        let field = self.tiles.field(&world, &optics, view.path, z, region);
+        let sample = |x: f64, y: f64, c: usize| field.sample(x, y, c);
 
-        // Each row, over its own exposure; then the sensor.
-        let sensor = self.config.sensor;
-        let exposure_ms = settings.exposure.0;
-        let scale = view.light * sensor.electrons_per_ms * exposure_ms * f64::from(k * k);
-        let mut values = vec![0_u16; width as usize * height as usize];
-        values
-            .par_chunks_mut(width as usize)
-            .enumerate()
-            .for_each(|(v, row)| {
-                let first = start + line_d * v as u32;
+        // Where the stage is during each row's exposure: enough places to
+        // blur its motion a pixel at a time, up to 64.
+        let rows: Vec<Vec<Point2>> = (0..height)
+            .into_par_iter()
+            .map(|v| {
+                let first = start + line_d * v;
                 let (a, b) = (
                     self.stage.true_position(first),
                     self.stage.true_position(first + exposure),
                 );
                 let moved = ((b.x.0 - a.x.0).powi(2) + (b.y.0 - a.y.0).powi(2)).sqrt() / p;
                 let n = (moved.ceil() as u64 + 1).clamp(1, 64);
-                let places: Vec<Point2> = (0..n)
+                (0..n)
                     .map(|j| {
                         let at = first + exposure.mul_f64((j as f64 + 0.5) / n as f64);
                         let s = self.stage.true_position(at);
                         Point2::new(s.x.0, s.y.0)
                     })
-                    .collect();
+                    .collect()
+            })
+            .collect();
+        let sensor = self.config.sensor;
+        let exposure_ms = settings.exposure.0;
+        let scale = view.light * sensor.electrons_per_ms * exposure_ms * f64::from(k * k);
+        let counts = |values| Counts {
+            values,
+            roi,
+            width,
+            height,
+            binning: k,
+            line,
+        };
+
+        #[cfg(feature = "cuda")]
+        {
+            let mut gpu = lock(&self.gpu);
+            if let Some(device) = gpu.as_mut() {
+                let affine = {
+                    let (o, x, y) = (local(0.0, 0.0), local(1.0, 0.0), local(0.0, 1.0));
+                    [x.x - o.x, y.x - o.x, o.x, x.y - o.y, y.y - o.y, o.y]
+                };
+                let job = GpuFrame {
+                    field: &field,
+                    rows: &rows,
+                    affine,
+                    size: (width, height),
+                    scale,
+                    exposure_s: exposure_ms / 1e3,
+                    pixels: k * k,
+                    gain: settings.gain,
+                    sensor,
+                    seed: self.config.seed,
+                    frame,
+                };
+                match device.expose(&job) {
+                    Ok(values) => return Some(counts(values)),
+                    // The GPU failed: this frame and the rest on the CPU.
+                    Err(_) => *gpu = None,
+                }
+            }
+        }
+
+        // Each row, over its own exposure; then the sensor.
+        let mut values = vec![0_u16; width as usize * height as usize];
+        values
+            .par_chunks_mut(width as usize)
+            .enumerate()
+            .for_each(|(v, row)| {
+                let places = &rows[v];
+                let n = places.len();
                 let mut random = Random::new(hash(self.config.seed, frame, v as i64, 0));
                 for (u, out) in row.iter_mut().enumerate() {
                     let here = local(u as f64, v as f64);
@@ -476,14 +562,7 @@ impl Inner {
                     );
                 }
             });
-        Some(Counts {
-            values,
-            roi,
-            width,
-            height,
-            binning: k,
-            line,
-        })
+        Some(counts(values))
     }
 
     /// Streams from `begins` until `stop`: the camera's thread.

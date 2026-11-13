@@ -1,6 +1,6 @@
 # P14: Samples III: sub-diffraction structures, imports, load and unload
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p14-sim-samples-imports` / [#27](https://github.com/lucaswewa/OScope/pull/27)
 - Size: M · estimated ~1,700 before it started (code ~900, tests ~550, `ex-sim-samples` ~250); one pull request, at the owner's standing choice for P12–P23 · measured **2,246** hand-written lines added (code 1,058; tests 861; examples 327), and 2 removed. Docs and `Cargo.lock` aren't counted. **That is 1,646 over M's 600, and about 550 over the estimate,** most of it in the tests.
 
