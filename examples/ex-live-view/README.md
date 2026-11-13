@@ -31,7 +31,7 @@ It starts the simulated microscope on the scaled-down sensor (1368 × 912 pixels
   - Add `"max_fps": 5` to slow it down.
   - Each message replaces the last, so give every field each time. What you leave out takes the `preview` Thing's `defaults`.
 - Each binary message is a 72-byte header, then a JPEG. ADR-0014 gives the layout.
-- **Acknowledge** what you've shown: `"ack"`, the header's message number, with your other fields. Then the server sends at most two messages beyond it, always of the newest frame. Without it, the operating system's socket buffers can hold many stale frames for a slow client.
+- **Acknowledge** what you've shown: `"ack"`, the number of the next message you're ready for, with your other fields. That is the header's message number plus one, and 0 in your first message. Then you have at most two messages you haven't shown, always of the newest frame. Without it, the operating system's socket buffers can hold many stale frames for a slow client.
 
 ```sh
 # The defaults, which you can change; the sessions open, with their statistics.

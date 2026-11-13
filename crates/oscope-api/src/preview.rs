@@ -111,20 +111,18 @@ pub struct PreviewParams {
     pub quality: Option<u8>,
     /// The most frames a second.
     pub max_fps: Option<f64>,
-    /// The number of the last message the client has shown. Once a client
-    /// sends one, it gets at most 2 messages beyond it, so that no socket
+    /// The number of the next message the client is ready for: one more
+    /// than the last it has shown, and 0 before the first. Once a client
+    /// sends it, it has at most 2 messages it hasn't shown, so that no socket
     /// buffer holds stale frames for it (ADR-0014).
     pub ack: Option<u32>,
 }
 
 impl PreviewParams {
-    /// How many messages of the `sent` the client hasn't acknowledged: none
-    /// for a client that doesn't.
+    /// How many of the `sent` messages the client hasn't shown: none for a
+    /// client that doesn't acknowledge.
     fn unshown(&self, sent: u32) -> u32 {
-        match self.ack {
-            Some(ack) if ack < sent => sent - ack - 1,
-            _ => 0,
-        }
+        self.ack.map_or(0, |ack| sent.saturating_sub(ack))
     }
 }
 

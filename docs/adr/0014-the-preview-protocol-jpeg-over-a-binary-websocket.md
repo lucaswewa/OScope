@@ -44,7 +44,10 @@
 
 **3. The client's JSON text messages** give `width` and `height` (the viewport), `roi` (sensor pixels), `quality`, `max_fps` and `ack`. What a message leaves out takes the `defaults` setting's value. Each message replaces the last, so a client sends them all each time.
 
-**4. Clients may acknowledge.** `ack` is the number of the last message the client has shown. Once a client sends one, the session sends at most two messages beyond it. A frame published meanwhile replaces the one waiting, so the next message is of the newest frame. A client that never acknowledges is served as fast as its socket takes the messages, which is what `teta-wot`'s sink gives.
+**4. Clients may acknowledge.** `ack` is the number of the next message the client is ready for: one more than the last it has shown, as TCP acknowledges, and 0 in its first message.
+- Once a client sends it, it has at most two messages it hasn't shown: one being shown, and one on its way. The session waits before sending a third.
+- A frame published while it waits replaces the one waiting, so the next message is of the newest frame.
+- A client that never acknowledges is served as fast as its socket takes the messages, which is what `teta-wot`'s sink gives.
 
 **5. What a client gets:**
 - **The ROI** is clipped to the frame and widened to whole cells of the mosaic. An ROI that misses the frame gets the whole frame. The header says which pixels a message shows.
@@ -57,7 +60,7 @@
 ## Consequences
 
 - **Gains:**
-  - A client that acknowledges sees the newest frame within a frame or two, whatever its link and the operating system's buffers. P17's slow-client test checks it.
+  - A client that acknowledges gets frames no older than its own pace: each message's frame is at least as new as the newest when the client showed the message two before it. That holds whatever its link and the operating system's buffers. P17's slow-client test checks it.
   - A client that doesn't acknowledge, such as a quick script, still works.
   - The preview is described in the Thing Description, with the parameters' schema, and uses the server's authentication.
   - The header is enough to draw a frame where it belongs on the sensor, and to measure latency and frame rate.

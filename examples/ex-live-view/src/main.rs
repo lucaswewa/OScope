@@ -88,7 +88,7 @@ async fn smoke(address: SocketAddr) -> anyhow::Result<()> {
     ensure!(started.status == 201, "start_streaming: {}", started.status);
     let url = format!("ws://{address}/api/v1/preview/stream");
     let (mut socket, _) = tokio_tungstenite::connect_async(url).await?;
-    let mut params = json!({"width": 342, "height": 342, "quality": 70});
+    let mut params = json!({"width": 342, "height": 342, "quality": 70, "ack": 0});
     socket.send(Message::text(params.to_string())).await?;
     let jog = json!({"axis": "x", "towards_max": true, "speed": 500.0});
     ensure!(
@@ -100,7 +100,7 @@ async fn smoke(address: SocketAddr) -> anyhow::Result<()> {
         let (header, jpeg) = preview(&mut socket).await?;
         ensure!(jpeg, "a preview that isn't a JPEG");
         sizes.push((header.width, header.height));
-        params["ack"] = json!(header.sequence);
+        params["ack"] = json!(header.sequence + 1);
         socket.send(Message::text(params.to_string())).await?;
     }
     ensure!(

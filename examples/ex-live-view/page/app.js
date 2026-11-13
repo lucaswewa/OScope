@@ -103,10 +103,10 @@ function draw(bitmap, header) {
 const viewport = () => [canvas.clientWidth, canvas.clientHeight].map((n) => Math.round(n * devicePixelRatio));
 
 // What the page asks for: the viewport, the region, the quality, and the
-// last frame shown. Each message gives them all.
+// next message it's ready for. Each message gives them all.
 let sensor = null;
 let roi = null;
-let acked = null;
+let ready = 0;
 let socket = null;
 
 function ask() {
@@ -114,7 +114,7 @@ function ask() {
   const [width, height] = viewport();
   const params = { width, height, quality: Number($("quality").value) };
   if (roi) params.roi = roi;
-  if (acked !== null) params.ack = acked;
+  params.ack = ready;
   socket.send(JSON.stringify(params));
 }
 
@@ -160,7 +160,7 @@ function connect() {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   socket = new WebSocket(`${scheme}://${location.host}${api("preview/stream")}`);
   socket.binaryType = "arraybuffer";
-  socket.onopen = () => { acked = null; ask(); };
+  socket.onopen = () => { ready = 0; ask(); };
   socket.onclose = () => say("The stream closed: reload the page to reconnect.", true);
   socket.onmessage = async (event) => {
     if (typeof event.data === "string") return say(event.data, true);
@@ -168,9 +168,9 @@ function connect() {
     const header = readHeader(event.data);
     const jpeg = new Blob([new Uint8Array(event.data, header.length)], { type: "image/jpeg" });
     const bitmap = await createImageBitmap(jpeg);
-    if (acked === null || header.sequence > acked) {
+    if (header.sequence >= ready) {
       draw(bitmap, header);
-      acked = header.sequence;
+      ready = header.sequence + 1;
       ask();
       count(header, arrived, event.data.byteLength);
     }

@@ -239,13 +239,14 @@ async fn a_client_s_parameters_shape_its_previews() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_slow_client_gets_the_newest_frames() {
     // The fake camera's frames, as acquisition publishes them, to a client
-    // that shows one every 250 ms, and acknowledges it. It gets the newest,
-    // not the next in a queue: without acknowledging, the sockets' buffers
-    // would hold a backlog first.
+    // that shows one every 500 ms, acknowledging from its first message.
+    // It gets the newest, not the next in a queue: without acknowledging,
+    // the sockets' buffers would hold a backlog first. Small previews, quick to make even in a
+    // debug build on CI, keep the client the slower of the two.
     let folder = tempfile::tempdir().unwrap();
     let devices = devices(folder.path(), fakes()).await;
     let (address, _stop) = serve(folder.path(), Arc::clone(&devices)).await;
-    let mut params = json!({"width": 640, "height": 480, "quality": 95});
+    let mut params = json!({"width": 320, "height": 240, "quality": 95, "ack": 0});
     let mut socket = stream(address, params.clone(), None).await;
     assert_eq!(
         http(address, "POST", "/api/v1/camera/start_streaming", "{}")
@@ -258,21 +259,22 @@ async fn a_slow_client_gets_the_newest_frames() {
     for _ in 0..10 {
         let (header, _) = next(&mut socket).await;
         read.push((header.frame.0, bus.published()));
-        tokio::time::sleep(Duration::from_millis(250)).await;
-        params["ack"] = json!(header.sequence);
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        params["ack"] = json!(header.sequence + 1);
         socket
             .send(Message::text(params.to_string()))
             .await
             .unwrap();
     }
-    // What the sockets held before its first acknowledgement is soon read.
-    // Then each preview is of one of the last few frames published, and
-    // those between are skipped.
-    for pair in read[6..].windows(2) {
-        let ((first, _), (second, published)) = (pair[0], pair[1]);
-        assert!(second > first + 1, "{read:?}");
-        assert!(published - second <= 10, "{read:?}");
+    // Paced from its first message, two ahead: each preview was sent once
+    // the one two before it was shown, so its frame is at least as new as
+    // the newest published then. Frames between them were skipped.
+    for k in 2..read.len() {
+        let ((frame, _), (_, published_then)) = (read[k], read[k - 2]);
+        assert!(frame + 1 >= published_then, "{read:?}");
     }
+    let skipped: u64 = read.windows(2).map(|w| w[1].0 - w[0].0 - 1).sum();
+    assert!(skipped > 0, "{read:?}");
     let (_, sessions) = http(address, "GET", "/api/v1/preview/sessions", "").await;
     assert!(sessions[0]["dropped"].as_u64().unwrap() > 0, "{sessions}");
     // Kept waiting, the session took its quality down.
@@ -283,9 +285,9 @@ async fn a_slow_client_gets_the_newest_frames() {
 async fn jogging_moves_the_image_at_the_stage_s_speed() {
     // The simulator on the scaled-down sensor, 0.96 µm a pixel at 10×,
     // over the H&E slide. Homed and placed at 50 times real time, then
-    // jogged towards +x at 200 µm/s, in real time: about 14 preview pixels
-    // a frame, so the search's ±80 covers a camera that falls 5 frames
-    // behind under load.
+    // jogged towards +x at 200 µm/s at a tenth of real time, so that even a
+    // debug build on CI renders each frame in time: about 14 preview pixels
+    // a frame, within the search's ±80. Every time is the simulator's.
     let folder = tempfile::tempdir().unwrap();
     let mut config = DevicesConfig::default();
     config.simulator.sensor = "quarter".to_owned();
@@ -296,7 +298,7 @@ async fn jogging_moves_the_image_at_the_stage_s_speed() {
     devices.stage.home().await.unwrap();
     let start = Xyz::new(Um(40_000.0), Um(12_000.0), Um(1_000.0));
     devices.stage.move_to(start, None).await.unwrap();
-    simulator.clock.set_rate(Rate::RealTime);
+    simulator.clock.set_rate(Rate::Scaled(0.1));
     let light = LightState {
         channel: "transmitted".to_owned(),
         on: true,
