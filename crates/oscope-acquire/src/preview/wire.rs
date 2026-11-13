@@ -28,7 +28,9 @@
 //! Kinds number messages and blocks alike: [`STATISTICS`] is JSON, and
 //! [`MASK`] a [`Mask`](crate::stats::Mask)'s bytes.
 
-use oscope_core::{FrameId, PixelRect, Timestamp};
+use oscope_core::{Frame, FrameId, PixelRect, Timestamp};
+
+use super::Rendered;
 
 /// The first four bytes of every message.
 pub const MAGIC: [u8; 4] = *b"OSPV";
@@ -103,6 +105,31 @@ pub enum WireError {
 impl Header {
     /// The length this version writes.
     pub const LEN: usize = 76;
+
+    /// The header of `frame`'s preview, `rendered` at `quality`: the
+    /// `sequence`-th message, ready at `ready`.
+    pub fn of(
+        frame: &Frame,
+        rendered: &Rendered,
+        quality: u8,
+        sequence: u32,
+        ready: Timestamp,
+    ) -> Header {
+        let meta = frame.meta();
+        Header {
+            kind: FRAME,
+            codec: JPEG,
+            quality,
+            sequence,
+            frame: meta.id,
+            exposure_start: meta.exposure_start,
+            exposure_end: meta.row_exposure(meta.height.saturating_sub(1)).1,
+            ready,
+            roi: rendered.roi,
+            width: rendered.width,
+            height: rendered.height,
+        }
+    }
 
     /// The message: this header, then `jpeg`, then `blocks`, each its kind
     /// and bytes.

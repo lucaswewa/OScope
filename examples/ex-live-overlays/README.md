@@ -30,6 +30,7 @@ It starts the simulated microscope on the scaled-down sensor, homes the stage, p
 
 - **Saturation:** move the light to the right, then raise the exposure to 25 ms. Pink appears where the slide is brightest, and the histograms pile up at 4095.
 - **Focus:** hold z − or z + to move out of focus, and watch the focus value fall and the profile flatten.
+- **The stage:** hold x ± or y ± to jog it at the speed set (20 µm/s to start with; a few hundred to cross the field quickly).
 
 **The statistics, with your own client:** ask the stream for them with `stats` beside the other parameters, as the README of `ex-live-view` describes:
 

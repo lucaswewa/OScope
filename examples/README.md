@@ -36,6 +36,8 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-http-walkthrough`](ex-http-walkthrough/README.md) | P16 | The instrument on the control plane: the simulated microscope's camera, stage, illumination, objective and simulation Things, with a walkthrough in `curl` and a control page with the stage's position and buttons |
 | [`ex-live-view`](ex-live-view/README.md) | P17 | The live preview: the simulated camera's frames as viewport-sized JPEGs through the `preview` Thing's binary WebSocket, drawn with WebGL, zoomed by asking for a region of the sensor, with fps, latency and jog buttons |
 | [`ex-live-overlays`](ex-live-overlays/README.md) | P18 | The live view's overlays from statistics of the raw frames: a crosshair, an ROI to draw with its statistics, a line profile, histograms with percentiles, the focus value, false colour and the saturation mask |
+| [`ex-sidecar`](ex-sidecar/README.md) | P19 | A small supervisor, as the desktop app will be: it runs the server by the sidecar contract, reads its JSON ready line, starts it again when it exits with code 75, and stops it by closing its stdin |
+| [`ex-shm-reader`](ex-shm-reader/README.md) | P19 | A second process reading the server's shared-memory preview ring, the desktop app's fast path: the rate previews come at, and any torn reads |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

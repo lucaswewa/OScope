@@ -8,8 +8,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
-use oscope_acquire::preview::wire::{FRAME, Header, JPEG, MASK, STATISTICS};
-use oscope_acquire::preview::{Adaptation, Look, Preview, PreviewError, PreviewRequest, Rendered};
+use oscope_acquire::preview::wire::{Header, MASK, STATISTICS};
+use oscope_acquire::preview::{
+    Adaptation, Look, Preview, PreviewError, PreviewRequest, Rendered, RingSettings, publish,
+};
 use oscope_acquire::stats::StatsRequest;
 use oscope_compute::{Compute, ComputeConfig};
 use oscope_core::{Frame, PixelRect};
@@ -20,6 +22,7 @@ use teta_wot::http::Subscriber;
 use teta_wot::prelude::*;
 
 use crate::devices::Devices;
+use crate::server::RingSlot;
 
 /// How many messages a client that acknowledges may have unshown.
 const AHEAD: u32 = 2;
@@ -222,6 +225,26 @@ pub struct PreviewThing {
 }
 
 impl PreviewThing {
+    /// How the preview ring's previews are made (ADR-0015): the defaults,
+    /// the look and the GPU setting, as they are when each is made.
+    fn ring_settings(&self) -> impl Fn() -> RingSettings + Send + 'static {
+        let defaults = self.defaults.subscribe();
+        let (look, cpu_only) = (self.look.subscribe(), self.cpu_only.subscribe());
+        move || {
+            let defaults = defaults.borrow().clone();
+            RingSettings {
+                request: PreviewRequest {
+                    viewport: (defaults.width.max(1), defaults.height.max(1)),
+                    roi: None,
+                    quality: defaults.quality.clamp(1, 100),
+                },
+                look: Look::from(&*look.borrow()),
+                gpu: !*cpu_only.borrow(),
+                max_fps: defaults.max_fps,
+            }
+        }
+    }
+
     /// What `params` asks for, from the defaults where it doesn't, as
     /// `adaptation` lets it have.
     fn request(&self, params: &PreviewParams, adaptation: &Adaptation) -> (PreviewRequest, f64) {
@@ -254,6 +277,14 @@ impl PreviewThing {
         let compute =
             tokio::task::spawn_blocking(|| Compute::new(&ComputeConfig::default())).await??;
         let preview = Preview::new(Arc::new(compute));
+        if let Some(slot) = ctx.server().service::<RingSlot>()
+            && let Some(ring) = lock(&slot.0).take()
+        {
+            let frames = devices.acquisition.bus().subscribe_latest("preview ring");
+            let clock = Arc::clone(&devices.clock);
+            let settings = self.ring_settings();
+            tokio::spawn(publish(preview.clone(), frames, clock, ring, settings));
+        }
         let _ = self.service.set(Service { devices, preview });
         Ok(())
     }
@@ -348,7 +379,8 @@ impl PreviewThing {
                 }
                 Err(_) => break,
             };
-            let header = header(&frame, &rendered, quality, sequence, &service.devices);
+            let ready = service.devices.clock.now();
+            let header = Header::of(&frame, &rendered, quality, sequence, ready);
             let latency = header.ready.saturating_since(header.exposure_end);
             let blocks: Vec<(u8, &[u8])> = blocks.iter().map(|(k, b)| (*k, b.as_slice())).collect();
             let message = header.message(&rendered.jpeg, &blocks);
@@ -404,28 +436,4 @@ fn blocks(
     let mut blocks = vec![(STATISTICS, json)];
     blocks.extend(mask.map(|mask| (MASK, mask.to_bytes())));
     Ok(blocks)
-}
-
-/// The header of `frame`'s preview, ready now.
-fn header(
-    frame: &Frame,
-    rendered: &Rendered,
-    quality: u8,
-    sequence: u32,
-    devices: &Devices,
-) -> Header {
-    let meta = frame.meta();
-    Header {
-        kind: FRAME,
-        codec: JPEG,
-        quality,
-        sequence,
-        frame: meta.id,
-        exposure_start: meta.exposure_start,
-        exposure_end: meta.row_exposure(meta.height.saturating_sub(1)).1,
-        ready: devices.clock.now(),
-        roi: rendered.roi,
-        width: rendered.width,
-        height: rendered.height,
-    }
 }

@@ -19,6 +19,7 @@ oscope-compute.workspace = true
 oscope-core.workspace = true
 oscope-hal.workspace = true
 oscope-imaging.workspace = true
+oscope-shm.workspace = true
 oscope-sim.workspace = true
 schemars.workspace = true
 serde.workspace = true
@@ -29,6 +30,10 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["fs", "macros", "net", "rt", "sync", "time"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+# Service mode (P19).
+teta-wot = { workspace = true, features = ["windows-service"] }
 
 [dev-dependencies]
 futures-util.workspace = true

@@ -13,13 +13,17 @@ cuda = ["oscope-api/cuda"]
 [dependencies]
 clap.workspace = true
 oscope-api.workspace = true
+oscope-shm.workspace = true
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["net", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread", "sync"] }
 toml.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
+oscope-acquire.workspace = true
 chrono.workspace = true
 tempfile.workspace = true
 

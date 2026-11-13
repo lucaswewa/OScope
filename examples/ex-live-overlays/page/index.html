@@ -51,9 +51,13 @@
     <div class="row">
       <label>light <input type="range" id="light" min="0" max="1" step="0.05" value="0.6"></label>
       <label>exposure <input type="number" id="exposure" value="15" min="1"> ms</label>
-      <span>focus</span>
-      <button data-z="-">z −</button>
-      <button data-z="+">z +</button>
+      <span>jog</span>
+      <button data-axis="x" data-sign="-">x −</button>
+      <button data-axis="x" data-sign="+">x +</button>
+      <button data-axis="y" data-sign="-">y −</button>
+      <button data-axis="y" data-sign="+">y +</button>
+      <button data-axis="z" data-sign="-">z −</button>
+      <button data-axis="z" data-sign="+">z +</button>
       <label>at <input type="number" id="speed" value="20" min="1"> µm/s</label>
     </div>
     <p id="message" class="muted"></p>

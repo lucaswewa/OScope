@@ -27,6 +27,12 @@ pub const DEFAULT_PORT: u16 = 8210;
 ///
 /// [devices]                       # each device's driver: see oscope_api::devices
 /// camera = "sim"
+///
+/// [shm]                           # the desktop app's preview ring (ADR-0015)
+/// enabled = true                  # by default only with --managed
+/// name = "preview"                # by default; preview-{pid} with --managed
+/// slots = 3
+/// slot_bytes = 8388608            # the largest preview
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -40,6 +46,36 @@ pub struct Config {
     /// The devices: which driver each uses, and the simulator's
     /// configuration (`oscope_api::devices::DevicesConfig`).
     pub devices: toml::Table,
+    /// The desktop app's preview ring.
+    pub shm: Ring,
+}
+
+/// The desktop app's preview ring, in shared memory (ADR-0015).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Ring {
+    /// Whether to publish previews to it: when not given, only with
+    /// `--managed`.
+    pub enabled: Option<bool>,
+    /// Its name: `preview` when not given, and `preview-{pid}` with
+    /// `--managed`, so that two managed servers don't meet.
+    pub name: Option<String>,
+    /// How many previews it holds.
+    pub slots: u32,
+    /// The largest preview, in bytes.
+    pub slot_bytes: u32,
+}
+
+impl Default for Ring {
+    fn default() -> Self {
+        let size = oscope_shm::RingConfig::default();
+        Self {
+            enabled: None,
+            name: None,
+            slots: size.slots,
+            slot_bytes: size.slot_bytes,
+        }
+    }
 }
 
 /// Where the server listens.

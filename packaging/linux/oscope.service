@@ -1,0 +1,40 @@
+# OScope's server as a systemd service (ADR-0015).
+#
+# To install, as root:
+#   useradd --system --home-dir /var/lib/oscope --shell /usr/sbin/nologin oscope
+#   install -m 755 oscope-server /usr/bin/
+#   install -D -m 644 oscope.toml /etc/oscope/oscope.toml
+#   install -m 644 oscope.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now oscope
+#
+# test-user-unit.sh tries this unit as a user's, without root.
+
+[Unit]
+Description=OScope microscope server
+Documentation=https://github.com/lucaswewa/OScope
+After=network.target
+
+[Service]
+Type=exec
+User=oscope
+Group=oscope
+ExecStart=/usr/bin/oscope-server --config /etc/oscope/oscope.toml
+# SIGTERM stops it as Ctrl-C does: invocations cancelled, requests finished,
+# the Things stopped and their settings saved. The wait covers the grace
+# period.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# Exit code 75 asks for a restart (the system Thing's restart); a failure
+# restarts it too.
+Restart=on-failure
+RestartForceExitStatus=75
+RestartSec=2
+# Its own folder, /var/lib/oscope, writable; the rest of the system not.
+StateDirectory=oscope
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

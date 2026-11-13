@@ -18,13 +18,17 @@
 //! All of it runs in the live pool, so batch work can't hold it up.
 //!
 //! [`Adaptation`] lowers a client's quality, then its size, while it keeps
-//! dropping messages. [`wire`] is how a preview travels (ADR-0014).
+//! dropping messages. [`wire`] is how a preview travels (ADR-0014), and
+//! [`publish`] writes previews to the desktop app's shared-memory ring
+//! (ADR-0015).
 
 mod adapt;
 mod resize;
+mod ring;
 pub mod wire;
 
 pub use adapt::Adaptation;
+pub use ring::{RingSettings, publish};
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};

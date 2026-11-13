@@ -458,7 +458,9 @@ name = "ex-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "oscope-api",
+ "oscope-server",
  "serde_json",
  "tempfile",
  "tokio",
@@ -599,6 +601,28 @@ dependencies = [
  "anyhow",
  "ex-common",
  "oscope-api",
+ "tokio",
+]
+
+[[package]]
+name = "ex-shm-reader"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-acquire",
+ "oscope-shm",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ex-sidecar"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "serde_json",
  "tokio",
 ]
 
@@ -1183,11 +1207,13 @@ dependencies = [
  "oscope-core",
  "oscope-hal",
  "oscope-imaging",
+ "oscope-shm",
  "rayon",
  "schemars",
  "serde",
  "thiserror",
  "tokio",
+ "tracing",
  "zune-core",
  "zune-jpeg",
 ]
@@ -1206,6 +1232,7 @@ dependencies = [
  "oscope-core",
  "oscope-hal",
  "oscope-imaging",
+ "oscope-shm",
  "oscope-sim",
  "schemars",
  "serde",
@@ -1306,18 +1333,28 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "oscope-acquire",
  "oscope-api",
+ "oscope-shm",
+ "rand",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror",
  "tokio",
  "toml",
+ "tracing",
 ]
 
 [[package]]
 name = "oscope-shm"
 version = "0.1.0"
+dependencies = [
+ "libc",
+ "tempfile",
+ "thiserror",
+ "windows-sys",
+]
 
 [[package]]
 name = "oscope-sim"
@@ -1907,6 +1944,7 @@ dependencies = [
  "tokio-tungstenite",
  "tower",
  "tracing",
+ "windows-service",
 ]
 
 [[package]]
@@ -2269,6 +2307,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
+name = "widestring"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72069c3113ab32ab29e5584db3c6ec55d416895e60715417b5b883a357c3e471"
+
+[[package]]
 name = "winapi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2389,6 +2433,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7781fa89eaf60850ac3d2da7af8e5242a5ea78d1a11c49bf2910bb5a73853eb5"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "windows-service"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "857224b3b211c6f3616921f081ee54721ee3ad2ace2fac6a6337e032f7b4dcf2"
+dependencies = [
+ "bitflags",
+ "widestring",
+ "windows-sys",
 ]
 
 [[package]]
