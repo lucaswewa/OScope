@@ -1,6 +1,6 @@
 # P09b: HAL fakes and conformance suite
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p09b-hal-fakes` / [#21](https://github.com/lucaswewa/OScope/pull/21)
 - Size: L · estimated ~850 when P09 was split, then ~2,000 just before starting, from P09's measured sizes; the owner chose one pull request · measured **1,956** hand-written lines added (code 1,450; tests 290; examples 215; glue 1), and none removed. Docs and `Cargo.lock` aren't counted. **That is 1,056 over L's 900, and 44 under the estimate.**
 
