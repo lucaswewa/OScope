@@ -1,9 +1,14 @@
 ---
 source: crates/oscope-api/tests/devices.rs
-expression: "tds[name]"
+expression: td
 ---
 {
-  "id": "urn:uuid:b717bfe3-599b-56b0-9590-6f5be273d13e",
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
   "title": "Simulation",
   "properties": {
     "confocal": {
@@ -334,11 +339,5 @@ expression: "tds[name]"
     }
   },
   "security": "no_security",
-  "@type": "saref:Device",
-  "@context": [
-    "https://www.w3.org/2022/wot/td/v1.1",
-    {
-      "saref": "https://saref.etsi.org/core/"
-    }
-  ]
+  "@type": "saref:Device"
 }

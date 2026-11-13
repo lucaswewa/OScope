@@ -407,7 +407,11 @@ async fn the_things_describe_themselves() {
         .unwrap();
     let tds = api.thing_descriptions("http://127.0.0.1:8220/").unwrap();
     for name in ["camera", "stage", "illumination", "objective", "simulation"] {
-        insta::assert_json_snapshot!(name, tds[name]);
+        // The ID differs from computer to computer: its form, then the rest.
+        let mut td = tds[name].clone();
+        let id = td.as_object_mut().unwrap().remove("id").unwrap();
+        assert!(id.as_str().unwrap().starts_with("urn:uuid:"), "{id}");
+        insta::assert_json_snapshot!(name, td);
     }
     let openapi = api.openapi();
     let paths = openapi["paths"].as_object().unwrap();

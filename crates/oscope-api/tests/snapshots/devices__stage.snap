@@ -1,9 +1,14 @@
 ---
 source: crates/oscope-api/tests/devices.rs
-expression: "tds[name]"
+expression: td
 ---
 {
-  "id": "urn:uuid:13eaf069-6f7a-5604-8510-2daa9bed27ad",
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
   "title": "Stage",
   "properties": {
     "capabilities": {
@@ -875,11 +880,5 @@ expression: "tds[name]"
     }
   },
   "security": "no_security",
-  "@type": "saref:Actuator",
-  "@context": [
-    "https://www.w3.org/2022/wot/td/v1.1",
-    {
-      "saref": "https://saref.etsi.org/core/"
-    }
-  ]
+  "@type": "saref:Actuator"
 }

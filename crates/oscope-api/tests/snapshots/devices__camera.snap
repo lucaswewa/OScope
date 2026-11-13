@@ -1,9 +1,14 @@
 ---
 source: crates/oscope-api/tests/devices.rs
-expression: "tds[name]"
+expression: td
 ---
 {
-  "id": "urn:uuid:333faa59-03cd-56e4-a9f4-90b3a40c4303",
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
   "title": "Camera",
   "properties": {
     "capabilities": {
@@ -2341,11 +2346,5 @@ expression: "tds[name]"
     }
   },
   "security": "no_security",
-  "@type": "saref:Sensor",
-  "@context": [
-    "https://www.w3.org/2022/wot/td/v1.1",
-    {
-      "saref": "https://saref.etsi.org/core/"
-    }
-  ]
+  "@type": "saref:Sensor"
 }

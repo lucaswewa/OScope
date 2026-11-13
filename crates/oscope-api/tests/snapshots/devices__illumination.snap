@@ -1,9 +1,14 @@
 ---
 source: crates/oscope-api/tests/devices.rs
-expression: "tds[name]"
+expression: td
 ---
 {
-  "id": "urn:uuid:1e7949cb-9855-53ff-883f-24a5c824cc12",
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
   "title": "Illumination",
   "properties": {
     "capabilities": {
@@ -272,11 +277,5 @@ expression: "tds[name]"
     }
   },
   "security": "no_security",
-  "@type": "saref:Actuator",
-  "@context": [
-    "https://www.w3.org/2022/wot/td/v1.1",
-    {
-      "saref": "https://saref.etsi.org/core/"
-    }
-  ]
+  "@type": "saref:Actuator"
 }
