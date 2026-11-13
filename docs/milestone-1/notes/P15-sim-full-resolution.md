@@ -137,7 +137,20 @@ The simulated MIChrome 20 at 5472 Ã— 3648, mode `design`, over H&E tissue at 10Ã
 | The GPU's motion averaged over one place | `the_gpu_exposes_frames_as_the_cpu_does` |
 | The GPU's mounting transposed | `the_gpu_exposes_frames_as_the_cpu_does` (strengthened) |
 
-**The workspace,** with every step CI runs: REPLAYS
+**The workspace,** with every step CI runs:
+
+- `cargo fmt`;
+- `clippy -D warnings`;
+- `cargo test`;
+- `cargo doc -D warnings`;
+- `cargo deny`;
+- the server's `--version`;
+- every example's `--smoke`.
+
+The CUDA workflow's clippy step, with the features, also passes here.
+
+- **With `scripts/ci-local.sh --cuda` on Windows:** all 23 steps passed. That includes the CUDA tests on the RTX A2000, `oscope-sim`'s GPU twins among them, in 78 s. 100 test suites, 229 tests.
+- **With `scripts/ci-clone.sh` under WSL (Ubuntu 24.04):** all 22 steps passed, on a fresh LF clone of the commit: 100 suites, 229 tests.
 
 ## Follow-ups and known gaps
 
