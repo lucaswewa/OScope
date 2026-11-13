@@ -233,7 +233,7 @@ impl SampleCatalogue {
 /// world's slide, which the camera sees.
 pub struct SlideLoader {
     world: Arc<RwLock<World>>,
-    catalogue: SampleCatalogue,
+    catalogue: RwLock<SampleCatalogue>,
     base: PathBuf,
     /// Where a slide's corner sits on the stage.
     slide_at: Point2,
@@ -252,7 +252,7 @@ impl SlideLoader {
     ) -> Self {
         Self {
             world,
-            catalogue,
+            catalogue: RwLock::new(catalogue),
             base: base.to_owned(),
             slide_at,
             loaded: Mutex::new(None),
@@ -260,16 +260,33 @@ impl SlideLoader {
     }
 
     /// The catalogue.
-    pub fn catalogue(&self) -> &SampleCatalogue {
-        &self.catalogue
+    pub fn catalogue(&self) -> SampleCatalogue {
+        self.catalogue
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    /// Adds `entry` to the catalogue, in place of one of the same name,
+    /// once it builds: an import's file must read.
+    pub fn add(&self, entry: SampleEntry) -> Result<(), String> {
+        entry.build(&self.base)?;
+        let mut catalogue = self
+            .catalogue
+            .write()
+            .unwrap_or_else(PoisonError::into_inner);
+        catalogue.samples.retain(|s| s.name != entry.name);
+        catalogue.samples.push(entry);
+        Ok(())
     }
 
     /// Loads the sample called `name`, in place of any slide on the stage.
     /// If it can't be built, the stage stays as it was.
     pub fn load(&self, name: &str) -> Result<(), String> {
         let entry = self
-            .catalogue
+            .catalogue()
             .get(name)
+            .cloned()
             .ok_or_else(|| format!("no sample called {name:?}"))?;
         let sample = entry.build(&self.base)?;
         let mut loaded = self.loaded.lock().unwrap_or_else(PoisonError::into_inner);

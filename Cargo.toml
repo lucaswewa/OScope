@@ -44,6 +44,8 @@ png = "0.18.1"
 tiff = { version = "0.11.3", default-features = false }
 zune-core = "0.5.3"
 zune-jpeg = "0.5.15"
+# New in P16: the Thing Descriptions' snapshots.
+insta = { version = "1.49.0", default-features = false }
 # 0.6.0 is MIT OR Apache-2.0; later versions add the IJG licence (P14's notes).
 jpeg-encoder = "=0.6.0"
 # New in P07: CUDA, loaded at run time (ADR-0011).

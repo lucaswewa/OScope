@@ -1,0 +1,345 @@
+---
+source: crates/oscope-api/tests/devices.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Objective",
+  "properties": {
+    "capabilities": {
+      "description": "What the mount is: manual, or motorised.",
+      "title": "What the mount is: manual, or motorised.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "model": {
+          "description": "Its maker and model, or `manual`.",
+          "type": "string"
+        },
+        "motorised": {
+          "description": "Whether it changes objectives itself, as a motorised turret does,\nrather than by hand.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "model",
+        "motorised"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/objective/capabilities",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "catalogue": {
+      "description": "The objectives that can be fitted, and the instrument's tube lens.",
+      "title": "The objectives that can be fitted, and the instrument's tube lens.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "tube_lens": {
+          "description": "The instrument's tube lens.",
+          "type": "number"
+        },
+        "objective": {
+          "description": "The objectives, as `[[objective]]` tables in TOML.",
+          "type": "array",
+          "items": {
+            "description": "One objective.",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Its name, unique in the catalogue, such as `20x`. Frames record it.",
+                "type": "string"
+              },
+              "model": {
+                "description": "Its maker and model.",
+                "default": "",
+                "type": "string"
+              },
+              "magnification": {
+                "description": "Its magnification, with the tube lens it was designed for.",
+                "type": "number"
+              },
+              "na": {
+                "description": "Its numerical aperture.",
+                "type": "number"
+              },
+              "working_distance": {
+                "description": "The distance from its front to the sample in focus.",
+                "type": "number"
+              },
+              "design_tube_lens": {
+                "description": "The tube lens it was designed for: 200 mm, Mitutoyo's, unless the\ncatalogue says otherwise.",
+                "default": 200000.0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "magnification",
+              "na",
+              "working_distance"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "tube_lens",
+        "objective"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/objective/catalogue",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "fitted": {
+      "description": "The objective fitted, if one is said to be.",
+      "title": "The objective fitted, if one is said to be.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "One objective.",
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "Its name, unique in the catalogue, such as `20x`. Frames record it.",
+              "type": "string"
+            },
+            "model": {
+              "description": "Its maker and model.",
+              "default": "",
+              "type": "string"
+            },
+            "magnification": {
+              "description": "Its magnification, with the tube lens it was designed for.",
+              "type": "number"
+            },
+            "na": {
+              "description": "Its numerical aperture.",
+              "type": "number"
+            },
+            "working_distance": {
+              "description": "The distance from its front to the sample in focus.",
+              "type": "number"
+            },
+            "design_tube_lens": {
+              "description": "The tube lens it was designed for: 200 mm, Mitutoyo's, unless the\ncatalogue says otherwise.",
+              "default": 200000.0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "magnification",
+            "na",
+            "working_distance"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/objective/fitted",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "pixel_at_sample": {
+      "description": "Through the fitted objective: the camera's pixel over the\nmagnification on the instrument. Until calibration (P32) measures it,\nthis is what it should be.",
+      "title": "A camera pixel's side at the sample.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "unit": "µm",
+      "forms": [
+        {
+          "href": "/api/v1/objective/pixel_at_sample",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "saved": {
+      "description": "Saved, and fitted again when the server starts.",
+      "title": "The objective last fitted, by name.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/objective/saved",
+          "op": [
+            "readproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/objective/saved",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/objective/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true
+    }
+  },
+  "actions": {
+    "fit": {
+      "description": "`name`, from the catalogue. A name the catalogue doesn't have is\nrefused.",
+      "title": "Records which objective is fitted.",
+      "forms": [
+        {
+          "href": "/api/v1/objective/fit",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "fit_input",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "One objective.",
+        "title": "fit_output",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Its name, unique in the catalogue, such as `20x`. Frames record it.",
+            "type": "string"
+          },
+          "model": {
+            "description": "Its maker and model.",
+            "default": "",
+            "type": "string"
+          },
+          "magnification": {
+            "description": "Its magnification, with the tube lens it was designed for.",
+            "type": "number"
+          },
+          "na": {
+            "description": "Its numerical aperture.",
+            "type": "number"
+          },
+          "working_distance": {
+            "description": "The distance from its front to the sample in focus.",
+            "type": "number"
+          },
+          "design_tube_lens": {
+            "description": "The tube lens it was designed for: 200 mm, Mitutoyo's, unless the\ncatalogue says otherwise.",
+            "default": 200000.0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "magnification",
+          "na",
+          "working_distance"
+        ],
+        "additionalProperties": false
+      },
+      "synchronous": false
+    }
+  },
+  "description": "The objective mount. On the instrument, objectives are swapped by hand\n(D18): fitting one records which, for every frame's metadata and, on\nthe simulator, for what the camera sees.",
+  "forms": [
+    {
+      "href": "/api/v1/objective/properties",
+      "op": [
+        "readallproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/objective/properties",
+      "op": [
+        "observeallproperties",
+        "unobserveallproperties"
+      ],
+      "subprotocol": "sse"
+    },
+    {
+      "href": "/api/v1/objective/actions",
+      "op": [
+        "queryallactions"
+      ]
+    }
+  ],
+  "base": "http://127.0.0.1:8220/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Device"
+}
