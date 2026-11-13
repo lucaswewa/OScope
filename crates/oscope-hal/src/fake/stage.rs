@@ -25,6 +25,7 @@ pub struct FakeStage {
     script: Script,
     track: Arc<PositionTrack>,
     status: Mutex<StageStatus>,
+    armed: Mutex<Option<(Axis, Vec<Um>)>>,
 }
 
 impl FakeStage {
@@ -63,6 +64,7 @@ impl FakeStage {
             script: Script::default(),
             track: Arc::new(PositionTrack::new(1024)),
             status: Mutex::new(StageStatus::Idle),
+            armed: Mutex::new(None),
         };
         stage.report(stage.least());
         stage
@@ -71,6 +73,14 @@ impl FakeStage {
     /// Its script.
     pub fn script(&self) -> &Script {
         &self.script
+    }
+
+    /// What its trigger output is armed with, if anything.
+    pub fn armed(&self) -> Option<(Axis, Vec<Um>)> {
+        self.armed
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 
     /// Puts it in alarm, for `reason`.
@@ -192,6 +202,19 @@ impl Stage for FakeStage {
             if matches!(*status, StageStatus::Alarm { .. }) {
                 *status = StageStatus::Idle;
             }
+            Ok(())
+        })
+    }
+
+    fn arm_trigger(&self, axis: Axis, positions: Vec<Um>) -> HalFuture<'_, ()> {
+        Box::pin(async move {
+            self.script.call("arm_trigger")?;
+            if !self.capabilities.trigger_output {
+                return Err(Error::Unsupported {
+                    what: "a trigger output".to_owned(),
+                });
+            }
+            *self.armed.lock().unwrap_or_else(PoisonError::into_inner) = Some((axis, positions));
             Ok(())
         })
     }

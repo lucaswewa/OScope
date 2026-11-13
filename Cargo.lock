@@ -576,6 +576,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-sim-stage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-sim",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1180,10 +1194,13 @@ version = "0.1.0"
 name = "oscope-sim"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "oscope-compute",
  "oscope-core",
  "oscope-hal",
+ "rand",
  "rayon",
+ "tokio",
 ]
 
 [[package]]

@@ -193,4 +193,13 @@ pub trait Stage: Send + Sync {
 
     /// Clears an alarm. Its position may be unknown until it is homed again.
     fn clear_alarm(&self) -> HalFuture<'_, ()>;
+
+    /// Arms the trigger output to pulse once as the stage passes each of
+    /// `positions` along `axis`, on the moves that follow; arming again
+    /// replaces what was armed. A stage with a trigger output says so in
+    /// its capabilities (D20, P11).
+    fn arm_trigger(&self, axis: Axis, positions: Vec<Um>) -> HalFuture<'_, ()> {
+        let _ = (axis, positions);
+        unsupported("a trigger output")
+    }
 }

@@ -1,6 +1,6 @@
 # P10: Simulated world, optics, H&E tissue
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p10-sim-world` / [#22](https://github.com/lucaswewa/OScope/pull/22)
 - Size: L · estimated ~2,200 before it started, from P09's measured densities; the owner chose one pull request · measured **1,961** hand-written lines added (code 1,014; tests 519; examples 421; glue 7), and 2 removed. Docs and `Cargo.lock` aren't counted. **That is 1,061 over L's 900, and 239 under the estimate.**
 
