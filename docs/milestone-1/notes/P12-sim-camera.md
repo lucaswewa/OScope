@@ -114,8 +114,8 @@ The camera tests ran five times in a row without a failure.
 
 **The workspace,** with every step CI runs: `cargo fmt`, `clippy -D warnings`, `cargo test` (188 tests), `cargo doc -D warnings`, `cargo deny`, the server's `--version`, and every example's `--smoke`.
 
-- **With `scripts/ci-local.sh` on Windows:** see the pull request.
-- **With `scripts/ci-clone.sh` under WSL:** see the pull request.
+- **With `scripts/ci-local.sh` on Windows:** all 19 steps passed; 85 test suites, 188 tests.
+- **With `scripts/ci-clone.sh` under WSL (Ubuntu 24.04):** the same, on a fresh LF clone of the commit, with no file holding a CR.
 
 P12 touches no CUDA path.
 
