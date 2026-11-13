@@ -96,4 +96,6 @@ cargo deny check
 OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda
 ```
 
+`scripts/ci-local.sh` runs all of CI's checks, every example's `--smoke` among them, and `--cuda` adds the CUDA tests. `scripts/ci-clone.sh` runs them on a fresh clone of a commit; on Windows, run it under WSL ([`scripts/README.md`](scripts/README.md)).
+
 Docs-only phases check that their relative links and anchors resolve.

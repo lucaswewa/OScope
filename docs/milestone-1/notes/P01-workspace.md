@@ -130,6 +130,7 @@ Not relevant to this phase: there is no code on a §5.20 path yet.
 - **`examples/vendor/`** needs `exclude` in the root `Cargo.toml` when it arrives.
 - **The edges within L1 and L3** are the plan's best reading. P06, P21 and P24–P26 may change them, as ADR-0005 allows.
 - **U06's 24-hour soak** ends about 2026-11-12 16:45 PST. Its result goes into the U06 notes in this pull request.
+- **Done since:** CI's checks can be run locally, at the owner's request, with `scripts/ci-local.sh` and, on a fresh clone, `scripts/ci-clone.sh` ([#24](https://github.com/lucaswewa/OScope/pull/24), [`scripts/README.md`](../../../scripts/README.md)).
 
 ## Clean room
 
