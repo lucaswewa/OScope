@@ -2,7 +2,7 @@
 //! refused, the ring gone with its writer, the ring consistent while it is
 //! read and written at once, and the file its owner's alone.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Barrier};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -114,48 +114,69 @@ fn message(number: u64) -> Vec<u8> {
 #[test]
 fn the_ring_stays_consistent_while_it_is_read_and_written_at_once() {
     // Two slots, the fewest, so that the writer laps readers often; two
-    // readers, each with its own view, as another process would have.
+    // readers, each with its own view, as another process would have. The
+    // writer pauses a moment after each message, and a reader with nothing
+    // new yields, so that every thread gets on, on two cores as on many.
     let name = name("race");
     let mut writer = RingWriter::create(&name, small(2, 4096)).unwrap();
     let readers: Vec<RingReader> = (0..2).map(|_| RingReader::open(&name).unwrap()).collect();
     let (start, done) = (Arc::new(Barrier::new(3)), Arc::new(AtomicBool::new(false)));
+    let reads = Arc::new([AtomicU64::new(0), AtomicU64::new(0)]);
     let threads: Vec<_> = readers
         .into_iter()
-        .map(|mut reader| {
-            let (start, done) = (Arc::clone(&start), Arc::clone(&done));
+        .enumerate()
+        .map(|(i, mut reader)| {
+            let (start, done, reads) = (Arc::clone(&start), Arc::clone(&done), Arc::clone(&reads));
             thread::spawn(move || {
                 start.wait();
-                let (mut out, mut read, mut last, mut overtaken) = (Vec::new(), 0_u64, 0, 0);
+                let (mut out, mut last, mut overtaken) = (Vec::new(), 0, 0);
                 while !done.load(Ordering::Relaxed) {
                     match reader.read(&mut out) {
                         Ok(Read::New(number)) => {
                             assert!(number > last, "message {number} after {last}");
                             assert_eq!(out, message(number), "message {number}, torn");
-                            (read, last) = (read + 1, number);
+                            last = number;
+                            reads[i].fetch_add(1, Ordering::Relaxed);
                         }
-                        Ok(Read::Same) => {}
-                        // A writer that never pauses can overtake a hundred
-                        // tries in a row: refused, never returned torn.
+                        Ok(Read::Same) => thread::yield_now(),
+                        // A writer far faster than a camera can overtake a
+                        // hundred tries in a row: refused, never returned torn.
                         Err(ShmError::Overtaken(_)) => overtaken += 1,
                         Err(error) => panic!("{error}"),
                     }
                 }
-                (read, reader.torn(), overtaken)
+                (reader.torn(), overtaken)
             })
         })
         .collect();
     start.wait();
-    let deadline = Instant::now() + Duration::from_secs(2);
-    while Instant::now() < deadline || writer.written() < 20_000 {
-        let number = writer.written() + 1;
-        writer.write(&message(number)).unwrap();
-        thread::yield_now();
+    // 20,000 messages, and 100 read whole by each reader, within a minute;
+    // a reader that fails ends it at once.
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let read = |i: usize| reads[i].load(Ordering::Relaxed);
+    while writer.written() < 20_000 || read(0) < 100 || read(1) < 100 {
+        if threads.iter().any(thread::JoinHandle::is_finished) {
+            break;
+        }
+        let written = writer.written();
+        assert!(
+            Instant::now() < deadline,
+            "{} and {} read of {written}",
+            read(0),
+            read(1)
+        );
+        writer.write(&message(written + 1)).unwrap();
+        for _ in 0..200 {
+            std::hint::spin_loop();
+        }
     }
     done.store(true, Ordering::Relaxed);
-    for thread in threads {
-        let (read, torn, overtaken) = thread.join().unwrap();
-        println!("{read} read whole; {torn} torn and read again; {overtaken} overtaken");
-        assert!(read > 100, "{read}");
+    for (i, thread) in threads.into_iter().enumerate() {
+        let (torn, overtaken) = thread.join().unwrap();
+        println!(
+            "{} read whole; {torn} torn and read again; {overtaken} overtaken",
+            read(i)
+        );
     }
 }
 

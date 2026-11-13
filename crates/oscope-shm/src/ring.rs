@@ -168,6 +168,17 @@ impl RingWriter {
 
     /// Writes `message` as the newest: its number.
     pub fn write(&mut self, message: &[u8]) -> Result<u64, ShmError> {
+        self.write_watched(message, |_| {})
+    }
+
+    /// [`write`](Self::write), calling `watch` with the ring's words once
+    /// the message is in its slot, before the slot is marked whole: for the
+    /// tests.
+    fn write_watched(
+        &mut self,
+        message: &[u8],
+        watch: impl FnOnce(&Words),
+    ) -> Result<u64, ShmError> {
         if message.len() > self.layout.slot_bytes {
             return Err(ShmError::TooLarge {
                 length: message.len(),
@@ -199,6 +210,7 @@ impl RingWriter {
                 .at(at)
                 .store(u64::from_le_bytes(last), Ordering::Relaxed);
         }
+        watch(&self.words);
         sequence.store(even + 2, Ordering::Release);
         self.words.at(4).store(number, Ordering::Release);
         self.written = number;
@@ -308,6 +320,32 @@ impl RingReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_slot_is_marked_while_it_is_written() {
+        let name = format!("unit-{}-marked", std::process::id());
+        let config = RingConfig {
+            slots: 2,
+            slot_bytes: 64,
+        };
+        let mut writer = RingWriter::create(&name, config).unwrap();
+        writer.write(b"one").unwrap();
+        writer.write(b"two").unwrap();
+        // The third message goes in the first's slot, whose sequence is 2.
+        let slot = writer.layout.slot(3);
+        let mut seen = None;
+        writer
+            .write_watched(b"three", |words| {
+                seen = Some(words.at(slot).load(Ordering::Relaxed))
+            })
+            .unwrap();
+        assert_eq!(seen, Some(3), "odd while it is written");
+        assert_eq!(
+            writer.words.at(slot).load(Ordering::Relaxed),
+            4,
+            "even once whole"
+        );
+    }
 
     #[test]
     fn a_slot_being_written_is_never_read() {

@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p19-sidecar-service-shm` / [#32](https://github.com/lucaswewa/OScope/pull/32)
-- Size: M · estimated ~2,300 before it started (shared memory, the preview ring and the private token file ~450; the server's managed and service modes ~250; the restart action, the service and the ring's publisher in `oscope-api` ~170; packaging and its test scripts ~185; tests ~500; `ex-sidecar` and `ex-shm-reader` ~330; and about a third on top, from P18's measured density); one pull request, at the owner's standing choice for P12–P23 · measured **2,500** hand-written lines added (code 1,458; tests 405; examples 423; packaging and its scripts 214), and 78 removed. Docs and `Cargo.lock` aren't counted. **That is 1,900 over M's 600, and about 200 over the estimate.**
+- Size: M · estimated ~2,300 before it started (shared memory, the preview ring and the private token file ~450; the server's managed and service modes ~250; the restart action, the service and the ring's publisher in `oscope-api` ~170; packaging and its test scripts ~185; tests ~500; `ex-sidecar` and `ex-shm-reader` ~330; and about a third on top, from P18's measured density); one pull request, at the owner's standing choice for P12–P23 · measured **2,570** hand-written lines added (code 1,496, of which the ring's two unit tests are about 50; tests 426; examples 434; packaging and its scripts 214), and 84 removed. Docs and `Cargo.lock` aren't counted. **That is 1,970 over M's 600, and about 270 over the estimate.**
 
 ## Summary
 
@@ -62,7 +62,10 @@ The live microscope, end to end, on the simulator:
 §5.20 has no budget for P19. What was measured:
 
 - **The ring, read by another process** (`ex-shm-reader`): every preview the fake camera's 16 frames a second gave, 0 torn reads.
-- **The ring under stress** (`the_ring_stays_consistent_while_it_is_read_and_written_at_once`): a writer with no pause, two slots, two readers, in a debug build, for 2 s. Each reader read about 900 messages whole, and detected and read again about 195,000 torn reads; about 1,700 reads were overtaken 100 times in a row and given up. None was returned torn.
+- **The ring under stress** (`the_ring_stays_consistent_while_it_is_read_and_written_at_once`), in a debug build: 20,000 messages through two slots, a writer that pauses only a moment between them, and two readers.
+  - **On all 24 threads, 0.26 s:** each reader read about 19,700 messages whole, and detected and read again 50–94 torn reads.
+  - **On two cores, 0.3 s:** each read 2,000–7,600 whole, and 374–1,324 torn reads were caught, more than on 24 threads, because readers are preempted mid-copy.
+  - None was returned torn.
 - **Stopping:** closing stdin stops a managed server in about 10 ms.
 
 ## Design notes and deviations from the plan
@@ -84,7 +87,7 @@ The live microscope, end to end, on the simulator:
 **Found before CI:**
 
 - **A crash on Linux:** the `/dev/shm` mapping was built with struct-update syntax from a temporary `Mapping`, whose `Drop` then unmapped it. The first Linux run of the ring's tests crashed (SIGSEGV). Fixed by setting the one value's path.
-- **The stress test's first design** let a writer with no pause overtake every read: a livelock of the test's making, reported as `Overtaken`. The readers now count those, and the writer yields after each write.
+- **The stress test's first design** let a writer with no pause overtake every read: a livelock of the test's making, reported as `Overtaken`. Then its second design, with the writer yielding after each write, took 128–281 s on two cores instead of 2 s. Each yield handed a whole time slice to a reader spinning on "nothing new". Now the writer pauses with a short spin, a reader with nothing new yields, and the test stops after 20,000 messages and 100 whole reads by each reader, within a minute: 0.3 s on two cores.
 - **A missed mutation:** skipping the reader's "is this slot being written?" check went unnoticed. A reader only meets a half-written slot after the writer laps it, and the writer then always finishes first. A unit test now freezes the writer mid-write, and checks the slot is refused until it's finished.
 - **The first Windows service test left the token behind,** unreadable to the administrator running it. The script now takes the folder over before deleting it. Its second run left nothing.
 - **The first run of the contract mutations stalled.** With "stdin closing ignored", the test's servers never exited. They held the mutation script's output pipes until its 20-minute timeout, so it recorded nothing. The servers were stopped by PID. The contract tests now kill their server when a test ends early, and the mutations ran again, all caught, with nothing left running.
@@ -95,13 +98,14 @@ The live microscope, end to end, on the simulator:
 |---|---|---|
 | `oscope-shm` | `shm` (5) | Messages of 0 to 4096 bytes read back whole; a reader sees only newer ones, and a late or lagging reader gets the newest. A slot takes whole words. Refused: too large, a name in use, names that aren't names, rings too small, a ring nobody made. The ring goes with its writer, and the name can be used again. The ring stays consistent while two readers and an unpaced writer race over two slots. The private file is its owner's alone: mode 0600, or one ACE for this account, nothing inherited |
 | `oscope-shm` | `a_slot_being_written_is_never_read` (unit) | A slot frozen mid-write is refused, 100 tries, until its sequence is even again |
+| `oscope-shm` | `a_slot_is_marked_while_it_is_written` (unit) | The writer's protocol: the slot's sequence is odd once the message is in it, and even only once it's whole |
 | `oscope-server` | `sidecar` (3) | With the real binary, managed, and the fakes. The ready line: version, port, PID, an absolute token path in the data root, 64 hex digits, private, and the ring named for the process and written by it. Closing stdin: exit code 0, and the ring gone. `restart`: exit code 75; started again, a new process with a new token. The ring: previews of the camera's frames, ADR-0014 frames without blocks, numbered in order |
 | packaging | `test-user-unit.sh`, under WSL | systemd: started, restarted by exit code 75 (one restart, a new process), stopped with exit code 0 and `Result=success`, removed |
 | packaging | `service-test.ps1`, as an administrator | The service `oscope-test`: installed, started, restarted by the service manager after exit code 75, stopped with exit code 0, removed with its folder. Run twice, the second time after the cleanup was fixed |
 | `ex-sidecar` | `--smoke` | Ready; restarted with 75 as a new process; stopped by stdin with 0 |
 | `ex-shm-reader` | `--smoke` | At least 3 previews in 2 s from its own server's ring, each a JPEG with a good header |
 
-The contract and ring tests ran on Windows and on Linux (WSL, its own target folder).
+The contract and ring tests ran on Windows and on Linux (WSL, its own target folder), and 3 times each with their binaries pinned to two cores, as GitHub's runners have.
 
 **Mutation checks** (each broke the code on purpose, then the test named was run):
 
@@ -109,7 +113,7 @@ The contract and ring tests ran on Windows and on Linux (WSL, its own target fol
 |---|---|
 | The reader doesn't check the sequence again | `the_ring_stays_consistent_while_it_is_read_and_written_at_once` |
 | The reader reads a slot being written | **missed at first** by the race test; `a_slot_being_written_is_never_read`, added |
-| The writer doesn't mark the slot it writes | `the_ring_stays_consistent_while_it_is_read_and_written_at_once` |
+| The writer doesn't mark the slot it writes | `the_ring_stays_consistent_while_it_is_read_and_written_at_once` while it raced hard; **2 runs of 3** after its redesign, since a torn read then slips through only when a reader finishes a copy the writer hasn't. `a_slot_is_marked_while_it_is_written`, added, catches it every time |
 | Stdin closing ignored | `sidecar`'s three tests, each waiting for an exit that never came |
 | A restart exits with 0 | `a_restart_exits_with_75_and_the_next_server_has_a_new_token` |
 | The token written for anyone | `managed_it_says_where_it_is_and_stops_when_stdin_closes`, with its Windows ACL check, added for parity with Linux's mode check |
