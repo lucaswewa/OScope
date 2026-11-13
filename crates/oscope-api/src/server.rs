@@ -17,6 +17,7 @@ use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
 };
 use crate::logs::{LogStore, Logs};
+use crate::preview::PreviewThing;
 use crate::system::{System, VERSION};
 use crate::{media, pages};
 
@@ -113,7 +114,7 @@ impl ApiBuilder {
 
     /// Serves the instrument's `devices` as the Things `camera`, `stage`,
     /// `illumination` and `objective`, and `simulation` when a device is
-    /// simulated.
+    /// simulated; and their frames' live `preview`.
     pub fn devices(mut self, devices: Arc<Devices>) -> Self {
         let simulated = devices.simulator.is_some();
         self.things = self
@@ -122,7 +123,8 @@ impl ApiBuilder {
             .thing("camera", CameraThing::default())
             .thing("stage", StageThing::default())
             .thing("illumination", IlluminationThing::default())
-            .thing("objective", ObjectiveThing::default());
+            .thing("objective", ObjectiveThing::default())
+            .thing("preview", PreviewThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }

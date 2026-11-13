@@ -46,8 +46,6 @@ zune-core = "0.5.3"
 zune-jpeg = "0.5.15"
 # New in P16: the Thing Descriptions' snapshots.
 insta = { version = "1.49.0", default-features = false }
-# 0.6.0 is MIT OR Apache-2.0; later versions add the IJG licence (P14's notes).
-jpeg-encoder = "=0.6.0"
 # New in P07: CUDA, loaded at run time (ADR-0011).
 find-msvc-tools = "0.1.14"
 cudarc = { version = "0.19.10", default-features = false, features = ["std", "driver", "nvrtc", "cufft", "dynamic-loading", "cuda-13040"] }

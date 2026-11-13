@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live view</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --text: #1d2125;
+    --muted: #5d6874;
+    --page: #ffffff;
+    --line: #d9dee3;
+    --bad: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --text: #e4e7ea; --muted: #9ba6b1; --page: #16191c; --line: #2e353b; --bad: #f97066; }
+  }
+  body { margin: 0 auto; max-width: 1100px; padding: 16px; font: 15px/1.5 system-ui, sans-serif; color: var(--text); background: var(--page); }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .muted { color: var(--muted); }
+  .bad { color: var(--bad); }
+  canvas { display: block; width: 100%; aspect-ratio: 3 / 2; background: #000; border: 1px solid var(--line); touch-action: none; }
+  .readout { font: 0.95rem/1.4 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+  button, input { font: inherit; padding: 4px 10px; }
+  input[type=number] { width: 7em; }
+</style>
+</head>
+<body>
+<h1>Live view</h1>
+<p class="muted">The simulated camera's frames through the <code>preview</code> Thing's binary WebSocket. Scroll to zoom: the server sends the region asked for.</p>
+<canvas id="view"></canvas>
+<div class="readout" id="stats">connecting…</div>
+<div class="readout" id="position"></div>
+<div class="row">
+  <span>Jog</span>
+  <button data-axis="x" data-sign="-">x −</button>
+  <button data-axis="x" data-sign="+">x +</button>
+  <button data-axis="y" data-sign="-">y −</button>
+  <button data-axis="y" data-sign="+">y +</button>
+  <button data-axis="z" data-sign="-">z −</button>
+  <button data-axis="z" data-sign="+">z +</button>
+  <label>at <input type="number" id="speed" value="500" min="1"> µm/s</label>
+</div>
+<div class="row">
+  <label>quality <input type="range" id="quality" min="20" max="100" value="80"></label>
+  <button id="whole">Whole frame</button>
+</div>
+<p class="muted" id="expected"></p>
+<p id="message" class="muted"></p>
+<script src="app.js"></script>
+</body>
+</html>

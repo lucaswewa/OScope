@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use oscope_imaging::color::{encode_png, read_image};
+use oscope_imaging::color::{encode_jpeg, encode_png, read_image};
 use tiff::encoder::compression::DeflateLevel;
 use tiff::encoder::{Compression, TiffEncoder, colortype};
 
@@ -105,18 +105,20 @@ fn every_page_of_a_tiff_stack_is_read_as_linear_data() {
 
 #[test]
 fn a_jpeg_is_read_within_its_compression_s_error() {
-    // Flat 8 × 8 blocks of colour, which JPEG keeps closely at quality 100.
+    // Flat 8 × 8 blocks, which JPEG keeps closely at quality 100. The
+    // encoder halves the chroma (4:2:0), so the blocks share one: adding
+    // the same step to R, G and B changes only the brightness.
     let folder = tempfile::tempdir().unwrap();
     let path = folder.path().join("blocks.jpg");
     let (w, h) = (32_u16, 16_u16);
-    let colour = |x: u16, y: u16| [(x / 8) as u8 * 60, (y / 8) as u8 * 120 + 40, 200];
+    let colour = |x: u16, y: u16| {
+        let step = (x / 8 + 4 * (y / 8)) as u8 * 12;
+        [20 + step, 60 + step, 140 + step]
+    };
     let rgb: Vec<u8> = (0..h)
         .flat_map(|y| (0..w).flat_map(move |x| colour(x, y)))
         .collect();
-    let mut file = Vec::new();
-    jpeg_encoder::Encoder::new(&mut file, 100)
-        .encode(&rgb, w, h, jpeg_encoder::ColorType::Rgb)
-        .unwrap();
+    let file = encode_jpeg(&rgb, w.into(), h.into(), 100).unwrap();
     std::fs::write(&path, file).unwrap();
     let image = &read_image(&path).unwrap()[0];
     assert_eq!((image.width(), image.height()), (32, 16));

@@ -1,6 +1,6 @@
 # P16: Device Things: camera, stage, illumination, objective, simulation
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p16-device-things` / [#29](https://github.com/lucaswewa/OScope/pull/29)
 - Size: L · estimated ~2,500 before it started (the five Things ~1,000; the driver registry, the simulator's lights and acquisition ~400; tests ~700; `ex-http-walkthrough` ~400); one pull request, at the owner's standing choice for P12–P23, rather than the spec's possible split into P16 and P16b · measured **2,720** hand-written lines added (code 1,746; tests 697; examples 277), and 26 removed. Docs, `Cargo.lock` and the generated snapshots aren't counted. **That is 1,820 over L's 900, and about 220 over the estimate.**
 
