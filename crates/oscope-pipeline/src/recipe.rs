@@ -18,7 +18,7 @@ pub const INPUT: &str = "input";
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Recipe {
-    /// Its format: [`FORMAT`].
+    /// Its format: 1, for now.
     pub format: u32,
     /// A name for people.
     #[serde(default)]

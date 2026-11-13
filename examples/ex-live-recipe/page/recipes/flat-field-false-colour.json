@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "name": "Flat field, then false colour",
+  "inputs": [{ "name": "image", "type": "image" }, { "name": "region", "type": "json" }],
+  "nodes": [
+    { "id": "flat", "node": "io.reference", "params": { "name": "flat" } },
+    { "id": "even", "node": "correction.flat_field" },
+    { "id": "colour", "node": "display.false_colour", "params": { "map": "spectrum", "black": 0.3, "white": 0.95 } }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "even.image" },
+    { "from": "flat.image", "to": "even.flat" },
+    { "from": "input.region", "to": "even.region" },
+    { "from": "even.image", "to": "colour.image" }
+  ],
+  "outputs": [{ "name": "image", "from": "colour.image" }]
+}

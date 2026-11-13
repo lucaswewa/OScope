@@ -17,25 +17,34 @@
 //! CUDA twins, which give the same result to the bit, and 5–6 on the CPU.
 //! All of it runs in the live pool, so batch work can't hold it up.
 //!
+//! A [`LiveRecipe`] (P22), when set, runs after step 4's black level, in
+//! place of white balance and the display transform: it gives display
+//! values.
+//!
 //! [`Adaptation`] lowers a client's quality, then its size, while it keeps
 //! dropping messages. [`wire`] is how a preview travels (ADR-0014), and
 //! [`publish`] writes previews to the desktop app's shared-memory ring
 //! (ADR-0015).
 
 mod adapt;
+mod recipe;
 mod resize;
 mod ring;
 pub mod wire;
 
 pub use adapt::Adaptation;
+pub use recipe::LiveRecipe;
 pub use ring::{RingSettings, publish};
 
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError, RwLock};
 use std::time::{Duration, Instant};
 
-use oscope_compute::{Compute, ComputeError, Lane, Shape, cpu};
+use oscope_compute::{Compute, ComputeError, Image, Lane, Shape, cpu};
 use oscope_core::{BayerPattern, Frame, FrameMeta, FrameView, PixelFormat, PixelRect};
 use oscope_imaging::color::{self, ColorError, ColourCorrection, Demosaic, Display};
+use oscope_pipeline::Value;
+use oscope_pipeline::stock::Region;
+use rayon::prelude::*;
 
 use crate::stats::{self, LiveStats, Mask, StatsRequest};
 
@@ -78,6 +87,8 @@ pub struct Rendered {
     pub gpu: bool,
     /// How long it took.
     pub took: Duration,
+    /// How long the live recipe took, if one ran.
+    pub recipe: Option<Duration>,
 }
 
 /// What can't be previewed.
@@ -98,6 +109,9 @@ pub enum PreviewError {
     /// A colour step failed.
     #[error(transparent)]
     Color(#[from] ColorError),
+    /// The live recipe failed, or gave what it mustn't.
+    #[error("the live recipe: {0}")]
+    Recipe(String),
 }
 
 impl From<ComputeError> for PreviewError {
@@ -115,16 +129,62 @@ struct Steps {
     look: Look,
 }
 
-/// Makes previews in the live pool, on the GPU when there is one.
+/// Makes previews in the live pool, on the GPU when there is one. Its
+/// clones share its live recipe.
 #[derive(Clone, Debug)]
 pub struct Preview {
     compute: Arc<Compute>,
+    recipe: Arc<RwLock<Option<LiveRecipe>>>,
 }
+
+/// What steps 2–4 made: the 8-bit samples, their shape, whether the GPU
+/// made them, and how long the live recipe took, if one ran.
+type Coloured = (Vec<u8>, Shape, bool, Option<Duration>);
 
 impl Preview {
     /// Previews made with `compute`.
     pub fn new(compute: Arc<Compute>) -> Self {
-        Self { compute }
+        let recipe = Arc::default();
+        Self { compute, recipe }
+    }
+
+    /// The compute layer it uses.
+    pub fn compute(&self) -> &Arc<Compute> {
+        &self.compute
+    }
+
+    /// Sets the live recipe, for every preview from now on, or none.
+    pub fn set_recipe(&self, recipe: Option<LiveRecipe>) {
+        *self.recipe.write().unwrap_or_else(PoisonError::into_inner) = recipe;
+    }
+
+    /// The live recipe, if one is set.
+    pub fn recipe(&self) -> Option<LiveRecipe> {
+        self.recipe
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    /// The whole frame in linear light, from 0 to 1, as the chain makes it
+    /// before its look: demosaiced, bilinear, with the black level taken
+    /// off. For references, such as flat fields, in the batch pool.
+    pub fn linear(&self, frame: &Frame) -> Result<Image, PreviewError> {
+        let (meta, view) = (frame.meta(), frame.view());
+        let format = view.format();
+        if !cpu::converts(format) || !matches!(format.channels(), 1 | 3) {
+            return Err(PreviewError::Format(meta.format));
+        }
+        self.compute.pools().install(Lane::Batch, || {
+            let mut image = cpu::to_f32(&view)?;
+            if let Some(pattern) = format.bayer() {
+                image = color::demosaic(&image, pattern, Demosaic::Bilinear)?;
+            }
+            if black(meta) > 0.0 {
+                color::subtract_black(&mut image, black(meta))?;
+            }
+            Ok(image)
+        })
     }
 
     /// Whether there is a GPU to make previews on.
@@ -163,6 +223,15 @@ impl Preview {
             true => (rect.width / 2, rect.height / 2),
             false => (rect.width, rect.height),
         };
+        let region = Region {
+            x: f64::from(rect.x),
+            y: f64::from(rect.y),
+            width: f64::from(rect.width),
+            height: f64::from(rect.height),
+            frame_width: f64::from(meta.width),
+            frame_height: f64::from(meta.height),
+        };
+        let recipe = self.recipe();
         let steps = Steps {
             pattern,
             method: match superpixel {
@@ -174,7 +243,8 @@ impl Preview {
             look: *look,
         };
         self.compute.pools().install(Lane::Live, || {
-            let (pixels, shape, on_gpu) = self.colour(&view, &steps, gpu)?;
+            let coloured = self.colour(&view, &steps, gpu, recipe.as_ref(), region)?;
+            let (pixels, shape, on_gpu, recipe) = coloured;
             let rgb = resize::resize(&pixels, shape, width, height);
             let jpeg = color::encode_jpeg(&rgb, width, height, request.quality)?;
             Ok(Rendered {
@@ -184,6 +254,7 @@ impl Preview {
                 height,
                 gpu: on_gpu,
                 took: started.elapsed(),
+                recipe,
             })
         })
     }
@@ -202,18 +273,20 @@ impl Preview {
         })
     }
 
-    /// Steps 2–4: the 8-bit samples, their shape, and whether the GPU made
-    /// them.
+    /// Steps 2–4, with the live recipe if there is one, for the part of the
+    /// frame `region` is.
     fn colour(
         &self,
         view: &FrameView<'_>,
         steps: &Steps,
         gpu: bool,
-    ) -> Result<(Vec<u8>, Shape, bool), PreviewError> {
+        recipe: Option<&LiveRecipe>,
+        region: Region,
+    ) -> Result<Coloured, PreviewError> {
         #[cfg(feature = "cuda")]
         if gpu && let Some(cuda) = self.compute.cuda() {
-            let (pixels, shape) = on_gpu(cuda, view, steps)?;
-            return Ok((pixels, shape, true));
+            let (pixels, shape, took) = on_gpu(cuda, view, steps, recipe, region)?;
+            return Ok((pixels, shape, true, took));
         }
         let _ = gpu;
         let mut image = self.compute.to_f32(Lane::Live, view)?;
@@ -226,12 +299,24 @@ impl Preview {
         if steps.black > 0.0 {
             color::subtract_black(&mut image, steps.black)?;
         }
+        if let Some(recipe) = recipe {
+            let (shown, took) = recipe.run(Value::image(image), region)?;
+            return Ok((bytes(&shown), shown.shape(), false, Some(took)));
+        }
         if image.channels() == 3 && steps.look.correction != ColourCorrection::default() {
             color::correct(&mut image, &steps.look.correction)?;
         }
         let pixels = color::to_display(&image, &steps.look.display)?;
-        Ok((pixels, image.shape(), false))
+        Ok((pixels, image.shape(), false, None))
     }
+}
+
+/// Display values from 0 to 1 as 8-bit samples.
+fn bytes(image: &Image) -> Vec<u8> {
+    let samples = image.data().par_iter();
+    samples
+        .map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)
+        .collect()
 }
 
 /// [`Preview::colour`] on the GPU.
@@ -240,7 +325,9 @@ fn on_gpu(
     cuda: &oscope_compute::cuda::Cuda,
     view: &FrameView<'_>,
     steps: &Steps,
-) -> Result<(Vec<u8>, Shape), PreviewError> {
+    recipe: Option<&LiveRecipe>,
+    region: Region,
+) -> Result<(Vec<u8>, Shape, Option<Duration>), PreviewError> {
     use oscope_imaging::color::gpu;
     let lane = Lane::Live;
     let mut image = cuda.to_f32(lane, view)?;
@@ -253,11 +340,15 @@ fn on_gpu(
     if steps.black > 0.0 {
         gpu::subtract_black(cuda, lane, &mut image, steps.black)?;
     }
+    if let Some(recipe) = recipe {
+        let (shown, took) = recipe.run(Value::DeviceImage(Arc::new(image)), region)?;
+        return Ok((bytes(&shown), shown.shape(), Some(took)));
+    }
     if image.shape().channels == 3 && steps.look.correction != ColourCorrection::default() {
         gpu::correct(cuda, lane, &mut image, &steps.look.correction)?;
     }
     let pixels = gpu::to_display(cuda, lane, &image, &steps.look.display)?;
-    Ok((pixels, image.shape()))
+    Ok((pixels, image.shape(), None))
 }
 
 /// The frame's pixels that `roi` covers, clipped to the frame and widened to

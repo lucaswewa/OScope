@@ -525,3 +525,208 @@ fn shift(first: &[f32], second: &[f32], width: usize, height: usize) -> (f64, f6
     // `second` at x + dx matches `first` at x: its content moved by dx.
     (dx as f64 + fraction, dy as f64)
 }
+
+/// Invokes `action` with `input`, and waits for it to end: its invocation.
+async fn invoke(address: SocketAddr, action: &str, input: Value) -> Value {
+    let path = format!("/api/v1/preview/{action}");
+    let (status, started) = http(address, "POST", &path, &input.to_string()).await;
+    assert_eq!(status, 201, "{action}: {started}");
+    let href = started["href"].as_str().unwrap().to_owned();
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        let (_, invocation) = http(address, "GET", &href, "").await;
+        if !["pending", "running"].contains(&invocation["status"].as_str().unwrap_or("")) {
+            return invocation;
+        }
+        assert!(Instant::now() < deadline, "{action} didn't end");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+/// A live recipe of stock nodes, from the image to `last`.
+fn recipe(nodes: Value, edges: Value, last: &str) -> Value {
+    json!({
+        "format": 1,
+        "inputs": [{ "name": "image", "type": "image" }, { "name": "region", "type": "json" }],
+        "nodes": nodes,
+        "edges": edges,
+        "outputs": [{ "name": "image", "from": format!("{last}.image") }]
+    })
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_live_recipe_runs_on_each_preview_once_checked() {
+    let folder = tempfile::tempdir().unwrap();
+    let (address, _stop) = serve(folder.path(), devices(folder.path(), fakes()).await).await;
+    let mut socket = stream(address, json!({ "width": 320, "height": 240 }), None).await;
+    assert_eq!(
+        http(address, "POST", "/api/v1/camera/start_streaming", "{}")
+            .await
+            .0,
+        201
+    );
+    let mean = |jpeg: &[u8]| {
+        let (grey, ..) = grey(jpeg);
+        grey.iter().sum::<f32>() / grey.len() as f32
+    };
+    let before = mean(&next(&mut socket).await.1);
+    // The budget is for release builds: the tests' are unoptimised, and may
+    // have two cores. Recipes are timed at the default viewport's size: the
+    // stream's here.
+    let budget = http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "1000").await;
+    assert!(budget.0 < 300, "{budget:?}");
+    let defaults = json!({ "width": 320, "height": 240, "quality": 80, "max_fps": 30.0 });
+    let defaults = http(
+        address,
+        "PUT",
+        "/api/v1/preview/defaults",
+        &defaults.to_string(),
+    )
+    .await;
+    assert!(defaults.0 < 300, "{defaults:?}");
+
+    // Levels, then a table inverting them: the previews come inverted.
+    let inverted = recipe(
+        json!([
+            { "id": "levels", "node": "display.levels" },
+            { "id": "invert", "node": "display.lut", "params": { "table": [1.0, 0.0] } }
+        ]),
+        json!([
+            { "from": "input.image", "to": "levels.image" },
+            { "from": "levels.image", "to": "invert.image" }
+        ]),
+        "invert",
+    );
+    let set = invoke(address, "set_live_recipe", json!({ "recipe": inverted })).await;
+    assert_eq!(set["status"], "completed", "{set}");
+    let check = &set["output"];
+    assert_eq!(
+        (check["steps"].clone(), check["width"].clone()),
+        (json!(["levels", "invert"]), json!(320))
+    );
+    assert!(check["time_ms"].as_f64().unwrap() <= check["budget_ms"].as_f64().unwrap());
+    // Previews made before it may still be on their way.
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let after = mean(&next(&mut socket).await.1);
+        if (before + after - 255.0).abs() < 8.0 {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{before} and {after} aren't inverses"
+        );
+    }
+    let sessions = http(address, "GET", "/api/v1/preview/sessions", "").await.1;
+    assert!(sessions[0]["recipe_ms"].is_number(), "{sessions}");
+    assert_eq!(
+        http(address, "GET", "/api/v1/preview/live_recipe", "")
+            .await
+            .1["nodes"][1]["id"],
+        "invert"
+    );
+
+    // Refused, saying why: a recipe that changes the size, one over its
+    // budget, and one reading a reference that isn't there.
+    let binned = recipe(
+        json!([{ "id": "bin", "node": "resize.bin", "params": { "factor": 2 } }]),
+        json!([{ "from": "input.image", "to": "bin.image" }]),
+        "bin",
+    );
+    let flat = recipe(
+        json!([
+            { "id": "flat", "node": "io.reference", "params": { "name": "flat" } },
+            { "id": "even", "node": "correction.flat_field" },
+            { "id": "show", "node": "display.false_colour", "params": { "map": "spectrum" } }
+        ]),
+        json!([
+            { "from": "input.image", "to": "even.image" },
+            { "from": "flat.image", "to": "even.flat" },
+            { "from": "input.region", "to": "even.region" },
+            { "from": "even.image", "to": "show.image" }
+        ]),
+        "show",
+    );
+    let refusal = async |recipe: &Value| {
+        let refused = invoke(address, "set_live_recipe", json!({ "recipe": recipe })).await;
+        assert_eq!(refused["status"], "error", "{refused}");
+        refused["error"].to_string()
+    };
+    assert!(
+        refusal(&binned)
+            .await
+            .contains("a live recipe keeps the size")
+    );
+    assert!(
+        refusal(&flat)
+            .await
+            .contains("there is no reference `flat`")
+    );
+    let budget = http(
+        address,
+        "PUT",
+        "/api/v1/preview/recipe_budget_ms",
+        "0.000001",
+    )
+    .await;
+    assert!(budget.0 < 300, "{budget:?}");
+    assert!(refusal(&inverted).await.contains("over its budget"));
+    http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "1000").await;
+
+    // A flat field captured from the camera, then a recipe that reads it,
+    // over the region each preview shows.
+    let captured = invoke(
+        address,
+        "capture_reference",
+        json!({ "name": "flat", "frames": 2 }),
+    )
+    .await;
+    assert_eq!(captured["status"], "completed", "{captured}");
+    assert_eq!(
+        (
+            captured["output"]["width"].clone(),
+            captured["output"]["frames"].clone()
+        ),
+        (json!(640), json!(2))
+    );
+    assert_eq!(
+        http(address, "GET", "/api/v1/preview/references", "")
+            .await
+            .1,
+        json!(["flat"])
+    );
+    let set = invoke(address, "set_live_recipe", json!({ "recipe": flat })).await;
+    assert_eq!(set["status"], "completed", "{set}");
+    let zoomed = json!({ "width": 160, "height": 120, "roi": { "x": 320, "y": 240, "width": 320, "height": 240 } });
+    socket
+        .send(Message::text(zoomed.to_string()))
+        .await
+        .unwrap();
+    let header = loop {
+        let (header, _) = next(&mut socket).await;
+        if header.width == 160 {
+            break header;
+        }
+    };
+    assert_eq!(header.roi, PixelRect::new(320, 240, 320, 240));
+
+    // None: the look again.
+    let cleared = invoke(address, "set_live_recipe", json!({ "recipe": null })).await;
+    assert_eq!(
+        (cleared["status"].clone(), cleared["output"].clone()),
+        (json!("completed"), Value::Null)
+    );
+    assert_eq!(
+        http(address, "GET", "/api/v1/preview/live_recipe", "")
+            .await
+            .1,
+        Value::Null
+    );
+    wait_for(
+        async || {
+            http(address, "GET", "/api/v1/preview/sessions", "").await.1[0]["recipe_ms"].is_null()
+        },
+        "a preview made without the recipe",
+    )
+    .await;
+}

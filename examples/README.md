@@ -40,6 +40,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-shm-reader`](ex-shm-reader/README.md) | P19 | A second process reading the server's shared-memory preview ring, the desktop app's fast path: the rate previews come at, and any torn reads |
 | [`ex-jobs`](ex-jobs/README.md) | P20 | The job service: stage tours as hardware jobs, one at a time and holding the hardware lock, and crunching as compute jobs sharing a GPU budget, on a page with the queue and progress live, cancel, pause, resume and reorder |
 | [`ex-pipeline`](ex-pipeline/README.md) | P21 | A recipe of typed nodes run on a field of the simulated slide from the command line: its graph, each step's time, a second run from the memo cache, an edit that re-runs only what follows it, a tiled run the same to the bit, and a batch over more fields as a compute job |
+| [`ex-live-recipe`](ex-live-recipe/README.md) | P22 | Live recipes of stock nodes on the live view: a choice of recipes, each checked against its latency budget before it runs; a flat field and a dark frame captured from the camera and applied over the region shown |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

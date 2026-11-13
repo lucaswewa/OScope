@@ -230,6 +230,7 @@ impl Api {
             .api_prefix(API_PREFIX)
             .api_info(TITLE, VERSION)
             .service(Arc::clone(&restart))
+            .service(Arc::new(roots.clone()))
             .thing("system", System::from_config(roots.clone()));
         ApiBuilder {
             things,

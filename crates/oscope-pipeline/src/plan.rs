@@ -201,6 +201,18 @@ impl Plan {
         &self.inputs
     }
 
+    /// The recipe's outputs: their names and types.
+    pub fn outputs(&self) -> Vec<(&str, PortType)> {
+        let kind = |source: Source| match source {
+            Source::Input(i) => self.inputs[i].kind,
+            Source::Step(s, p) => self.steps[s].node.descriptor().outputs[p].kind,
+        };
+        self.outputs
+            .iter()
+            .map(|(name, source)| (name.as_str(), kind(*source)))
+            .collect()
+    }
+
     /// The steps' IDs, in the order they start in when one runs at a time.
     pub fn order(&self) -> Vec<&str> {
         self.steps.iter().map(|step| step.id.as_str()).collect()
@@ -253,6 +265,17 @@ impl Plan {
                 format!("{}.{}", step.id, step.node.descriptor().outputs[p].name)
             }
         }
+    }
+}
+
+impl fmt::Debug for Plan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Plan")
+            .field("name", &self.name)
+            .field("order", &self.order())
+            .field("halo", &self.halo)
+            .field("transfers", &self.transfers)
+            .finish()
     }
 }
 
@@ -557,6 +580,7 @@ fn plan(
         let mut hasher = DefaultHasher::new();
         (descriptor.id.as_str(), descriptor.version, step.device).hash(&mut hasher);
         hash_json(&step.params, &mut hasher);
+        step.step.key().hash(&mut hasher);
         step.key = hasher.finish();
     }
     let transfers = transfers(recipe, &steps, &outputs);
