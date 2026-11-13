@@ -725,7 +725,7 @@ These are targets on the owner's laptop (RTX 3070 Ti laptop GPU). Each is measur
 
 ## 7. Milestone 1 phase overview
 
-The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status runs Planned → In progress → In review → Done. The milestone has 58 OScope phases (P00–P54, plus P02b, P08b and P08c) and 6 upstream phases (U01–U06).
+The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status runs Planned → In progress → In review → Done. The milestone has 59 OScope phases (P00–P54, plus P02b, P08b, P08c and P09b) and 6 upstream phases (U01–U06).
 
 ### Stage 0: `teta-wot` v0.2.0 (upstream, in the `teta-wot` repository)
 
@@ -758,15 +758,16 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P07 | CUDA backend | P06 | L | 0011 | Done |
 | P08 | Demosaicing on the CPU | P07 | L | — | Done |
 | P08b | Colour, display transform, crop and binning, writers | P08 | L | — | Done |
-| P08c | CUDA twins of the colour pipeline, the budgets, the comparison page | P08b | L | — | In review |
+| P08c | CUDA twins of the colour pipeline, the budgets, the comparison page | P08b | L | — | Done |
 
 ### Stage 3: Hardware abstraction and simulator
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P09 | HAL traits, capabilities, objective catalogue, fakes | P03 | M | 0012 | Planned |
+| P09 | HAL traits, capabilities, objective catalogue, manual implementations | P03 | L | 0012 | In progress |
+| P09b | HAL fakes and conformance suite | P09 | L | — | Planned |
 | P10 | Simulated world, optics, H&E tissue | P09 | L | 0013 | Planned |
-| P11 | Simulation clock and grblHAL-like stage | P09 | L | — | Planned |
+| P11 | Simulation clock and grblHAL-like stage | P09b | L | — | Planned |
 | P12 | Simulated camera: sensor, modes, timing, triggers | P10, P11 | L | — | Planned |
 | P13 | Samples II: reflective surface, fluorescent cell volume | P12 | L | — | Planned |
 | P14 | Samples III: sub-diffraction structures, imports, load and unload | P13 | M | — | Planned |
@@ -1057,3 +1058,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | P08 was estimated at about 2,500 lines before it started: about 2,030 at the measured density, plus a quarter. That is nearly three times L's 900. With the owner's agreement it was split into three, each within L:<ul><li>**P08:** demosaicing on the CPU, the PSNR tests, the benchmarks and the CPU budget (~900);</li><li>**P08b:** the colour steps, the display transform, crop and binning, and the TIFF and PNG writers (~800);</li><li>**P08c:** the CUDA twins, equivalence, the CUDA budget and `ex-demosaic`'s comparison page (~900).</li></ul>P17 and P22 now depend on P08c |
 | 2026-11-12 | P08c was estimated at about 1,100 lines before it started, over L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the CUDA twins (~700) and the comparison page (~400) |
 | 2026-11-12 | The MIChrome 20 was connected and measured (P02b's steps 1–3, `hardware.md`). In 16 bits it gives 7.24 fps at full resolution, 289 MB/s, half the 580 MB/s that §5.5 assumed; 14.5 fps holds only in 8 bits. The owner kept 580 MB/s as the design budget (§5.5, §5.20, P29), as headroom for the camera that replaces it. So P12's simulated camera runs its modes at the measured rates for each bit depth, plus a design rate for P29. An ROI is accepted but doesn't raise the rate, so §5.5's preview rate no longer counts on ROIs, and P12's ROIs crop without speeding up |
+| 2026-11-12 | P09 was estimated at about 1,900 lines before it started, bottom-up from its API surface at the measured density: about three times M's 600. With the owner's agreement it was split into two:<ul><li>**P09:** the four traits and their capability types, `PositionTrack`, the objective catalogue, the manual implementations, ADR-0012 and `ex-objectives` (~1,150, so sized L);</li><li>**P09b:** the scripted fakes, the conformance suite and `ex-hal-fakes` (~850).</li></ul>The trait design and ADR-0012 are reviewed before the fakes and the suite build on them. P11 now depends on P09b, whose conformance suite it runs |

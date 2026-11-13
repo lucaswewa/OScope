@@ -49,6 +49,7 @@ ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
 oscope-compute = { path = "crates/oscope-compute" }
+oscope-hal = { path = "crates/oscope-hal" }
 oscope-imaging = { path = "crates/oscope-imaging" }
 oscope-core = { path = "crates/oscope-core" }
 

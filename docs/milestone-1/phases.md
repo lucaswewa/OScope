@@ -17,7 +17,7 @@ Examples live in `examples/<name>/` as small crates, run with `cargo run -p <nam
 - [Stage 0: teta-wot v0.2.0](#stage-0-teta-wot-v020-upstream): [U01](#u01) [U02](#u02) [U03](#u03) [U04](#u04) [U05](#u05) [U06](#u06)
 - [Stage 1: Groundwork](#stage-1-groundwork): [P00](#p00) [P01](#p01) [P02](#p02) [P02b](#p02b) [P03](#p03) [P04](#p04) [P05](#p05)
 - [Stage 2: Compute](#stage-2-compute): [P06](#p06) [P07](#p07) [P08](#p08) [P08b](#p08b) [P08c](#p08c)
-- [Stage 3: Hardware abstraction and simulator](#stage-3-hardware-abstraction-and-simulator): [P09](#p09) [P10](#p10) [P11](#p11) [P12](#p12) [P13](#p13) [P14](#p14) [P15](#p15)
+- [Stage 3: Hardware abstraction and simulator](#stage-3-hardware-abstraction-and-simulator): [P09](#p09) [P09b](#p09b) [P10](#p10) [P11](#p11) [P12](#p12) [P13](#p13) [P14](#p14) [P15](#p15)
 - [Stage 4: Live microscope](#stage-4-live-microscope): [P16](#p16) [P17](#p17) [P18](#p18) [P19](#p19)
 - [Stage 5: Jobs and pipelines](#stage-5-jobs-and-pipelines): [P20](#p20) [P21](#p21) [P22](#p22) [P23](#p23)
 - [Stage 6: Extensions](#stage-6-extensions): [P24](#p24) [P25](#p25) [P26](#p26) [P27](#p27)
@@ -440,10 +440,10 @@ P08 was split into three before it started (P08, P08b, P08c), with the owner's a
 ## Stage 3: Hardware abstraction and simulator
 
 <a id="p09"></a>
-### P09: HAL traits, capabilities, objective catalogue, fakes
+### P09: HAL traits, capabilities, objective catalogue, manual implementations
 
 **Goal.** The seams through which simulated, real and extension drivers plug in (§5.9).
-**Depends on** P03 · **Size** M · **ADRs** 0012
+**Depends on** P03 · **Size** L · **ADRs** 0012
 
 **Scope** (`oscope-hal`)
 - **Traits:** `Camera`, `Stage`, `Illumination`, `ObjectiveMount`, each with a capability report.
@@ -456,14 +456,30 @@ P08 was split into three before it started (P08, P08b, P08c), with the owner's a
   - `PositionTrack`, a ring buffer with interpolation at time t.
 - **Objective catalogue** (TOML), with Mitutoyo defaults.
 - **Manual implementations:** `ManualIllumination` and `ManualObjectiveMount`.
+- **The ADR** works through four targets and shows each one fits: the Tucsen camera (no trigger), the grblHAL stage, a camera with an external trigger, and another vendor's camera arriving as an extension.
+
+**Example** — `ex-objectives`: prints the objective catalogue, the default or one from a TOML file, with each objective's pixel size and field of view on the MIChrome 20, and drives the manual implementations, printing their capability reports.
+
+**Tests**
+- Property tests of `PositionTrack` interpolation.
+- The catalogue: its defaults, a TOML file, and invalid files rejected.
+- The manual implementations.
+
+<a id="p09b"></a>
+### P09b: HAL fakes and conformance suite
+
+**Goal.** Scripted fakes of every HAL trait, and the conformance suite that every driver runs (§5.9).
+**Depends on** P09 · **Size** L · **ADRs** —
+
+**Scope** (`oscope-hal`)
 - **Fakes:** a scripted fake for each trait.
-- **A HAL conformance suite** that any driver runs: the simulator now, the real drivers in M3.
-- **The ADR** works through three targets and shows each one fits: the Tucsen camera (no trigger), the grblHAL stage, a camera with an external trigger, and another vendor's camera arriving as an extension.
+- **A HAL conformance suite** that any driver runs: the simulator now, the real drivers in M3, and extension drivers (P27).
 
 **Example** — `ex-hal-fakes`: drives the fakes and prints their capability reports.
 
 **Tests**
-- Property tests of `PositionTrack` interpolation, and the conformance suite run against the fakes.
+- The conformance suite run against the fakes and the manual implementations.
+- Each fake's script: a scripted failure fails the suite.
 
 <a id="p10"></a>
 ### P10: Simulated world, optics, H&E tissue
@@ -495,7 +511,7 @@ P08 was split into three before it started (P08, P08b, P08c), with the owner's a
 ### P11: Simulation clock and grblHAL-like stage
 
 **Goal.** One clock for the whole simulator, and a stage that moves like the real one, in real time, with its imperfections and its trigger output (§5.10, D20, D30).
-**Depends on** P09 · **Size** L · **ADRs** —
+**Depends on** P09b · **Size** L · **ADRs** —
 
 **Scope** (`oscope-sim`)
 - **The simulation clock,** shared by every simulated device:

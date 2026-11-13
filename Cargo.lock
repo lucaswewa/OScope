@@ -528,6 +528,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-objectives"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "oscope-core",
+ "oscope-hal",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-server-hello"
 version = "0.1.0"
 dependencies = [
@@ -1084,6 +1095,16 @@ version = "0.1.0"
 [[package]]
 name = "oscope-hal"
 version = "0.1.0"
+dependencies = [
+ "oscope-core",
+ "rand",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "toml",
+]
 
 [[package]]
 name = "oscope-imaging"

@@ -17,6 +17,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0009](0009-logging.md) | Logging | Accepted | P05 |
 | [0010](0010-compute-backends-the-cpu-reference-and-cuda.md) | Compute backends: the CPU reference and CUDA through `cudarc` | Accepted | P06 |
 | [0011](0011-building-loading-and-redistributing-cuda-kernels.md) | Building, loading and redistributing CUDA kernels | Accepted | P07 |
+| [0012](0012-the-hardware-abstraction-layer.md) | The hardware abstraction layer | Accepted | P09 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 
