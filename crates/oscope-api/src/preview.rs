@@ -23,7 +23,8 @@ use crate::devices::Devices;
 
 /// How many messages a client that acknowledges may have unshown.
 const AHEAD: u32 = 2;
-/// The least time between one client's statistics: 10 a second at most.
+/// The least time between one client's messages with statistics, from one
+/// being sent to the next being measured: 10 a second at most.
 const STATS_EVERY: Duration = Duration::from_millis(100);
 
 /// What a client gets unless it asks otherwise.
@@ -320,9 +321,6 @@ impl PreviewThing {
                 .params()
                 .stats
                 .filter(|_| measured.is_none_or(|at| at.elapsed() >= STATS_EVERY));
-            if stats.is_some() {
-                measured = Some(Instant::now());
-            }
             let made = tokio::task::spawn_blocking(move || {
                 let mut made = preview.render(&frame, &request, &look, gpu);
                 if let Err(PreviewError::Roi { .. }) = made {
@@ -357,6 +355,11 @@ impl PreviewThing {
             let bytes = message.len();
             if !subscriber.send(message) {
                 break;
+            }
+            // Timed from the sending, so that messages with statistics go at
+            // least 100 ms apart, however long each took to make.
+            if !blocks.is_empty() {
+                measured = Some(Instant::now());
             }
             sequence = sequence.wrapping_add(1);
             adaptation.record(missed || subscriber.dropped() > replaced);

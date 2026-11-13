@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p18-live-stats` / [#31](https://github.com/lucaswewa/OScope/pull/31)
-- Size: M · estimated ~1,400 before it started (the statistics ~370; their blocks on the preview stream and the sessions ~120; tests ~350; `ex-live-overlays` with its page ~550); one pull request, at the owner's standing choice for P12–P23 · measured **1,925** hand-written lines added (code 743; tests 568; examples 614), and 40 removed. Docs, `Cargo.lock` and the generated snapshot aren't counted. **That is 1,325 over M's 600, and about 525 over the estimate:** the statistics module came to 599 lines against ~370, rustfmt spreading its folds over rows across many lines, and the tests to 568 against ~350.
+- Size: M · estimated ~1,400 before it started (the statistics ~370; their blocks on the preview stream and the sessions ~120; tests ~350; `ex-live-overlays` with its page ~550); one pull request, at the owner's standing choice for P12–P23 · measured **1,955** hand-written lines added (code 749, with 3 in `.gitignore`; tests 592; examples 614), and 47 removed. Docs, `Cargo.lock`, the generated snapshot and P17's stray pending snapshot (429 lines, deleted) aren't counted. **That is 1,355 over M's 600, and about 555 over the estimate:** the statistics module came to 599 lines against ~370, rustfmt spreading its folds over rows across many lines, and the tests to 592 against ~350.
 
 ## Summary
 
@@ -24,7 +24,7 @@ Accurate data for the live view's overlays, computed from the raw frames, not th
 |---|---|
 | `oscope-acquire` `stats.rs` | `measure(frame, request, shown, size)`: `LiveStats` (histograms, percentiles, saturated shares, ROI statistics, profile, focus) and the `Mask`. `StatsRequest` (`roi`, `profile`, `bins`, `mask`) and `Line`. `Mask::to_bytes` and `from_bytes` |
 | `oscope-acquire` `preview` | `Preview::measure`: the statistics in the live pool. The wire format's blocks: `Header::message(jpeg, blocks)`, `Header::read` returning a `Message` (header, JPEG, blocks), the JPEG's length at offset 72, the kinds `STATISTICS` and `MASK`, `WireError::Block` |
-| `oscope-api` `preview.rs` | The stream's parameter `stats`; each session measures the frame it previews at most once every 100 ms, and sends the statistics as JSON and the mask as bits, after the JPEG |
+| `oscope-api` `preview.rs` | The stream's parameter `stats`; each session measures the frame it previews and sends the statistics as JSON and the mask as bits, after the JPEG, its messages with statistics at least 100 ms apart |
 | `docs/adr/0035-…` | The statistics' blocks on the preview stream |
 | `examples/ex-live-overlays` | Port 8219: the simulator, lit and streaming; the page; `--smoke` |
 | `examples/ex-live-view` | Reads the JPEG's length, so its page and smoke check read P18's messages too |
@@ -77,7 +77,8 @@ Open `http://127.0.0.1:8219/`. Drag on the image to draw an ROI, shift-drag for 
 | `oscope-acquire` | `stats` (7, 1 ignored) | Histograms, percentiles and saturated shares against a reference counted in the test, exactly, at 4096 bins and merged to 256; a 2 MP ramp subsampled by whole cells, the colours in proportion, the medians in the middle; ROI statistics against direct sums, widened and clipped, refused when off the frame; profiles cell by cell, off-frame samples empty, on cell edges at several lengths, and on a binned frame; the mask's bits at a quarter size, rows padded, the region shown, none without saturation or when not asked for; the focus value falling with blur, doubling with the light, and 0 on a flat frame; grey 16-bit and RGB 8-bit in their own units; frames not of one plane refused |
 | `oscope-acquire` | `the_cost_at_20_mp` (ignored) | The cost in the live pool, in release |
 | `oscope-acquire` | `preview`, the wire format | Blocks after the JPEG at ADR-0035's layout, a longer header, P17's 72-byte header read as before, a block cut short refused |
-| `oscope-api` | `preview` (4) | `statistics_come_with_the_previews_ten_times_a_second_at_most`: over a real socket, with the fake camera, none unasked; then each statistics block names its frame, with 64 bins summing to the samples counted, the ROI's counts by colour, a profile whose red follows the fake rows' levels, and a mask exactly on the rows at full scale; at least 80 ms apart |
+| `oscope-api` | `preview` (4) | `statistics_come_with_the_previews_ten_times_a_second_at_most`: over a real socket, with the fake camera, none unasked. Then each statistics block names its frame, with 64 bins summing to the samples counted, the ROI's counts by colour, a profile whose red follows the fake rows' levels, and a mask exactly on the rows at full scale, at the preview's size. Each is ready at least 100 ms after the last, while the previews switch between a slow one (full size, quality 100, every sample's statistics) and a quick one (tiny) |
+| `oscope-api` | `preview`, P17's slow client | Now acknowledges each preview once the camera has published six more frames, rather than after 500 ms: slower than the camera and the session on any machine |
 | `oscope-api` | `devices` | The `preview` Thing's description, with `stats`, snapshotted |
 | `ex-live-overlays` | `--smoke` | The page; statistics with an ROI and a profile across the sensor; a mask at full light and 25 ms |
 
@@ -98,9 +99,19 @@ Open `http://127.0.0.1:8219/`. Drag on the image to draw an ROI, shift-drag for 
 | A profile divides before multiplying | `profiles_sample_cell_by_cell` |
 | The focus value not normalised | `the_focus_value_falls_as_the_image_blurs`, after adding its check that twice the light doubles it: plain variance falls with blur too |
 | Statistics more than 10 times a second | `statistics_come_with_the_previews_ten_times_a_second_at_most` |
+| The 100 ms timed from the measuring, not the sending | `statistics_come_with_the_previews_ten_times_a_second_at_most`, **5 of 5 runs on two cores, 3 of 5 on all 24 threads:** it shows only when the slow preview's extra time exceeds the wait for the next frame, which isn't always so on a fast machine. GitHub's runners have two cores |
+| P17's slow client: no waiting for acknowledgements; adaptation ignoring frames missed while waiting | `a_slow_client_gets_the_newest_frames`, rerun with its new pacing |
 | Statistics nobody asked for | `statistics_come_with_the_previews_ten_times_a_second_at_most` |
 | A block's length one long | `the_wire_format_reads_back_what_it_wrote` |
 | The JPEG's length ignored | `the_wire_format_reads_back_what_it_wrote` |
+
+**Found by running the API tests on two cores,** as GitHub's runners have, with the test binary pinned to two of this PC's cores before opening the pull request:
+
+- **Statistics came 52 ms apart** in 2 runs of 5. The session timed its 100 ms from deciding to measure, before making the preview. So a preview that took longer to make than the next put two messages with statistics closer than 100 ms, which breaks the promise to the client. Now it times them from the sending, and the test checks exactly 100 ms while making a slow preview and a quick one in turn.
+- **P17's slow-client test failed once in 3:** it expected the session to lower its quality, which takes 3 frames missed among 10 messages. With the camera starved to about 3 frames a second, some of the client's 500 ms waits ended before a newer frame came, and rightly weren't misses. The client now waits for six more frames before acknowledging, so it is the slower party by construction.
+- Then all four of the API's preview tests passed 5 times out of 5 on two cores.
+
+**A stray file from P17:** P17's merge brought `crates/oscope-api/tests/snapshots/devices__preview.snap.new`, the snapshot insta writes when a snapshot test fails, from its second local replay. P18 deletes it, and `.gitignore` now ignores `*.snap.new`.
 
 ## Follow-ups and known gaps
 

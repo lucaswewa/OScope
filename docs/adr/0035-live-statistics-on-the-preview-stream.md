@@ -37,7 +37,10 @@
   - Values are in the sensor's own units, 0 to 4095 for a 12-bit sensor. A mosaic's channels are its colours.
 - **3, the saturation mask:** the preview's width and height (little-endian `u32`s), then rows of ⌈width / 8⌉ bytes. Each pixel's bit runs from a byte's highest bit down, and is set where a raw sample under that pixel is at full scale. It is sent only when one is, and only if asked for; a message with statistics but no mask means none.
 
-**4. A client asks with `stats`** in its parameters: `roi`, `profile` (`from` and `to`, in sensor coordinates), `bins` (256 by default, up to 4096) and `mask` (true by default). Its session measures the frame it previews, at most once every 100 ms, in the live pool. A message without statistics is a frame that came within 100 ms of the last statistics.
+**4. A client asks with `stats`** in its parameters: `roi`, `profile` (`from` and `to`, in sensor coordinates), `bins` (256 by default, up to 4096) and `mask` (true by default).
+- Its session measures the frame it previews, in the live pool.
+- **Messages with statistics are sent at least 100 ms apart:** the next is measured no sooner than 100 ms after the last was sent. Timed from the measuring instead, a preview that took longer to make than the next would put them closer.
+- A message without statistics is a frame that came within 100 ms of the last statistics.
 
 ## Consequences
 

@@ -250,10 +250,11 @@ async fn a_client_s_parameters_shape_its_previews() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_slow_client_gets_the_newest_frames() {
     // The fake camera's frames, as acquisition publishes them, to a client
-    // that shows one every 500 ms, acknowledging from its first message.
-    // It gets the newest, not the next in a queue: without acknowledging,
-    // the sockets' buffers would hold a backlog first. Small previews, quick to make even in a
-    // debug build on CI, keep the client the slower of the two.
+    // that shows each preview until the camera has published six more,
+    // acknowledging from its first message: slower than the camera and the
+    // session alike, on any machine. It gets the newest frame, not the next
+    // in a queue: without acknowledging, the sockets' buffers would hold a
+    // backlog first.
     let folder = tempfile::tempdir().unwrap();
     let devices = devices(folder.path(), fakes()).await;
     let (address, _stop) = serve(folder.path(), Arc::clone(&devices)).await;
@@ -269,8 +270,9 @@ async fn a_slow_client_gets_the_newest_frames() {
     let mut read = Vec::new();
     for _ in 0..10 {
         let (header, _) = next(&mut socket).await;
-        read.push((header.frame.0, bus.published()));
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        let published = bus.published();
+        read.push((header.frame.0, published));
+        wait_for(async || bus.published() >= published + 6, "six more frames").await;
         params["ack"] = json!(header.sequence + 1);
         socket
             .send(Message::text(params.to_string()))
@@ -288,7 +290,8 @@ async fn a_slow_client_gets_the_newest_frames() {
     assert!(skipped > 0, "{read:?}");
     let (_, sessions) = http(address, "GET", "/api/v1/preview/sessions", "").await;
     assert!(sessions[0]["dropped"].as_u64().unwrap() > 0, "{sessions}");
-    // Kept waiting, the session took its quality down.
+    // Kept waiting while newer frames came, the session took its quality
+    // down.
     assert!(sessions[0]["quality"].as_u64().unwrap() < 95, "{sessions}");
 }
 
@@ -309,8 +312,8 @@ async fn statistics_come_with_the_previews_ten_times_a_second_at_most() {
     let (header, _, blocks) = next_with_blocks(&mut socket).await;
     assert!(blocks.is_empty(), "statistics nobody asked for");
     params["ack"] = json!(header.sequence + 1);
+    params["max_fps"] = json!(1000.0);
     params["stats"] = json!({
-        "roi": {"x": 0, "y": 0, "width": 64, "height": 64},
         "profile": {"from": [0.0, 0.0], "to": [0.0, 100.0]},
         "bins": 64
     });
@@ -319,15 +322,29 @@ async fn statistics_come_with_the_previews_ten_times_a_second_at_most() {
         .await
         .unwrap();
 
+    // After each message with statistics, the previews switch between a
+    // slow one, full size at quality 100 with the statistics of every
+    // sample, and a quick one, tiny, without: one takes far longer to make
+    // than the next, so the 100 ms must run from one's sending, not from
+    // its measuring.
+    let whole = json!({"x": 0, "y": 0, "width": 640, "height": 480});
     let (mut measured, mut masks) = (Vec::new(), 0);
     while measured.len() < 8 {
         let (header, _, blocks) = next_with_blocks(&mut socket).await;
         params["ack"] = json!(header.sequence + 1);
+        let statistics = blocks.iter().find(|(kind, _)| *kind == STATISTICS);
+        if statistics.is_some() {
+            let slow = measured.len() % 2 == 0;
+            let (width, height, quality) = if slow { (640, 480, 100) } else { (16, 12, 10) };
+            (params["width"], params["height"]) = (json!(width), json!(height));
+            params["quality"] = json!(quality);
+            params["stats"]["roi"] = if slow { whole.clone() } else { Value::Null };
+        }
         socket
             .send(Message::text(params.to_string()))
             .await
             .unwrap();
-        let Some((_, json)) = blocks.iter().find(|(kind, _)| *kind == STATISTICS) else {
+        let Some((_, json)) = statistics else {
             continue;
         };
         let stats: LiveStats = serde_json::from_slice(json).unwrap();
@@ -337,11 +354,13 @@ async fn statistics_come_with_the_previews_ten_times_a_second_at_most() {
         for (bins, counted) in stats.histogram.iter().zip(&stats.counted) {
             assert_eq!((bins.len(), bins.iter().sum::<u64>()), (64, *counted));
         }
-        let roi = stats.roi.unwrap();
-        assert_eq!(
-            (roi.rect, roi.count),
-            (PixelRect::new(0, 0, 64, 64), vec![1024, 2048, 1024])
-        );
+        if let Some(roi) = stats.roi {
+            let counts = vec![76_800, 153_600, 76_800];
+            assert_eq!(
+                (roi.rect, roi.count),
+                (PixelRect::new(0, 0, 640, 480), counts)
+            );
+        }
         // A cell every 2 rows down: its red is its first row's level.
         let profile = stats.profile.unwrap();
         assert_eq!(profile.samples.len(), 51);
@@ -353,33 +372,31 @@ async fn statistics_come_with_the_previews_ten_times_a_second_at_most() {
                 "frame {id}, sample {i}"
             );
         }
-        // The rows at full scale, at half size, every pixel across.
-        let full: Vec<u32> = (0..480)
-            .filter(|y| (y + id) % 256 == 255)
-            .map(|y| y as u32 / 2)
+        // The rows at full scale, at the preview's size, every pixel across.
+        let (width, height) = (header.width, header.height);
+        let full: Vec<u32> = (0..480_u32)
+            .filter(|&y| (u64::from(y) + id) % 256 == 255)
+            .map(|y| y * height / 480)
             .collect();
         let mask = blocks.iter().find(|(kind, _)| *kind == MASK);
         assert_eq!(mask.is_some(), !full.is_empty(), "frame {id}");
         if let Some((_, bytes)) = mask {
             let mask = Mask::from_bytes(bytes).unwrap();
-            assert_eq!((mask.width, mask.height), (320, 240));
-            for y in 0..240 {
-                let row = (0..320).filter(|&x| mask.get(x, y)).count();
-                assert_eq!(
-                    row,
-                    if full.contains(&y) { 320 } else { 0 },
-                    "frame {id}, row {y}"
-                );
+            assert_eq!((mask.width, mask.height), (width, height));
+            for y in 0..height {
+                let row = (0..width).filter(|&x| mask.get(x, y)).count() as u32;
+                let expected = if full.contains(&y) { width } else { 0 };
+                assert_eq!(row, expected, "frame {id}, row {y}");
             }
             masks += 1;
         }
         measured.push(header.ready);
     }
     assert!(masks > 0);
-    // At most 10 a second: 100 ms apart, less the jitter of making each.
+    // At most 10 a second: each ready 100 ms or more after the last.
     for pair in measured.windows(2) {
         let apart = pair[1].saturating_since(pair[0]);
-        assert!(apart >= Duration::from_millis(80), "{apart:?}");
+        assert!(apart >= Duration::from_millis(100), "{apart:?}");
     }
 }
 
