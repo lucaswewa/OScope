@@ -16,6 +16,8 @@ oscope-core.workspace = true
 oscope-hal.workspace = true
 oscope-imaging.workspace = true
 rayon.workspace = true
+schemars.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 

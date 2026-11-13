@@ -33,6 +33,8 @@ use oscope_compute::{Compute, ComputeError, Lane, Shape, cpu};
 use oscope_core::{BayerPattern, Frame, FrameMeta, FrameView, PixelFormat, PixelRect};
 use oscope_imaging::color::{self, ColorError, ColourCorrection, Demosaic, Display};
 
+use crate::stats::{self, LiveStats, Mask, StatsRequest};
+
 /// What a client asks for.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreviewRequest {
@@ -182,6 +184,20 @@ impl Preview {
         })
     }
 
+    /// `frame`'s live statistics, as `request` asks, for `rendered`, its
+    /// preview: in the live pool ([`crate::stats`]).
+    pub fn measure(
+        &self,
+        frame: &Frame,
+        request: &StatsRequest,
+        rendered: &Rendered,
+    ) -> Result<(LiveStats, Option<Mask>), PreviewError> {
+        let size = (rendered.width, rendered.height);
+        self.compute.pools().install(Lane::Live, || {
+            stats::measure(frame, request, rendered.roi, size)
+        })
+    }
+
     /// Steps 2–4: the 8-bit samples, their shape, and whether the GPU made
     /// them.
     fn colour(
@@ -242,7 +258,7 @@ fn on_gpu(
 
 /// The frame's pixels that `roi` covers, clipped to the frame and widened to
 /// whole cells of `cell` pixels; and the sensor's pixels they are.
-fn region(
+pub(crate) fn region(
     meta: &FrameMeta,
     roi: Option<PixelRect>,
     cell: u32,

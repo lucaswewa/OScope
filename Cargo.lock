@@ -536,6 +536,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-live-overlays"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "futures-util",
+ "oscope-acquire",
+ "oscope-api",
+ "oscope-core",
+ "oscope-sim",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
 name = "ex-live-view"
 version = "0.1.0"
 dependencies = [
@@ -1168,6 +1184,8 @@ dependencies = [
  "oscope-hal",
  "oscope-imaging",
  "rayon",
+ "schemars",
+ "serde",
  "thiserror",
  "tokio",
  "zune-core",

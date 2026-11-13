@@ -7,7 +7,7 @@ use std::io::Cursor;
 use std::sync::Arc;
 use std::time::Duration;
 
-use oscope_acquire::preview::wire::{FRAME, Header, JPEG, MAGIC, WireError};
+use oscope_acquire::preview::wire::{FRAME, Header, JPEG, MAGIC, MASK, STATISTICS, WireError};
 use oscope_acquire::preview::{Adaptation, Look, Preview, PreviewError, PreviewRequest, Rendered};
 use oscope_compute::{Compute, ComputeConfig};
 use oscope_core::{
@@ -330,27 +330,50 @@ fn header() -> Header {
 
 #[test]
 fn the_wire_format_reads_back_what_it_wrote() {
-    let message = header().message(b"jpeg bytes");
+    let message = header().message(b"jpeg bytes", &[]);
     assert_eq!(message.len(), Header::LEN + 10);
     assert_eq!(message[..4], MAGIC);
-    // Little-endian, at the offsets ADR-0014 gives.
-    assert_eq!(message[8..12], 72_u32.to_le_bytes());
+    // Little-endian, at the offsets ADR-0014 and ADR-0035 give.
+    assert_eq!(message[8..12], 76_u32.to_le_bytes());
     assert_eq!(message[12..16], [4, 3, 2, 1]);
     assert_eq!(message[64..68], 1920_u32.to_le_bytes());
-    let (read, payload) = Header::read(&message).unwrap();
-    assert_eq!((read, payload), (header(), &b"jpeg bytes"[..]));
+    assert_eq!(message[72..76], 10_u32.to_le_bytes());
+    let read = Header::read(&message).unwrap();
+    assert_eq!((read.header, read.jpeg), (header(), &b"jpeg bytes"[..]));
+    assert!(read.blocks.is_empty());
+
+    // Blocks after the JPEG: each its kind, three zeros, its length, then
+    // its bytes.
+    let statistics = br#"{"focus": 1}"#;
+    let blocks = header().message(b"jpeg", &[(STATISTICS, statistics), (MASK, &[1, 2, 3])]);
+    let at = Header::LEN + 4;
+    assert_eq!(blocks[at..at + 8], [STATISTICS, 0, 0, 0, 12, 0, 0, 0]);
+    let read = Header::read(&blocks).unwrap();
+    assert_eq!(read.jpeg, b"jpeg");
+    assert_eq!(
+        read.blocks,
+        vec![(STATISTICS, &statistics[..]), (MASK, &[1, 2, 3][..])]
+    );
 
     // A longer header, from a later writer: its payload starts where it says.
     let mut longer = message[..Header::LEN].to_vec();
-    longer[8..12].copy_from_slice(&80_u32.to_le_bytes());
+    longer[8..12].copy_from_slice(&84_u32.to_le_bytes());
+    longer[72..76].copy_from_slice(&4_u32.to_le_bytes());
     longer.extend_from_slice(&[0xee; 8]);
     longer.extend_from_slice(b"jpeg");
-    assert_eq!(Header::read(&longer).unwrap(), (header(), &b"jpeg"[..]));
+    assert_eq!(Header::read(&longer).unwrap().jpeg, b"jpeg");
+
+    // P17's 72-byte header has no JPEG length: its JPEG is the rest.
+    let mut older = message[..72].to_vec();
+    older[8..12].copy_from_slice(&72_u32.to_le_bytes());
+    older.extend_from_slice(b"jpeg");
+    let read = Header::read(&older).unwrap();
+    assert_eq!((read.header, read.jpeg), (header(), &b"jpeg"[..]));
 }
 
 #[test]
 fn the_wire_format_refuses_what_isnt_a_message() {
-    let message = header().message(b"");
+    let message = header().message(b"", &[]);
     assert_eq!(Header::read(&message[..71]), Err(WireError::Short(71)));
     let mut wrong = message.clone();
     wrong[0] = b'X';
@@ -360,7 +383,10 @@ fn the_wire_format_refuses_what_isnt_a_message() {
     assert_eq!(Header::read(&newer), Err(WireError::Version(2)));
     let mut past_the_end = message;
     past_the_end[8..12].copy_from_slice(&200_u32.to_le_bytes());
-    assert_eq!(Header::read(&past_the_end), Err(WireError::Short(72)));
+    assert_eq!(Header::read(&past_the_end), Err(WireError::Short(76)));
+    let blocked = header().message(b"j", &[(MASK, &[0; 16])]);
+    let cut = &blocked[..blocked.len() - 1];
+    assert_eq!(Header::read(cut), Err(WireError::Block));
 }
 
 /// A 20 MP frame of the MIChrome 20: a textured mosaic.
