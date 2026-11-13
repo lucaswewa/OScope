@@ -251,6 +251,23 @@ async fn a_stop_ends_a_move_and_a_hold_waits_for_resume() {
 }
 
 #[tokio::test]
+async fn the_stage_remembers_where_it_was() {
+    // A move from 10 mm towards 30 mm at 10 mm/s, stopped at 1 s: half a
+    // second in, it was at 15 mm, though its motion has changed since.
+    let (clock, stage) = stage(exact(None));
+    let s = Arc::clone(&stage);
+    let moving = tokio::spawn(async move { s.move_to(mm(30.0, 10.0, 5.0), None).await });
+    tokio::task::yield_now().await;
+    clock.advance(Duration::from_secs(1));
+    stage.stop().await.unwrap();
+    assert!(matches!(moving.await.unwrap(), Err(Error::Stopped)));
+    clock.advance(Duration::from_secs(1));
+    let then = stage.true_position(Timestamp(500_000_000));
+    assert!((then.x.0 - 15_000.0).abs() < 1e-6, "{then:?}");
+    assert!((stage.true_position(clock.now()).x.0 - 20_000.0).abs() < 1e-6);
+}
+
+#[tokio::test]
 async fn while_moving_the_backlash_lags_by_half() {
     let config = SimStageConfig {
         backlash: Um(2.0),

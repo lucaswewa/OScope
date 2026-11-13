@@ -1,7 +1,8 @@
 //! The simulation clock, shared by every simulated device, and OScope's own
 //! clock whenever the simulator is in use (ADR-0007, ADR-0013).
 
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
@@ -60,12 +61,15 @@ impl State {
 /// - **At 1×** it follows the host's monotonic clock; **scaled,** it runs k
 ///   times as fast; **stepped,** it moves only by [`SimClock::advance`].
 /// - **Changing its rate** never moves it, and it never goes back.
-/// - **[`SimClock::sleep_until`]** waits for a simulated moment, at any rate.
+/// - **[`SimClock::sleep_until`]** waits for a simulated moment, at any rate,
+///   and [`SimClock::block_until`] does so on a device's own thread.
 #[derive(Debug)]
 pub struct SimClock {
     state: Mutex<State>,
     start_utc: DateTime<Utc>,
     changed: Notify,
+    /// The same news, for threads that block.
+    wake: Condvar,
 }
 
 impl SimClock {
@@ -79,6 +83,7 @@ impl SimClock {
             }),
             start_utc: Utc::now(),
             changed: Notify::new(),
+            wake: Condvar::new(),
         }
     }
 
@@ -98,6 +103,7 @@ impl SimClock {
         state.rate = rate;
         drop(state);
         self.changed.notify_waiters();
+        self.wake.notify_all();
     }
 
     /// Moves it on by `by`, at any rate.
@@ -107,6 +113,7 @@ impl SimClock {
         state.base = state.base.saturating_add(by.as_nanos() as u64);
         drop(state);
         self.changed.notify_waiters();
+        self.wake.notify_all();
     }
 
     /// Moves it on to `at`, if `at` is later than now.
@@ -145,6 +152,40 @@ impl SimClock {
                 }
             }
         }
+    }
+
+    /// Blocks this thread until the clock reaches `at`, or `stop` is set.
+    /// Gives whether the clock reached `at`. Whoever sets `stop` calls
+    /// [`SimClock::nudge`], so that a stepped clock's waiter sees it.
+    pub fn block_until(&self, at: Timestamp, stop: &AtomicBool) -> bool {
+        let mut state = self.state();
+        loop {
+            if stop.load(Ordering::Acquire) {
+                return false;
+            }
+            let (now, k) = (state.now(), state.rate.factor());
+            if now >= at.0 {
+                return true;
+            }
+            state = if k == 0.0 {
+                self.wake
+                    .wait(state)
+                    .unwrap_or_else(PoisonError::into_inner)
+            } else {
+                let left = Duration::from_secs_f64((at.0 - now) as f64 / 1e9 / k);
+                self.wake
+                    .wait_timeout(state, left)
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .0
+            };
+        }
+    }
+
+    /// Wakes the threads blocked in [`SimClock::block_until`], to look at
+    /// their stop flags.
+    pub fn nudge(&self) {
+        let _state = self.state();
+        self.wake.notify_all();
     }
 
     /// Waits for `by` of simulated time.
