@@ -199,6 +199,16 @@ impl Cuda {
         Image::from_vec(image.shape, data)
     }
 
+    /// A copy of `image`, made on the GPU: for steps that change an image in
+    /// place and must leave their input as it is.
+    pub fn copy(&self, lane: Lane, image: &DeviceImage) -> Result<DeviceImage, ComputeError> {
+        let data = self.stream(lane).clone_dtod(&image.data)?;
+        Ok(DeviceImage {
+            shape: image.shape,
+            data,
+        })
+    }
+
     /// Memory for an image of `shape`, at least one sample.
     fn alloc(&self, lane: Lane, shape: Shape) -> Result<CudaSlice<f32>, ComputeError> {
         Ok(self.stream(lane).alloc_zeros::<f32>(shape.len().max(1))?)

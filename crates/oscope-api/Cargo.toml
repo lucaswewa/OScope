@@ -20,6 +20,7 @@ oscope-core.workspace = true
 oscope-hal.workspace = true
 oscope-imaging.workspace = true
 oscope-jobs.workspace = true
+oscope-pipeline.workspace = true
 oscope-shm.workspace = true
 oscope-sim.workspace = true
 schemars.workspace = true

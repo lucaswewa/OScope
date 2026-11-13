@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "name": "Dark frame and flat field",
+  "inputs": [{ "name": "image", "type": "image" }, { "name": "region", "type": "json" }],
+  "nodes": [
+    { "id": "dark", "node": "io.reference", "params": { "name": "dark" } },
+    { "id": "flat", "node": "io.reference", "params": { "name": "flat" } },
+    { "id": "lit", "node": "correction.dark_frame" },
+    { "id": "even", "node": "correction.flat_field" },
+    { "id": "levels", "node": "display.levels" }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "lit.image" },
+    { "from": "dark.image", "to": "lit.dark" },
+    { "from": "input.region", "to": "lit.region" },
+    { "from": "lit.image", "to": "even.image" },
+    { "from": "flat.image", "to": "even.flat" },
+    { "from": "input.region", "to": "even.region" },
+    { "from": "even.image", "to": "levels.image" }
+  ],
+  "outputs": [{ "name": "image", "from": "levels.image" }]
+}

@@ -1,28 +1,32 @@
 //! The `preview` Thing (plan §5.4, §5.5; ADR-0014): live previews of the
 //! camera's frames, each the size of its client's viewport, as a binary
-//! WebSocket at `/api/v1/preview/stream`; their defaults; and how each
-//! session is doing.
+//! WebSocket at `/api/v1/preview/stream`; their defaults; how each
+//! session is doing; and the live recipe run on each (P22), with the
+//! references recipes read.
 
 use std::collections::{BTreeMap, VecDeque};
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
 use oscope_acquire::preview::wire::{Header, MASK, STATISTICS};
 use oscope_acquire::preview::{
-    Adaptation, Look, Preview, PreviewError, PreviewRequest, Rendered, RingSettings, publish,
+    Adaptation, LiveRecipe, Look, Preview, PreviewError, PreviewRequest, Rendered, RingSettings,
+    publish,
 };
 use oscope_acquire::stats::StatsRequest;
-use oscope_compute::{Compute, ComputeConfig};
+use oscope_compute::{Compute, ComputeConfig, Image, Shape, cpu};
 use oscope_core::{Frame, PixelRect};
-use oscope_imaging::color::{ColourCorrection, Curve, Display};
+use oscope_imaging::color::{ColourCorrection, Curve, Display, encode_tiff16};
+use oscope_pipeline::{Descriptor, Engine, Recipe, stock};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use teta_wot::http::Subscriber;
 use teta_wot::prelude::*;
 
 use crate::devices::Devices;
-use crate::server::RingSlot;
+use crate::server::{RingSlot, Roots};
 
 /// How many messages a client that acknowledges may have unshown.
 const AHEAD: u32 = 2;
@@ -161,6 +165,79 @@ pub struct SessionStats {
     pub height: u32,
     /// Whether the GPU made it.
     pub gpu: bool,
+    /// How long the live recipe took on it, in ms, if one is set.
+    pub recipe_ms: Option<f64>,
+}
+
+/// What a live recipe was checked to take.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RecipeCheck {
+    /// Its steps, in order.
+    pub steps: Vec<String>,
+    /// Its time on an RGB image the default viewport's size, in ms.
+    pub time_ms: f64,
+    /// That image's width.
+    pub width: u32,
+    /// Its height.
+    pub height: u32,
+    /// The budget it was checked against, in ms.
+    pub budget_ms: f64,
+}
+
+/// A reference, captured.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Reference {
+    /// Its name, which `io.reference` takes.
+    pub name: String,
+    /// Its width, in pixels.
+    pub width: u32,
+    /// Its height.
+    pub height: u32,
+    /// The frames it is the mean of.
+    pub frames: u32,
+}
+
+/// The widest a reference is kept: references are smooth, and the steps
+/// that read them sample them at the size they need.
+const REFERENCE_WIDTH: u32 = 1024;
+
+/// A refusal, as ADR-0034 shapes them.
+fn refused(why: impl std::fmt::Display) -> ActionError {
+    ActionError::handled(format!("refused (400): {why}"))
+}
+
+/// Plans `recipe` as a live recipe with `engine`, checks it, and times it
+/// on an RGB image of `size`.
+fn check(
+    engine: &Arc<Engine>,
+    recipe: &Recipe,
+    size: (u32, u32),
+) -> Result<(LiveRecipe, Duration), String> {
+    let plan = engine.plan(recipe).map_err(|error| error.to_string())?;
+    let live = LiveRecipe::new(Arc::clone(engine), Arc::new(plan))?;
+    let time = live
+        .time(size.0, size.1)
+        .map_err(|error| error.to_string())?;
+    Ok((live, time))
+}
+
+/// The names of the references in `folder`.
+fn references(folder: &Path) -> Vec<String> {
+    let entries = std::fs::read_dir(folder).into_iter().flatten().flatten();
+    let mut names: Vec<String> = entries
+        .map(|entry| entry.path())
+        .filter(|path| {
+            let extension = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or_default();
+            matches!(extension, "tiff" | "tif" | "png")
+        })
+        .filter_map(|path| Some(path.file_stem()?.to_str()?.to_owned()))
+        .collect();
+    names.sort();
+    names.dedup();
+    names
 }
 
 /// The last second's messages: when each was sent, its bytes and latency.
@@ -189,6 +266,10 @@ impl Meter {
 struct Service {
     devices: Arc<Devices>,
     preview: Preview,
+    /// The stock nodes' engine, for live recipes (P22).
+    engine: Arc<Engine>,
+    /// Where references are kept.
+    references: PathBuf,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -219,12 +300,67 @@ pub struct PreviewThing {
     /// Saved. For comparing them: both give the same pixels.
     #[setting]
     cpu_only: Prop<bool>,
+    /// The live recipe, run on each preview in place of the look, or none
+    /// (P22, ADR-0017).
+    ///
+    /// Saved. `set_live_recipe` sets it, once it has checked it.
+    #[setting(read_only)]
+    live_recipe: Prop<Option<Recipe>>,
+    /// The most a live recipe may take, in ms, on an image the default
+    /// viewport's size.
+    ///
+    /// Saved.
+    #[setting(default = 20.0, gt = 0, unit = "ms")]
+    recipe_budget_ms: Prop<f64>,
     service: OnceLock<Service>,
     sessions: Mutex<BTreeMap<u64, SessionStats>>,
     opened: AtomicU64,
 }
 
 impl PreviewThing {
+    fn started(&self) -> Result<&Service, ActionError> {
+        self.service
+            .get()
+            .ok_or_else(|| ActionError::handled("the Thing hasn't started"))
+    }
+
+    /// Checks `recipe` and times it, then has the previews run it, or none.
+    async fn install(&self, recipe: Option<Recipe>) -> Result<Option<RecipeCheck>, ActionError> {
+        let service = self.started()?;
+        let Some(recipe) = recipe else {
+            service.preview.set_recipe(None);
+            self.live_recipe
+                .set(None)
+                .map_err(|e| ActionError::handled(e.to_string()))?;
+            return Ok(None);
+        };
+        let defaults = self.defaults.get();
+        let size = (defaults.width.max(1), defaults.height.max(1));
+        let (engine, planned) = (Arc::clone(&service.engine), recipe.clone());
+        let checked = tokio::task::spawn_blocking(move || check(&engine, &planned, size)).await;
+        let checked = checked.map_err(|error| ActionError::handled(error.to_string()))?;
+        let (live, time) = checked.map_err(refused)?;
+        let (time_ms, budget_ms) = (time.as_secs_f64() * 1e3, self.recipe_budget_ms.get());
+        if time_ms > budget_ms {
+            let (w, h) = size;
+            return Err(refused(format!(
+                "it takes {time_ms:.1} ms on a {w} × {h} image, over its budget of {budget_ms} ms"
+            )));
+        }
+        let steps = recipe.nodes.iter().map(|node| node.id.clone()).collect();
+        service.preview.set_recipe(Some(live));
+        self.live_recipe
+            .set(Some(recipe))
+            .map_err(|e| ActionError::handled(e.to_string()))?;
+        Ok(Some(RecipeCheck {
+            steps,
+            time_ms,
+            width: size.0,
+            height: size.1,
+            budget_ms,
+        }))
+    }
+
     /// How the preview ring's previews are made (ADR-0015): the defaults,
     /// the look and the GPU setting, as they are when each is made.
     fn ring_settings(&self) -> impl Fn() -> RingSettings + Send + 'static {
@@ -277,6 +413,13 @@ impl PreviewThing {
         let compute =
             tokio::task::spawn_blocking(|| Compute::new(&ComputeConfig::default())).await??;
         let preview = Preview::new(Arc::new(compute));
+        let roots = ctx.server().service::<Roots>();
+        let references = roots.map_or_else(
+            || PathBuf::from("references"),
+            |r| r.data.join("references"),
+        );
+        let registry = stock::registry(&references);
+        let engine = Arc::new(Engine::new(registry, Arc::clone(preview.compute()), 0));
         if let Some(slot) = ctx.server().service::<RingSlot>()
             && let Some(ring) = lock(&slot.0).take()
         {
@@ -285,8 +428,144 @@ impl PreviewThing {
             let settings = self.ring_settings();
             tokio::spawn(publish(preview.clone(), frames, clock, ring, settings));
         }
-        let _ = self.service.set(Service { devices, preview });
+        let _ = self.service.set(Service {
+            devices,
+            preview,
+            engine,
+            references,
+        });
+        // The saved live recipe, checked again: a reference it reads may
+        // have gone.
+        if let Some(recipe) = self.live_recipe.get()
+            && let Err(error) = self.install(Some(recipe)).await
+        {
+            tracing::warn!("the saved live recipe was dropped: {error:?}");
+            self.live_recipe
+                .set(None)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+        }
         Ok(())
+    }
+
+    /// The nodes live recipes may use: the stock nodes (P22).
+    #[property]
+    async fn nodes(&self) -> Result<Vec<Descriptor>, PropertyError> {
+        let service = self.service.get();
+        let registry = service.map(|service| service.engine.registry());
+        Ok(registry
+            .map(|r| r.descriptors().cloned().collect())
+            .unwrap_or_default())
+    }
+
+    /// The references recipes may read with `io.reference`, by name.
+    #[property]
+    async fn references(&self) -> Result<Vec<String>, PropertyError> {
+        Ok(self
+            .service
+            .get()
+            .map(|s| references(&s.references))
+            .unwrap_or_default())
+    }
+
+    /// Sets the live recipe, run on each preview after demosaicing, binning
+    /// and the black level, in place of the look; or none.
+    ///
+    /// It is checked first: every step runs live; it takes `image`, and
+    /// perhaps `region`, and gives `image`, the same size, in display
+    /// values; and it takes at most `recipe_budget_ms` on an image the
+    /// default viewport's size. Refused (400), saying why, otherwise.
+    #[action]
+    async fn set_live_recipe(
+        &self,
+        #[param(default)] recipe: Option<Recipe>,
+    ) -> Result<Option<RecipeCheck>, ActionError> {
+        self.install(recipe).await
+    }
+
+    /// Captures a reference, such as a flat field or a dark frame: the
+    /// mean of the camera's next `frames` frames (4 unless given, 64 at
+    /// most), whole, in linear light, at most 1024 pixels wide.
+    ///
+    /// It is kept as `{data}/references/{name}.tiff`, for `io.reference`.
+    /// The live recipe, if one is set, is made again, to read it.
+    #[action]
+    async fn capture_reference(
+        &self,
+        name: String,
+        #[param(default)] frames: Option<u32>,
+    ) -> Result<Reference, ActionError> {
+        let service = self.started()?;
+        let named = |c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_';
+        if name.is_empty() || !name.chars().all(named) {
+            return Err(refused(format!(
+                "`{name}` isn't a name: letters, digits, `-` and `_`"
+            )));
+        }
+        let count = frames.unwrap_or(4).clamp(1, 64);
+        let mut feed = service
+            .devices
+            .acquisition
+            .bus()
+            .subscribe_latest("reference");
+        let mut sum: Option<Image> = None;
+        for _ in 0..count {
+            let frame = tokio::time::timeout(Duration::from_secs(10), feed.recv()).await;
+            let Ok(Some(frame)) = frame else {
+                return Err(refused(
+                    "the camera gave no frame for 10 s: is it streaming?",
+                ));
+            };
+            let preview = service.preview.clone();
+            let linear = tokio::task::spawn_blocking(move || preview.linear(&frame)).await;
+            let linear = linear.map_err(|e| ActionError::handled(e.to_string()))?;
+            let image = linear.map_err(refused)?;
+            sum = Some(match sum {
+                None => image,
+                Some(mut sum) if sum.shape() == image.shape() => {
+                    sum.data_mut()
+                        .iter_mut()
+                        .zip(image.data())
+                        .for_each(|(s, v)| *s += v);
+                    sum
+                }
+                Some(_) => return Err(refused("the frames changed size")),
+            });
+        }
+        let mut mean = sum.ok_or_else(|| refused("no frames"))?;
+        mean.data_mut().iter_mut().for_each(|v| *v /= count as f32);
+        let folder = service.references.clone();
+        let file = folder.join(format!("{name}.tiff"));
+        let written = tokio::task::spawn_blocking(move || -> Result<Image, String> {
+            let factor = mean.width().div_ceil(REFERENCE_WIDTH).max(1);
+            let small = cpu::downsample(&mean, factor).map_err(|e| e.to_string())?;
+            let rgb = match small.channels() {
+                3 => small,
+                _ => {
+                    let rgb = small.data().iter().flat_map(|&v| [v; 3]).collect();
+                    Image::from_vec(Shape::new(small.width(), small.height(), 3), rgb)
+                        .map_err(|e| e.to_string())?
+                }
+            };
+            let mut bytes = Vec::new();
+            encode_tiff16(&mut bytes, &rgb).map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+            std::fs::write(&file, bytes).map_err(|e| e.to_string())?;
+            Ok(rgb)
+        });
+        let written = written
+            .await
+            .map_err(|e| ActionError::handled(e.to_string()))?;
+        let image =
+            written.map_err(|e| ActionError::handled(format!("writing the reference: {e}")))?;
+        if let Some(recipe) = self.live_recipe.get() {
+            self.install(Some(recipe)).await?;
+        }
+        Ok(Reference {
+            name,
+            width: image.width(),
+            height: image.height(),
+            frames: count,
+        })
     }
 
     /// The sessions open now, and how each is doing.
@@ -408,6 +687,7 @@ impl PreviewThing {
                 width: rendered.width,
                 height: rendered.height,
                 gpu: rendered.gpu,
+                recipe_ms: rendered.recipe.map(|took| took.as_secs_f64() * 1e3),
             };
             lock(&self.sessions).insert(session, stats);
         }

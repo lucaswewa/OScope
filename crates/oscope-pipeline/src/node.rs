@@ -155,6 +155,12 @@ pub trait Step: Send + Sync {
     fn halo(&self) -> Option<u32> {
         None
     }
+
+    /// What its outputs depend on beyond its parameters and inputs, such as
+    /// a file's content, as part of its memo key.
+    fn key(&self) -> Option<u64> {
+        None
+    }
 }
 
 impl<F> Step for F
@@ -170,6 +176,19 @@ where
 pub fn node<P, S>(
     descriptor: Descriptor,
     make: impl Fn(P) -> S + Send + Sync + 'static,
+) -> Arc<dyn Node>
+where
+    P: DeserializeOwned,
+    S: Step + 'static,
+{
+    try_node(descriptor, move |params: P| Ok(make(params)))
+}
+
+/// A node of `descriptor`, whose steps `make` makes from its parameters,
+/// `P`, or refuses them, for what their schema can't say.
+pub fn try_node<P, S>(
+    descriptor: Descriptor,
+    make: impl Fn(P) -> Result<S, String> + Send + Sync + 'static,
 ) -> Arc<dyn Node>
 where
     P: DeserializeOwned,
@@ -194,7 +213,7 @@ where
         descriptor,
         make: move |params: &serde_json::Value| {
             let params = P::deserialize(params).map_err(|error| error.to_string())?;
-            Ok(Box::new(make(params)) as Box<dyn Step>)
+            Ok(Box::new(make(params)?) as Box<dyn Step>)
         },
     })
 }
@@ -219,6 +238,12 @@ impl From<String> for NodeError {
 impl From<&str> for NodeError {
     fn from(reason: &str) -> Self {
         NodeError::Failed(reason.to_owned())
+    }
+}
+
+impl From<oscope_imaging::color::ColorError> for NodeError {
+    fn from(error: oscope_imaging::color::ColorError) -> Self {
+        NodeError::Failed(error.to_string())
     }
 }
 

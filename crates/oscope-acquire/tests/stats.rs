@@ -411,6 +411,7 @@ fn the_cost_at_20_mp() {
         height: 1280,
         gpu: false,
         took: std::time::Duration::ZERO,
+        recipe: None,
     };
     preview.measure(&frame, &asked, &rendered).unwrap();
     let mut took: Vec<_> = (0..9)

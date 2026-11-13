@@ -569,6 +569,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-live-recipe"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "futures-util",
+ "oscope-acquire",
+ "oscope-api",
+ "oscope-core",
+ "oscope-sim",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
 name = "ex-live-view"
 version = "0.1.0"
 dependencies = [
@@ -1281,10 +1297,12 @@ dependencies = [
  "oscope-core",
  "oscope-hal",
  "oscope-imaging",
+ "oscope-pipeline",
  "oscope-shm",
  "rayon",
  "schemars",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tracing",
@@ -1307,6 +1325,7 @@ dependencies = [
  "oscope-hal",
  "oscope-imaging",
  "oscope-jobs",
+ "oscope-pipeline",
  "oscope-shm",
  "oscope-sim",
  "schemars",
@@ -1416,6 +1435,7 @@ version = "0.1.0"
 dependencies = [
  "oscope-compute",
  "oscope-core",
+ "oscope-imaging",
  "oscope-jobs",
  "rayon",
  "schemars",

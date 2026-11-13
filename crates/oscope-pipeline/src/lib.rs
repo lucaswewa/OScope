@@ -54,6 +54,7 @@ mod recipe;
 mod registry;
 mod run;
 pub mod schema;
+pub mod stock;
 pub mod test_nodes;
 mod tile;
 mod value;
@@ -62,7 +63,7 @@ pub use batch::{Batch, ReadItem, WriteItem};
 pub use live::{Live, LiveResult, LiveStats};
 pub use memo::MemoStats;
 pub use node::{
-    Capabilities, Descriptor, Device, Inputs, Node, NodeError, Port, Step, StepCtx, node,
+    Capabilities, Descriptor, Device, Inputs, Node, NodeError, Port, Step, StepCtx, node, try_node,
 };
 pub use plan::Plan;
 pub use recipe::{Edge, FORMAT, INPUT, NodeUse, Problem, Recipe, RecipeError, RecipeOutput};

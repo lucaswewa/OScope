@@ -9,11 +9,12 @@ publish.workspace = true
 [features]
 # Nodes' CUDA steps, with images kept on the GPU between them: needs the CUDA
 # toolkit to build (ADR-0011).
-cuda = ["oscope-compute/cuda"]
+cuda = ["oscope-compute/cuda", "oscope-imaging/cuda"]
 
 [dependencies]
 oscope-compute.workspace = true
 oscope-core.workspace = true
+oscope-imaging.workspace = true
 oscope-jobs.workspace = true
 rayon.workspace = true
 schemars.workspace = true

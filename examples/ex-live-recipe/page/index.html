@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live recipes</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --text: #1d2125;
+    --muted: #5d6874;
+    --page: #ffffff;
+    --line: #d9dee3;
+    --bad: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --text: #e4e7ea; --muted: #9ba6b1; --page: #16191c; --line: #2e353b; --bad: #f97066; }
+  }
+  body { margin: 0 auto; max-width: 1100px; padding: 16px; font: 15px/1.5 system-ui, sans-serif; color: var(--text); background: var(--page); }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .muted { color: var(--muted); }
+  .bad { color: var(--bad); }
+  canvas { display: block; width: 100%; aspect-ratio: 3 / 2; background: #000; border: 1px solid var(--line); }
+  .readout { font: 0.95rem/1.4 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+  button, input, select { font: inherit; padding: 4px 10px; }
+  select { max-width: 100%; }
+  input[type=number] { width: 6em; }
+</style>
+</head>
+<body>
+<h1>Live recipes</h1>
+<p class="muted">The simulated camera's previews, each run through a live recipe of stock nodes after demosaicing, binning and the black level. A recipe is checked against its budget before it runs.</p>
+<canvas id="view"></canvas>
+<div class="readout" id="stats">connecting…</div>
+<div class="row">
+  <label>Recipe <select id="recipe"><option value="">None: the preview's own look</option></select></label>
+  <label>budget <input type="number" id="budget" min="0.1" step="any"> ms</label>
+</div>
+<div class="readout" id="check"></div>
+<div class="row">
+  <button id="flat">Capture a flat field</button>
+  <span class="muted">with the slide taken out</span>
+  <button id="dark">Capture a dark frame</button>
+  <span class="muted">with the light off</span>
+</div>
+<div class="readout" id="references"></div>
+<p id="message" class="muted"></p>
+<script src="app.js"></script>
+</body>
+</html>

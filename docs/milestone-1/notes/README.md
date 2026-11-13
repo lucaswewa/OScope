@@ -40,4 +40,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P18 | Live statistics and overlay data | Done | [P18-live-stats.md](P18-live-stats.md) |
 | P19 | Sidecar contract, service mode, shared-memory preview | Done | [P19-sidecar-service-shm.md](P19-sidecar-service-shm.md) |
 | P20 | Job service and the `jobs` Thing | Done | [P20-jobs.md](P20-jobs.md) |
-| P21 | Pipeline engine | In review | [P21-pipeline.md](P21-pipeline.md) |
+| P21 | Pipeline engine | Done | [P21-pipeline.md](P21-pipeline.md) |
+| P22 | Stock nodes I: correction and display; live recipes | In review | [P22-stock-nodes.md](P22-stock-nodes.md) |

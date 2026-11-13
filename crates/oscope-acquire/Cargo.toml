@@ -8,17 +8,19 @@ publish.workspace = true
 
 [features]
 # The preview on the GPU, through the colour steps' CUDA twins (ADR-0011).
-cuda = ["oscope-imaging/cuda"]
+cuda = ["oscope-imaging/cuda", "oscope-pipeline/cuda"]
 
 [dependencies]
 oscope-compute.workspace = true
 oscope-core.workspace = true
 oscope-hal.workspace = true
 oscope-imaging.workspace = true
+oscope-pipeline.workspace = true
 oscope-shm.workspace = true
 rayon.workspace = true
 schemars.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt", "sync", "time"] }
 tracing.workspace = true

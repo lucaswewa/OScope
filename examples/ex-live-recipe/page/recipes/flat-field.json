@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "name": "Flat field",
+  "inputs": [{ "name": "image", "type": "image" }, { "name": "region", "type": "json" }],
+  "nodes": [
+    { "id": "flat", "node": "io.reference", "params": { "name": "flat" } },
+    { "id": "even", "node": "correction.flat_field" },
+    { "id": "levels", "node": "display.levels" }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "even.image" },
+    { "from": "flat.image", "to": "even.flat" },
+    { "from": "input.region", "to": "even.region" },
+    { "from": "even.image", "to": "levels.image" }
+  ],
+  "outputs": [{ "name": "image", "from": "levels.image" }]
+}

@@ -1,6 +1,6 @@
 # P21: Pipeline engine
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p21-pipeline` / [#34](https://github.com/lucaswewa/OScope/pull/34)
 - Size: L · estimated ~3,100 before it started (values, nodes, the registry and the parameters' validator ~650; recipes and their checks ~330; the plan ~250; running it, with the memo cache ~400; tiles, live mode and the batch job ~420; trivial nodes ~250; tests ~800; `ex-pipeline` ~350); one pull request, at the owner's standing choice for P12–P23, rather than the spec's split of tiled execution into P21b · measured **5,106** hand-written lines added (code 3,421; tests 1,122; examples 524; glue 39), and 3 removed. Docs and `Cargo.lock` aren't counted. **That is 4,206 over L's 900, and about 2,000 over the estimate:** doc comments, blank lines and rustfmt's wrapping, which the estimate undercounted again, and more tests and a fuller example than planned.
 
