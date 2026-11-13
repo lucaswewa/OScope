@@ -19,6 +19,7 @@ pub mod devices;
 pub mod logs;
 mod media;
 mod pages;
+pub mod preview;
 mod server;
 pub mod system;
 

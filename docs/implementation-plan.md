@@ -228,7 +228,7 @@ OScope/
 | `illumination` | Channels (transmitted, reflected), intensity, on/off; manual or driven |
 | `objective` | The catalogue, which objective is fitted, and a plausibility check |
 | `simulation` | Samples (choose, load, unload, import) and simulated imperfections |
-| `preview` | Defaults for the preview and the live recipe; the stream itself is media plane |
+| `preview` | Defaults for the preview and the live recipe, the sessions open, and the stream itself, a binary stream (ADR-0014) |
 | `live_mosaic` | Free-roam start, stop and clear, plus the mosaic's extent |
 | `calibration` | Per-objective calibration sets, routines and the wizard's steps |
 | `autofocus`, `exposure` | Autofocus, auto exposure and auto white balance (each a job) |
@@ -244,7 +244,7 @@ OScope/
 
 | Route | Carries |
 |---|---|
-| `GET /api/v1/media/preview` (WebSocket) | Binary JPEG frames and binary masks; JSON messages for viewport and ROI control, statistics and dirty mosaic tiles |
+| `GET /api/v1/preview/stream` (WebSocket; the `preview` Thing's binary stream, ADR-0014) | Binary JPEG frames, and binary masks from P18; JSON messages from the client for the viewport, ROI, quality, rate and acknowledgements |
 | `GET /api/v1/media/dzi/{dataset}.dzi`, `…/{dataset}_files/{level}/{col}_{row}.jpg` | Deep-zoom tiles, made on demand from OME-Zarr multiscales and cached on disk |
 | `GET /api/v1/media/mosaic/live/…` | The live mosaic's tiles |
 | `GET /api/v1/media/volume/{dataset}/meta`, `/slice`, `/brick` | Volume metadata, orthogonal slices and bricks (binary, with a small header) for VTK.js |
@@ -298,7 +298,7 @@ camera ─▶ frame pool (Bayer16) ─▶ frame bus ─┬─▶ recorder (lossl
   - The server crops the raw ROI or bins it (a 2 × 2 Bayer superpixel at small scales).
   - It then demosaics, resizes and applies the display transform: black and white levels, white balance, gamma, and an optional live recipe.
   - It encodes JPEG with SIMD and sends the result.
-- **Falling behind.** Each client has a one-slot mailbox, so a slow client always gets the newest frame.
+- **Falling behind.** Each client has a one-slot mailbox, so a slow client always gets the newest frame. A client that acknowledges what it has shown has at most two frames it hasn't shown, so no socket buffer holds stale frames for it (ADR-0014).
 - **Adapting to the link.** If the link is slow, the server lowers the size or quality.
 - **Rate.** The preview rate is the camera's rate, never more: on the MIChrome 20, 14.5 fps at full resolution in 8 bits and 7.2 fps in 16, and more in its binned modes. Its ROIs don't raise the rate (`hardware.md`).
   - At 20× and 50× the optics, not the sensor, limit resolution, so 2 × 2 binning loses little.
@@ -777,8 +777,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P16 | Device Things: camera, stage, illumination, objective, simulation | P05, P15 | L | 0034 | In review |
-| P17 | Preview service and binary WebSocket protocol | P16, P08c | L | 0014 | Planned |
+| P16 | Device Things: camera, stage, illumination, objective, simulation | P05, P15 | L | 0034 | Done |
+| P17 | Preview service and binary WebSocket protocol | P16, P08c | L | 0014 | In review |
 | P18 | Live statistics and overlay data | P17 | M | — | Planned |
 | P19 | Sidecar contract, service mode, shared-memory preview | P17 | M | 0015 | Planned |
 
@@ -1067,3 +1067,5 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | P14 was estimated at about 1,700 lines before it started (code ~900, tests ~550, `ex-sim-samples` ~250), from P13's measured densities (P13 came in at 2,511 against ~1,900): nearly three times M's 600. One pull request, with the overrun explained |
 | 2026-11-12 | P15 was estimated at about 1,500 lines before it started (code ~850, of it a CUDA kernel and its wrapper ~300; tests ~400; `ex-sim-bench` ~250), from P14's measured densities (P14 came in at 2,246 against ~1,700): over twice M's 600. One pull request, with the overrun explained. Measured first: at 20 MP, rendering the world takes 3.2 s of a frame's 3.4 s, so the cache of rendered tiles is what the budget needs |
 | 2026-11-12 | P16 was estimated at about 2,500 lines before it started (the five Things ~1,000; the driver registry, the simulator's lights and acquisition ~400; tests ~700; `ex-http-walkthrough` ~400): nearly three times L's 900. One pull request, with the overrun explained, as the owner decided for P12–P23, rather than the split into P16 and P16b that the phase's spec allows. `teta-wot` answers every failed property with 500, so the HTTP statuses ADR-0012 gives driver errors need a workaround in OScope: ADR-0034, the next number above those reserved |
+| 2026-11-13 | P17 was estimated at about 2,900 lines before it started (the preview chain ~350, a JPEG encoder ~400, the wire format ~150, the `preview` Thing and its sessions ~350, tests ~800, `ex-live-view` ~500): over three times L's 900. One pull request, with the overrun explained. `jpeg-encoder`, which the owner chose for P17, turned out to carry the Independent JPEG Group's conditions in every version, in its DCT ported from mozjpeg. IJG isn't among the licences ADR-0002 allows, so P17 writes OScope's own baseline encoder from ITU-T T.81 instead, and drops P14's test-only use of `jpeg-encoder` |
+| 2026-11-13 | P17's preview stream is the `preview` Thing's binary stream, `/api/v1/preview/stream`, not the media plane's `/api/v1/media/preview` (§5.4): it takes `teta-wot`'s authentication, shutdown and Thing Description. `teta-wot`'s streams send only binary messages, so statistics are in each message's header and in the Thing's `sessions` property, not JSON messages from the server. Socket buffers held about 800 KB of stale previews for a slow client on loopback before the server noticed it, so clients may acknowledge what they've shown, and then have at most two frames they haven't shown. ADR-0014 records all three |

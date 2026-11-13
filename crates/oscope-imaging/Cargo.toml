@@ -24,7 +24,6 @@ zune-jpeg.workspace = true
 [dev-dependencies]
 criterion.workspace = true
 rand.workspace = true
-jpeg-encoder.workspace = true
 tempfile.workspace = true
 
 

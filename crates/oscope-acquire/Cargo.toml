@@ -6,14 +6,24 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# The preview on the GPU, through the colour steps' CUDA twins (ADR-0011).
+cuda = ["oscope-imaging/cuda"]
+
 [dependencies]
+oscope-compute.workspace = true
 oscope-core.workspace = true
 oscope-hal.workspace = true
+oscope-imaging.workspace = true
+rayon.workspace = true
+thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 chrono.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "time"] }
+zune-core.workspace = true
+zune-jpeg.workspace = true
 
 [lints]
 workspace = true

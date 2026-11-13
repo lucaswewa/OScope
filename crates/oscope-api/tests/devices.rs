@@ -35,14 +35,14 @@ struct Fakes {
 async fn fake_server(folder: &Path) -> (TestClient, Fakes) {
     let clock = Arc::new(SystemClock::new());
     let camera = Arc::new(FakeCamera::new(clock.clone()));
-    let stage = Arc::new(FakeStage::new(clock));
+    let stage = Arc::new(FakeStage::new(clock.clone()));
     let lights = Arc::new(FakeIllumination::new(vec![LightChannel {
         name: "transmitted".to_owned(),
         kind: LightKind::Transmitted,
         dimmable: true,
     }]));
     let mount = Arc::new(FakeObjectiveMount::new(ObjectiveCatalogue::mitutoyo()));
-    let devices = Devices::new(camera.clone(), stage.clone(), lights, mount, None);
+    let devices = Devices::new(camera.clone(), stage.clone(), lights, mount, None, clock);
     let roots = roots(folder);
     let api = Api::builder(&roots)
         .settings(roots.data.join("settings"))
@@ -406,7 +406,14 @@ async fn the_things_describe_themselves() {
         .build()
         .unwrap();
     let tds = api.thing_descriptions("http://127.0.0.1:8220/").unwrap();
-    for name in ["camera", "stage", "illumination", "objective", "simulation"] {
+    for name in [
+        "camera",
+        "stage",
+        "illumination",
+        "objective",
+        "simulation",
+        "preview",
+    ] {
         // The ID differs from computer to computer: its form, then the rest.
         let mut td = tds[name].clone();
         let id = td.as_object_mut().unwrap().remove("id").unwrap();
@@ -422,6 +429,7 @@ async fn the_things_describe_themselves() {
         "/api/v1/illumination/set_light",
         "/api/v1/objective/fit",
         "/api/v1/simulation/import",
+        "/api/v1/preview/defaults",
     ] {
         assert!(
             paths.contains_key(path),

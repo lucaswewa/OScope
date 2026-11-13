@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use oscope_acquire::{Acquisition, FrameBus};
-use oscope_core::SystemClock;
+use oscope_core::{Clock, SystemClock};
 use oscope_hal::fake::{FakeCamera, FakeIllumination, FakeObjectiveMount, FakeStage};
 use oscope_hal::{
     Camera, Error, Illumination, LightChannel, LightKind, ManualIllumination, ManualObjectiveMount,
@@ -93,6 +93,8 @@ pub struct Devices {
     pub objectives: Arc<dyn ObjectiveMount>,
     /// The simulator behind the `sim` drivers.
     pub simulator: Option<Arc<Simulator>>,
+    /// The camera's clock, which its frames' times are on.
+    pub clock: Arc<dyn Clock>,
     /// Completes the camera's frames and publishes them on its bus.
     pub acquisition: Acquisition,
     pub(crate) gates: Gates,
@@ -108,13 +110,15 @@ pub(crate) struct Gates {
 }
 
 impl Devices {
-    /// Devices from these drivers, publishing frames on a new bus.
+    /// Devices from these drivers, publishing frames on a new bus. `clock`
+    /// is the camera's.
     pub fn new(
         camera: Arc<dyn Camera>,
         stage: Arc<dyn Stage>,
         lights: Arc<dyn Illumination>,
         objectives: Arc<dyn ObjectiveMount>,
         simulator: Option<Arc<Simulator>>,
+        clock: Arc<dyn Clock>,
     ) -> Self {
         let acquisition = Acquisition::new(Arc::new(FrameBus::new()), POSITION_WAIT);
         acquisition.set_track(Some(stage.track()));
@@ -124,6 +128,7 @@ impl Devices {
             lights,
             objectives,
             simulator,
+            clock,
             acquisition,
             gates: Gates::default(),
         }
@@ -160,11 +165,12 @@ impl Devices {
             ))
         };
         let sim = simulator.as_ref();
-        let camera: Arc<dyn Camera> = match (config.camera.as_str(), sim) {
-            ("sim", Some(s)) => Arc::clone(&s.camera) as Arc<dyn Camera>,
-            ("fake", _) => Arc::new(FakeCamera::new(clock.clone())),
-            (name, _) => return unknown("camera", name, "sim and fake"),
-        };
+        let (camera, frames_clock): (Arc<dyn Camera>, Arc<dyn Clock>) =
+            match (config.camera.as_str(), sim) {
+                ("sim", Some(s)) => (s.camera.clone(), s.clock.clone()),
+                ("fake", _) => (Arc::new(FakeCamera::new(clock.clone())), clock.clone()),
+                (name, _) => return unknown("camera", name, "sim and fake"),
+            };
         let stage: Arc<dyn Stage> = match (config.stage.as_str(), sim) {
             ("sim", Some(s)) => Arc::clone(&s.stage) as Arc<dyn Stage>,
             ("fake", _) => Arc::new(FakeStage::new(clock.clone())),
@@ -189,7 +195,14 @@ impl Devices {
             ("fake", _) => Arc::new(FakeObjectiveMount::new(ObjectiveCatalogue::mitutoyo())),
             (name, _) => return unknown("objective", name, "sim, manual and fake"),
         };
-        Ok(Self::new(camera, stage, lights, objectives, simulator))
+        Ok(Self::new(
+            camera,
+            stage,
+            lights,
+            objectives,
+            simulator,
+            frames_clock,
+        ))
     }
 }
 
