@@ -93,6 +93,7 @@ The example's [README](../../../examples/ex-http-walkthrough/README.md) walks th
     - a good property write is answered with 201, not 204;
     - a move ends within the stage's 2 µm of backlash, not exactly.
   - **The far-focus test,** at first, compared the three colour channels together.
+  - **The Thing Descriptions' IDs differ between computers,** so they aren't in the snapshots.
 - **Not done:**
   - **The simulator's imperfections** (backlash, lost steps) aren't settable through the `simulation` Thing yet; they are set where the stage is built.
   - **Uploads of images to import** come with the media plane's upload route; `import` takes a path on the server's disk.
@@ -131,7 +132,20 @@ The example's [README](../../../examples/ex-http-walkthrough/README.md) walks th
 | A cancelled move not stopping the stage | `a_move_stops_when_halted_or_cancelled` (strengthened) |
 | `halt` waiting its turn | `a_move_stops_when_halted_or_cancelled` |
 
-**The workspace,** with every step CI runs: REPLAYS
+**The workspace,** with every step CI runs:
+
+- `cargo fmt`;
+- `clippy -D warnings`;
+- `cargo test`;
+- `cargo doc -D warnings`;
+- `cargo deny`;
+- the server's `--version`;
+- every example's `--smoke`, `ex-http-walkthrough`'s among them.
+
+Results:
+
+- **With `scripts/ci-local.sh` on Windows:** all 23 steps passed; 104 test suites, 241 tests.
+- **With `scripts/ci-clone.sh` under WSL (Ubuntu 24.04):** the same, on a fresh LF clone of the commit. The first replay failed there: the snapshots held the Things' IDs, which `teta-wot` makes differently on each computer. The test now checks an ID's form, and snapshots the rest.
 
 P16 touches no CUDA path.
 
