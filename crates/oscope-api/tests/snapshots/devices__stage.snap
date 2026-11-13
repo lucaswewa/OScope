@@ -840,7 +840,7 @@ expression: td
       }
     }
   },
-  "description": "The stage: its position and status, moves, jogs, homing and stopping.\nA move whose invocation is cancelled stops the stage where it is, as\n`halt` does.",
+  "description": "The stage: its position and status, moves, jogs, homing and stopping.\nA move whose invocation is cancelled stops the stage where it is, as\n`halt` does. While a hardware job runs, moves, jogs and homing are\nrefused as busy (409); `halt` and `clear_alarm` never are.",
   "forms": [
     {
       "href": "/api/v1/stage/properties",

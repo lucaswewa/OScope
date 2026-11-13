@@ -780,7 +780,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P16 | Device Things: camera, stage, illumination, objective, simulation | P05, P15 | L | 0034 | Done |
 | P17 | Preview service and binary WebSocket protocol | P16, P08c | L | 0014 | Done |
 | P18 | Live statistics and overlay data | P17 | M | 0035 | Done |
-| P19 | Sidecar contract, service mode, shared-memory preview | P17 | M | 0015 | In review |
+| P19 | Sidecar contract, service mode, shared-memory preview | P17 | M | 0015 | Done |
 
 **Checkpoint A:** a simulated 20 MP microscope, live in a browser page with crosshair, ROI, profile, histogram, false colour and saturation, driven over HTTP.
 
@@ -788,7 +788,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P20 | Job service and the `jobs` Thing | P16 | L | 0016 | Planned |
+| P20 | Job service and the `jobs` Thing | P16 | L | 0016 | In review |
 | P21 | Pipeline engine | P20, P07 | L | 0017 | Planned |
 | P22 | Stock nodes I: correction and display; live recipes | P21, P08c | M | — | Planned |
 | P23 | Stock nodes II: filters, enhancement, threshold, morphology | P22 | L | — | Planned |
@@ -1072,3 +1072,5 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-13 | P18 was estimated at about 1,400 lines before it started (the statistics ~370; their blocks on the preview stream and the sessions ~120; tests ~350; `ex-live-overlays` with its page ~550): over twice M's 600. One pull request, with the overrun explained. The statistics travel inside the preview's frame messages, as blocks after the JPEG, so that they don't take the one-slot sink from a frame. That extends ADR-0014, and accepted ADRs aren't edited, so it is ADR-0035, the next free number |
 | 2026-11-13 | P19 was estimated at about 2,300 lines before it started (shared memory, the preview ring and the private token file ~450; the server's managed and service modes ~250; the restart action, the service and the ring's publisher in `oscope-api` ~170; packaging and its test scripts ~185; tests ~500; `ex-sidecar` and `ex-shm-reader` ~330; and about a third on top, from P18's measured density): nearly four times M's 600. One pull request, with the overrun explained |
 | 2026-11-13 | P19: the `system` Thing gains a `restart` action, which the sidecar contract's exit code 75 needs. `teta-wot`'s Windows service `install` sets no recovery actions, so OScope sets them with `sc.exe` (ADR-0015), with the upstream change as a follow-up. A service's local token and preview ring are its own account's, and its ring is in session 0's namespace on Windows, so the desktop app's fast path to a service waits for the installers (W9): a group for both, and the ring in `Global\` |
+| 2026-11-13 | P20 was estimated at about 2,600 lines before it started (`oscope-jobs`: the model, the SQLite store, the hardware queue, the compute pool and the job's context ~1,000; the `jobs` Thing, the hardware lock in the device Things and the server ~380; tests ~700; `ex-jobs` with its page ~550): nearly three times L's 900. One pull request, with the overrun explained, rather than the spec's split of persistence into P20b, as the owner decided for P12–P23. SQLite is `rusqlite` 0.41.1 with its bundled SQLite: 0.42.0 is under two weeks old |
+| 2026-11-13 | P20: `teta-wot` gives each event subscriber a buffer of 5, so the `jobs` Thing sends a job's progress at most every 100 ms, and its changes of state at once (ADR-0016); clients treat job events as hints. The manual-check ports, 8211–8219, are used up: `ex-jobs` shares 8211 with `ex-server-hello` |

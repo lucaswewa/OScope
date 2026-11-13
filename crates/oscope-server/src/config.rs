@@ -28,6 +28,10 @@ pub const DEFAULT_PORT: u16 = 8210;
 /// [devices]                       # each device's driver: see oscope_api::devices
 /// camera = "sim"
 ///
+/// [jobs]                          # the job service (ADR-0016)
+/// workers = 2                     # compute jobs at once
+/// gpu_mib = 6000                  # their GPU memory between them; not counted when not given
+///
 /// [shm]                           # the desktop app's preview ring (ADR-0015)
 /// enabled = true                  # by default only with --managed
 /// name = "preview"                # by default; preview-{pid} with --managed
@@ -48,6 +52,29 @@ pub struct Config {
     pub devices: toml::Table,
     /// The desktop app's preview ring.
     pub shm: Ring,
+    /// The job service.
+    pub jobs: Jobs,
+}
+
+/// The job service (ADR-0016).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Jobs {
+    /// How many compute jobs run at once.
+    pub workers: usize,
+    /// The GPU memory compute jobs may hold between them, in MiB: not given,
+    /// and it isn't counted.
+    pub gpu_mib: Option<u32>,
+}
+
+impl Default for Jobs {
+    fn default() -> Self {
+        let defaults = oscope_jobs::JobsConfig::default();
+        Self {
+            workers: defaults.workers,
+            gpu_mib: defaults.gpu_mib,
+        }
+    }
 }
 
 /// The desktop app's preview ring, in shared memory (ADR-0015).

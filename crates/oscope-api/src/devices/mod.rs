@@ -13,6 +13,7 @@ use oscope_hal::{
     Camera, Error, Illumination, LightChannel, LightKind, ManualIllumination, ManualObjectiveMount,
     ObjectiveCatalogue, ObjectiveMount, Stage,
 };
+use oscope_jobs::{HardwareLock, JobService};
 use oscope_sim::{Simulator, SimulatorConfig};
 use serde::Deserialize;
 use teta_wot::http::axum::body::{Body, to_bytes};
@@ -209,22 +210,39 @@ impl Devices {
 /// A Thing's link to the devices, the server's service, made when the
 /// Thing starts.
 #[derive(Default)]
-pub(crate) struct Link(OnceLock<Arc<Devices>>);
+pub(crate) struct Link {
+    devices: OnceLock<Arc<Devices>>,
+    hardware: OnceLock<HardwareLock>,
+}
 
 impl Link {
-    /// Finds the devices among the server's services.
+    /// Finds the devices among the server's services, and the job
+    /// service's hardware lock if there is one.
     pub fn connect(&self, ctx: &ThingCtx) -> anyhow::Result<()> {
         let devices = ctx
             .server()
             .service::<Devices>()
             .ok_or_else(|| anyhow::anyhow!("the server has no devices"))?;
-        let _ = self.0.set(devices);
+        let _ = self.devices.set(devices);
+        if let Some(jobs) = ctx.server().service::<JobService>() {
+            let _ = self.hardware.set(jobs.hardware());
+        }
         Ok(())
+    }
+
+    /// The devices, for a manual move: refused, as busy, while a hardware
+    /// job holds the hardware lock (ADR-0016).
+    pub fn manual(&self) -> Result<&Devices, ActionError> {
+        if let Some(job) = self.hardware.get().and_then(HardwareLock::holder) {
+            let reason = format!("the job {job} has the hardware");
+            return Err(action_error(Error::Busy { reason }));
+        }
+        self.action()
     }
 
     /// The devices, for a property.
     pub fn property(&self) -> Result<&Devices, PropertyError> {
-        self.0
+        self.devices
             .get()
             .map(AsRef::as_ref)
             .ok_or_else(|| PropertyError::failed(anyhow::anyhow!("the Thing hasn't started")))
@@ -232,7 +250,7 @@ impl Link {
 
     /// The devices, for an action.
     pub fn action(&self) -> Result<&Devices, ActionError> {
-        self.0
+        self.devices
             .get()
             .map(AsRef::as_ref)
             .ok_or_else(|| ActionError::handled("the Thing hasn't started"))

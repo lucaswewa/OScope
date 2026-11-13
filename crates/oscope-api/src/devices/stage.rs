@@ -8,7 +8,8 @@ use super::{Devices, Link, action_error, property_error};
 
 /// The stage: its position and status, moves, jogs, homing and stopping.
 /// A move whose invocation is cancelled stops the stage where it is, as
-/// `halt` does.
+/// `halt` does. While a hardware job runs, moves, jogs and homing are
+/// refused as busy (409); `halt` and `clear_alarm` never are.
 #[derive(Thing)]
 #[thing(
     title = "Stage",
@@ -45,7 +46,7 @@ impl StageThing {
         ctx: &ActionCtx,
         go: impl AsyncFnOnce(&Devices) -> Result<PositionSample, Error>,
     ) -> Result<PositionSample, ActionError> {
-        let devices = self.link.action()?;
+        let devices = self.link.manual()?;
         let _turn = devices.gates.stage.lock().await;
         let outcome = tokio::select! {
             outcome = go(devices) => outcome,
@@ -158,7 +159,7 @@ impl StageThing {
         towards_max: bool,
         #[param(default)] speed: Option<f64>,
     ) -> Result<(), ActionError> {
-        let devices = self.link.action()?;
+        let devices = self.link.manual()?;
         let _turn = devices.gates.stage.lock().await;
         let speed = self.speed(speed);
         devices
