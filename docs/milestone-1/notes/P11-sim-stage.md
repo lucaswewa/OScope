@@ -133,8 +133,8 @@ None was used. The stage's defaults stand in for the controller's `$$`, which H0
 
 **The workspace,** with every step CI runs: `cargo fmt`, `clippy -D warnings`, `cargo test` (171 tests), `cargo doc -D warnings`, `cargo deny`, the server's `--version`, and every example's `--smoke`.
 
-- **On Windows:** see the pull request.
-- **Under WSL (Ubuntu 24.04):** see the pull request.
+- **On Windows:** all 8 steps passed; 82 test suites, 171 tests.
+- **Under WSL (Ubuntu 24.04.5):** the same, on a fresh LF clone of the commit, with no file holding a CR.
 
 P11 touches no CUDA path.
 
