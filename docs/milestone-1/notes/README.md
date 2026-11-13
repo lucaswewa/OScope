@@ -38,4 +38,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P16 | Device Things: camera, stage, illumination, objective, simulation | Done | [P16-device-things.md](P16-device-things.md) |
 | P17 | Preview service and binary WebSocket protocol | Done | [P17-preview.md](P17-preview.md) |
 | P18 | Live statistics and overlay data | Done | [P18-live-stats.md](P18-live-stats.md) |
-| P19 | Sidecar contract, service mode, shared-memory preview | In review | [P19-sidecar-service-shm.md](P19-sidecar-service-shm.md) |
+| P19 | Sidecar contract, service mode, shared-memory preview | Done | [P19-sidecar-service-shm.md](P19-sidecar-service-shm.md) |
+| P20 | Job service and the `jobs` Thing | In review | [P20-jobs.md](P20-jobs.md) |

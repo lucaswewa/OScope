@@ -1,6 +1,6 @@
 # P19: Sidecar contract, service mode, shared-memory preview
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p19-sidecar-service-shm` / [#32](https://github.com/lucaswewa/OScope/pull/32)
 - Size: M · estimated ~2,300 before it started (shared memory, the preview ring and the private token file ~450; the server's managed and service modes ~250; the restart action, the service and the ring's publisher in `oscope-api` ~170; packaging and its test scripts ~185; tests ~500; `ex-sidecar` and `ex-shm-reader` ~330; and about a third on top, from P18's measured density); one pull request, at the owner's standing choice for P12–P23 · measured **2,570** hand-written lines added (code 1,496, of which the ring's two unit tests are about 50; tests 426; examples 434; packaging and its scripts 214), and 84 removed. Docs and `Cargo.lock` aren't counted. **That is 1,970 over M's 600, and about 270 over the estimate.**
 

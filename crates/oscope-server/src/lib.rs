@@ -23,12 +23,13 @@ use clap::{Parser, Subcommand};
 use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
+use oscope_jobs::{JobService, JobsConfig};
 use oscope_shm::{RingConfig, RingWriter, ShmError};
 use serde_json::{Value, json};
 
 mod config;
 
-pub use config::{Config, ConfigError, DEFAULT_PORT, Listen, Logging, Ring, Storage};
+pub use config::{Config, ConfigError, DEFAULT_PORT, Jobs, Listen, Logging, Ring, Storage};
 
 /// The exit code that asks a supervisor to start the server again
 /// (ADR-0015): `EX_TEMPFAIL`.
@@ -180,6 +181,9 @@ pub enum Error {
     /// Service mode failed, or isn't this platform's.
     #[error("service mode: {0}")]
     Service(String),
+    /// The job service couldn't open its history.
+    #[error("the job service: {0}")]
+    Jobs(String),
 }
 
 impl Error {
@@ -215,7 +219,9 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
     if cli.print_openapi || cli.print_td {
         let roots = roots(&config);
         let devices = runtime.block_on(devices(cli, &config))?;
-        let api = Api::builder(&roots).devices(devices).build()?;
+        // A history in memory: printing creates no files.
+        let jobs = runtime.block_on(async { jobs(Path::new(":memory:"), &config) })?;
+        let api = Api::builder(&roots).devices(devices).jobs(jobs).build()?;
         let base = format!("http://{address}/");
         match cli.print_openapi {
             true => print(&api.openapi()),
@@ -276,13 +282,15 @@ async fn serve(
     })?;
     logs::install(&store, &config.logging.level)?;
     let devices = devices(cli, &config).await?;
+    let jobs = jobs(&roots.data.join("index.sqlite"), &config)?;
     let token = write_token(&roots)?;
     let ring = ring(cli, &config)?;
     let ring_name = ring.as_ref().map(|r| r.name().to_owned());
     let mut api = Api::builder(&roots)
         .logs(store)
         .settings(roots.data.join("settings"))
-        .devices(devices);
+        .devices(devices)
+        .jobs(jobs);
     if let Some(ring) = ring {
         api = api.ring(ring);
     }
@@ -324,6 +332,16 @@ async fn serve(
         true => Stopped::Restart,
         false => Stopped::Asked,
     })
+}
+
+/// The job service, its history in `path`: jobs a stop cut short are marked
+/// interrupted.
+fn jobs(path: &Path, config: &Config) -> Result<JobService, Error> {
+    let jobs = JobsConfig {
+        workers: config.jobs.workers,
+        gpu_mib: config.jobs.gpu_mib,
+    };
+    JobService::open(path, jobs).map_err(|e| Error::Jobs(e.to_string()))
 }
 
 /// Completes when stdin closes: the supervisor's way to stop the server.

@@ -62,6 +62,8 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 - 2 for a wrong command line or configuration file, a wrong log level among them, with a message that says what is wrong and where;
 - 1 if the server can't serve, for example because the port is taken.
 
+**The job history** is kept in `{data_root}/index.sqlite` ([ADR-0016](../../docs/adr/0016-the-job-service.md)). Jobs a stop cut short are marked *interrupted* at the next start.
+
 **Each start writes a new local token,** 32 random bytes in hex, to `{data_root}/run/local.token`. Only the account the server runs as can read it: mode 0600 on Linux, a one-entry access list on Windows. It is for the desktop app, which proves itself with it once authentication comes (ADR-0031).
 
 ## The sidecar contract
@@ -117,6 +119,10 @@ ring = 50000                      # records kept in memory, for queries and the 
 keep_days = 30                    # days of daily files kept, in data_root/logs
 
 [devices]                         # each device's driver (P16)
+
+[jobs]                            # the job service (P20)
+workers = 2                       # compute jobs at once
+gpu_mib = 6000                    # GPU memory they share; not counted when not given
 
 [shm]                             # the desktop app's preview ring (P19)
 enabled = true                    # by default only with --managed

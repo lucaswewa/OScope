@@ -53,12 +53,15 @@ cudarc = { version = "0.19.10", default-features = false, features = ["std", "dr
 # the lock, through tokio.
 libc = "0.2.189"
 windows-sys = "0.61.2"
+# New in P20: the job history (ADR-0016). 0.42.0 is under two weeks old.
+rusqlite = { version = "0.41.1", features = ["bundled"] }
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
 oscope-compute = { path = "crates/oscope-compute" }
 oscope-hal = { path = "crates/oscope-hal" }
 oscope-imaging = { path = "crates/oscope-imaging" }
+oscope-jobs = { path = "crates/oscope-jobs" }
 oscope-sim = { path = "crates/oscope-sim" }
 oscope-server = { path = "crates/oscope-server" }
 oscope-shm = { path = "crates/oscope-shm" }

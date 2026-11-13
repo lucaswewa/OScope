@@ -38,6 +38,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-live-overlays`](ex-live-overlays/README.md) | P18 | The live view's overlays from statistics of the raw frames: a crosshair, an ROI to draw with its statistics, a line profile, histograms with percentiles, the focus value, false colour and the saturation mask |
 | [`ex-sidecar`](ex-sidecar/README.md) | P19 | A small supervisor, as the desktop app will be: it runs the server by the sidecar contract, reads its JSON ready line, starts it again when it exits with code 75, and stops it by closing its stdin |
 | [`ex-shm-reader`](ex-shm-reader/README.md) | P19 | A second process reading the server's shared-memory preview ring, the desktop app's fast path: the rate previews come at, and any torn reads |
+| [`ex-jobs`](ex-jobs/README.md) | P20 | The job service: stage tours as hardware jobs, one at a time and holding the hardware lock, and crunching as compute jobs sharing a GPU budget, on a page with the queue and progress live, cancel, pause, resume and reorder |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

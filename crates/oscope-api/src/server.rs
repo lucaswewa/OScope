@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use oscope_jobs::JobService;
 use oscope_shm::RingWriter;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -19,6 +20,7 @@ use tokio::sync::Notify;
 use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
 };
+use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::preview::PreviewThing;
 use crate::system::{System, VERSION};
@@ -178,6 +180,17 @@ impl ApiBuilder {
     pub fn ring(mut self, ring: RingWriter) -> Self {
         let slot = RingSlot(std::sync::Mutex::new(Some(ring)));
         self.things = self.things.service(Arc::new(slot));
+        self
+    }
+
+    /// Serves the job service as the `jobs` Thing (ADR-0016). Its hardware
+    /// lock also stops the device Things' manual moves while a hardware job
+    /// runs.
+    pub fn jobs(mut self, jobs: JobService) -> Self {
+        self.things = self
+            .things
+            .service(Arc::new(jobs))
+            .thing("jobs", JobsThing::default());
         self
     }
 
