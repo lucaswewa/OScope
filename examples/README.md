@@ -33,6 +33,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-sim-3d`](ex-sim-3d/README.md) | P13 | The simulator's 3D samples stepped through in z on a page: a reflective chip with its true height map and depth from focus against it, and fluorescent cells in widefield and confocal beside their true volume |
 | [`ex-sim-samples`](ex-sim-samples/README.md) | P14 | The simulator's sample catalogue: each sample loaded and rendered at 5× and 50× in its own light, an image and a stack imported through a configuration, and the empty stage once unloaded |
 | [`ex-sim-bench`](ex-sim-bench/README.md) | P15 | The simulated camera at full resolution against §5.20's budgets: a cold frame, then warm frames still and jogging, on the CPU and, with `cuda`, the GPU |
+| [`ex-http-walkthrough`](ex-http-walkthrough/README.md) | P16 | The instrument on the control plane: the simulated microscope's camera, stage, illumination, objective and simulation Things, with a walkthrough in `curl` and a control page with the stage's position and buttons |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

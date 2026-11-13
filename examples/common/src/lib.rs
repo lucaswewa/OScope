@@ -174,6 +174,11 @@ pub async fn post(address: SocketAddr, path: &str, body: &Value) -> anyhow::Resu
     request(address, "POST", path, Some(body)).await
 }
 
+/// `PUT path` with a JSON body, as [`get`].
+pub async fn put(address: SocketAddr, path: &str, body: &Value) -> anyhow::Result<Answer> {
+    request(address, "PUT", path, Some(body)).await
+}
+
 async fn request(
     address: SocketAddr,
     method: &str,

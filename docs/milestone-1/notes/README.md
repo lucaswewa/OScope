@@ -34,4 +34,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P12 | Simulated camera: sensor, modes, timing, triggers | Done | [P12-sim-camera.md](P12-sim-camera.md) |
 | P13 | Samples II: reflective surface, fluorescent cell volume | Done | [P13-sim-3d-samples.md](P13-sim-3d-samples.md) |
 | P14 | Samples III: sub-diffraction structures, imports, load and unload | Done | [P14-sim-samples.md](P14-sim-samples.md) |
-| P15 | Simulator at full resolution | In review | [P15-sim-full-resolution.md](P15-sim-full-resolution.md) |
+| P15 | Simulator at full resolution | Done | [P15-sim-full-resolution.md](P15-sim-full-resolution.md) |
+| P16 | Device Things: camera, stage, illumination, objective, simulation | In review | [P16-device-things.md](P16-device-things.md) |

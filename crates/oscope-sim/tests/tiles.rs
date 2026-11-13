@@ -240,6 +240,36 @@ fn a_tile_is_kept_for_its_light_and_objective() {
 }
 
 #[test]
+fn a_field_far_from_focus_renders_at_a_bounded_cost() {
+    // 9 mm out of focus through the 20×: a blur of thousands of pixels,
+    // which a margin of three of them would need gigabytes for. Rendered
+    // coarsely, it comes back almost even, as the blur should be.
+    let (world, island) = tissue_world();
+    let field = Field {
+        centre: island,
+        z: Um(FOCUS + 9_000.0),
+        width: 64,
+        height: 64,
+    };
+    let far = world.render(&field, &optics("20x"), Light::Transmitted);
+    assert!(
+        far.data()
+            .iter()
+            .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
+    );
+    // Even in each channel: the stain's colour stays.
+    for c in 0..3 {
+        let (lo, hi) = far
+            .data()
+            .iter()
+            .skip(c)
+            .step_by(3)
+            .fold((f32::MAX, f32::MIN), |(l, h), v| (l.min(*v), h.max(*v)));
+        assert!(hi - lo < 0.001, "channel {c}: from {lo} to {hi}");
+    }
+}
+
+#[test]
 fn the_cache_keeps_to_its_budget() {
     // Room for 20 tiles: fields of 9 tiles each, one after another, never
     // leave more than 20, nor fewer than the field in hand.

@@ -7,8 +7,13 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 chrono.workspace = true
 fs4.workspace = true
+oscope-acquire.workspace = true
+oscope-core.workspace = true
+oscope-hal.workspace = true
+oscope-sim.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -21,6 +26,9 @@ tracing-subscriber.workspace = true
 
 [dev-dependencies]
 futures-util.workspace = true
+insta = { workspace = true, features = ["json"] }
+oscope-compute.workspace = true
+oscope-imaging.workspace = true
 tempfile.workspace = true
 teta-wot = { workspace = true, features = ["testing"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }

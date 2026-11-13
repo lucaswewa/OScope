@@ -2,15 +2,20 @@
 
 use std::future::Future;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
+use teta_wot::http::axum::middleware;
 use teta_wot::http::axum::routing::get;
 use teta_wot::http::axum::{Json, Router};
 use teta_wot::prelude::FromConfig;
 use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuilder};
 use tokio::net::TcpListener;
 
+use crate::devices::{
+    CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
+};
 use crate::logs::{LogStore, Logs};
 use crate::system::{System, VERSION};
 use crate::{media, pages};
@@ -98,6 +103,32 @@ impl ApiBuilder {
         self
     }
 
+    /// Saves the Things' settings in `folder`, each Thing's in a folder of
+    /// its own, created when the server is built; the server uses
+    /// `{data root}/settings`. Without this, settings aren't saved.
+    pub fn settings(mut self, folder: impl Into<PathBuf>) -> Self {
+        self.things = self.things.settings_folder(folder.into());
+        self
+    }
+
+    /// Serves the instrument's `devices` as the Things `camera`, `stage`,
+    /// `illumination` and `objective`, and `simulation` when a device is
+    /// simulated.
+    pub fn devices(mut self, devices: Arc<Devices>) -> Self {
+        let simulated = devices.simulator.is_some();
+        self.things = self
+            .things
+            .service(devices)
+            .thing("camera", CameraThing::default())
+            .thing("stage", StageThing::default())
+            .thing("illumination", IlluminationThing::default())
+            .thing("objective", ObjectiveThing::default());
+        if simulated {
+            self.things = self.things.thing("simulation", SimulationThing::default());
+        }
+        self
+    }
+
     /// Builds the server. Nothing starts until [`Api::serve`].
     pub fn build(self) -> Result<Api, ApiError> {
         let mut routes = Router::new()
@@ -106,7 +137,10 @@ impl ApiBuilder {
         if let Some(folder) = &self.pages {
             routes = routes.merge(pages::router(folder)?);
         }
-        let things = self.things.thing("logs", Logs::new(self.logs));
+        let things = self
+            .things
+            .thing("logs", Logs::new(self.logs))
+            .layer(middleware::from_fn(statuses));
         let server = things.merge(routes).build()?;
         Ok(Api { server })
     }

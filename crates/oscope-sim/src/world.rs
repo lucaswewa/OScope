@@ -90,6 +90,45 @@ pub struct World {
     pub focus: Um,
 }
 
+/// The largest blur, in pixels, rendered at the field's own pixel: a layer
+/// further from focus renders at a coarser pixel. The margin around a field
+/// stops at three times this.
+const MOST_BLUR: f64 = 64.0;
+
+/// `image`, rendered at pixels `factor` times the field's from `offset` of
+/// the field's pixels above and left of its corner, interpolated to `width`
+/// × `height` of the field's pixels.
+fn enlarge(image: &Image, factor: f64, offset: f64, width: u32, height: u32) -> Image {
+    let (cw, ch, c) = (
+        image.width() as usize,
+        image.height() as usize,
+        image.channels(),
+    );
+    let data = image.data();
+    let mut out = Image::zeros(Shape::new(width, height, c));
+    out.data_mut()
+        .par_chunks_mut(width as usize * c)
+        .enumerate()
+        .for_each(|(y, row)| {
+            // Each pixel's centre, in the coarse pixels' centres' grid.
+            let fy = ((y as f64 + 0.5 + offset) / factor - 0.5).clamp(0.0, (ch - 1) as f64);
+            let (y0, ay) = (fy.floor() as usize, fy - fy.floor());
+            let y1 = (y0 + 1).min(ch - 1);
+            for x in 0..width as usize {
+                let fx = ((x as f64 + 0.5 + offset) / factor - 0.5).clamp(0.0, (cw - 1) as f64);
+                let (x0, ax) = (fx.floor() as usize, fx - fx.floor());
+                let x1 = (x0 + 1).min(cw - 1);
+                for k in 0..c {
+                    let at = |x: usize, y: usize| f64::from(data[(y * cw + x) * c + k]);
+                    let top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * ax;
+                    let bottom = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * ax;
+                    row[x * c + k] = (top + (bottom - top) * ay) as f32;
+                }
+            }
+        });
+    out
+}
+
 /// Multiplies `into` by `by`, sample by sample.
 fn multiply(into: &mut Image, by: &Image) {
     for (a, b) in into.data_mut().iter_mut().zip(by.data()) {
@@ -181,11 +220,14 @@ impl World {
                 at.blur(Um(focal - l.z.0)).0 / p
             })
             .collect();
+        // The margin the blur needs, up to the blur's cap: beyond it, the
+        // blur repeats the field's edge.
         let margin = sigmas
             .iter()
             .zip(&seen)
             .filter(|(_, seen)| **seen)
             .fold(0.0_f64, |m, (s, _)| m.max(*s))
+            .min(MOST_BLUR)
             .mul_add(3.0, 1.0)
             .ceil() as u32;
         let (we, he) = (w + 2 * margin, h + 2 * margin);
@@ -207,21 +249,60 @@ impl World {
         let mut order: Vec<usize> = (0..layers.len()).filter(|i| seen[*i]).collect();
         order.sort_by(|a, b| layers[*b].z.0.total_cmp(&layers[*a].z.0));
         for index in order {
-            let mut layer = slide.sample.render(index, origin, Um(p), we, he);
+            // A layer blurred by more than the cap renders at a coarser
+            // pixel, blurs there, and is interpolated back: the same light,
+            // at a bounded cost however far it is from focus.
+            let sigma = sigmas[index];
+            let coarse = if sigma > MOST_BLUR {
+                (sigma / MOST_BLUR).ceil()
+            } else {
+                1.0
+            };
+            // Coarse, it covers the blur's own reach, 3σ around the field:
+            // at the coarse pixel, about 6 × 64 pixels more, whatever σ is.
+            let extra = if coarse > 1.0 {
+                ((3.0 * sigma).ceil() - f64::from(margin)).max(0.0)
+            } else {
+                0.0
+            };
+            let (lw, lh) = if coarse > 1.0 {
+                (
+                    ((f64::from(we) + 2.0 * extra) / coarse).ceil() as u32 + 1,
+                    ((f64::from(he) + 2.0 * extra) / coarse).ceil() as u32 + 1,
+                )
+            } else {
+                (we, he)
+            };
+            let from = Point2::new(origin.x - extra * p, origin.y - extra * p);
+            let mut layer = slide.sample.render(index, from, Um(p * coarse), lw, lh);
             if layer.data().iter().all(|v| *v == 0.0) {
                 continue;
             }
-            match (layers[index].kind, fluorescence) {
-                (LayerKind::Absorbing, _) => {
+            let kind = layers[index].kind;
+            // What blurs: transmittance, reflectance, or a dye's amount.
+            match kind {
+                LayerKind::Absorbing => {
                     for v in layer.data_mut() {
                         *v = 10f32.powf(-*v);
                     }
-                    gaussian(&mut layer, sigmas[index]);
+                }
+                LayerKind::Fluorescent(_) => {
+                    let amounts = layer.data().iter().step_by(3).copied().collect();
+                    layer = Image::from_vec(Shape::new(lw, lh, 1), amounts)
+                        .expect("one channel of the layer's size");
+                }
+                LayerKind::Reflective => {}
+            }
+            gaussian(&mut layer, sigma / coarse);
+            if coarse > 1.0 {
+                layer = enlarge(&layer, coarse, extra, we, he);
+            }
+            match (kind, fluorescence) {
+                (LayerKind::Absorbing, _) => {
                     multiply(&mut passed, &layer);
                     multiply(&mut absorbed, &layer);
                 }
                 (LayerKind::Reflective, _) => {
-                    gaussian(&mut layer, sigmas[index]);
                     for ((r, l), t) in reflected
                         .data_mut()
                         .iter_mut()
@@ -237,10 +318,6 @@ impl World {
                 }
                 (LayerKind::Fluorescent(dye), Some((line, confocal))) => {
                     // The dye's amount, blurred once, then given its colour.
-                    let amounts = layer.data().iter().step_by(3).copied().collect();
-                    let mut amount = Image::from_vec(Shape::new(we, he, 1), amounts)
-                        .expect("one channel of the layer's size");
-                    gaussian(&mut amount, sigmas[index]);
                     let kept = if confocal {
                         let section = optical_section(optics, dye.peaks().1);
                         sectioning(Um(focal - layers[index].z.0), section)
@@ -249,7 +326,7 @@ impl World {
                     };
                     let excited = dye.excited_by(line) * kept;
                     let gain = dye.colour().map(|c| (c * excited) as f32);
-                    for (out, a) in emitted.data_mut().chunks_mut(3).zip(amount.data()) {
+                    for (out, a) in emitted.data_mut().chunks_mut(3).zip(layer.data()) {
                         for (o, g) in out.iter_mut().zip(gain) {
                             *o += a * g;
                         }

@@ -25,7 +25,8 @@ pub const DEFAULT_PORT: u16 = 8210;
 /// ring = 50000                    # records kept in memory
 /// keep_days = 30                  # daily files kept, in data_root/logs
 ///
-/// [devices]                       # kept for P16, not read yet
+/// [devices]                       # each device's driver: see oscope_api::devices
+/// camera = "sim"
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -36,7 +37,8 @@ pub struct Config {
     pub storage: Storage,
     /// What it logs, and how much it keeps.
     pub logging: Logging,
-    /// The devices, kept as they are until the device Things read them.
+    /// The devices: which driver each uses, and the simulator's
+    /// configuration (`oscope_api::devices::DevicesConfig`).
     pub devices: toml::Table,
 }
 

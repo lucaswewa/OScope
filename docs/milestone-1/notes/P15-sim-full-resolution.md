@@ -1,6 +1,6 @@
 # P15: Simulator at full resolution
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p15-sim-full-resolution` / [#28](https://github.com/lucaswewa/OScope/pull/28)
 - Size: M · estimated ~1,500 before it started (code ~850, of it a CUDA kernel and its wrapper ~300; tests ~400; `ex-sim-bench` ~250); one pull request, at the owner's standing choice for P12–P23 · measured **1,680** hand-written lines added (code 906, the kernel and the CUDA workflow's lines among them; tests 537; examples 237), and 56 removed. Docs and `Cargo.lock` aren't counted. **That is 1,080 over M's 600, and 180 over the estimate.**
 

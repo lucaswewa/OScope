@@ -9,6 +9,8 @@
 //! - [`sensor`]: the [`SensorModel`], from light to counts;
 //! - [`clock`]: the [`SimClock`], at 1×, scaled or stepped, which every
 //!   simulated device shares;
+//! - [`devices`]: [`SimLights`] and [`SimMount`], which set what the camera
+//!   sees, and the whole [`Simulator`] built from the configuration;
 //! - [`motion`]: [`Segment`]s, straight moves with grblHAL's acceleration;
 //! - [`stage`]: the [`SimStage`], a grblHAL-like stage on the clock;
 //!
@@ -46,6 +48,7 @@ pub mod camera;
 pub mod catalogue;
 pub mod cells;
 pub mod clock;
+pub mod devices;
 pub mod fluorescence;
 #[cfg(feature = "cuda")]
 mod gpu;
@@ -67,6 +70,7 @@ pub use camera::{Mounting, SimCamera, SimCameraConfig};
 pub use catalogue::{SampleCatalogue, SampleEntry, SampleKind, SlideLoader};
 pub use cells::{Cell, CellCulture};
 pub use clock::{Rate, SimClock};
+pub use devices::{SimLights, SimMount, Simulator, SimulatorConfig};
 pub use fluorescence::{Dye, Excitation};
 pub use import::{ImportLight, Imported};
 pub use motion::Segment;

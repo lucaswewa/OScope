@@ -5,10 +5,12 @@
 //! line ([`Cli`]), then serves OScope's [`Api`] until it is asked to stop.
 
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use clap::Parser;
+use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
 use serde_json::Value;
@@ -78,6 +80,9 @@ pub enum Error {
         /// Why.
         source: std::io::Error,
     },
+    /// The devices couldn't be built from the configuration's `[devices]`.
+    #[error("the devices: {0}")]
+    Devices(String),
     /// The server couldn't listen.
     #[error("can't listen on {address}: {source}")]
     Listen {
@@ -93,7 +98,9 @@ impl Error {
     /// line; 1 otherwise.
     pub fn exit_code(&self) -> ExitCode {
         match self {
-            Self::Config(_) | Self::Log(LogError::Filter { .. }) => ExitCode::from(2),
+            Self::Config(_) | Self::Devices(_) | Self::Log(LogError::Filter { .. }) => {
+                ExitCode::from(2)
+            }
             _ => ExitCode::FAILURE,
         }
     }
@@ -113,8 +120,23 @@ pub fn run(cli: &Cli) -> Result<(), Error> {
         scratch: config.storage.scratch_root.clone(),
     };
     let address = SocketAddr::new(config.server.address, config.server.port);
+    let runtime =
+        tokio::runtime::Runtime::new().map_err(|source| Error::Listen { address, source })?;
+    // The devices: imports' paths are from the configuration file's folder.
+    let devices_config: DevicesConfig = toml::Value::Table(config.devices.clone())
+        .try_into()
+        .map_err(|e: toml::de::Error| Error::Devices(e.to_string()))?;
+    let base = cli
+        .config
+        .as_deref()
+        .and_then(Path::parent)
+        .map_or_else(|| PathBuf::from("."), Path::to_owned);
+    let devices = runtime
+        .block_on(Devices::from_config(&devices_config, &base))
+        .map_err(Error::Devices)?;
+    let devices = Arc::new(devices);
     if cli.print_openapi || cli.print_td {
-        let api = Api::builder(&roots).build()?;
+        let api = Api::builder(&roots).devices(devices).build()?;
         let base = format!("http://{address}/");
         match cli.print_openapi {
             true => print(&api.openapi()),
@@ -139,9 +161,11 @@ pub fn run(cli: &Cli) -> Result<(), Error> {
         source,
     })?;
     logs::install(&store, &config.logging.level)?;
-    let api = Api::builder(&roots).logs(store).build()?;
-    let runtime =
-        tokio::runtime::Runtime::new().map_err(|source| Error::Listen { address, source })?;
+    let api = Api::builder(&roots)
+        .logs(store)
+        .settings(roots.data.join("settings"))
+        .devices(devices)
+        .build()?;
     runtime.block_on(async {
         let listener = tokio::net::TcpListener::bind(address)
             .await
