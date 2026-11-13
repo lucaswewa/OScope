@@ -117,8 +117,8 @@ The streaming tests were run 13 times in a row without a failure.
 
 **The workspace,** with every step CI runs: `cargo fmt`, `clippy -D warnings`, `cargo test`, `cargo doc -D warnings`, `cargo deny`, the server's `--version`, and every example's `--smoke`.
 
-- **On Windows:** see the pull request.
-- **Under WSL (Ubuntu 24.04):** see the pull request.
+- **On Windows:** all 8 steps passed; 73 test suites, 130 tests.
+- **Under WSL (Ubuntu 24.04.5):** the same, on a fresh LF clone of the commit, with no file holding a CR.
 
 P09b touches no CUDA path.
 
