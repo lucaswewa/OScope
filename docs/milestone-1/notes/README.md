@@ -27,4 +27,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P08 | Demosaicing on the CPU | Done | [P08-demosaic.md](P08-demosaic.md) |
 | P08b | Colour, display transform, crop and binning, writers | Done | [P08b-colour.md](P08b-colour.md) |
 | P08c | CUDA twins of the colour pipeline, the budgets, the comparison page | Done | [P08c-cuda-colour.md](P08c-cuda-colour.md) |
-| P09 | HAL traits, capabilities, objective catalogue, manual implementations | In review | [P09-hal-traits.md](P09-hal-traits.md) |
+| P09 | HAL traits, capabilities, objective catalogue, manual implementations | Done | [P09-hal-traits.md](P09-hal-traits.md) |
+| P09b | HAL fakes and conformance suite | In review | [P09b-hal-fakes.md](P09b-hal-fakes.md) |

@@ -180,6 +180,17 @@ impl CameraCapabilities {
         ))
     }
 
+    /// The frames that `settings` give: the sensor's pixels they cover, in
+    /// full-sensor coordinates (the ROI, or the whole sensor), and their
+    /// width and height after the mode's binning. Acquisition sizes its
+    /// pool's slabs from it.
+    pub fn frame_shape(&self, settings: &CameraSettings) -> Result<(PixelRect, u32, u32)> {
+        let binning = self.mode(&settings.mode)?.binning.max(1);
+        let whole = PixelRect::new(0, 0, self.sensor_width, self.sensor_height);
+        let roi = settings.roi.unwrap_or(whole);
+        Ok((roi, roi.width / binning, roi.height / binning))
+    }
+
     /// Checks `settings` against these capabilities, and returns them as the
     /// camera would apply them, with the ROI rounded. Drivers call it first
     /// in [`Camera::configure`].
