@@ -764,7 +764,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P09 | HAL traits, capabilities, objective catalogue, manual implementations | P03 | L | 0012 | In progress |
+| P09 | HAL traits, capabilities, objective catalogue, manual implementations | P03 | L | 0012 | In review |
 | P09b | HAL fakes and conformance suite | P09 | L | — | Planned |
 | P10 | Simulated world, optics, H&E tissue | P09 | L | 0013 | Planned |
 | P11 | Simulation clock and grblHAL-like stage | P09b | L | — | Planned |
