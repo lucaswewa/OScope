@@ -11,6 +11,7 @@ oscope-core.workspace = true
 schemars.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
 toml.workspace = true
 
 [dev-dependencies]

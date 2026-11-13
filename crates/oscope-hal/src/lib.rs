@@ -16,6 +16,9 @@
 //! - [`objective`]: the [`ObjectiveCatalogue`], the [`ObjectiveMount`] trait,
 //!   and [`ManualObjectiveMount`].
 //! - [`error`]: this crate's [`Error`].
+//! - [`fake`]: a scripted fake of each trait, for tests and examples.
+//! - [`conformance`]: the suites that check a driver does what its trait
+//!   promises.
 //!
 //! **The traits are async, and dyn-compatible.** Every operation that talks
 //! to a device returns a [`HalFuture`], a boxed future, so that a driver
@@ -30,7 +33,9 @@ use std::future::Future;
 use std::pin::Pin;
 
 pub mod camera;
+pub mod conformance;
 pub mod error;
+pub mod fake;
 pub mod illumination;
 pub mod objective;
 pub mod stage;

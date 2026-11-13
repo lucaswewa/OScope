@@ -1,6 +1,6 @@
 # P09: HAL traits, capabilities, objective catalogue, manual implementations
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p09-hal-traits` / [#20](https://github.com/lucaswewa/OScope/pull/20)
 - Size: L · estimated ~1,900 for the whole of P09 before it started, so the owner split it, and ~1,150 for this half · measured **2,157** hand-written lines added (code 1,152; tests 767; examples 185; glue 53), and 3 removed. Docs and `Cargo.lock` aren't counted. **That is 1,257 over L's 900, and about 1,000 over the estimate** (*Design notes*).
 
