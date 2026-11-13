@@ -125,6 +125,21 @@ pub struct Pulse {
     pub position: Um,
 }
 
+/// The stage's motion from a moment on, until the next change: what its
+/// true position follows.
+#[derive(Clone, Copy, Debug)]
+struct Phase {
+    since: Timestamp,
+    motion: Option<Segment>,
+    rest: Xyz,
+    play: [f64; 3],
+    lost: [f64; 3],
+    settle: Option<(Timestamp, [f64; 3])>,
+}
+
+/// How many past phases the stage remembers: minutes of ordinary use.
+const HISTORY: usize = 256;
+
 /// What the current motion is for.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Purpose {
@@ -175,6 +190,9 @@ struct State {
     pulses: Vec<Pulse>,
     /// A held move: its number, target and speed.
     held: Option<(u64, Xyz, f64)>,
+    /// When the current phase began, and the phases before it.
+    since: Timestamp,
+    past: VecDeque<Phase>,
 }
 
 fn axes(p: Xyz) -> [f64; 3] {
@@ -253,6 +271,8 @@ impl SimStage {
                 armed: None,
                 pulses: Vec::new(),
                 held: None,
+                since: now,
+                past: VecDeque::new(),
             }),
             track: Arc::new(PositionTrack::new(4096)),
             changed: Notify::new(),
@@ -285,16 +305,54 @@ impl SimStage {
         Duration::from_secs_f64(self.config.latency.0 / 1e3)
     }
 
+    /// The current phase.
+    fn current(state: &State) -> Phase {
+        Phase {
+            since: state.since,
+            motion: state.motion.map(|(segment, _)| segment),
+            rest: state.rest,
+            play: state.play,
+            lost: state.lost,
+            settle: state.settle,
+        }
+    }
+
+    /// The phase that covered `at`: the current one, or a remembered one.
+    fn phase(state: &State, at: Timestamp) -> Phase {
+        if at >= state.since {
+            return Self::current(state);
+        }
+        state
+            .past
+            .iter()
+            .rev()
+            .find(|p| p.since <= at)
+            .or(state.past.front())
+            .copied()
+            .unwrap_or_else(|| Self::current(state))
+    }
+
+    /// Remembers the current phase, and starts a new one at `at`.
+    fn archive(state: &mut State, at: Timestamp) {
+        let phase = Self::current(state);
+        state.past.push_back(phase);
+        if state.past.len() > HISTORY {
+            state.past.pop_front();
+        }
+        state.since = at;
+    }
+
     /// The commanded position at `at`.
     fn commanded(state: &State, at: Timestamp) -> Xyz {
-        match &state.motion {
-            Some((segment, _)) => segment.position(at),
-            None => state.rest,
+        match Self::phase(state, at).motion {
+            Some(segment) => segment.position(at),
+            None => Self::phase(state, at).rest,
         }
     }
 
     /// The true position at `at`, from the commanded one, the backlash,
-    /// the steps lost and the settling.
+    /// the steps lost and the settling. Exact for the present and the recent
+    /// past: the stage remembers its last 256 changes of motion.
     pub fn true_position(&self, at: Timestamp) -> Xyz {
         let state = self.state();
         self.truth(&state, at)
@@ -302,12 +360,13 @@ impl SimStage {
 
     fn truth(&self, state: &State, at: Timestamp) -> Xyz {
         let half = self.config.backlash.0 / 2.0;
+        let phase = Self::phase(state, at);
         let c = axes(Self::commanded(state, at));
         let mut t =
-            [0, 1, 2].map(|i| state.play[i].clamp(c[i] - half, c[i] + half) + state.lost[i]);
-        if let Some((end, dir)) = state
+            [0, 1, 2].map(|i| phase.play[i].clamp(c[i] - half, c[i] + half) + phase.lost[i]);
+        if let Some((end, dir)) = phase
             .settle
-            .filter(|(end, _)| at >= *end && state.motion.is_none())
+            .filter(|(end, _)| at >= *end && phase.motion.is_none())
         {
             let s = &self.config.settling;
             let since = (at.0 - end.0) as f64 / 1e6;
@@ -452,6 +511,7 @@ impl SimStage {
     fn rest_at(&self, state: &mut State, at: Timestamp, here: Xyz) {
         let half = self.config.backlash.0 / 2.0;
         let c = axes(Self::commanded(state, at));
+        Self::archive(state, at);
         state.play = [0, 1, 2].map(|i| state.play[i].clamp(c[i] - half, c[i] + half));
         state.motion = None;
         state.hard = None;
@@ -506,6 +566,7 @@ impl SimStage {
     /// Starts a motion from rest to `target` at `speed`, from `at`.
     fn begin(&self, state: &mut State, at: Timestamp, target: Xyz, speed: f64, purpose: Purpose) {
         let segment = Segment::new(state.rest, target, at, speed, self.config.acceleration);
+        Self::archive(state, at);
         state.settle = None;
         state.status = match purpose {
             Purpose::Home(..) => StageStatus::Homing,
@@ -859,6 +920,7 @@ impl Stage for SimStage {
                 // Homing finds the switches wherever the stage truly is, so
                 // it starts from the true position, with nothing lost.
                 let truth = self.truth(&state, now);
+                Self::archive(&mut state, now);
                 state.rest = truth;
                 state.play = axes(truth);
                 state.lost = [0.0; 3];

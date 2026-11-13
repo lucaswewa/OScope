@@ -1,6 +1,6 @@
 # P11: Simulation clock and grblHAL-like stage
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p11-sim-stage` / [#23](https://github.com/lucaswewa/OScope/pull/23)
 - Size: L · estimated ~2,100 before it started, from P10's measured densities; the owner chose one pull request · measured **2,503** hand-written lines added (code 1,363; tests 688; examples 446; glue 6), and 2 removed. Docs and `Cargo.lock` aren't counted. **That is 1,603 over L's 900, and 403 over the estimate,** most of it in the stage itself (*Design notes*).
 

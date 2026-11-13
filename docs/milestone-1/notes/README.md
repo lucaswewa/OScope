@@ -30,4 +30,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P09 | HAL traits, capabilities, objective catalogue, manual implementations | Done | [P09-hal-traits.md](P09-hal-traits.md) |
 | P09b | HAL fakes and conformance suite | Done | [P09b-hal-fakes.md](P09b-hal-fakes.md) |
 | P10 | Simulated world, optics, H&E tissue | Done | [P10-sim-world.md](P10-sim-world.md) |
-| P11 | Simulation clock and grblHAL-like stage | In review | [P11-sim-stage.md](P11-sim-stage.md) |
+| P11 | Simulation clock and grblHAL-like stage | Done | [P11-sim-stage.md](P11-sim-stage.md) |
+| P12 | Simulated camera: sensor, modes, timing, triggers | In review | [P12-sim-camera.md](P12-sim-camera.md) |
