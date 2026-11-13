@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# The camera's exposure on the GPU (P15), through oscope-compute's CUDA backend.
+cuda = ["oscope-compute/cuda"]
+
 [dependencies]
 chrono.workspace = true
 oscope-compute.workspace = true

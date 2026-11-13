@@ -17,14 +17,19 @@ use oscope_core::{FrameView, HeapAllocator, Slab, SlabAllocator};
 use crate::{ComputeError, GpuInfo, Image, Lane, Shape, cpu};
 
 mod color;
+mod sim;
 
 pub use color::DemosaicKernel;
+pub use sim::{Exposure, TileAtlas};
 
 /// The image kernels, compiled from `kernels/image.cu` by `build.rs`.
 const IMAGE_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/image.fatbin"));
 
 /// The colour kernels, compiled from `kernels/color.cu`.
 const COLOR_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/color.fatbin"));
+
+/// The simulated camera's kernel, compiled from `kernels/sim.cu`.
+const SIM_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sim.fatbin"));
 
 /// Threads in a block.
 const BLOCK: u32 = 256;
@@ -61,6 +66,7 @@ struct Kernels {
     subtract_black: CudaFunction,
     correct: CudaFunction,
     display: CudaFunction,
+    expose: CudaFunction,
 }
 
 /// A GPU, ready for kernels.
@@ -94,6 +100,7 @@ impl Cuda {
         let batch = context.new_stream_with_priority(least)?;
         let module = context.load_module(Ptx::from_binary(IMAGE_KERNELS.to_vec()))?;
         let color = context.load_module(Ptx::from_binary(COLOR_KERNELS.to_vec()))?;
+        let sim = context.load_module(Ptx::from_binary(SIM_KERNELS.to_vec()))?;
         let kernels = Kernels {
             to_f32_u16: module.load_function("to_f32_u16")?,
             to_f32_u8: module.load_function("to_f32_u8")?,
@@ -104,6 +111,7 @@ impl Cuda {
             subtract_black: color.load_function("subtract_black")?,
             correct: color.load_function("correct")?,
             display: color.load_function("display")?,
+            expose: sim.load_function("expose")?,
         };
         let memory_pool = keep_freed_memory(&context).is_ok();
         let mut version = 0;

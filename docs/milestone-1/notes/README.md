@@ -33,4 +33,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P11 | Simulation clock and grblHAL-like stage | Done | [P11-sim-stage.md](P11-sim-stage.md) |
 | P12 | Simulated camera: sensor, modes, timing, triggers | Done | [P12-sim-camera.md](P12-sim-camera.md) |
 | P13 | Samples II: reflective surface, fluorescent cell volume | Done | [P13-sim-3d-samples.md](P13-sim-3d-samples.md) |
-| P14 | Samples III: sub-diffraction structures, imports, load and unload | In review | [P14-sim-samples.md](P14-sim-samples.md) |
+| P14 | Samples III: sub-diffraction structures, imports, load and unload | Done | [P14-sim-samples.md](P14-sim-samples.md) |
+| P15 | Simulator at full resolution | In review | [P15-sim-full-resolution.md](P15-sim-full-resolution.md) |

@@ -24,7 +24,7 @@ const EDGE: f64 = 0.35;
 const EDGE_WIDTH: f64 = 30.0;
 
 /// Which light the sample is seen in.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Light {
     /// From below, through the slide: brightfield.
     Transmitted,

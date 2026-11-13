@@ -1,0 +1,22 @@
+[package]
+name = "ex-sim-bench"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# The camera's exposure on the GPU, through oscope-compute's CUDA backend.
+cuda = ["oscope-sim/cuda", "dep:oscope-compute", "oscope-compute/cuda"]
+
+[dependencies]
+anyhow.workspace = true
+oscope-compute = { workspace = true, optional = true }
+oscope-core.workspace = true
+oscope-hal.workspace = true
+oscope-sim.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[lints]
+workspace = true

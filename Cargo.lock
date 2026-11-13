@@ -576,6 +576,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-sim-bench"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-sim",
+ "tokio",
+]
+
+[[package]]
 name = "ex-sim-camera"
 version = "0.1.0"
 dependencies = [
