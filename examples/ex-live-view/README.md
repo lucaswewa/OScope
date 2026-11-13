@@ -17,7 +17,7 @@ It starts the simulated microscope on the scaled-down sensor (1368 × 912 pixels
 - **Under it:** the frames a second, the size sent and the sensor's region it shows, the JPEG quality, the latency, and the bytes a second.
   - **The latency** has two parts: the server's, from the end of the frame's exposure to its message being ready; and the page's, from the message arriving to the frame being drawn.
 - **Jog buttons:** held down, the stage jogs along that axis at the speed set; let go, it halts.
-  - **The image slides as the stage and the camera's mounting say:** left while jogging x +, and up while jogging y +, at the speed over the pixel's size. The page says how many sensor pixels a second to expect. `jogging_moves_the_image_at_the_stage_s_speed` in `oscope-api`'s tests measures it: 281.6 pixels a second on the half-size preview, against 281.2 expected at 540 µm/s.
+  - **The image slides as the stage and the camera's mounting say:** left while jogging x +, and up while jogging y +, at the speed over the pixel's size. The page says how many sensor pixels a second to expect. `jogging_moves_the_image_at_the_stage_s_speed` in `oscope-api`'s tests measures it: 103.7 pixels a second on the half-size preview, against 104.2 expected at 200 µm/s.
   - **z** goes in and out of focus.
 - **The quality slider** sets the JPEG quality.
 

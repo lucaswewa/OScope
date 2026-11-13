@@ -283,7 +283,9 @@ async fn a_slow_client_gets_the_newest_frames() {
 async fn jogging_moves_the_image_at_the_stage_s_speed() {
     // The simulator on the scaled-down sensor, 0.96 µm a pixel at 10×,
     // over the H&E slide. Homed and placed at 50 times real time, then
-    // jogged towards +x at 540 µm/s, in real time.
+    // jogged towards +x at 200 µm/s, in real time: about 14 preview pixels
+    // a frame, so the search's ±80 covers a camera that falls 5 frames
+    // behind under load.
     let folder = tempfile::tempdir().unwrap();
     let mut config = DevicesConfig::default();
     config.simulator.sensor = "quarter".to_owned();
@@ -315,7 +317,7 @@ async fn jogging_moves_the_image_at_the_stage_s_speed() {
         201
     );
     next(&mut socket).await;
-    let speed = 540.0;
+    let speed = 200.0;
     let jog = json!({"axis": "x", "towards_max": true, "speed": speed}).to_string();
     assert_eq!(
         http(address, "POST", "/api/v1/stage/jog", &jog).await.0,
@@ -388,6 +390,10 @@ fn shift(first: &[f32], second: &[f32], width: usize, height: usize) -> (f64, f6
         }
     }
     let (centre, dx, dy) = best;
+    assert!(
+        dx.abs() < X && dy.abs() < Y,
+        "no match within the search: ({dx}, {dy})"
+    );
     let (left, right) = (difference(dx - 1, dy), difference(dx + 1, dy));
     let curve = left - 2.0 * centre + right;
     let fraction = if curve > 0.0 {

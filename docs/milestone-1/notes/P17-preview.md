@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p17-preview` / [#30](https://github.com/lucaswewa/OScope/pull/30)
-- Size: L · estimated ~2,900 before it started (the preview chain ~350, a JPEG encoder ~400, the wire format ~150, the `preview` Thing and its sessions ~350, tests ~800, `ex-live-view` ~500); one pull request, at the owner's standing choice for P12–P23 · measured **2,832** hand-written lines added (code 1,394; tests 1,018; examples 420), and 28 removed. Docs, `Cargo.lock` and the generated snapshot aren't counted. **That is 1,932 over L's 900, and about 70 under the estimate.**
+- Size: L · estimated ~2,900 before it started (the preview chain ~350, a JPEG encoder ~400, the wire format ~150, the `preview` Thing and its sessions ~350, tests ~800, `ex-live-view` ~500); one pull request, at the owner's standing choice for P12–P23 · measured **2,838** hand-written lines added (code 1,394; tests 1,024; examples 420), and 28 removed. Docs, `Cargo.lock` and the generated snapshot aren't counted. **That is 1,938 over L's 900, and about 60 under the estimate.**
 
 ## Summary
 
@@ -15,7 +15,7 @@ The light half of the dual stream: each client gets the camera's newest frames a
 - **Clients may acknowledge** what they've shown. Then they get at most two messages beyond it, always of the newest frame. Without that, the operating system's socket buffers held seconds of stale frames for a slow client.
 - **Adapting:** a client that keeps missing frames gets lower quality, then smaller frames, and gets them back when it keeps up.
 - **§5.20's preview budget is met** on this PC: 34.2 ms on the CPU and 22.0 ms with CUDA, against 60 and 30.
-- **Jogging moves the image at the stage's speed, the way the mounting says:** measured in a test, 281.6 preview pixels a second against 281.2 expected, towards −x.
+- **Jogging moves the image at the stage's speed, the way the mounting says:** measured in a test, 103.7 preview pixels a second against 104.2 expected at 200 µm/s, towards −x.
 - **`ex-live-view`:** a page that shows the stream with WebGL, zooms by ROI, shows fps and latency, and jogs the stage.
 
 ## What was built
@@ -116,11 +116,13 @@ Open `http://127.0.0.1:8218/`: the live image, scroll to zoom, the jog buttons w
 | `oscope-acquire` | `the_gpu_s_previews_are_the_cpu_s` | With `OSCOPE_CUDA=1`: the GPU's JPEGs are the CPU's, byte for byte, binned, unbinned, zoomed, white-balanced, over a black level |
 | `oscope-acquire` | `the_preview_budget` (ignored) | §5.20, in release, CPU and GPU |
 | `oscope-acquire` | `resize` (2, unit) | the box's weights cover each output once; a ramp keeps its means, and grey becomes RGB |
-| `oscope-api` | `preview` (3) | Over a real socket: a client's ROI, size and quality; a new message replacing the last; an ROI that misses showing the whole frame; `max_fps`; unreadable parameters answered with an error; the session's statistics, and its end with its socket. A slow client that acknowledges gets the newest frames, missing those between, and its quality comes down. Jogging the simulator at 540 µm/s moves the image at 281.6 px/s against 281.2 expected, towards −x, with no sideways shift |
+| `oscope-api` | `preview` (3) | Over a real socket: a client's ROI, size and quality; a new message replacing the last; an ROI that misses showing the whole frame; `max_fps`; unreadable parameters answered with an error; the session's statistics, and its end with its socket. A slow client that acknowledges gets the newest frames, missing those between, and its quality comes down. Jogging the simulator at 200 µm/s moves the image at 103.7 px/s against 104.2 expected, towards −x, with no sideways shift |
 | `oscope-api` | `devices` | The `preview` Thing's description snapshotted, and its routes in the OpenAPI document |
 | `ex-live-view` | `--smoke` | The page; four previews during a jog, acknowledged; one session |
 
-**The jog's measurement:** ten previews of the half-size frame during a jog at 540 µm/s, decoded to grey. Each pair's shift is where they differ least, within ±80 pixels along x and ±6 along y, refined to a fraction along x. Each pair's time comes from their headers. The rate is the sum of the shifts over the sum of the times. The expected rate is the speed over the objective's pixel at the sample (`pixel_at_sample`, 0.96 µm), times the preview's scale. The direction comes from the simulator's mounting, neither turned nor mirrored: the stage moving +x shows the slide further along +x, so the image moves −x.
+**The jog's measurement:** ten previews of the half-size frame during a jog at 200 µm/s, about 14 preview pixels a frame, decoded to grey. Each pair's shift is where they differ least, within ±80 pixels along x and ±6 along y, refined to a fraction along x. Each pair's time comes from their headers. The rate is the sum of the shifts over the sum of the times. The expected rate is the speed over the objective's pixel at the sample (`pixel_at_sample`, 0.96 µm), times the preview's scale. The direction comes from the simulator's mounting, neither turned nor mirrored: the stage moving +x shows the slide further along +x, so the image moves −x.
+
+**Found by the local replay:** the test first jogged at 540 µm/s, about 39 pixels a frame. Under the replay's load, the debug-built simulated camera fell a few frames behind, so a pair's shift passed the search's ±80, and the refinement read outside the image. It now jogs at 200 µm/s, and a best match on the search's edge fails with that message.
 
 **Mutation checks** (each broke the code on purpose, then the test named was run):
 
