@@ -28,7 +28,8 @@ async function post(action, input = {}) {
   if (answer.status !== 201) say(`${action}: ${answer.status} ${await answer.text()}`, true);
 }
 
-// ADR-0014's header: little-endian; the payload starts at its length.
+// ADR-0014's header: little-endian; the JPEG starts at its length, and
+// runs for the length at 72 (ADR-0035).
 function readHeader(buffer) {
   const v = new DataView(buffer);
   const magic = String.fromCharCode(...new Uint8Array(buffer, 0, 4));
@@ -45,6 +46,7 @@ function readHeader(buffer) {
     roi: { x: u32(48), y: u32(52), width: u32(56), height: u32(60) },
     width: u32(64),
     height: u32(68),
+    jpegLength: u32(8) >= 76 ? u32(72) : buffer.byteLength - u32(8),
   };
 }
 
@@ -166,7 +168,7 @@ function connect() {
     if (typeof event.data === "string") return say(event.data, true);
     const arrived = performance.now();
     const header = readHeader(event.data);
-    const jpeg = new Blob([new Uint8Array(event.data, header.length)], { type: "image/jpeg" });
+    const jpeg = new Blob([new Uint8Array(event.data, header.length, header.jpegLength)], { type: "image/jpeg" });
     const bitmap = await createImageBitmap(jpeg);
     if (header.sequence >= ready) {
       draw(bitmap, header);

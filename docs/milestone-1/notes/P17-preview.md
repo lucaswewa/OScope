@@ -1,6 +1,6 @@
 # P17: Preview service and binary WebSocket protocol
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p17-preview` / [#30](https://github.com/lucaswewa/OScope/pull/30)
 - Size: L · estimated ~2,900 before it started (the preview chain ~350, a JPEG encoder ~400, the wire format ~150, the `preview` Thing and its sessions ~350, tests ~800, `ex-live-view` ~500); one pull request, at the owner's standing choice for P12–P23 · measured **2,838** hand-written lines added (code 1,392; tests 1,026; examples 420), and 28 removed. Docs, `Cargo.lock` and the generated snapshot aren't counted. **That is 1,938 over L's 900, and about 60 under the estimate.**
 

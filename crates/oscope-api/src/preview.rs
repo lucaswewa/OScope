@@ -8,8 +8,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
-use oscope_acquire::preview::wire::{FRAME, Header, JPEG};
-use oscope_acquire::preview::{Adaptation, Look, Preview, PreviewError, PreviewRequest};
+use oscope_acquire::preview::wire::{FRAME, Header, JPEG, MASK, STATISTICS};
+use oscope_acquire::preview::{Adaptation, Look, Preview, PreviewError, PreviewRequest, Rendered};
+use oscope_acquire::stats::StatsRequest;
 use oscope_compute::{Compute, ComputeConfig};
 use oscope_core::{Frame, PixelRect};
 use oscope_imaging::color::{ColourCorrection, Curve, Display};
@@ -22,6 +23,8 @@ use crate::devices::Devices;
 
 /// How many messages a client that acknowledges may have unshown.
 const AHEAD: u32 = 2;
+/// The least time between one client's statistics: 10 a second at most.
+const STATS_EVERY: Duration = Duration::from_millis(100);
 
 /// What a client gets unless it asks otherwise.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -116,6 +119,9 @@ pub struct PreviewParams {
     /// sends it, it has at most 2 messages it hasn't shown, so that no socket
     /// buffer holds stale frames for it (ADR-0014).
     pub ack: Option<u32>,
+    /// Live statistics to send with the previews, at most 10 times a
+    /// second (ADR-0035): none when not given.
+    pub stats: Option<StatsRequest>,
 }
 
 impl PreviewParams {
@@ -278,7 +284,7 @@ impl PreviewThing {
         let mut frames = bus.subscribe_latest(&format!("preview {session}"));
         let (mut adaptation, mut meter) = (Adaptation::default(), Meter::default());
         let (mut sequence, mut replaced, mut skipped, mut warned) = (0_u32, 0, 0, false);
-        let mut next = Instant::now();
+        let (mut next, mut measured) = (Instant::now(), None::<Instant>);
         'session: loop {
             tokio::select! {
                 () = tokio::time::sleep_until(next.into()) => {}
@@ -310,6 +316,13 @@ impl PreviewThing {
             next = Instant::now() + Duration::from_secs_f64(1.0 / max_fps);
             let look = Look::from(&self.look.get());
             let (preview, gpu) = (service.preview.clone(), !self.cpu_only.get());
+            let stats = subscriber
+                .params()
+                .stats
+                .filter(|_| measured.is_none_or(|at| at.elapsed() >= STATS_EVERY));
+            if stats.is_some() {
+                measured = Some(Instant::now());
+            }
             let made = tokio::task::spawn_blocking(move || {
                 let mut made = preview.render(&frame, &request, &look, gpu);
                 if let Err(PreviewError::Roi { .. }) = made {
@@ -319,10 +332,15 @@ impl PreviewThing {
                     };
                     made = preview.render(&frame, &whole, &look, gpu);
                 }
-                made.map(|rendered| (rendered, frame, request.quality))
+                let rendered = made?;
+                let blocks = match stats {
+                    Some(asked) => blocks(&preview, &frame, &asked, &rendered)?,
+                    None => Vec::new(),
+                };
+                Ok::<_, PreviewError>((rendered, frame, request.quality, blocks))
             })
             .await;
-            let (rendered, frame, quality) = match made {
+            let (rendered, frame, quality, blocks) = match made {
                 Ok(Ok(made)) => made,
                 Ok(Err(error)) => {
                     if !std::mem::replace(&mut warned, true) {
@@ -334,7 +352,8 @@ impl PreviewThing {
             };
             let header = header(&frame, &rendered, quality, sequence, &service.devices);
             let latency = header.ready.saturating_since(header.exposure_end);
-            let message = header.message(&rendered.jpeg);
+            let blocks: Vec<(u8, &[u8])> = blocks.iter().map(|(k, b)| (*k, b.as_slice())).collect();
+            let message = header.message(&rendered.jpeg, &blocks);
             let bytes = message.len();
             if !subscriber.send(message) {
                 break;
@@ -361,10 +380,33 @@ impl PreviewThing {
     }
 }
 
+/// The statistics `asked` for, of `frame` as `rendered` shows it, as blocks
+/// (ADR-0035). An ROI that misses the frame is left out.
+fn blocks(
+    preview: &Preview,
+    frame: &Frame,
+    asked: &StatsRequest,
+    rendered: &Rendered,
+) -> Result<Vec<(u8, Vec<u8>)>, PreviewError> {
+    let mut measured = preview.measure(frame, asked, rendered);
+    if let Err(PreviewError::Roi { .. }) = measured {
+        let whole = StatsRequest {
+            roi: None,
+            ..asked.clone()
+        };
+        measured = preview.measure(frame, &whole, rendered);
+    }
+    let (stats, mask) = measured?;
+    let json = serde_json::to_vec(&stats).expect("statistics serialise to JSON");
+    let mut blocks = vec![(STATISTICS, json)];
+    blocks.extend(mask.map(|mask| (MASK, mask.to_bytes())));
+    Ok(blocks)
+}
+
 /// The header of `frame`'s preview, ready now.
 fn header(
     frame: &Frame,
-    rendered: &oscope_acquire::preview::Rendered,
+    rendered: &Rendered,
     quality: u8,
     sequence: u32,
     devices: &Devices,

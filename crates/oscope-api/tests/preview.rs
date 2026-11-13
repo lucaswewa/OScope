@@ -10,7 +10,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use futures_util::{SinkExt, StreamExt};
-use oscope_acquire::preview::wire::{FRAME, Header, JPEG};
+use oscope_acquire::preview::wire::{FRAME, Header, JPEG, MASK, STATISTICS};
+use oscope_acquire::stats::{LiveStats, Mask};
 use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::{Api, Roots};
 use oscope_core::{LightState, PixelRect, Um, Xyz};
@@ -89,8 +90,17 @@ async fn stream(address: SocketAddr, params: Value, buffer: Option<u32>) -> Sock
     socket
 }
 
+/// A preview read: its header, its JPEG, and its blocks.
+type Read = (Header, Vec<u8>, Vec<(u8, Vec<u8>)>);
+
 /// The next preview: its header and its JPEG. Panics after 60 s.
 async fn next(socket: &mut Socket) -> (Header, Vec<u8>) {
+    let (header, jpeg, _) = next_with_blocks(socket).await;
+    (header, jpeg)
+}
+
+/// The next preview, with its blocks. Panics after 60 s.
+async fn next_with_blocks(socket: &mut Socket) -> Read {
     let deadline = Instant::now() + Duration::from_secs(60);
     loop {
         let message = tokio::time::timeout_at(deadline.into(), socket.next())
@@ -99,9 +109,10 @@ async fn next(socket: &mut Socket) -> (Header, Vec<u8>) {
             .expect("the stream stays open")
             .unwrap();
         if let Message::Binary(bytes) = message {
-            let (header, jpeg) = Header::read(&bytes).unwrap();
-            assert_eq!((header.kind, header.codec), (FRAME, JPEG));
-            return (header, jpeg.to_vec());
+            let read = Header::read(&bytes).unwrap();
+            assert_eq!((read.header.kind, read.header.codec), (FRAME, JPEG));
+            let blocks = read.blocks.iter().map(|(k, b)| (*k, b.to_vec())).collect();
+            return (read.header, read.jpeg.to_vec(), blocks);
         }
     }
 }
@@ -215,7 +226,7 @@ async fn a_client_s_parameters_shape_its_previews() {
                 assert!(text.contains("error"), "{text}");
                 break;
             }
-            Message::Binary(bytes) => assert_eq!(Header::read(&bytes).unwrap().0.quality, 33),
+            Message::Binary(bytes) => assert_eq!(Header::read(&bytes).unwrap().header.quality, 33),
             _ => {}
         }
     }
@@ -279,6 +290,97 @@ async fn a_slow_client_gets_the_newest_frames() {
     assert!(sessions[0]["dropped"].as_u64().unwrap() > 0, "{sessions}");
     // Kept waiting, the session took its quality down.
     assert!(sessions[0]["quality"].as_u64().unwrap() < 95, "{sessions}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn statistics_come_with_the_previews_ten_times_a_second_at_most() {
+    // The fake camera's rows step through every level, (row + frame) % 256,
+    // so a row or two of each frame is at full scale.
+    let folder = tempfile::tempdir().unwrap();
+    let (address, _stop) = serve(folder.path(), devices(folder.path(), fakes()).await).await;
+    let mut params = json!({"width": 320, "height": 240, "ack": 0});
+    let mut socket = stream(address, params.clone(), None).await;
+    assert_eq!(
+        http(address, "POST", "/api/v1/camera/start_streaming", "{}")
+            .await
+            .0,
+        201
+    );
+    let (header, _, blocks) = next_with_blocks(&mut socket).await;
+    assert!(blocks.is_empty(), "statistics nobody asked for");
+    params["ack"] = json!(header.sequence + 1);
+    params["stats"] = json!({
+        "roi": {"x": 0, "y": 0, "width": 64, "height": 64},
+        "profile": {"from": [0.0, 0.0], "to": [0.0, 100.0]},
+        "bins": 64
+    });
+    socket
+        .send(Message::text(params.to_string()))
+        .await
+        .unwrap();
+
+    let (mut measured, mut masks) = (Vec::new(), 0);
+    while measured.len() < 8 {
+        let (header, _, blocks) = next_with_blocks(&mut socket).await;
+        params["ack"] = json!(header.sequence + 1);
+        socket
+            .send(Message::text(params.to_string()))
+            .await
+            .unwrap();
+        let Some((_, json)) = blocks.iter().find(|(kind, _)| *kind == STATISTICS) else {
+            continue;
+        };
+        let stats: LiveStats = serde_json::from_slice(json).unwrap();
+        let id = header.frame.0;
+        assert_eq!(stats.frame, id);
+        assert_eq!((stats.full_scale, stats.histogram.len()), (255, 3));
+        for (bins, counted) in stats.histogram.iter().zip(&stats.counted) {
+            assert_eq!((bins.len(), bins.iter().sum::<u64>()), (64, *counted));
+        }
+        let roi = stats.roi.unwrap();
+        assert_eq!(
+            (roi.rect, roi.count),
+            (PixelRect::new(0, 0, 64, 64), vec![1024, 2048, 1024])
+        );
+        // A cell every 2 rows down: its red is its first row's level.
+        let profile = stats.profile.unwrap();
+        assert_eq!(profile.samples.len(), 51);
+        for (i, sample) in profile.samples.iter().enumerate() {
+            let red = sample.as_ref().unwrap()[0];
+            assert_eq!(
+                red,
+                ((2 * i as u64 + id) % 256) as f64,
+                "frame {id}, sample {i}"
+            );
+        }
+        // The rows at full scale, at half size, every pixel across.
+        let full: Vec<u32> = (0..480)
+            .filter(|y| (y + id) % 256 == 255)
+            .map(|y| y as u32 / 2)
+            .collect();
+        let mask = blocks.iter().find(|(kind, _)| *kind == MASK);
+        assert_eq!(mask.is_some(), !full.is_empty(), "frame {id}");
+        if let Some((_, bytes)) = mask {
+            let mask = Mask::from_bytes(bytes).unwrap();
+            assert_eq!((mask.width, mask.height), (320, 240));
+            for y in 0..240 {
+                let row = (0..320).filter(|&x| mask.get(x, y)).count();
+                assert_eq!(
+                    row,
+                    if full.contains(&y) { 320 } else { 0 },
+                    "frame {id}, row {y}"
+                );
+            }
+            masks += 1;
+        }
+        measured.push(header.ready);
+    }
+    assert!(masks > 0);
+    // At most 10 a second: 100 ms apart, less the jitter of making each.
+    for pair in measured.windows(2) {
+        let apart = pair[1].saturating_since(pair[0]);
+        assert!(apart >= Duration::from_millis(80), "{apart:?}");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

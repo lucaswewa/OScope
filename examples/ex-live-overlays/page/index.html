@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live overlays</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --text: #1d2125;
+    --muted: #5d6874;
+    --page: #ffffff;
+    --line: #d9dee3;
+    --bad: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --text: #e4e7ea; --muted: #9ba6b1; --page: #16191c; --line: #2e353b; --bad: #f97066; }
+  }
+  body { margin: 0 auto; max-width: 1400px; padding: 16px; font: 14px/1.5 system-ui, sans-serif; color: var(--text); background: var(--page); }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1rem; margin: 12px 0 4px; }
+  .muted { color: var(--muted); }
+  .bad { color: var(--bad); }
+  .layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr); gap: 16px; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  .stage { position: relative; aspect-ratio: 3 / 2; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #view { background: #000; border: 1px solid var(--line); }
+  #marks { cursor: crosshair; touch-action: none; }
+  .chart { width: 100%; height: 160px; border: 1px solid var(--line); }
+  .readout { font: 0.9rem/1.4 ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: pre; overflow-x: auto; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+  button, input { font: inherit; padding: 3px 8px; }
+  input[type=number] { width: 6em; }
+</style>
+</head>
+<body>
+<h1>Live overlays</h1>
+<p class="muted">The live view, with overlays drawn from statistics of the raw frames. Drag to draw an ROI; shift-drag to draw a profile; scroll to zoom.</p>
+<div class="layout">
+  <div>
+    <div class="stage"><canvas id="view"></canvas><canvas id="marks"></canvas></div>
+    <div class="readout" id="status">connecting…</div>
+    <div class="row">
+      <label><input type="checkbox" id="crosshair" checked> crosshair</label>
+      <label><input type="checkbox" id="false-colour"> false colour</label>
+      <label><input type="checkbox" id="saturation" checked> saturation</label>
+      <button id="clear">Clear ROI and profile</button>
+      <button id="whole">Whole frame</button>
+    </div>
+    <div class="row">
+      <label>light <input type="range" id="light" min="0" max="1" step="0.05" value="0.6"></label>
+      <label>exposure <input type="number" id="exposure" value="15" min="1"> ms</label>
+      <span>focus</span>
+      <button data-z="-">z −</button>
+      <button data-z="+">z +</button>
+      <label>at <input type="number" id="speed" value="20" min="1"> µm/s</label>
+    </div>
+    <p id="message" class="muted"></p>
+  </div>
+  <div>
+    <h2>Histogram <label class="muted"><input type="checkbox" id="log" checked> log</label></h2>
+    <canvas class="chart" id="histogram"></canvas>
+    <div class="readout" id="levels"></div>
+    <h2>ROI</h2>
+    <div class="readout" id="roi">Drag on the image to draw one.</div>
+    <h2>Profile</h2>
+    <canvas class="chart" id="profile"></canvas>
+    <div class="readout" id="focus"></div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -70,8 +70,8 @@ where
             .context("no preview within 60 s")?
             .context("the stream closed")??;
         if let Message::Binary(bytes) = message {
-            let (header, jpeg) = Header::read(&bytes)?;
-            return Ok((header, jpeg.starts_with(&[0xff, 0xd8])));
+            let read = Header::read(&bytes)?;
+            return Ok((read.header, read.jpeg.starts_with(&[0xff, 0xd8])));
         }
     }
 }

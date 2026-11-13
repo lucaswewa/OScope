@@ -36,4 +36,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P14 | Samples III: sub-diffraction structures, imports, load and unload | Done | [P14-sim-samples.md](P14-sim-samples.md) |
 | P15 | Simulator at full resolution | Done | [P15-sim-full-resolution.md](P15-sim-full-resolution.md) |
 | P16 | Device Things: camera, stage, illumination, objective, simulation | Done | [P16-device-things.md](P16-device-things.md) |
-| P17 | Preview service and binary WebSocket protocol | In review | [P17-preview.md](P17-preview.md) |
+| P17 | Preview service and binary WebSocket protocol | Done | [P17-preview.md](P17-preview.md) |
+| P18 | Live statistics and overlay data | In review | [P18-live-stats.md](P18-live-stats.md) |

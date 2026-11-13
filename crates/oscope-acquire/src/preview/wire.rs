@@ -1,5 +1,5 @@
 //! The preview's wire format (ADR-0014): each binary message is a header,
-//! then its payload. Numbers are little-endian.
+//! then its JPEG, then any blocks (ADR-0035). Numbers are little-endian.
 //!
 //! | Offset | Bytes | Field |
 //! |---|---|---|
@@ -17,10 +17,16 @@
 //! | 48 | 16 | the sensor's pixels it shows: x, y, width and height |
 //! | 64 | 4 | the image's width in pixels |
 //! | 68 | 4 | its height |
+//! | 72 | 4 | the JPEG's length (ADR-0035) |
 //!
 //! Fields are only ever added at the end, so a reader takes the payload
 //! from the header's length. The version changes only if a field changes
 //! its meaning, and a reader refuses a version it doesn't know.
+//!
+//! **Blocks** (ADR-0035) follow the JPEG, for a client that asks for them:
+//! each is its kind (1 byte), 3 zero bytes, its length (4), then its bytes.
+//! Kinds number messages and blocks alike: [`STATISTICS`] is JSON, and
+//! [`MASK`] a [`Mask`](crate::stats::Mask)'s bytes.
 
 use oscope_core::{FrameId, PixelRect, Timestamp};
 
@@ -32,6 +38,22 @@ pub const VERSION: u8 = 1;
 pub const FRAME: u8 = 1;
 /// The codec of a JPEG payload.
 pub const JPEG: u8 = 1;
+/// The kind of a block of live statistics, in JSON.
+pub const STATISTICS: u8 = 2;
+/// The kind of a block holding a saturation mask.
+pub const MASK: u8 = 3;
+
+/// A message read: its header, its JPEG, and its blocks, each its kind and
+/// bytes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Message<'a> {
+    /// The header.
+    pub header: Header,
+    /// The JPEG.
+    pub jpeg: &'a [u8],
+    /// The blocks after it.
+    pub blocks: Vec<(u8, &'a [u8])>,
+}
 
 /// A message's header.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,15 +95,20 @@ pub enum WireError {
     /// A version this crate doesn't know.
     #[error("version {0}, where {VERSION} is known")]
     Version(u8),
+    /// A block runs past the message's end.
+    #[error("a block runs past the message's end")]
+    Block,
 }
 
 impl Header {
     /// The length this version writes.
-    pub const LEN: usize = 72;
+    pub const LEN: usize = 76;
 
-    /// The message: this header, then `payload`.
-    pub fn message(&self, payload: &[u8]) -> Vec<u8> {
-        let mut out = Vec::with_capacity(Self::LEN + payload.len());
+    /// The message: this header, then `jpeg`, then `blocks`, each its kind
+    /// and bytes.
+    pub fn message(&self, jpeg: &[u8], blocks: &[(u8, &[u8])]) -> Vec<u8> {
+        let extra: usize = blocks.iter().map(|(_, b)| 8 + b.len()).sum();
+        let mut out = Vec::with_capacity(Self::LEN + jpeg.len() + extra);
         out.extend_from_slice(&MAGIC);
         out.extend_from_slice(&[VERSION, self.kind, self.codec, self.quality]);
         out.extend_from_slice(&(Self::LEN as u32).to_le_bytes());
@@ -95,16 +122,31 @@ impl Header {
             out.extend_from_slice(&time.to_le_bytes());
         }
         let r = self.roi;
-        for n in [r.x, r.y, r.width, r.height, self.width, self.height] {
+        let jpeg_length = jpeg.len() as u32;
+        for n in [
+            r.x,
+            r.y,
+            r.width,
+            r.height,
+            self.width,
+            self.height,
+            jpeg_length,
+        ] {
             out.extend_from_slice(&n.to_le_bytes());
         }
-        out.extend_from_slice(payload);
+        out.extend_from_slice(jpeg);
+        for (kind, bytes) in blocks {
+            out.extend_from_slice(&[*kind, 0, 0, 0]);
+            out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+            out.extend_from_slice(bytes);
+        }
         out
     }
 
-    /// A message's header and payload.
-    pub fn read(message: &[u8]) -> Result<(Header, &[u8]), WireError> {
-        if message.len() < Self::LEN {
+    /// A message's header, JPEG and blocks. A header of P17's 72 bytes has
+    /// no blocks: its JPEG is the rest.
+    pub fn read(message: &[u8]) -> Result<Message<'_>, WireError> {
+        if message.len() < 72 {
             return Err(WireError::Short(message.len()));
         }
         if message[..4] != MAGIC {
@@ -116,8 +158,24 @@ impl Header {
         let u32_at = |at: usize| u32::from_le_bytes(message[at..at + 4].try_into().unwrap());
         let u64_at = |at: usize| u64::from_le_bytes(message[at..at + 8].try_into().unwrap());
         let length = u32_at(8) as usize;
-        if length < Self::LEN || length > message.len() {
+        if length < 72 || length > message.len() {
             return Err(WireError::Short(message.len()));
+        }
+        let payload = &message[length..];
+        let jpeg_length = match length >= Self::LEN {
+            true => (u32_at(72) as usize).min(payload.len()),
+            false => payload.len(),
+        };
+        let (jpeg, mut rest) = payload.split_at(jpeg_length);
+        let mut blocks = Vec::new();
+        while !rest.is_empty() {
+            let size = rest
+                .get(4..8)
+                .map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize)
+                .ok_or(WireError::Block)?;
+            let bytes = rest.get(8..8 + size).ok_or(WireError::Block)?;
+            blocks.push((rest[0], bytes));
+            rest = &rest[8 + size..];
         }
         let header = Header {
             kind: message[5],
@@ -132,6 +190,10 @@ impl Header {
             width: u32_at(64),
             height: u32_at(68),
         };
-        Ok((header, &message[length..]))
+        Ok(Message {
+            header,
+            jpeg,
+            blocks,
+        })
     }
 }
