@@ -7,7 +7,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 - **Where it lives.** `examples/ex-<name>/`, as a crate called `ex-<name>`, such as `ex-core-tour`. The workspace takes every folder in `examples/` as a member, so an example needs no change to the root `Cargo.toml`.
 - **Running it.** `cargo run -p ex-<name>` runs it with its defaults, which need no hardware: the simulator, or a fake.
 - **Its README** says what it shows, then *How to try it*: the commands, the pages to open, and what you should see.
-- **`--smoke`.** Every example takes `--smoke`. It then runs headless for a few seconds, checks what it shows, and exits with 0 only if all went well. CI runs it.
+- **`--smoke`.** Every example takes `--smoke`. It then runs headless for a few seconds, checks what it shows, and exits with 0 only if all went well. The local replays of CI run it ([`scripts/`](../scripts/README.md)). GitHub CI does too while `RUN_EXAMPLES` is `"true"` in its workflows: it is `"false"` for now, to save CI minutes, until the owner turns it back on.
 - **Ports.** An example that serves something listens on a port from 8211 to 8219 by default, the range kept for manual checks. Its `--smoke` run uses a port from 8220 to 8229, or one the system picks.
 - **Data.** An example writes under a data root of its own, `.oscope/ex-<name>/` by default, which Git ignores. Its `--smoke` run uses a temporary folder.
 - **Pages.** A page an example serves is plain HTML and JavaScript, in the example's `page/` folder. [`examples/common`](common/README.md) serves it next to the API, at the same origin, and runs the `--smoke` checks.
@@ -39,6 +39,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-sidecar`](ex-sidecar/README.md) | P19 | A small supervisor, as the desktop app will be: it runs the server by the sidecar contract, reads its JSON ready line, starts it again when it exits with code 75, and stops it by closing its stdin |
 | [`ex-shm-reader`](ex-shm-reader/README.md) | P19 | A second process reading the server's shared-memory preview ring, the desktop app's fast path: the rate previews come at, and any torn reads |
 | [`ex-jobs`](ex-jobs/README.md) | P20 | The job service: stage tours as hardware jobs, one at a time and holding the hardware lock, and crunching as compute jobs sharing a GPU budget, on a page with the queue and progress live, cancel, pause, resume and reorder |
+| [`ex-pipeline`](ex-pipeline/README.md) | P21 | A recipe of typed nodes run on a field of the simulated slide from the command line: its graph, each step's time, a second run from the memo cache, an edit that re-runs only what follows it, a tiled run the same to the bit, and a batch over more fields as a compute job |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

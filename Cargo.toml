@@ -62,6 +62,7 @@ oscope-compute = { path = "crates/oscope-compute" }
 oscope-hal = { path = "crates/oscope-hal" }
 oscope-imaging = { path = "crates/oscope-imaging" }
 oscope-jobs = { path = "crates/oscope-jobs" }
+oscope-pipeline = { path = "crates/oscope-pipeline" }
 oscope-sim = { path = "crates/oscope-sim" }
 oscope-server = { path = "crates/oscope-server" }
 oscope-shm = { path = "crates/oscope-shm" }

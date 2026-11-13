@@ -39,4 +39,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P17 | Preview service and binary WebSocket protocol | Done | [P17-preview.md](P17-preview.md) |
 | P18 | Live statistics and overlay data | Done | [P18-live-stats.md](P18-live-stats.md) |
 | P19 | Sidecar contract, service mode, shared-memory preview | Done | [P19-sidecar-service-shm.md](P19-sidecar-service-shm.md) |
-| P20 | Job service and the `jobs` Thing | In review | [P20-jobs.md](P20-jobs.md) |
+| P20 | Job service and the `jobs` Thing | Done | [P20-jobs.md](P20-jobs.md) |
+| P21 | Pipeline engine | In review | [P21-pipeline.md](P21-pipeline.md) |

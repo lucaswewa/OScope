@@ -22,6 +22,14 @@ on:
 permissions:
   contents: read
 
+# The examples' --smoke runs are off for now, to save CI minutes (the
+# owner's decision, P21), until the owner turns them back on: set this to
+# "true". Clippy and the tests still compile every example here, and the
+# local replays (scripts/ci-local.sh, scripts/ci-clone.sh) still run them
+# before each pull request.
+env:
+  RUN_EXAMPLES: "false"
+
 jobs:
   cuda:
     name: CUDA feature (Ubuntu 24.04, no GPU)
@@ -53,6 +61,7 @@ jobs:
           cargo test -p oscope-compute -p oscope-imaging -p oscope-sim --locked
           --features oscope-compute/cuda,oscope-imaging/cuda,oscope-sim/cuda
       - name: The examples, which fall back to the CPU
+        if: env.RUN_EXAMPLES == 'true'
         run: |
           cargo run -p ex-cuda-check --features cuda --locked -- --smoke
           cargo run -p ex-demosaic --features cuda --locked -- --smoke

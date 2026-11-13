@@ -22,6 +22,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0014](0014-the-preview-protocol-jpeg-over-a-binary-websocket.md) | The preview protocol: JPEG over a binary WebSocket | Accepted; extended by 0035 | P17 |
 | [0015](0015-the-sidecar-contract-service-mode-and-the-desktop-fast-path.md) | The sidecar contract, service mode and the desktop fast path | Accepted | P19 |
 | [0016](0016-the-job-service.md) | The job service | Accepted | P20 |
+| [0017](0017-the-pipeline-model.md) | The pipeline model | Accepted | P21 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted | P18 |
 

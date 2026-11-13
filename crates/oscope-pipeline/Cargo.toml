@@ -6,5 +6,25 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# Nodes' CUDA steps, with images kept on the GPU between them: needs the CUDA
+# toolkit to build (ADR-0011).
+cuda = ["oscope-compute/cuda"]
+
+[dependencies]
+oscope-compute.workspace = true
+oscope-core.workspace = true
+oscope-jobs.workspace = true
+rayon.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
 [lints]
 workspace = true
