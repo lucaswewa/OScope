@@ -5,6 +5,8 @@ use oscope_compute::{Image, Shape};
 use oscope_core::{Point2, Rect, Um};
 use rayon::prelude::*;
 
+use crate::fluorescence::Dye;
+
 /// What a layer does to light.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LayerKind {
@@ -14,6 +16,11 @@ pub enum LayerKind {
     /// It reflects, as a metal film does. It renders as the share of light
     /// it reflects, and passes the rest.
     Reflective,
+    /// It fluoresces, in fluorescent light only. It renders as the amount of
+    /// its dye in each pixel, the same in R, G and B: micrometres of dye at
+    /// unit density along the light's path. One, fully excited, gives as
+    /// much light as unhindered transmitted light does.
+    Fluorescent(Dye),
 }
 
 /// One layer of a sample.
@@ -43,8 +50,9 @@ pub trait Sample: Send + Sync {
 
     /// Layer `index` over a grid of `width` × `height` square pixels of side
     /// `pixel`, whose top-left corner is at `origin`, as RGB: optical
-    /// densities for an absorbing layer, reflectances for a reflective one.
-    /// A layer it doesn't have renders as zeros.
+    /// densities for an absorbing layer, reflectances for a reflective one,
+    /// the amounts of its dye for a fluorescent one. A layer it doesn't have
+    /// renders as zeros.
     ///
     /// **Each pixel is a mean over its square,** so detail finer than about
     /// two pixels averages away, and a coarse rendering matches a fine one
