@@ -51,6 +51,7 @@ oscope-api = { path = "crates/oscope-api" }
 oscope-compute = { path = "crates/oscope-compute" }
 oscope-hal = { path = "crates/oscope-hal" }
 oscope-imaging = { path = "crates/oscope-imaging" }
+oscope-sim = { path = "crates/oscope-sim" }
 oscope-core = { path = "crates/oscope-core" }
 
 # Every crate takes these with `[lints] workspace = true`, except the crates

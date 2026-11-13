@@ -765,8 +765,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
 | P09 | HAL traits, capabilities, objective catalogue, manual implementations | P03 | L | 0012 | Done |
-| P09b | HAL fakes and conformance suite | P09 | L | — | In review |
-| P10 | Simulated world, optics, H&E tissue | P09 | L | 0013 | Planned |
+| P09b | HAL fakes and conformance suite | P09 | L | — | Done |
+| P10 | Simulated world, optics, H&E tissue | P09 | L | 0013 | In review |
 | P11 | Simulation clock and grblHAL-like stage | P09b | L | — | Planned |
 | P12 | Simulated camera: sensor, modes, timing, triggers | P10, P11 | L | — | Planned |
 | P13 | Samples II: reflective surface, fluorescent cell volume | P12 | L | — | Planned |
@@ -1060,3 +1060,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-12 | The MIChrome 20 was connected and measured (P02b's steps 1–3, `hardware.md`). In 16 bits it gives 7.24 fps at full resolution, 289 MB/s, half the 580 MB/s that §5.5 assumed; 14.5 fps holds only in 8 bits. The owner kept 580 MB/s as the design budget (§5.5, §5.20, P29), as headroom for the camera that replaces it. So P12's simulated camera runs its modes at the measured rates for each bit depth, plus a design rate for P29. An ROI is accepted but doesn't raise the rate, so §5.5's preview rate no longer counts on ROIs, and P12's ROIs crop without speeding up |
 | 2026-11-12 | P09 was estimated at about 1,900 lines before it started, bottom-up from its API surface at the measured density: about three times M's 600. With the owner's agreement it was split into two:<ul><li>**P09:** the four traits and their capability types, `PositionTrack`, the objective catalogue, the manual implementations, ADR-0012 and `ex-objectives` (~1,150, so sized L);</li><li>**P09b:** the scripted fakes, the conformance suite and `ex-hal-fakes` (~850).</li></ul>The trait design and ADR-0012 are reviewed before the fakes and the suite build on them. P11 now depends on P09b, whose conformance suite it runs |
 | 2026-11-12 | P09b was estimated again before it started, from P09's measured sizes (P09 came in at 2,157 lines against ~1,150): about 2,000, over twice L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the fakes with `ex-hal-fakes` (~1,000) and the conformance suite (~1,000) |
+| 2026-11-12 | P10 was estimated at about 2,200 lines before it started, from P09's measured densities: over twice L's 900. The owner chose one pull request, with the overrun explained, rather than a split into the renderer with a test sample (~1,200) and the H&E tissue (~1,000) |

@@ -27,6 +27,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-demosaic`](ex-demosaic/README.md) | P08–P08c | Each demosaicing method on a 20 MP test chart, on the CPU and the GPU against §5.20's budgets, with its PSNR, on a page comparing their images |
 | [`ex-objectives`](ex-objectives/README.md) | P09 | The objective catalogue, with each objective's pixel size, field of view and resolution on the MIChrome 20, and the manual objective mount and lights with their capability reports |
 | [`ex-hal-fakes`](ex-hal-fakes/README.md) | P09b | The scripted fakes' capability reports and behaviour, and the conformance suite passing on each and catching a fake scripted to fail |
+| [`ex-sim-render`](ex-sim-render/README.md) | P10 | The simulated H&E slide: an overview, and fields through each objective at five focus positions, with their rendering times, on a page |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 
