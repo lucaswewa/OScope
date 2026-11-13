@@ -1,108 +1,29 @@
 //! The simulated camera on a small sensor: timing and metadata, noise,
 //! saturation, binning, triggers, the image's motion through the mounting,
-//! blur, the rolling shutter's shear, dropped frames, and the conformance
-//! suite.
+//! blur, and the rolling shutter's shear, all on a stepped clock.
 
-use std::sync::mpsc::{Receiver, channel};
-use std::sync::{Arc, RwLock};
+mod common;
+
+use std::sync::Arc;
+use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
-use oscope_core::{
-    Clock, FrameBuffer, FrameMeta, FramePool, HeapAllocator, Ms, PixelRect, Point2, Timestamp, Um,
-    Xyz,
-};
-use oscope_hal::{
-    Axis, Camera, CameraSettings, FrameSink, ObjectiveCatalogue, Stage, Trigger, UmPerS,
-    conformance,
-};
+use common::{FOCUS, Rig, rig, set, start};
+use oscope_core::{Clock, FrameBuffer, FrameMeta, Ms, PixelRect, Point2, Timestamp, Um, Xyz};
+use oscope_hal::{Axis, Camera, Stage, Trigger, UmPerS};
 use oscope_sim::camera::{BAYER8, BAYER16};
-use oscope_sim::{
-    Light, Mounting, Optics, Rate, Settling, SimCamera, SimCameraConfig, SimClock, SimStage,
-    SimStageConfig, Slide, TestTarget, World,
-};
+use oscope_sim::{Light, Mounting, Rate, SensorModel, SimCameraConfig};
 
-/// The test target's squares lie from (30, 10) mm on the slide, which sits at
-/// the stage's origin: a square's right edge is at x = 31,050 µm, and its
-/// rows from y = 11,000 to 11,050 µm.
+/// The test target's squares lie from (30, 10) mm on the slide: a square's
+/// right edge is at x = 31,050 µm, and its rows from y = 11,000 to
+/// 11,050 µm.
 const EDGE: f64 = 31_050.0;
-const FOCUS: f64 = 1_000.0;
-
-struct Rig {
-    clock: Arc<SimClock>,
-    stage: Arc<SimStage>,
-    camera: SimCamera,
-}
-
-fn optics() -> Optics {
-    let catalogue = ObjectiveCatalogue::mitutoyo();
-    Optics::new(&catalogue, catalogue.get("10x").unwrap(), Um(2.4))
-}
-
-/// A camera of `config` over an exact stage at `at`, looking at the test
-/// target, or at nothing, on `rate`.
-fn rig(config: SimCameraConfig, target: bool, at: Point2, rate: Rate) -> Rig {
-    let clock = Arc::new(SimClock::new(rate));
-    let stage = Arc::new(SimStage::new(
-        SimStageConfig {
-            acceleration: None,
-            backlash: Um(0.0),
-            settling: Settling {
-                overshoot: Um(0.0),
-                time: Ms(15.0),
-            },
-            require_homing: false,
-            start: Xyz::new(Um(at.x), Um(at.y), Um(FOCUS)),
-            ..SimStageConfig::default()
-        },
-        Arc::clone(&clock),
-    ));
-    let world = if target {
-        let target = TestTarget::new(Point2::new(30_000.0, 10_000.0), 0.5, 0.0);
-        World::with_slide(
-            Slide::new(Arc::new(target), Point2::new(0.0, 0.0)),
-            Um(FOCUS),
-        )
-    } else {
-        World::empty()
-    };
-    let camera = SimCamera::new(
-        config,
-        Arc::clone(&clock),
-        Arc::clone(&stage),
-        Arc::new(RwLock::new(world)),
-        optics(),
-    );
-    Rig {
-        clock,
-        stage,
-        camera,
-    }
-}
 
 fn quiet(width: u32, height: u32) -> SimCameraConfig {
     let mut config = SimCameraConfig::small(width, height);
     config.sensor.noise = false;
     config.sensor.dark_current = 0.0;
     config
-}
-
-async fn set(camera: &SimCamera, change: impl FnOnce(&mut CameraSettings)) -> CameraSettings {
-    let mut settings = camera.settings().await.unwrap();
-    change(&mut settings);
-    camera.configure(settings).await.unwrap()
-}
-
-/// Starts streaming into a channel.
-async fn start(camera: &SimCamera) -> Receiver<(FrameBuffer, FrameMeta)> {
-    let settings = camera.settings().await.unwrap();
-    let (_, w, h) = camera.capabilities().frame_shape(&settings).unwrap();
-    let pool = FramePool::new(settings.format.frame_bytes(w, h), 8, &HeapAllocator);
-    let (sender, frames) = channel();
-    let sink: FrameSink = Arc::new(move |buffer, meta| {
-        let _ = sender.send((buffer, meta));
-    });
-    camera.start(pool, sink).await.unwrap();
-    frames
 }
 
 /// The frame that ends by `at`, once the clock is there: its 12-bit counts.
@@ -207,8 +128,6 @@ async fn the_noise_matches_the_model() {
         "{variance} against {expected_variance}"
     );
 }
-
-use oscope_sim::SensorModel;
 
 #[tokio::test]
 async fn bright_light_saturates_every_pixel() {
@@ -482,63 +401,4 @@ async fn the_rolling_shutter_shears_a_jog() {
         (slope / expected - 1.0).abs() < 0.05,
         "{slope} against {expected}"
     );
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn slow_rendering_drops_frames_but_not_the_motion() {
-    // At 300× the clock outruns the rendering: frames that ended meanwhile
-    // are skipped and counted, and each delivered frame starts on the
-    // schedule.
-    let rig = rig(
-        SimCameraConfig::small(768, 576),
-        true,
-        Point2::new(31_000.0, 11_025.0),
-        Rate::Scaled(300.0),
-    );
-    set(&rig.camera, |s| s.exposure = Ms(1.0)).await;
-    rig.stage
-        .jog(Axis::X, true, Some(UmPerS(100.0)))
-        .await
-        .unwrap();
-    let jogged = rig.clock.now();
-    let frames = start(&rig.camera).await;
-    let interval = Duration::from_secs_f64(1.0 / 7.24);
-    let mut metas = Vec::new();
-    while metas.len() < 4 {
-        metas.push(frames.recv_timeout(Duration::from_secs(60)).unwrap().1);
-    }
-    rig.camera.stop().await.unwrap();
-    let mut skipped = 0;
-    for pair in metas.windows(2) {
-        let gap = pair[1]
-            .exposure_start
-            .saturating_since(pair[0].exposure_start);
-        let steps = gap.as_secs_f64() / interval.as_secs_f64();
-        assert!(
-            (steps - steps.round()).abs() < 1e-6,
-            "off the schedule: {steps}"
-        );
-        assert_eq!(pair[1].dropped_before, steps.round() as u64 - 1);
-        skipped += pair[1].dropped_before;
-    }
-    assert!(skipped > 0, "nothing was dropped");
-    // The stage kept to the clock all the while: exactly 100 µm/s between
-    // a moment before the frames and one after.
-    let now = rig.clock.now();
-    let moved = rig.stage.true_position(now).x.0 - rig.stage.true_position(jogged).x.0;
-    let speed = moved / now.saturating_since(jogged).as_secs_f64();
-    assert!((speed - 100.0).abs() < 1e-6, "{speed} µm/s");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_camera_conforms() {
-    // At a quarter of real time, each frame has four times its interval to
-    // render in, so other tests running alongside don't make it drop any.
-    let rig = rig(
-        SimCameraConfig::small(192, 144),
-        true,
-        Point2::new(31_000.0, 11_025.0),
-        Rate::Scaled(0.25),
-    );
-    conformance::camera(&rig.camera).await.unwrap();
 }

@@ -83,6 +83,12 @@ None was used. The modes, rates, readout times, black level and 16-bit output fo
   - **Read noise clipped at zero electrons.** On a dark pixel this halved the noise and biased it up. A real sensor's black level leaves room below black, so only the ADC's floor clips now. A binned read-noise test found it.
   - **A wrong expectation in the jog test.** The image moved 5.7% further than v · Δt, and the camera was right. Content dy rows lower was exposed dy line times later, so the rolling shutter adds dy · L to Δt. The test now solves for it, and agrees to 0.03 pixels.
   - **Tests that depended on the host's speed.** One compared positions with a start read from the host at 300×; the conformance test ran in real time while other tests loaded the machine. They now measure the stage's speed, and run the suite at a quarter of real time.
+
+    **GitHub's runners still failed both,** on Ubuntu and on Windows, though they passed here. The renderer shares rayon's pool, so the 768 × 576 frames of the slow-rendering test held up the conformance test's frames, which then dropped 5 and 14. And the slow-rendering test ran for 11 and 25 s, so its 300× clock took the jog to x's limit at 100 mm, and the measured speed fell to 20 and 9 µm/s. Three changes fix it:
+
+    - The two tests on a scaled clock now have their own file, `camera_scaled.rs`, away from the stepped tests, and take turns.
+    - The slow-rendering test renders 384 × 288, and checks the stage's first 10 s of motion, which the clock always passes before the limit.
+    - The conformance suite runs at a tenth of real time. It took 7.5 s here, and passed three times out of three with every core kept busy and rayon held to one thread. At a quarter, under that load, it failed twice out of three.
   - **A redundant clamp** at the full well, which the ADC's own top always reached first, was removed: no test could have caught its loss.
 
 ## Tests
@@ -92,10 +98,12 @@ None was used. The modes, rates, readout times, black level and 16-bit output fo
 | File | Tests |
 |---|---|
 | `tests/sensor.rs` (6) | The full well spans the ADC above black; 24 dB of gain. Noise against the model: shot, dark and read, with quantisation's 1/12. Poisson draws, small and large. Saturation. Binned pixels sum their electrons, and their read noise |
-| `tests/camera.rs` (10) | On a stepped clock, with a small sensor: <ul><li>free-running frames at the mode's interval, with their metadata;</li><li>a frame's noise against the model;</li><li>saturation;</li><li>binned frames four and nine times brighter;</li><li>software and stage-pulse triggers starting exposures exactly;</li><li>a jog moving the image through a turned, mirrored mounting by v · Δt, with the rolling shutter's share;</li><li>blur over 0.8 of speed × exposure, 10% to 90%;</li><li>the rolling shutter's shear, row by row.</li></ul>At 300×, slow rendering drops and counts frames, each on the schedule, while the stage keeps its speed. The HAL's conformance suite, at a quarter of real time |
+| `tests/camera.rs` (8) | On a stepped clock, with a small sensor: <ul><li>free-running frames at the mode's interval, with their metadata;</li><li>a frame's noise against the model;</li><li>saturation;</li><li>binned frames four and nine times brighter;</li><li>software and stage-pulse triggers starting exposures exactly;</li><li>a jog moving the image through a turned, mirrored mounting by v · Δt, with the rolling shutter's share;</li><li>blur over 0.8 of speed × exposure, 10% to 90%;</li><li>the rolling shutter's shear, row by row.</li></ul> |
+| `tests/camera_scaled.rs` (2) | On a scaled clock, one at a time: at 300×, slow rendering drops and counts frames, each on the schedule, while the stage keeps its speed. The HAL's conformance suite, at a tenth of real time |
+| `tests/common` | The camera tests' rig, shared |
 | `tests/stage.rs` (+1) | The stage remembers where it was before a stop |
 
-The camera tests ran five times in a row without a failure.
+The camera tests ran five times in a row without a failure; the scaled ones three more times under full load.
 
 **Breaking the code on purpose.** 12 changes, each made alone, all caught the first time:
 
