@@ -25,6 +25,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-compute-info`](ex-compute-info/README.md) | P06 | The compute backends, the processor and its live and batch pools, and microbenchmarks of the first kernels at 20 MP |
 | [`ex-cuda-check`](ex-cuda-check/README.md) | P07 | The GPU, the CUDA twins against their CPU references with their times, and pinned against ordinary uploads (feature `cuda`) |
 | [`ex-demosaic`](ex-demosaic/README.md) | P08–P08c | Each demosaicing method on a 20 MP test chart, on the CPU and the GPU against §5.20's budgets, with its PSNR, on a page comparing their images |
+| [`ex-objectives`](ex-objectives/README.md) | P09 | The objective catalogue, with each objective's pixel size, field of view and resolution on the MIChrome 20, and the manual objective mount and lights with their capability reports |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

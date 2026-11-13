@@ -1,6 +1,6 @@
 # P08c: CUDA twins of the colour pipeline, the budgets, the comparison page
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p08c-cuda-colour` / [#18](https://github.com/lucaswewa/OScope/pull/18)
 - Size: L · estimated ~1,100 before it started, over L's 900; the owner chose one pull request · measured **1,072** hand-written lines added (code 485, of which 155 are CUDA C; tests 186; examples 386; glue 15), and 144 removed, mostly in `ex-demosaic`'s rewrite. Docs and `Cargo.lock` aren't counted. **That is 172 over L, and 28 under the estimate.**
 
