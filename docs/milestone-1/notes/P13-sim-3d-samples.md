@@ -133,7 +133,8 @@ None. The instrument has no fluorescence (plan, risk 13).
 - the server's `--version`;
 - every example's `--smoke`, `ex-sim-3d`'s among them.
 
-The results of `scripts/ci-local.sh` on Windows and `scripts/ci-clone.sh` under WSL are below.
+- **With `scripts/ci-local.sh` on Windows:** all 20 steps passed; 91 test suites, 206 tests. `ex-sim-3d --smoke` took 19 s in a debug build.
+- **With `scripts/ci-clone.sh` under WSL (Ubuntu 24.04):** the same, on a fresh LF clone of the commit.
 
 P13 touches no CUDA path.
 
