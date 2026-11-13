@@ -383,7 +383,7 @@ expression: td
             ]
           },
           "ack": {
-            "description": "The number of the last message the client has shown. Once a client\nsends one, it gets at most 2 messages beyond it, so that no socket\nbuffer holds stale frames for it (ADR-0014).",
+            "description": "The number of the next message the client is ready for: one more\nthan the last it has shown, and 0 before the first. Once a client\nsends it, it has at most 2 messages it hasn't shown, so that no socket\nbuffer holds stale frames for it (ADR-0014).",
             "oneOf": [
               {
                 "type": "integer",
