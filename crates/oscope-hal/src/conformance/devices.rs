@@ -122,14 +122,31 @@ pub async fn stage(stage: &dyn Stage, tolerance: Um) -> Result<(), Failure> {
     let after = expect(stage.position().await, "stay put when refusing")?.position;
     near(after, here, tolerance, "stay put when refusing")?;
 
+    let armed = stage.arm_trigger(Axis::X, vec![at(0.5).x]).await;
+    if caps.trigger_output {
+        expect(armed, "arm the trigger output it has")?;
+    } else {
+        refused(armed, "refuse a trigger output it lacks", |e| {
+            matches!(e, Error::Unsupported { .. })
+        })?;
+    }
+
     expect(stage.jog(Axis::X, true, None).await, "jog")?;
     expect(stage.stop().await, "stop a jog")?;
     idle(stage, "be idle after a stop").await?;
     let stopped = expect(stage.position().await, "stop a jog")?.position;
     within(caps, stopped, tolerance, "stop a jog")?;
 
+    // Within the soft limits: an encoder can read a hair beyond them after
+    // homing.
+    let inside = |v: Um, t: crate::Travel| Um(v.0.clamp(t.min.0, t.max.0));
+    let back = Xyz::new(
+        inside(start.x, caps.x),
+        inside(start.y, caps.y),
+        inside(start.z, caps.z),
+    );
     expect(
-        stage.move_to(start, None).await,
+        stage.move_to(back, None).await,
         "go back to where it started",
     )?;
     Ok(())
