@@ -603,6 +603,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-sim-samples"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-imaging",
+ "oscope-sim",
+ "tempfile",
+ "tiff",
+]
+
+[[package]]
 name = "ex-sim-stage"
 version = "0.1.0"
 dependencies = [
@@ -927,6 +941,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
+name = "jpeg-encoder"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fefe5a4fb12fa836172dc53cc36c37af693f6197ae702f931faad8774caf926"
+
+[[package]]
 name = "js-sys"
 version = "0.3.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1179,6 +1199,7 @@ name = "oscope-imaging"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "jpeg-encoder",
  "oscope-compute",
  "oscope-core",
  "png",
@@ -1188,6 +1209,8 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -1225,9 +1248,14 @@ dependencies = [
  "oscope-compute",
  "oscope-core",
  "oscope-hal",
+ "oscope-imaging",
  "rand",
  "rayon",
+ "serde",
+ "tempfile",
+ "tiff",
  "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -1843,8 +1871,11 @@ version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b63feaf3343d35b6ca4d50483f94843803b0f51634937cc2ec519fc32232bc52"
 dependencies = [
+ "flate2",
  "half",
  "quick-error",
+ "weezl",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2147,6 +2178,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "weezl"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
+
+[[package]]
 name = "winapi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2346,3 +2383,18 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zune-core"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d56377fd46368984a170bc5aac5567e52ca5da874caa60bea39fcbca78fb658b"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27bc9d5b815bc103f142aa054f561d9187d191692ec7c2d1e2b4737f8dbd7296"
+dependencies = [
+ "zune-core",
+]

@@ -27,6 +27,11 @@
 //!   ground truth for depth from focus;
 //! - [`cells`]: [`CellCulture`], cells in 3D in three dyes, with their
 //!   [`Cell`]s and their volume as ground truth;
+//! - [`structures`]: [`Structures`], filaments and hollow tubules finer than
+//!   the optics resolve, with their fine-scale truth;
+//! - [`import`]: [`Imported`], your own image or stack as a sample;
+//! - [`catalogue`]: the [`SampleCatalogue`] a configuration lists, and the
+//!   [`SlideLoader`] that loads and unloads its samples;
 //! - [`target`]: [`TestTarget`], a sample with exact answers;
 //! - [`noise`]: the seeded hashing and noise that make every sample the
 //!   same however it is rendered.
@@ -36,29 +41,35 @@
 
 pub mod blur;
 pub mod camera;
+pub mod catalogue;
 pub mod cells;
 pub mod clock;
 pub mod fluorescence;
+pub mod import;
 pub mod motion;
 pub mod noise;
 pub mod optics;
 pub mod sample;
 pub mod sensor;
 pub mod stage;
+pub mod structures;
 pub mod surface;
 pub mod target;
 pub mod tissue;
 pub mod world;
 
 pub use camera::{Mounting, SimCamera, SimCameraConfig};
+pub use catalogue::{SampleCatalogue, SampleEntry, SampleKind, SlideLoader};
 pub use cells::{Cell, CellCulture};
 pub use clock::{Rate, SimClock};
 pub use fluorescence::{Dye, Excitation};
+pub use import::{ImportLight, Imported};
 pub use motion::Segment;
 pub use optics::Optics;
 pub use sample::{Layer, LayerKind, Sample};
 pub use sensor::SensorModel;
 pub use stage::{LostSteps, Pulse, Settling, SimStage, SimStageConfig};
+pub use structures::Structures;
 pub use surface::Surface;
 pub use target::TestTarget;
 pub use tissue::{HeTissue, Nucleus};

@@ -31,6 +31,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-sim-stage`](ex-sim-stage/README.md) | P11 | The simulated grblHAL stage on a 10× clock: homing, moves and a jog, each planned against measured, trigger pulses, and its reported position plotted against time |
 | [`ex-sim-camera`](ex-sim-camera/README.md) | P12 | The simulated MIChrome 20 streaming over the H&E slide during a jog: each mode's rate, drops and jitter, and recorded positions against the truth |
 | [`ex-sim-3d`](ex-sim-3d/README.md) | P13 | The simulator's 3D samples stepped through in z on a page: a reflective chip with its true height map and depth from focus against it, and fluorescent cells in widefield and confocal beside their true volume |
+| [`ex-sim-samples`](ex-sim-samples/README.md) | P14 | The simulator's sample catalogue: each sample loaded and rendered at 5× and 50× in its own light, an image and a stack imported through a configuration, and the empty stage once unloaded |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

@@ -16,12 +16,14 @@ mod demosaic;
 mod files;
 #[cfg(feature = "cuda")]
 pub mod gpu;
+mod read;
 mod region;
 mod tone;
 
 pub use chart::{chart, mosaic, psnr};
 pub use demosaic::{Demosaic, demosaic};
 pub use files::{encode_png, encode_tiff16};
+pub use read::read_image;
 pub use region::{crop, demosaic_region};
 pub use tone::{ColourCorrection, Curve, Display, correct, subtract_black, to_display};
 
