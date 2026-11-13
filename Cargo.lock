@@ -610,6 +610,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-pipeline"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-imaging",
+ "oscope-jobs",
+ "oscope-pipeline",
+ "oscope-sim",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "ex-server-hello"
 version = "0.1.0"
 dependencies = [
@@ -1395,6 +1413,18 @@ dependencies = [
 [[package]]
 name = "oscope-pipeline"
 version = "0.1.0"
+dependencies = [
+ "oscope-compute",
+ "oscope-core",
+ "oscope-jobs",
+ "rayon",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+]
 
 [[package]]
 name = "oscope-server"

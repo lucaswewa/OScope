@@ -13,7 +13,7 @@ Two scripts run the checks that CI runs on every pull request ([`.github/workflo
 | docs | `cargo doc --workspace --no-deps --locked`, with `RUSTDOCFLAGS="-D warnings"` |
 | deny | `cargo deny --locked check` |
 | server --version | `cargo run -p oscope-server --locked -- --version` |
-| *each example* --smoke | `cargo run -p <example> --locked -- --smoke`, for every example with a binary |
+| *each example* --smoke | `cargo run -p <example> --locked -- --smoke`, for every example with a binary: always here, though GitHub CI skips them while its `RUN_EXAMPLES` is `"false"` |
 | CUDA tests, with `--cuda` | `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` |
 
 Each step's output goes to a log file. A failing step shows the end of its log. Both scripts exit with 0 only if every step passed.

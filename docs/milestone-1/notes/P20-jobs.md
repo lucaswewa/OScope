@@ -1,6 +1,6 @@
 # P20: Job service and the `jobs` Thing
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p20-jobs` / [#33](https://github.com/lucaswewa/OScope/pull/33)
 - Size: L · estimated ~2,600 before it started (`oscope-jobs`: the model, the SQLite store, the hardware queue, the compute pool and the job's context ~1,000; the `jobs` Thing, the hardware lock in the device Things and the server ~380; tests ~700; `ex-jobs` with its page ~550); one pull request, at the owner's standing choice for P12–P23, rather than the spec's split of persistence into P20b · measured **2,561** hand-written lines added (code 1,379; tests 698; examples 484), and 14 removed. Docs, `Cargo.lock` and the generated snapshots aren't counted. **That is 1,661 over L's 900, and about 40 under the estimate.**
 

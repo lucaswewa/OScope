@@ -788,8 +788,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P20 | Job service and the `jobs` Thing | P16 | L | 0016 | In review |
-| P21 | Pipeline engine | P20, P07 | L | 0017 | Planned |
+| P20 | Job service and the `jobs` Thing | P16 | L | 0016 | Done |
+| P21 | Pipeline engine | P20, P07 | L | 0017 | In review |
 | P22 | Stock nodes I: correction and display; live recipes | P21, P08c | M | — | Planned |
 | P23 | Stock nodes II: filters, enhancement, threshold, morphology | P22 | L | — | Planned |
 
@@ -1074,3 +1074,5 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-13 | P19: the `system` Thing gains a `restart` action, which the sidecar contract's exit code 75 needs. `teta-wot`'s Windows service `install` sets no recovery actions, so OScope sets them with `sc.exe` (ADR-0015), with the upstream change as a follow-up. A service's local token and preview ring are its own account's, and its ring is in session 0's namespace on Windows, so the desktop app's fast path to a service waits for the installers (W9): a group for both, and the ring in `Global\` |
 | 2026-11-13 | P20 was estimated at about 2,600 lines before it started (`oscope-jobs`: the model, the SQLite store, the hardware queue, the compute pool and the job's context ~1,000; the `jobs` Thing, the hardware lock in the device Things and the server ~380; tests ~700; `ex-jobs` with its page ~550): nearly three times L's 900. One pull request, with the overrun explained, rather than the spec's split of persistence into P20b, as the owner decided for P12–P23. SQLite is `rusqlite` 0.41.1 with its bundled SQLite: 0.42.0 is under two weeks old |
 | 2026-11-13 | P20: `teta-wot` gives each event subscriber a buffer of 5, so the `jobs` Thing sends a job's progress at most every 100 ms, and its changes of state at once (ADR-0016); clients treat job events as hints. The manual-check ports, 8211–8219, are used up: `ex-jobs` shares 8211 with `ex-server-hello` |
+| 2026-11-13 | GitHub CI's runs of the examples' `--smoke` are switched off for now, to save CI minutes, by `RUN_EXAMPLES` in `ci.yml` and `cuda.yml` (the owner's decision, from P21), until the owner turns them back on. Clippy and the tests still build every example there, and the local replays (`scripts/ci-local.sh`, `scripts/ci-clone.sh`) still run them before each pull request |
+| 2026-11-13 | P21 was estimated at about 3,100 lines before it started (`oscope-pipeline`: values, nodes, the registry and the parameters' JSON Schema validator ~650; recipes and their validation ~330; the plan, with its order, placement and halos ~250; running it, with the memo cache ~400; tiles, live mode and the batch job ~420; trivial nodes ~250; tests ~800; `ex-pipeline` ~350): more than three times L's 900. One pull request, with the overrun explained, rather than the spec's split of tiled execution into P21b, as the owner decided for P12–P23. Parameters are checked by OScope's own validator for the subset of JSON Schema that nodes use, rather than the `jsonschema` crate, which brings about 30 crates |

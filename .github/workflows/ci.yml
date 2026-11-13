@@ -9,6 +9,14 @@ on:
 permissions:
   contents: read
 
+# The examples' --smoke runs are off for now, to save CI minutes (the
+# owner's decision, P21), until the owner turns them back on: set this to
+# "true". Clippy and the tests still compile every example here, and the
+# local replays (scripts/ci-local.sh, scripts/ci-clone.sh) still run them
+# before each pull request.
+env:
+  RUN_EXAMPLES: "false"
+
 # The supported platforms: Windows and Ubuntu, on x86_64 (ADR-0003). Each runs
 # every check, and one failing doesn't cancel the other.
 jobs:
@@ -50,6 +58,7 @@ jobs:
         run: cargo run -p oscope-server --locked -- --version
       # Every example with a binary, headless (examples/README.md).
       - name: The examples' --smoke runs
+        if: env.RUN_EXAMPLES == 'true'
         shell: bash
         run: |
           for manifest in examples/*/Cargo.toml; do
