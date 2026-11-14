@@ -46,6 +46,26 @@ class Stage:
 - A **camera** has `capabilities()`, `configure(settings)`, `start(settings)`, `capture()` and `stop()`. `capture` returns the next frame as an array laid out as the settings say, `uint8` or `uint16`, which reaches OScope through shared memory. **Lights** have `capabilities()`, `state()` and `set(light)`.
 - OScope does what its HAL promises around them: it checks settings, targets, speeds and lights against the capabilities, waits for moves to end, keeps the track of positions, and times and numbers frames. So a driver only applies, starts, reports and captures, and passes the HAL's conformance suite.
 
+## Writing importers and exporters
+
+A module may bring other file formats in and out, with `@driver(..., kind="importer")` and `kind="exporter"` (P30, [ADR-0037](../../docs/adr/0037-importers-exporters-and-the-abi-s-third-version.md)). The manifest lists them in `provides.importers` and `provides.exporters`; their names are their formats' IDs.
+
+```python
+@driver("example.npy.read", kind="importer")
+class NpyReader:
+    def format(self): return {"name": "NumPy array", "extensions": ["npy"]}
+    def probe(self, request):                            # request["path"]
+        array = np.load(request["path"])
+        return {"width": array.shape[1], "height": array.shape[0], "channels": 1,
+                "planes": 1, "sample": "u16"}            # u8, u16 or f32
+    def read(self, request):                             # request["path"], ["plane"]
+        return np.load(request["path"])                  # the plane's samples
+```
+
+- An **importer** has `format()`, `probe({"path"})`, which says what the file holds, and `read({"path", "plane"})`, which returns a plane as an array, OScope's through shared memory. A probe may add `pixel_size` (`{"x", "y", "z"}` in µm) and `channel_names`.
+- An **exporter** has `format()`, `begin({"path", "image", "name"})`, then `write({"plane"}, pixels)` for each plane, its samples' bytes, little-endian, in a flat array, and `end()`. OScope gives it one image at a time.
+- The sample [`ext-python-node`](../../examples/ext-python-node/README.md) has both, for `.npy`.
+
 ## How OScope runs them
 
 When OScope installs the package, uv makes its environment: a Python its `requires-python` allows, its dependencies, and this SDK. Then OScope starts a worker, `python -m oscope_ext.worker <entry>`, on the first run of one of its nodes, and keeps it warm. Messages travel on stdin and stdout, so a node's `print` goes to OScope's log.

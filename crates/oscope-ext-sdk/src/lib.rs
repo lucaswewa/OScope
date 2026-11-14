@@ -4,9 +4,10 @@
 //! Unsafe code is allowed here, in the generated C ABI glue (plan §4.3).
 //!
 //! An extension is a `cdylib` crate. It implements [`ProcessingNode`] for
-//! each of its nodes, and [`CameraDriver`], [`StageDriver`] or
-//! [`IlluminationDriver`] for each of its drivers (ADR-0036), and lists them
-//! with [`export!`], which makes the C ABI of [`abi`] for them:
+//! each of its nodes; [`CameraDriver`], [`StageDriver`] or
+//! [`IlluminationDriver`] for each of its drivers (ADR-0036); and
+//! [`Importer`] or [`Exporter`] for each of its file formats (ADR-0037). It
+//! lists them with [`export!`], which makes the C ABI of [`abi`] for them:
 //!
 //! ```
 //! use oscope_ext_sdk::{Descriptor, Image, Outputs, ProcessingNode, serde_json};

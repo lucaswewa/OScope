@@ -92,9 +92,11 @@ async fn run(rig: Rig, params: Params, frames: u64, ctx: JobCtx) -> Result<(), S
         1 => "capture".to_owned(),
         n => format!("burst of {n}"),
     });
+    // Segments of 1 GiB: a capture is a frame or a few, not minutes.
     let options = RecordingOptions {
         name: name.clone(),
         source: json!({ "capture": frames }),
+        segment_bytes: 1 << 30,
         ..RecordingOptions::default()
     };
     let take = Take {

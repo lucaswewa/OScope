@@ -24,13 +24,14 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0016](0016-the-job-service.md) | The job service | Accepted | P20 |
 | [0017](0017-the-pipeline-model.md) | The pipeline model | Accepted | P21 |
 | [0018](0018-the-omext-package-format.md) | The `.omext` package format | Accepted | P24 |
-| [0019](0019-the-rust-extension-abi.md) | The Rust extension ABI | Accepted; extended by 0036 | P25 |
-| [0020](0020-the-python-extension-runtime.md) | The Python extension runtime | Accepted; extended by 0036 | P26 |
+| [0019](0019-the-rust-extension-abi.md) | The Rust extension ABI | Accepted; extended by 0036, 0037 | P25 |
+| [0020](0020-the-python-extension-runtime.md) | The Python extension runtime | Accepted; extended by 0036, 0037 | P26 |
 | [0021](0021-projects-ome-zarr-and-the-index.md) | Projects, OME-Zarr v3 and the SQLite index | Accepted | P28 |
 | [0022](0022-scratch-recording-and-ingest.md) | Scratch recording and ingest | Accepted | P29 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |
+| [0037](0037-importers-exporters-and-the-abi-s-third-version.md) | Importers, exporters, and the ABI's third version | Accepted | P30 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

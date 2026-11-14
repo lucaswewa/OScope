@@ -1,6 +1,6 @@
 # ADR-0019: The Rust extension ABI
 
-- Status: Accepted; extended by [ADR-0036](0036-extension-drivers-and-panels.md)
+- Status: Accepted; extended by [ADR-0036](0036-extension-drivers-and-panels.md) and [ADR-0037](0037-importers-exporters-and-the-abi-s-third-version.md)
 - Date: 2026-11-14
 - Phase: P25
 
