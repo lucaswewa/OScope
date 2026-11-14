@@ -162,12 +162,8 @@ fn clahe_clips_shares_and_interpolates_as_worked_by_hand() {
     );
     // Between the centres (x 4 to 12), the dark pixels blend 1 and 0.
     let expected = |x: f32| 1.0 - (x + 0.5 - 4.0) / 8.0;
-    for x in 4..8 {
-        assert!(
-            (row[x] - expected(x as f32)).abs() < 1e-6,
-            "x {x}: {}",
-            row[x]
-        );
+    for (x, value) in row.iter().enumerate().take(8).skip(4) {
+        assert!((value - expected(x as f32)).abs() < 1e-6, "x {x}: {value}");
     }
     for bad in [
         Clahe {
