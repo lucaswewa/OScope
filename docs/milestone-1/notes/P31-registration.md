@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p31-registration` / [#45](https://github.com/lucaswewa/OScope/pull/45)
-- Size: M · estimated ~1,900 before it started (phase correlation on the CPU ~450; on CUDA ~300; the batch API ~100; tests ~500; `ex-register` ~200; glue ~30; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured {{SIZE}}
+- Size: M · estimated ~1,900 before it started (phase correlation on the CPU ~450; on CUDA ~300; the batch API ~100; tests ~500; `ex-register` ~200; glue ~30; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,052** hand-written lines added (code 932: `oscope-imaging` 627, `oscope-compute` 305; tests 815; examples 262; glue 43), and 10 removed. **That is 1,452 over M's 600, and about 8 % over the estimate:** the overlap pass, the plans kept, and the tests of large shifts and of the setup came after it.
 
 ## Summary
 
@@ -218,7 +218,47 @@ The worst error over the ten shifts, in pixels:
 
 ## Tests
 
-{{TESTS}}
+| Crate | Test | What it checks |
+|---|---|---|
+| `oscope-imaging` | `registration` (4, unit) | **The peak:** a sampled Gaussian's centre found within 10⁻⁴ px; the confidence against the highest value outside the peak's neighbourhood, with the margin left out; nothing positive, no confidence. **The search regions:** every shift, or the window, each with its margin. **The setup** as the spec has it: the window, the weight, the scale to 1, the neighbourhood |
+| `oscope-imaging` | `registration` (9) | **Known shifts:** ten from none to (12.45, −29.9) px, of a random field sharp and blurred by 1.7 and 2.3 px, with and without noise (SNR 4), within 0.1 px (the worst 0.062) and a confidence of at least 0.9 (the least 0.93). **Large shifts,** of 35 % to 43 % of the field, everywhere and in a window, within 0.05 px (the worst 0.015). **Low confidence:** two unrelated fields (at most 0.07, peak 0.07), and pairs sharing a tenth of the field (at most 0.22); a good pair 0.97 and more. **A flat pair:** confidence 0, peak 0, no NaN. **The expected shift** finds a faint true copy (within 0.074 px) where a stronger false one, outside the radius, wins without it. **A rolled field without the window:** exact, to 3 × 10⁻⁷ px. **A batch** gives what each pair gives alone, to the bit. **Refusals:** no pairs, sizes that differ, colour, under 8 × 8, σ_w under 1 or not finite, an expected shift not finite, a pixel not finite |
+| `oscope-imaging` | `registration_gpu` (2, `OSCOPE_CUDA=1`) | **The GPU agrees with the CPU** within 0.01 px and 0.01 of confidence: four shifts at 256², 250 × 190, 255 × 129 and 64 × 9, everywhere, in a window, and without the window; a pair alone as in its batch, within 10⁻⁴ px. **§5.20:** in a release build, a 2048² pair's median within 15 ms |
+| `oscope-sim` | `registration` (1) | **End to end,** jogging under the default sample at 10×: 70 µm/s along x through a mounting turned 30° and mirrored, and 250 µm/s along y turned −12°. Consecutive frames register to the stage's displacement through the mounting, the rolling shutter's term included, within 0.05 px (0.010 and 0.018), at confidences 0.98 and 0.86 |
+| `oscope-sim` | `camera` | Unchanged: its rig is now built by `rig_over` |
+| `ex-register` | `--smoke` | The four cases on 256² fields |
+
+**Where they ran:**
+
+- **On Windows,** `scripts/ci-local.sh --cuda`, run alone on `7f964e0`: 42 of 42 steps, 407 tests in 160 suites, the Python tests real, every example's `--smoke` with `ex-register`'s new among them, and the CUDA tests.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of the same commit, run alone: 41 of 41 steps, 407 tests in 160 suites, the Python tests real; 570 files, none with a CR.
+- **On two cores,** pinned, 5 times out of 5 each: `oscope-imaging`'s `registration`, its unit tests, and `registration_gpu` with `OSCOPE_CUDA=1`; `oscope-sim`'s `registration` and `camera`; and `ex-register --smoke`.
+- **In release builds,** `registration_gpu` with `OSCOPE_CUDA=1`, §5.20's test among them.
+
+**Mutation checks** (each broke the code on purpose, then the tests were run): eighteen of eighteen caught. Reading the tests against the list first found two gaps, now covered:
+
+- the window and the weight could be wrong, or missing, while the shift tests passed;
+- nothing registered a flat pair, which the guard for no magnitude protects.
+
+| Broken on purpose | Caught by |
+|---|---|
+| No Gaussian weight | `the_window_the_weight_and_the_neighbourhood_are_as_specified`; and the known, large and expected shifts, and the good pair's confidence |
+| The surface not scaled to 1 | `an_integer_shift_round_the_frame_is_exact_without_the_window`, `a_featureless_pair_scores_low_and_a_good_pair_high` |
+| No window | `the_window_the_weight_and_the_neighbourhood_are_as_specified` |
+| The window over N, not N − 1 | the same |
+| The cross power conjugates B, not A | the known, large and expected shifts, and the rolled field |
+| No guard for no magnitude | `a_flat_pair_gives_no_confidence_and_no_nan`, the rolled field, and the known shifts |
+| The peak's neighbourhood left in | the good pair's confidence, the known shifts, and the rolled field |
+| The search window ignored | `the_expected_shift_finds_the_true_peak_where_a_stronger_false_one_lies_outside` |
+| No sub-pixel refinement | the known, large and expected shifts |
+| The Gaussian estimate's sign flipped | the same |
+| No overlap pass | `large_shifts_lose_no_precision_to_the_window_or_the_shrinking_overlap` (0.242 px) |
+| The overlap's cuts misaligned | the large, known and expected shifts |
+| The second pass's shift subtracted | the same |
+| CUDA: the gather doesn't wrap | `the_gpu_agrees_with_the_cpu` |
+| CUDA: the cross power conjugates B | the same |
+| CUDA: no weight | the same |
+| CUDA: no mean taken away | the same |
+| CUDA: the half spectrum's weight off by one | the same |
 
 ## Follow-ups and known gaps
 
