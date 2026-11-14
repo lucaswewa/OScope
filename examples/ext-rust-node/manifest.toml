@@ -6,12 +6,14 @@ name = "Emboss"
 version = "0.1.0"
 license = "MIT"
 publisher = "OScope examples"
-description = "A sample Rust extension: a node that embosses an image."
+description = "A sample Rust extension: a node that embosses an image, and an importer and exporter of PGM."
 oscope-api = "^1.0"
 kind = "rust"
 
 [provides]
 nodes = ["example.emboss"]
+importers = ["example.pgm.read"]
+exporters = ["example.pgm.write"]
 
 [rust.libraries]
 windows-x86_64 = "lib/ext_rust_node.dll"

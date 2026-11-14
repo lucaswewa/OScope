@@ -111,11 +111,20 @@ async fn captures_exports_downloads_and_imports() {
     let rendition = results[1].as_str().unwrap();
     assert!(rendition.ends_with("/rendition.png"), "{single}");
     let (status, body, head) = download(&client, &format!("/api/v1/{rendition}"), None).await;
-    assert_eq!((status, &head["type"]), (200, &json!("image/png")), "{head}");
+    assert_eq!(
+        (status, &head["type"]),
+        (200, &json!("image/png")),
+        "{head}"
+    );
     assert!(body.starts_with(b"\x89PNG"));
 
     // A burst of five frames.
-    let burst = job(&client, "capture/burst", json!({"project": project, "frames": 5})).await;
+    let burst = job(
+        &client,
+        "capture/burst",
+        json!({"project": project, "frames": 5}),
+    )
+    .await;
     assert_eq!(burst["state"], "completed", "{burst}");
     let contents = client
         .get(&format!("/api/v1/projects/project/{project}"))
@@ -124,17 +133,30 @@ async fn captures_exports_downloads_and_imports() {
     let acquisitions = contents["acquisitions"].as_array().unwrap();
     let planes: Vec<(&str, u64)> = acquisitions
         .iter()
-        .map(|a| (a["name"].as_str().unwrap(), a["image"]["planes"].as_u64().unwrap()))
+        .map(|a| {
+            (
+                a["name"].as_str().unwrap(),
+                a["image"]["planes"].as_u64().unwrap(),
+            )
+        })
         .collect();
-    assert!(planes.contains(&("one", 1)) && planes.contains(&("burst of 5", 5)), "{planes:?}");
+    assert!(
+        planes.contains(&("one", 1)) && planes.contains(&("burst of 5", 5)),
+        "{planes:?}"
+    );
     let first = &acquisitions.iter().find(|a| a["name"] == "one").unwrap();
-    assert_eq!(first["camera"]["format"], json!({"kind": "bayer8", "pattern": "RGGB"}));
+    assert_eq!(
+        first["camera"]["format"],
+        json!({"kind": "bayer8", "pattern": "RGGB"})
+    );
 
     // The formats, OScope's own.
     let formats = client.get("/api/v1/projects/formats").await.json();
     let ids = |key: &str| -> Vec<String> {
         let list = formats[key].as_array().unwrap();
-        list.iter().map(|f| f["id"].as_str().unwrap().to_owned()).collect()
+        list.iter()
+            .map(|f| f["id"].as_str().unwrap().to_owned())
+            .collect()
     };
     assert_eq!(ids("importers"), ["tiff", "png", "jpeg"]);
     assert_eq!(ids("exporters"), ["ome-tiff", "tiff16", "png"]);
@@ -142,12 +164,23 @@ async fn captures_exports_downloads_and_imports() {
     // The capture exported as OME-TIFF, downloaded whole and by ranges.
     let record = first["id"].as_str().unwrap();
     let params = json!({"project": project, "record": record, "format": "ome-tiff"});
-    let exported = job(&client, "jobs/submit", json!({"kind": "projects.export", "params": params})).await;
+    let exported = job(
+        &client,
+        "jobs/submit",
+        json!({"kind": "projects.export", "params": params}),
+    )
+    .await;
     assert_eq!(exported["state"], "completed", "{exported}");
     let path = format!("/api/v1/{}", exported["results"][0].as_str().unwrap());
-    assert!(path.ends_with(&format!("/acquisitions/{record}/exports/one.ome.tif")), "{path}");
+    assert!(
+        path.ends_with(&format!("/acquisitions/{record}/exports/one.ome.tif")),
+        "{path}"
+    );
     let (status, whole, head) = download(&client, &path, None).await;
-    assert_eq!((status, &head["type"], &head["ranges"]), (200, &json!("image/tiff"), &json!("bytes")));
+    assert_eq!(
+        (status, &head["type"], &head["ranges"]),
+        (200, &json!("image/tiff"), &json!("bytes"))
+    );
     assert!(whole.starts_with(b"II*\0"));
     let length = whole.len();
     assert_eq!(head["length"], json!(length.to_string()));
@@ -163,7 +196,10 @@ async fn captures_exports_downloads_and_imports() {
         assert_eq!(head["range"], json!(expected), "{range}");
     }
     let (status, _, head) = download(&client, &path, Some(&format!("bytes={length}-"))).await;
-    assert_eq!((status, &head["range"]), (416, &json!(format!("bytes */{length}"))));
+    assert_eq!(
+        (status, &head["range"]),
+        (416, &json!(format!("bytes */{length}")))
+    );
 
     // Imported back: the same frame.
     let file = folder
@@ -173,7 +209,12 @@ async fn captures_exports_downloads_and_imports() {
         .join(&project)
         .join(path.split_once(&format!("{project}/")).unwrap().1);
     let params = json!({"project": project, "path": file, "name": "back"});
-    let imported = job(&client, "jobs/submit", json!({"kind": "projects.import", "params": params})).await;
+    let imported = job(
+        &client,
+        "jobs/submit",
+        json!({"kind": "projects.import", "params": params}),
+    )
+    .await;
     assert_eq!(imported["state"], "completed", "{imported}");
     let contents = client
         .get(&format!("/api/v1/projects/project/{project}"))
@@ -193,9 +234,18 @@ async fn captures_exports_downloads_and_imports() {
     // What the data route refuses.
     for (bad, status) in [
         (format!("/api/v1/data/not-a-project/{record}"), 400),
-        (format!("/api/v1/data/{project}/acquisitions/..%2F..%2Fx"), 400),
-        (format!("/api/v1/data/{project}/acquisitions/{record}/nothing.png"), 404),
-        (format!("/api/v1/data/{project}/acquisitions/{record}/exports"), 404),
+        (
+            format!("/api/v1/data/{project}/acquisitions/..%2F..%2Fx"),
+            400,
+        ),
+        (
+            format!("/api/v1/data/{project}/acquisitions/{record}/nothing.png"),
+            404,
+        ),
+        (
+            format!("/api/v1/data/{project}/acquisitions/{record}/exports"),
+            404,
+        ),
     ] {
         let (got, _, _) = download(&client, &bad, None).await;
         assert_eq!(got, status, "{bad}");
@@ -203,8 +253,16 @@ async fn captures_exports_downloads_and_imports() {
 
     // A burst of no frames, and one of too many.
     for frames in [0, 10_001] {
-        let refused = invoke(&client, "capture/burst", json!({"project": project, "frames": frames})).await;
+        let refused = invoke(
+            &client,
+            "capture/burst",
+            json!({"project": project, "frames": frames}),
+        )
+        .await;
         let error = refused["error"].to_string();
-        assert!(error.contains("refused (400)") && error.contains("frames"), "{refused}");
+        assert!(
+            error.contains("refused (400)") && error.contains("frames"),
+            "{refused}"
+        );
     }
 }

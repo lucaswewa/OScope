@@ -327,11 +327,11 @@ fn another_abi_version_and_a_description_the_pipeline_cannot_take_are_refused() 
     let cases: [(abi::Entry, &str); 4] = [
         (
             next_version,
-            "it was built for the extension ABI 3, and this OScope speaks 2",
+            "it was built for the extension ABI 4, and this OScope speaks 3",
         ),
         (
             masked,
-            "node `test.mask`: in ABI 2, every port is an image, and none is optional",
+            "node `test.mask`: in ABI 3, every port is an image, and none is optional",
         ),
         (nothing, "its entry gave no table"),
         (unchecked, "node `test.unchecked`: its parameters' schema: "),

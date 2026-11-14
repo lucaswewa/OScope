@@ -24,6 +24,8 @@ tempfile.workspace = true
 
 [dev-dependencies]
 oscope-api.workspace = true
+oscope-jobs.workspace = true
+oscope-store.workspace = true
 teta-wot = { workspace = true, features = ["testing"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 

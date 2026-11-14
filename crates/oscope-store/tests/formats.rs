@@ -46,7 +46,9 @@ fn acquisition(store: &Store, project: ProjectId, info: &ImageInfo, camera: Valu
     let len = (info.width * info.height) as usize * info.channels as usize;
     for plane in 0..info.planes {
         let samples = samples(info.sample, len, plane as usize);
-        image.write(plane, (0, 0), (info.width, info.height), &samples).unwrap();
+        image
+            .write(plane, (0, 0), (info.width, info.height), &samples)
+            .unwrap();
     }
     draft.commit().unwrap()
 }
@@ -61,7 +63,11 @@ fn planes(store: &Store, project: ProjectId, acquisition: &Acquisition) -> Vec<S
     let reader = ImageReader::open(&path).unwrap();
     let info = reader.info().clone();
     (0..info.planes)
-        .map(|p| reader.read(0, p, (0, 0), (info.width, info.height)).unwrap())
+        .map(|p| {
+            reader
+                .read(0, p, (0, 0), (info.width, info.height))
+                .unwrap()
+        })
         .collect()
 }
 
@@ -73,12 +79,18 @@ fn round_trip(
     acquisition: &Acquisition,
     format: &str,
 ) -> Result<(Acquisition, std::path::PathBuf), StoreError> {
-    let exporter = exporters().into_iter().find(|e| e.format().id == format).unwrap();
+    let exporter = exporters()
+        .into_iter()
+        .find(|e| e.format().id == format)
+        .unwrap();
     let id = acquisition.id.to_string();
     let path = export(store, project, RecordKind::Acquisition, &id, &*exporter)?;
     let file = store.folder(project).join(&path);
     let name = file.file_name().unwrap().to_string_lossy().into_owned();
-    let importer = importers().into_iter().find(|i| i.format().matches(&name)).unwrap();
+    let importer = importers()
+        .into_iter()
+        .find(|i| i.format().matches(&name))
+        .unwrap();
     Ok((import(store, project, &*importer, &file, None)?, file))
 }
 
@@ -86,7 +98,10 @@ fn as_u16(samples: &Samples) -> Vec<u16> {
     match samples {
         Samples::U8(v) => v.iter().map(|s| u16::from(*s) * 257).collect(),
         Samples::U16(v) => v.clone(),
-        Samples::F32(v) => v.iter().map(|s| (s.clamp(0.0, 1.0) * 65_535.0).round() as u16).collect(),
+        Samples::F32(v) => v
+            .iter()
+            .map(|s| (s.clamp(0.0, 1.0) * 65_535.0).round() as u16)
+            .collect(),
     }
 }
 
@@ -105,7 +120,11 @@ fn every_format_round_trips_across_samples_channels_and_stacks() {
     for (sample, channels, plane_count) in shapes {
         let mut info = ImageInfo::new(301, 203, channels, sample);
         info.planes = plane_count;
-        info.pixel_size = Some(PixelSize { x: 0.24, y: 0.25, z: 1.5 });
+        info.pixel_size = Some(PixelSize {
+            x: 0.24,
+            y: 0.25,
+            z: 1.5,
+        });
         info.channel_names = (0..channels).map(|c| format!("band {c}")).collect();
         let original = acquisition(&store, project, &info, Value::Null);
         let written = planes(&store, project, &original);
@@ -150,17 +169,29 @@ fn ome_tiff_s_metadata_says_what_the_image_is() {
     let (store, project) = open(root.path());
     let mut info = ImageInfo::new(64, 48, 1, SampleType::U16);
     info.planes = 3;
-    info.pixel_size = Some(PixelSize { x: 0.24, y: 0.24, z: 2.0 });
+    info.pixel_size = Some(PixelSize {
+        x: 0.24,
+        y: 0.24,
+        z: 2.0,
+    });
     info.channel_names = vec!["raw & <grey> µ".to_owned()];
     let acquisition = acquisition(&store, project, &info, Value::Null);
-    let exporter = exporters().into_iter().find(|e| e.format().id == "ome-tiff").unwrap();
+    let exporter = exporters()
+        .into_iter()
+        .find(|e| e.format().id == "ome-tiff")
+        .unwrap();
     let id = acquisition.id.to_string();
     let path = export(&store, project, RecordKind::Acquisition, &id, &*exporter).unwrap();
     // Named as the record, safely: "a field: 1/2".
-    assert_eq!(path, format!("acquisitions/{id}/exports/a field- 1-2.ome.tif"));
+    assert_eq!(
+        path,
+        format!("acquisitions/{id}/exports/a field- 1-2.ome.tif")
+    );
     let file = File::open(store.folder(project).join(&path)).unwrap();
     let mut decoder = tiff::decoder::Decoder::new(std::io::BufReader::new(file)).unwrap();
-    let xml = decoder.get_tag_ascii_string(tiff::tags::Tag::ImageDescription).unwrap();
+    let xml = decoder
+        .get_tag_ascii_string(tiff::tags::Tag::ImageDescription)
+        .unwrap();
     for expected in [
         "xmlns=\"http://www.openmicroscopy.org/Schemas/OME/2016-06\"",
         "<Image ID=\"Image:0\" Name=\"a field: 1/2\">",
@@ -176,7 +207,11 @@ fn ome_tiff_s_metadata_says_what_the_image_is() {
     while decoder.more_images() {
         decoder.next_image().unwrap();
         // The metadata is in the first page alone.
-        assert!(decoder.get_tag_ascii_string(tiff::tags::Tag::ImageDescription).is_err());
+        assert!(
+            decoder
+                .get_tag_ascii_string(tiff::tags::Tag::ImageDescription)
+                .is_err()
+        );
         pages += 1;
     }
     assert_eq!(pages, 3);
@@ -192,17 +227,32 @@ fn png_jpeg_and_tiff_stacks_import() {
     // An 8-bit RGB PNG, as it is.
     let png = root.path().join("field.png");
     oscope_imaging::color::encode_png(File::create(&png).unwrap(), &rgb, width, height).unwrap();
-    let importer = importers().into_iter().find(|i| i.format().id == "png").unwrap();
+    let importer = importers()
+        .into_iter()
+        .find(|i| i.format().id == "png")
+        .unwrap();
     let field = import(&store, project, &*importer, &png, None).unwrap();
     assert_eq!(field.name, "field");
-    assert_eq!((field.image.channels, field.image.sample), (3, SampleType::U8));
+    assert_eq!(
+        (field.image.channels, field.image.sample),
+        (3, SampleType::U8)
+    );
     assert_eq!(planes(&store, project, &field), [Samples::U8(rgb.clone())]);
 
     // A JPEG, near what was encoded.
     let jpeg = root.path().join("field.jpg");
-    let flat: Vec<u8> = (0..width * height).flat_map(|_| [200_u8, 120, 40]).collect();
-    std::fs::write(&jpeg, oscope_imaging::color::encode_jpeg(&flat, width, height, 95).unwrap()).unwrap();
-    let importer = importers().into_iter().find(|i| i.format().matches("field.jpg")).unwrap();
+    let flat: Vec<u8> = (0..width * height)
+        .flat_map(|_| [200_u8, 120, 40])
+        .collect();
+    std::fs::write(
+        &jpeg,
+        oscope_imaging::color::encode_jpeg(&flat, width, height, 95).unwrap(),
+    )
+    .unwrap();
+    let importer = importers()
+        .into_iter()
+        .find(|i| i.format().matches("field.jpg"))
+        .unwrap();
     let field = import(&store, project, &*importer, &jpeg, Some("photo")).unwrap();
     assert_eq!((field.name.as_str(), field.image.channels), ("photo", 3));
     let Samples::U8(read) = &planes(&store, project, &field)[0] else {
@@ -215,23 +265,40 @@ fn png_jpeg_and_tiff_stacks_import() {
         let file = BufWriter::new(File::create(path).unwrap());
         let mut encoder = TiffEncoder::new(file).unwrap();
         for (k, &(w, h)) in sizes.iter().enumerate() {
-            let page: Vec<u16> = (0..w * h).map(|i| (i as u16).wrapping_mul(k as u16 + 1)).collect();
-            encoder.write_image::<colortype::Gray16>(w, h, &page).unwrap();
+            let page: Vec<u16> = (0..w * h)
+                .map(|i| (i as u16).wrapping_mul(k as u16 + 1))
+                .collect();
+            encoder
+                .write_image::<colortype::Gray16>(w, h, &page)
+                .unwrap();
         }
     };
     let tif = root.path().join("stack.tif");
     stack(&tif, &[(32, 24); 4]);
-    let importer = importers().into_iter().find(|i| i.format().matches("stack.tif")).unwrap();
+    let importer = importers()
+        .into_iter()
+        .find(|i| i.format().matches("stack.tif"))
+        .unwrap();
     let field = import(&store, project, &*importer, &tif, None).unwrap();
-    assert_eq!((field.image.planes, field.image.sample), (4, SampleType::U16));
+    assert_eq!(
+        (field.image.planes, field.image.sample),
+        (4, SampleType::U16)
+    );
     for (k, plane) in planes(&store, project, &field).iter().enumerate() {
-        let page: Vec<u16> = (0..32 * 24).map(|i| (i as u16).wrapping_mul(k as u16 + 1)).collect();
+        let page: Vec<u16> = (0..32 * 24)
+            .map(|i| (i as u16).wrapping_mul(k as u16 + 1))
+            .collect();
         assert_eq!(plane, &Samples::U16(page), "page {k}");
     }
     let uneven = root.path().join("uneven.tif");
     stack(&uneven, &[(32, 24), (16, 24)]);
-    let error = import(&store, project, &*importer, &uneven, None).unwrap_err().to_string();
-    assert!(error.contains("page 2") && error.contains("share their size"), "{error}");
+    let error = import(&store, project, &*importer, &uneven, None)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("page 2") && error.contains("share their size"),
+        "{error}"
+    );
     let broken = root.path().join("broken.tif");
     std::fs::write(&broken, b"II*\0not a tiff").unwrap();
     assert!(matches!(
@@ -244,8 +311,15 @@ fn png_jpeg_and_tiff_stacks_import() {
 fn exports_refuse_what_they_cannot_find() {
     let root = tempfile::tempdir().unwrap();
     let (store, project) = open(root.path());
-    let exporter = exporters().into_iter().find(|e| e.format().id == "png").unwrap();
-    let refused = |kind, id: &str| export(&store, project, kind, id, &*exporter).unwrap_err().to_string();
+    let exporter = exporters()
+        .into_iter()
+        .find(|e| e.format().id == "png")
+        .unwrap();
+    let refused = |kind, id: &str| {
+        export(&store, project, kind, id, &*exporter)
+            .unwrap_err()
+            .to_string()
+    };
     assert!(refused(RecordKind::Acquisition, "../../x").contains("isn't a record's ID"));
     let missing = oscope_core::AcquisitionId::generate().to_string();
     assert!(refused(RecordKind::Acquisition, &missing).starts_with("no acquisition"));
@@ -274,9 +348,14 @@ fn a_bayer_capture_s_rendition_is_demosaiced() {
     let path = render(&store, project, raw.id, Rendition::Png).unwrap();
     assert_eq!(path, format!("acquisitions/{}/rendition.png", raw.id));
     let file = File::open(store.folder(project).join(&path)).unwrap();
-    let reader = png::Decoder::new(std::io::BufReader::new(file)).read_info().unwrap();
+    let reader = png::Decoder::new(std::io::BufReader::new(file))
+        .read_info()
+        .unwrap();
     let png = reader.info();
-    assert_eq!((png.width, png.height, png.color_type), (96, 64, png::ColorType::Rgb));
+    assert_eq!(
+        (png.width, png.height, png.color_type),
+        (96, 64, png::ColorType::Rgb)
+    );
     let path = render(&store, project, raw.id, Rendition::Jpeg).unwrap();
     assert!(store.folder(project).join(path).metadata().unwrap().len() > 100);
 }

@@ -18,6 +18,7 @@ use oscope_core::{
 use oscope_ext::{Extensions, OSCOPE_FOLDER, PythonRuntime};
 use oscope_hal::{Camera, Error, FrameSink, Trigger, conformance};
 use oscope_pipeline::{Engine, Plan, Recipe, Registry, RunOptions, Value, Values};
+use oscope_store::{Exporter as _, ImageInfo, Importer as _, SampleType, Samples};
 use serde_json::json;
 
 const ID: &str = "org.example.testnodes";
@@ -42,6 +43,8 @@ kind = "python"
 [provides]
 nodes = ["test.scale", "test.split", "test.sleep", "test.crash", "test.fail"]
 drivers = ["test.stage", "test.lights", "test.camera"]
+importers = ["test.npy.read"]
+exporters = ["test.npy.write"]
 
 [python]
 requires-python = ">=3.12,<3.15"
@@ -178,6 +181,48 @@ class Camera:
 
     def stop(self):
         pass
+
+
+@driver("test.npy.read", kind="importer")
+class NpyReader:
+    """NumPy's .npy: (height, width), (height, width, channels), or
+    (planes, height, width, channels)."""
+
+    def format(self):
+        return {"name": "NumPy array", "extensions": ["npy"]}
+
+    def _array(self, path):
+        array = np.load(path)
+        return array[None, :, :, None] if array.ndim == 2 else array[None] if array.ndim == 3 else array
+
+    def probe(self, params):
+        array = self._array(params["path"])
+        sample = {"uint8": "u8", "uint16": "u16", "float32": "f32"}[array.dtype.name]
+        planes, height, width, channels = array.shape
+        return {"width": width, "height": height, "channels": channels, "planes": planes, "sample": sample}
+
+    def read(self, params):
+        return self._array(params["path"])[params["plane"]]
+
+
+@driver("test.npy.write", kind="exporter")
+class NpyWriter:
+    """NumPy's .npy, (planes, height, width, channels)."""
+
+    def format(self):
+        return {"name": "NumPy array", "extensions": ["npy"]}
+
+    def begin(self, params):
+        self.path, self.image, self.planes = params["path"], params["image"], []
+
+    def write(self, params, pixels):
+        image = self.image
+        dtype = {"u8": "<u1", "u16": "<u2", "f32": "<f4"}[image["sample"]]
+        self.planes.append(pixels.view(dtype).reshape(image["height"], image["width"], image["channels"]))
+
+    def end(self):
+        with open(self.path, "wb") as out:
+            np.save(out, np.stack(self.planes))
 "#;
 
 /// Packs the test extension, with `manifest`, into `folder`.
@@ -265,6 +310,60 @@ fn wait_for(what: &str, check: impl Fn() -> bool) {
         assert!(Instant::now() < deadline, "{what}");
         std::thread::sleep(Duration::from_millis(20));
     }
+}
+
+#[test]
+fn an_importer_and_an_exporter_in_python_take_a_stack_through_shared_memory() {
+    if !enabled() {
+        return;
+    }
+    let folder = tempfile::tempdir().unwrap();
+    let extensions = installed(folder.path(), &PythonRuntime::default());
+    let formats = extensions.formats();
+    let (reader, writer) = (&formats.importers[0], &formats.exporters[0]);
+    let format = reader.format();
+    assert_eq!(
+        (format.id.as_str(), format.name.as_str()),
+        ("test.npy.read", "NumPy array")
+    );
+    assert_eq!(
+        (format.extensions, writer.format().id),
+        (vec!["npy".to_owned()], "test.npy.write".to_owned())
+    );
+
+    // Two planes of 16-bit RGB out, through the exporter, and in again.
+    let mut info = ImageInfo::new(5, 3, 3, SampleType::U16);
+    info.planes = 2;
+    let planes: Vec<Samples> = (0..2_u16)
+        .map(|p| Samples::U16((0..45).map(|i| i * 1000 + p * 7).collect()))
+        .collect();
+    let path = folder.path().join("stack.npy");
+    writer
+        .write(&path, &info, "a stack", &mut |p| {
+            Ok(planes[p as usize].clone())
+        })
+        .unwrap();
+    let probed = reader.probe(&path).unwrap();
+    let shape = (
+        probed.width,
+        probed.height,
+        probed.channels,
+        probed.planes,
+        probed.sample,
+    );
+    assert_eq!(shape, (5, 3, 3, 2, SampleType::U16));
+    for (p, plane) in planes.iter().enumerate() {
+        assert_eq!(&reader.read(&path, &probed, p as u32).unwrap(), plane);
+    }
+    // A file that isn't there: the importer says why.
+    let error = reader
+        .probe(&folder.path().join("none.npy"))
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("test.npy.read") && error.contains("No such file"),
+        "{error}"
+    );
 }
 
 #[test]
