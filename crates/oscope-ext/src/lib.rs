@@ -10,15 +10,20 @@
 //! start, when [`Extensions::open`] loads the enabled extensions, by ID, and
 //! records what each provides in its [`Registry`]. [`pack`] makes a package
 //! from a folder.
+//!
+//! A Rust extension's [`Library`] is loaded then too, and its nodes go to
+//! the pipeline (ADR-0019).
 
 use std::path::{Path, PathBuf};
 
 mod installed;
 mod manifest;
+mod native;
 mod package;
 
 pub use installed::{Extension, Extensions, Loaded, Registry};
 pub use manifest::{API_VERSION, Contribution, Kind, Manifest, PLATFORM, PLATFORMS, Python, Rust};
+pub use native::{Library, MAX_SAMPLES};
 pub use package::{MANIFEST, MAX_ENTRIES, MAX_UNPACKED, Package, pack, sha256};
 
 /// Why a package, a manifest or an extension was refused, or a file failed.
@@ -51,6 +56,15 @@ pub enum ExtError {
     /// package, or an extension waiting to be uninstalled.
     #[error("{0}")]
     Conflict(String),
+    /// A Rust extension's library couldn't be loaded, or isn't one
+    /// (ADR-0019).
+    #[error("the library {}: {why}", path.display())]
+    Library {
+        /// The library.
+        path: PathBuf,
+        /// Why.
+        why: String,
+    },
     /// No extension with this ID is installed.
     #[error("no extension `{0}` is installed")]
     Unknown(String),

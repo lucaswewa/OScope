@@ -1,0 +1,129 @@
+//! The sample, packed and installed, then loaded by a server's start: the
+//! `extensions` Thing lists it loaded, and the `preview` Thing offers its
+//! node to live recipes, and takes one with it.
+
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use oscope_api::devices::{Devices, DevicesConfig};
+use oscope_api::{Api, Roots};
+use oscope_ext::Extensions;
+use serde_json::{Value, json};
+use teta_wot::testing::TestClient;
+
+/// Invokes `action` with `input`, and waits for its invocation to end: its
+/// final JSON.
+async fn invoke(client: &TestClient, action: &str, input: Value) -> Value {
+    let started = client
+        .post_json(&format!("/api/v1/{action}"), Some(&input))
+        .await;
+    assert_eq!(started.status, 201, "{action}: {}", started.text());
+    let href = started.json()["href"].as_str().unwrap().to_owned();
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        let invocation = client.get(&href).await.json();
+        if !["pending", "running"].contains(&invocation["status"].as_str().unwrap_or("")) {
+            return invocation;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{action} didn't end: {invocation}"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_start_loads_the_sample_and_live_recipes_can_use_its_node() {
+    let folder = tempfile::tempdir().unwrap();
+    let (data, package) = (
+        folder.path().join("data"),
+        folder.path().join("emboss.omext"),
+    );
+    let library = ex_rust_ext::library().unwrap();
+    ex_rust_ext::pack(&library, folder.path(), &package).unwrap();
+    let extensions = data.join("extensions");
+    Extensions::open(&extensions)
+        .unwrap()
+        .install(&package)
+        .unwrap();
+
+    // A start, with the fakes for devices.
+    let fake = || "fake".to_owned();
+    let config = DevicesConfig {
+        camera: fake(),
+        stage: fake(),
+        illumination: fake(),
+        objective: fake(),
+        ..DevicesConfig::default()
+    };
+    let devices = Arc::new(Devices::from_config(&config, folder.path()).await.unwrap());
+    let roots = Roots {
+        data: data.clone(),
+        scratch: folder.path().join("scratch"),
+    };
+    let api = Api::builder(&roots)
+        .devices(devices)
+        .extensions(Extensions::open(&extensions).unwrap())
+        .build()
+        .unwrap();
+    let client = TestClient::start(api.into_thing_server()).await.unwrap();
+    let installed = client.get("/api/v1/extensions/installed").await.json();
+    assert_eq!(installed[0]["loaded"], "0.1.0", "{installed}");
+    let provided = client.get("/api/v1/extensions/provided").await.json();
+    let id = "org.oscope.examples.emboss";
+    assert_eq!(provided, json!({ "nodes": { "example.emboss": id } }));
+    let nodes = client.get("/api/v1/preview/nodes").await.json();
+    let emboss = nodes
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["id"] == "example.emboss");
+    assert_eq!(emboss.unwrap()["capabilities"]["live"], true);
+
+    // A live recipe with it, checked against a budget for unoptimised
+    // builds, on a small viewport.
+    let budget = client
+        .put_json("/api/v1/preview/recipe_budget_ms", &json!(2000.0))
+        .await;
+    assert!(budget.status.is_success(), "{}", budget.text());
+    let defaults = json!({ "width": 160, "height": 120, "quality": 80, "max_fps": 30.0 });
+    let set = client.put_json("/api/v1/preview/defaults", &defaults).await;
+    assert!(set.status.is_success(), "{}", set.text());
+    let recipe = json!({
+        "format": 1,
+        "inputs": [{ "name": "image", "type": "image" }, { "name": "region", "type": "json" }],
+        "nodes": [{ "id": "emboss", "node": "example.emboss", "params": { "strength": 2 } }],
+        "edges": [{ "from": "input.image", "to": "emboss.image" }],
+        "outputs": [{ "name": "image", "from": "emboss.image" }],
+    });
+    let set = invoke(
+        &client,
+        "preview/set_live_recipe",
+        json!({ "recipe": recipe }),
+    )
+    .await;
+    assert_eq!(set["status"], "completed", "{set}");
+    assert_eq!(set["output"]["steps"], json!(["emboss"]), "{set}");
+}
+
+#[test]
+fn a_library_whose_nodes_are_not_its_manifest_s_does_not_load() {
+    let folder = tempfile::tempdir().unwrap();
+    let package = folder.path().join("emboss.omext");
+    ex_rust_ext::pack(&ex_rust_ext::library().unwrap(), folder.path(), &package).unwrap();
+    // The same library, its manifest providing another node.
+    let source = folder.path().join("emboss");
+    let manifest = std::fs::read_to_string(source.join("manifest.toml")).unwrap();
+    let other = manifest.replace("\"example.emboss\"", "\"example.relief\"");
+    std::fs::write(source.join("manifest.toml"), other).unwrap();
+    oscope_ext::pack(&source, &package).unwrap();
+    let root = folder.path().join("extensions");
+    Extensions::open(&root).unwrap().install(&package).unwrap();
+    let extensions = Extensions::open(&root).unwrap();
+    assert!(extensions.loaded().is_empty() && extensions.nodes().is_empty());
+    let extension = extensions.get("org.oscope.examples.emboss").unwrap();
+    let said =
+        "its library has the nodes `example.emboss`, and its manifest provides `example.relief`";
+    assert_eq!(extension.problem.as_deref(), Some(said));
+}

@@ -680,6 +680,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-rust-ext"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ext-rust-node",
+ "oscope-api",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-ext",
+ "oscope-ext-sdk",
+ "oscope-hal",
+ "oscope-imaging",
+ "oscope-pipeline",
+ "oscope-sim",
+ "serde_json",
+ "tempfile",
+ "teta-wot",
+ "tokio",
+]
+
+[[package]]
 name = "ex-server-hello"
 version = "0.1.0"
 dependencies = [
@@ -792,6 +813,13 @@ dependencies = [
  "oscope-sim",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "ext-rust-node"
+version = "0.1.0"
+dependencies = [
+ "oscope-ext-sdk",
 ]
 
 [[package]]
@@ -1428,6 +1456,10 @@ dependencies = [
 name = "oscope-ext"
 version = "0.1.0"
 dependencies = [
+ "libloading",
+ "oscope-compute",
+ "oscope-ext-sdk",
+ "oscope-pipeline",
  "schemars",
  "semver",
  "serde",
@@ -1443,6 +1475,9 @@ dependencies = [
 [[package]]
 name = "oscope-ext-sdk"
 version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "oscope-hal"

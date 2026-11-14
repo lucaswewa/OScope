@@ -1,6 +1,6 @@
 # P24: `.omext` packages, registry, `extensions` Thing
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p24-omext` / [#38](https://github.com/lucaswewa/OScope/pull/38)
 - Size: M · estimated ~2,050 before it started (the manifest and its checks ~250; the zip reader and writer, guarded against traversal ~200; installing, enabling and the load order, with a registry for each kind ~300; the `extensions` Thing and its upload route ~250; `oscope-server ext pack` ~60; tests ~400; `ex-omext` with its page ~400; and a tenth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,821** hand-written lines added (code 1,485, of which the Cargo manifests 22; tests 789; examples 547), and 12 removed. **That is 2,221 over M's 600, and 38 % over the estimate.**
 
