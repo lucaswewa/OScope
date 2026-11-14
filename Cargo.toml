@@ -55,10 +55,16 @@ libc = "0.2.189"
 windows-sys = "0.61.2"
 # New in P20: the job history (ADR-0016). 0.42.0 is under two weeks old.
 rusqlite = { version = "0.41.1", features = ["bundled"] }
+# New in P24: `.omext` packages (ADR-0018). zip 9.2.0 is under two weeks old;
+# sha2 0.10 shares sha1's digest, already in the lock.
+semver = { version = "1.0.28", features = ["serde"] }
+sha2 = "0.10.9"
+zip = { version = "=9.1.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
 oscope-compute = { path = "crates/oscope-compute" }
+oscope-ext = { path = "crates/oscope-ext" }
 oscope-hal = { path = "crates/oscope-hal" }
 oscope-imaging = { path = "crates/oscope-imaging" }
 oscope-jobs = { path = "crates/oscope-jobs" }

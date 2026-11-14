@@ -791,13 +791,13 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P20 | Job service and the `jobs` Thing | P16 | L | 0016 | Done |
 | P21 | Pipeline engine | P20, P07 | L | 0017 | Done |
 | P22 | Stock nodes I: correction and display; live recipes | P21, P08c | M | — | Done |
-| P23 | Stock nodes II: filters, enhancement, threshold, morphology | P22 | L | — | In review |
+| P23 | Stock nodes II: filters, enhancement, threshold, morphology | P22 | L | — | Done |
 
 ### Stage 6: Extensions (ends with Checkpoint B)
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P24 | `.omext` packages, registry, `extensions` Thing | P21 | M | 0018 | Planned |
+| P24 | `.omext` packages, registry, `extensions` Thing | P21 | M | 0018 | In review |
 | P25 | Rust extension ABI and SDK | P24 | L | 0019 | Planned |
 | P26 | Python extension runtime and SDK | P24, P19 | L | 0020 | Planned |
 | P27 | Driver and panel extensions | P25, P26 | L | — | Planned |
@@ -1080,3 +1080,5 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-13 | P22 was estimated at about 3,200 lines before it started (fifteen stock nodes over P08–P08c's functions, a reference reader and a resampler ~1,000; live recipes in the preview chain and the `preview` Thing, with references captured from the camera ~450; tests ~700; `ex-live-recipe` with its page ~650; glue ~50; and a tenth on top, after P21): more than five times M's 600. One pull request, with the overrun explained, as the owner decided for P12–P23 |
 | 2026-11-13 | P23 was estimated at about 3,400 lines before it started (the CPU references of the Gaussian, median and bilateral filters and of CLAHE ~450, their CUDA kernels and launches ~500; twelve stock nodes, with thresholds, morphology, the distance transform and labelling, ~800; tests ~700; `ex-filters` with its page ~550; glue ~50; and a tenth on top): nearly four times L's 900. One pull request, with the overrun explained, as the owner decided for P12–P23 |
 | 2026-11-14 | The owner's manual tests of P16–P23 ([the checklist](milestone-1/manual-tests-P16-P23.md)) found three faults, fixed in one pull request: `ex-http-walkthrough`'s page read the objective catalogue's list under the wrong name and failed to start; the stage's `moved` event said nothing for jogs, or for a move or homing halted on the way, and now fires whenever the stage comes to rest, with a report taken after it is still; and `ex-live-view` and `ex-live-overlays` started the camera only in their `--smoke` runs. The examples' smoke checks had served each page, but never run its script |
+| 2026-11-14 | The owner gave a standing approval for P24–P34, with a manual test after P34, and answered the run's questions up front: uv is installed locally and set up in CI with Astral's `setup-uv`, the Python SDK's tests running in CI on Ubuntu only; an extension's Python packages are its own, outside OScope's licence list, but held to the two-week rule through uv's `exclude-newer`; P28 validates NGFF metadata with the `jsonschema` crate in tests only; P29's 10-minute run records in rolling segments, at most about 100 GB on disk; spec-first phases go on to their code without stopping for review; and examples get the manual-check ports 8230–8249 too |
+| 2026-11-14 | P24 was estimated at about 2,050 lines before it started (the manifest and its checks ~250; the zip reader and writer, guarded against traversal ~200; installing, enabling and the load order, with a registry for each kind ~300; the `extensions` Thing and its upload route ~250; `oscope-server ext pack` ~60; tests ~400; `ex-omext` with its page ~400; and a tenth on top): more than three times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P34 |

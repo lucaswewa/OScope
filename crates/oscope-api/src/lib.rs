@@ -7,7 +7,8 @@
 //!
 //! - **the control plane:** the Things, under [`API_PREFIX`], such as the
 //!   [`system`] Thing at `/api/v1/system/`, the [`logs`] Thing, the
-//!   instrument's [`devices`], the live [`preview`], and the [`jobs`];
+//!   instrument's [`devices`], the live [`preview`], the [`jobs`], and the
+//!   [`extensions`];
 //! - **the media plane:** OScope's own routes, under [`MEDIA_PREFIX`];
 //! - **`/health`;**
 //! - **pages,** for the examples ([`ApiBuilder::pages`]).
@@ -16,6 +17,7 @@
 //! and graceful shutdown as the Things.
 
 pub mod devices;
+pub mod extensions;
 pub mod jobs;
 pub mod logs;
 mod media;

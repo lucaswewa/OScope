@@ -214,20 +214,41 @@ pub async fn put(address: SocketAddr, path: &str, body: &Value) -> anyhow::Resul
     request(address, "PUT", path, Some(body)).await
 }
 
+/// `POST path` with `body`, of the media type `content_type`, as [`get`].
+pub async fn post_bytes(
+    address: SocketAddr,
+    path: &str,
+    content_type: &str,
+    body: &[u8],
+) -> anyhow::Result<Answer> {
+    send(address, "POST", path, content_type, body).await
+}
+
 async fn request(
     address: SocketAddr,
     method: &str,
     path: &str,
     body: Option<&Value>,
 ) -> anyhow::Result<Answer> {
-    let mut stream = TcpStream::connect(address).await?;
     let body = body.map(Value::to_string).unwrap_or_default();
-    let request = format!(
+    send(address, method, path, "application/json", body.as_bytes()).await
+}
+
+async fn send(
+    address: SocketAddr,
+    method: &str,
+    path: &str,
+    content_type: &str,
+    body: &[u8],
+) -> anyhow::Result<Answer> {
+    let mut stream = TcpStream::connect(address).await?;
+    let head = format!(
         "{method} {path} HTTP/1.1\r\nhost: {address}\r\nconnection: close\r\n\
-         content-type: application/json\r\ncontent-length: {}\r\n\r\n{body}",
+         content-type: {content_type}\r\ncontent-length: {}\r\n\r\n",
         body.len()
     );
-    stream.write_all(request.as_bytes()).await?;
+    stream.write_all(head.as_bytes()).await?;
+    stream.write_all(body).await?;
     let mut bytes = Vec::new();
     stream.read_to_end(&mut bytes).await?;
     // The head is text; the body may be an image.

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use oscope_ext::Extensions;
 use oscope_jobs::JobService;
 use oscope_shm::RingWriter;
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,7 @@ use tokio::sync::Notify;
 use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
 };
+use crate::extensions::ExtensionsThing;
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::preview::PreviewThing;
@@ -191,6 +193,16 @@ impl ApiBuilder {
             .things
             .service(Arc::new(jobs))
             .thing("jobs", JobsThing::default());
+        self
+    }
+
+    /// Serves the installed `extensions` as the `extensions` Thing
+    /// (ADR-0018): what this start loaded, and the changes for the next.
+    pub fn extensions(mut self, extensions: Extensions) -> Self {
+        self.things = self
+            .things
+            .service(Arc::new(extensions))
+            .thing("extensions", ExtensionsThing::default());
         self
     }
 

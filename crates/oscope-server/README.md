@@ -54,6 +54,7 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 | `--print-td` | Prints each Thing's Thing Description, by name, and exits |
 | `--managed` | Runs under a supervisor, such as the desktop app, by the sidecar contract below |
 | `service install`, `uninstall`, `run` | Windows service mode, below |
+| `ext pack FOLDER [--out FILE]` | Packs a folder with a `manifest.toml` into an extension's package, `{id}-{version}.omext` here unless `--out` names it, and prints its size and SHA-256. The same folder packs to the same bytes each time ([ADR-0018](../../docs/adr/0018-the-omext-package-format.md)) |
 | `--version`, `--help` | Prints the version or the usage |
 
 **Exit codes:**
@@ -61,6 +62,8 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 - **75 when it stopped to be started again:** the `system` Thing's `restart` asks for it;
 - 2 for a wrong command line or configuration file, a wrong log level among them, with a message that says what is wrong and where;
 - 1 if the server can't serve, for example because the port is taken.
+
+**Extensions** are installed in `{data_root}/extensions`, and load at start-up ([ADR-0018](../../docs/adr/0018-the-omext-package-format.md)): the `extensions` Thing installs, enables, disables and uninstalls them, each for the next start. A start finishes those changes first: it removes uninstalled extensions and versions replaced.
 
 **The job history** is kept in `{data_root}/index.sqlite` ([ADR-0016](../../docs/adr/0016-the-job-service.md)). Jobs a stop cut short are marked *interrupted* at the next start.
 

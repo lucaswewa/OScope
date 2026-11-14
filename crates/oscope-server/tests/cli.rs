@@ -162,3 +162,60 @@ fn it_serves_from_its_configuration_and_creates_its_folders() {
     server.wait().unwrap();
     result.unwrap();
 }
+
+/// A Python extension's manifest.
+const MANIFEST: &str = r#"id = "org.example.hello"
+name = "Hello"
+version = "0.1.0"
+license = "MIT"
+publisher = "Example Lab"
+oscope-api = "^1.0"
+kind = "python"
+
+[provides]
+nodes = ["hello.greet"]
+
+[python]
+requires-python = ">=3.12"
+entry = "hello"
+"#;
+
+#[test]
+fn ext_pack_names_the_package_and_packs_the_same_bytes_each_time() {
+    let folder = tempfile::tempdir().unwrap();
+    let source = folder.path().join("hello");
+    std::fs::create_dir_all(source.join("hello")).unwrap();
+    std::fs::write(source.join("manifest.toml"), MANIFEST).unwrap();
+    std::fs::write(source.join("hello/__init__.py"), "GREETING = 'hello'\n").unwrap();
+    let source = source.to_str().unwrap();
+
+    // Named by its ID and version, where it runs.
+    let output = Command::new(env!("CARGO_BIN_EXE_oscope-server"))
+        .args(["ext", "pack", source])
+        .current_dir(folder.path())
+        .output()
+        .unwrap();
+    let said = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{said}");
+    let named = folder.path().join("org.example.hello-0.1.0.omext");
+    let sha256 = oscope_ext::sha256(&named).unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.starts_with("packed org.example.hello 0.1.0 into "), "{stdout}");
+    assert!(stdout.contains(&format!("bytes, SHA-256 {sha256}")), "{stdout}");
+
+    // Where --out says: the same bytes.
+    let out = folder.path().join("again.omext");
+    let output = run(&["ext", "pack", source, "--out", out.to_str().unwrap()]);
+    assert!(output.status.success());
+    assert_eq!(std::fs::read(&out).unwrap(), std::fs::read(&named).unwrap());
+
+    // A wrong manifest fails, saying where and why, and writes nothing.
+    let wrong = MANIFEST.replace("\"^1.0\"", "\"one\"");
+    std::fs::write(folder.path().join("hello/manifest.toml"), wrong).unwrap();
+    let out = folder.path().join("wrong.omext");
+    let output = run(&["ext", "pack", source, "--out", out.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.starts_with("oscope-server: extensions: the manifest: line 6"), "{stderr}");
+    assert!(!out.exists());
+}
