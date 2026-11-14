@@ -38,7 +38,7 @@ fn cells(pattern: BayerPattern) -> u32 {
 
 /// A launch with a thread for each of `len` items, each thread stepping on
 /// by the whole grid.
-fn flat(len: u64) -> LaunchConfig {
+pub(super) fn flat(len: u64) -> LaunchConfig {
     let blocks = len.div_ceil(u64::from(BLOCK)).clamp(1, 1 << 20) as u32;
     LaunchConfig {
         grid_dim: (blocks, 1, 1),

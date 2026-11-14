@@ -18,9 +18,11 @@ use crate::{ComputeError, GpuInfo, Image, Lane, Shape, cpu};
 
 mod color;
 mod filters;
+mod registration;
 mod sim;
 
 pub use color::DemosaicKernel;
+pub use registration::Correlation;
 pub use sim::{Exposure, TileAtlas};
 
 /// The image kernels, compiled from `kernels/image.cu` by `build.rs`.
@@ -31,6 +33,10 @@ const COLOR_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/color.fat
 
 /// The filter kernels, compiled from `kernels/filters.cu` (P23).
 const FILTER_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/filters.fatbin"));
+
+/// Phase correlation's kernels, compiled from `kernels/registration.cu` (P31).
+const REGISTRATION_KERNELS: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/registration.fatbin"));
 
 /// The simulated camera's kernel, compiled from `kernels/sim.cu`.
 const SIM_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sim.fatbin"));
@@ -76,6 +82,9 @@ struct Kernels {
     bilateral: CudaFunction,
     clahe_maps: CudaFunction,
     clahe_apply: CudaFunction,
+    prepare: CudaFunction,
+    cross_power: CudaFunction,
+    gather: CudaFunction,
 }
 
 /// A GPU, ready for kernels.
@@ -86,6 +95,8 @@ pub struct Cuda {
     batch: Arc<CudaStream>,
     kernels: Kernels,
     info: GpuInfo,
+    /// Each lane's latest cuFFT plans: live's, then batch's.
+    plans: [registration::Plans; 2],
 }
 
 impl Cuda {
@@ -111,6 +122,7 @@ impl Cuda {
         let color = context.load_module(Ptx::from_binary(COLOR_KERNELS.to_vec()))?;
         let sim = context.load_module(Ptx::from_binary(SIM_KERNELS.to_vec()))?;
         let filters = context.load_module(Ptx::from_binary(FILTER_KERNELS.to_vec()))?;
+        let registration = context.load_module(Ptx::from_binary(REGISTRATION_KERNELS.to_vec()))?;
         let kernels = Kernels {
             to_f32_u16: module.load_function("to_f32_u16")?,
             to_f32_u8: module.load_function("to_f32_u8")?,
@@ -127,6 +139,9 @@ impl Cuda {
             bilateral: filters.load_function("bilateral")?,
             clahe_maps: filters.load_function("clahe_maps")?,
             clahe_apply: filters.load_function("clahe_apply")?,
+            prepare: registration.load_function("prepare")?,
+            cross_power: registration.load_function("cross_power")?,
+            gather: registration.load_function("gather")?,
         };
         let memory_pool = keep_freed_memory(&context).is_ok();
         let mut version = 0;
@@ -150,6 +165,7 @@ impl Cuda {
             batch,
             kernels,
             info,
+            plans: Default::default(),
         })
     }
 

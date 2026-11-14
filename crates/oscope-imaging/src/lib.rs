@@ -6,3 +6,4 @@
 //! its algorithms live in `oscope-compute`, which may.
 
 pub mod color;
+pub mod registration;
