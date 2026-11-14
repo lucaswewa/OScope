@@ -11,7 +11,7 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, DateTime, ZipArchive, ZipWriter};
 
 use crate::manifest::check_path;
-use crate::{ExtError, Manifest, io};
+use crate::{ExtError, Manifest, OSCOPE_FOLDER, io};
 
 /// The manifest's name, at a package's root.
 pub const MANIFEST: &str = "manifest.toml";
@@ -59,7 +59,8 @@ impl Package {
     ///   Linux both create as they are;
     /// - no two names differ only in case, as they would be one file on
     ///   Windows;
-    /// - no entry is a symbolic link, or encrypted;
+    /// - no entry is a symbolic link, or encrypted, or in `.oscope`, which
+    ///   OScope keeps for itself;
     /// - its manifest is right, and the files it names are there.
     pub fn open(path: &Path) -> Result<Package, ExtError> {
         let sha256 = sha256(path)?;
@@ -78,6 +79,9 @@ impl Package {
             let path = name.strip_suffix('/').filter(|_| entry.is_dir());
             let path = path.unwrap_or(&name).to_owned();
             check_path(&path).map_err(refuse)?;
+            if path.split('/').next() == Some(OSCOPE_FOLDER) {
+                return Err(refuse("is a name OScope keeps for itself"));
+            }
             if !seen.insert(path.to_lowercase()) {
                 return Err(refuse("is there twice, perhaps in another case"));
             }
@@ -227,6 +231,9 @@ fn collect(
             _ => format!("{prefix}/{name}"),
         };
         check_path(&name).map_err(|why| bad(format!("{name:?} {why}")))?;
+        if name == OSCOPE_FOLDER {
+            return Err(bad(format!("{name:?} is a name OScope keeps for itself")));
+        }
         let kind = entry.file_type().map_err(io(&path))?;
         if kind.is_symlink() {
             return Err(bad(format!("{name:?} is a symbolic link")));

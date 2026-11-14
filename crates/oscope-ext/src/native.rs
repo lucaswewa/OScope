@@ -87,30 +87,9 @@ impl Library {
         let json = described.description.ok_or("it described nothing")?;
         let descriptors: Vec<Descriptor> =
             serde_json::from_str(&json).map_err(|e| format!("its description: {e}"))?;
-        for descriptor in &descriptors {
-            let ports = descriptor.inputs.iter().chain(&descriptor.outputs);
-            if !ports
-                .into_iter()
-                .all(|p| p.kind == PortType::Image && !p.optional)
-            {
-                let id = &descriptor.id;
-                return Err(format!(
-                    "node `{id}`: in ABI 1, every port is an image, and none is optional"
-                ));
-            }
-            if !descriptor.capabilities.cpu || descriptor.capabilities.cuda {
-                return Err(format!(
-                    "node `{}`: in ABI 1, nodes run on the CPU",
-                    descriptor.id
-                ));
-            }
-        }
-        // Checked as the pipeline's registry checks every node (ADR-0017).
+        check(&descriptors, "in ABI 1")?;
         let library = Arc::new(Library { table, descriptors });
-        let mut check = Registry::new();
-        for node in library.nodes() {
-            check.register(node)?;
-        }
+        registered(&library.nodes())?;
         Ok(library)
     }
 
@@ -131,6 +110,32 @@ impl Library {
         });
         nodes.collect()
     }
+}
+
+/// Checks what extensions' nodes may be so far, `rule` saying where:
+/// every port an image, none optional, and the CPU alone.
+pub(crate) fn check(descriptors: &[Descriptor], rule: &str) -> Result<(), String> {
+    for descriptor in descriptors {
+        let id = &descriptor.id;
+        let mut ports = descriptor.inputs.iter().chain(&descriptor.outputs);
+        if !ports.all(|port| port.kind == PortType::Image && !port.optional) {
+            return Err(format!(
+                "node `{id}`: {rule}, every port is an image, and none is optional"
+            ));
+        }
+        if !descriptor.capabilities.cpu || descriptor.capabilities.cuda {
+            return Err(format!("node `{id}`: {rule}, nodes run on the CPU"));
+        }
+    }
+    Ok(())
+}
+
+/// Checks `nodes` as the pipeline's registry checks every node (ADR-0017).
+pub(crate) fn registered(nodes: &[Arc<dyn Node>]) -> Result<(), String> {
+    let mut registry = Registry::new();
+    nodes
+        .iter()
+        .try_for_each(|node| registry.register(Arc::clone(node)))
 }
 
 /// Calls the extension: `work`, given the host's table and a new call

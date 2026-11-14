@@ -9,7 +9,8 @@ Two scripts run the checks that CI runs on every pull request ([`.github/workflo
 | toolchain | `rustup toolchain install` |
 | fmt | `cargo fmt --all --check` |
 | clippy | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| tests | `cargo test --workspace --locked`, the layering test among them |
+| tests | `cargo test --workspace --locked`, the layering test among them; with `OSCOPE_PYTHON=1` where uv is found, as CI does on Ubuntu |
+| python sdk tests | `uv run --locked pytest` in `python/oscope-ext`. The step fails if uv isn't on `PATH`, in `~/.local/bin` or `~/.cargo/bin`, or in winget's folder on Windows. GitHub CI runs it on Ubuntu alone |
 | docs | `cargo doc --workspace --no-deps --locked`, with `RUSTDOCFLAGS="-D warnings"` |
 | deny | `cargo deny --locked check` |
 | server --version | `cargo run -p oscope-server --locked -- --version` |

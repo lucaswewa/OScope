@@ -254,6 +254,10 @@ fn a_package_that_could_escape_or_clash_is_refused_and_leaves_nothing() {
             with("Manifest.TOML"),
             "is there twice, perhaps in another case",
         ),
+        (
+            with(".oscope/venv/evil.txt"),
+            "is a name OScope keeps for itself",
+        ),
         (symlink, "\"hello/evil.txt\" is a symbolic link"),
         (oversized, "it unpacks to more than 4294967296 bytes"),
         (

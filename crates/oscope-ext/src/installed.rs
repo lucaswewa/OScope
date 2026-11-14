@@ -22,7 +22,12 @@ use tempfile::NamedTempFile;
 use oscope_pipeline::Node;
 
 use crate::manifest::is_id;
-use crate::{Contribution, ExtError, Library, MANIFEST, Manifest, Package, io};
+use crate::native::{check, registered};
+use crate::python::prepare;
+use crate::worker::{self, Worker};
+use crate::{
+    Contribution, ExtError, Library, MANIFEST, Manifest, OSCOPE_FOLDER, Package, PythonRuntime, io,
+};
 
 /// Where packages arrive and unpack, in the extensions' folder.
 const INCOMING: &str = ".incoming";
@@ -132,16 +137,51 @@ fn plan(installed: &BTreeMap<String, Installed>) -> (BTreeMap<&str, Plan>, Regis
     (plans, registry)
 }
 
-/// Loads an extension's code, for the kinds that have code so far: a Rust
-/// extension's library, whose nodes must be those its manifest provides.
-fn load(manifest: &Manifest, folder: &Path) -> Result<Vec<Arc<dyn Node>>, String> {
-    let Some(library) = manifest.library() else {
-        return Ok(Vec::new());
+/// The nodes a Python extension's worker described when it was installed.
+const NODES: &str = "nodes.json";
+
+/// An extension's code, loaded: its nodes, and a Python extension's worker.
+type Code = (Vec<Arc<dyn Node>>, Option<Arc<Worker>>);
+
+/// Loads an extension's code: a Rust extension's library, or a Python
+/// extension's worker, to start on first use, when OScope runs Python.
+/// Its nodes must be those its manifest provides.
+fn load(
+    manifest: &Manifest,
+    folder: &Path,
+    python: Option<&PythonRuntime>,
+) -> Result<Code, String> {
+    let (nodes, worker) = match (manifest.library(), &manifest.python, python) {
+        (Some(library), _, _) => {
+            let path = library
+                .split('/')
+                .fold(folder.to_owned(), |path, part| path.join(part));
+            (
+                Library::load(&path).map_err(|e| e.to_string())?.nodes(),
+                None,
+            )
+        }
+        (None, Some(entry), Some(python)) => {
+            let path = folder.join(OSCOPE_FOLDER).join(NODES);
+            let failed = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
+            let text = fs::read(&path).map_err(|e| failed(&e))?;
+            let described: Vec<oscope_pipeline::Descriptor> =
+                serde_json::from_slice(&text).map_err(|e| failed(&e))?;
+            let worker = Worker::new(&manifest.id, folder, &entry.entry, python);
+            (worker::nodes(&worker, &described), Some(worker))
+        }
+        _ => return Ok((Vec::new(), None)),
     };
-    let path = library
-        .split('/')
-        .fold(folder.to_owned(), |path, part| path.join(part));
-    let library = Library::load(&path).map_err(|e| e.to_string())?;
+    provided(manifest, &nodes)?;
+    Ok((nodes, worker))
+}
+
+/// Checks that `nodes` are those `manifest` provides, and as the pipeline
+/// checks nodes.
+fn provided(manifest: &Manifest, nodes: &[Arc<dyn Node>]) -> Result<(), String> {
+    let descriptors: Vec<_> = nodes.iter().map(|node| node.descriptor().clone()).collect();
+    check(&descriptors, "for an extension")?;
+    registered(nodes)?;
     let list = |ids: BTreeSet<&str>| match ids.is_empty() {
         true => "none".to_owned(),
         false => ids
@@ -150,11 +190,7 @@ fn load(manifest: &Manifest, folder: &Path) -> Result<Vec<Arc<dyn Node>>, String
             .collect::<Vec<_>>()
             .join(", "),
     };
-    let described = library
-        .descriptors()
-        .iter()
-        .map(|d| d.id.as_str())
-        .collect();
+    let described = descriptors.iter().map(|d| d.id.as_str()).collect();
     let provided = manifest
         .provides
         .get(&Contribution::Nodes)
@@ -163,11 +199,25 @@ fn load(manifest: &Manifest, folder: &Path) -> Result<Vec<Arc<dyn Node>>, String
     let provided = provided.map(String::as_str).collect();
     if described != provided {
         let (described, provided) = (list(described), list(provided));
+        let code = if manifest.library().is_some() {
+            "library"
+        } else {
+            "module"
+        };
         return Err(format!(
-            "its library has the nodes {described}, and its manifest provides {provided}"
+            "its {code} has the nodes {described}, and its manifest provides {provided}"
         ));
     }
-    Ok(library.nodes())
+    Ok(())
+}
+
+/// A Python extension's worker, as [`Extensions::workers`] lists it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkerState {
+    /// The extension's ID.
+    pub id: String,
+    /// Its worker's process ID, while it runs.
+    pub pid: Option<u32>,
 }
 
 /// The installed extensions, in a folder of the data root: what this start
@@ -182,9 +232,11 @@ pub struct Extensions {
     loaded: Vec<Loaded>,
     registry: Registry,
     nodes: Vec<Arc<dyn Node>>,
+    workers: Vec<Arc<Worker>>,
     /// The extensions whose code this start couldn't load: the version, and
     /// why.
     failed: BTreeMap<String, (Version, String)>,
+    python: Option<PythonRuntime>,
     installed: Mutex<BTreeMap<String, Installed>>,
 }
 
@@ -209,7 +261,20 @@ impl Extensions {
     /// nodes or an extension loaded before it provide isn't loaded at all,
     /// nor one whose code fails to load. An extension whose folder can't be
     /// read is left out, with a warning, and left on disk.
+    ///
+    /// Python extensions' code doesn't load: see
+    /// [`open_with`](Self::open_with).
     pub fn open(root: impl Into<PathBuf>) -> Result<Extensions, ExtError> {
+        Extensions::open_with(root, None)
+    }
+
+    /// As [`open`](Self::open), running Python extensions with `python`:
+    /// installing makes their environments, and their nodes run in their
+    /// workers (ADR-0020).
+    pub fn open_with(
+        root: impl Into<PathBuf>,
+        python: Option<PythonRuntime>,
+    ) -> Result<Extensions, ExtError> {
         let root = root.into();
         let mut installed = BTreeMap::new();
         if root.is_dir() {
@@ -234,7 +299,8 @@ impl Extensions {
             }
         }
         let (plans, mut registry) = plan(&installed);
-        let (mut loaded, mut nodes, mut failed) = (Vec::new(), Vec::new(), BTreeMap::new());
+        let (mut loaded, mut nodes, mut workers, mut failed) =
+            (Vec::new(), Vec::new(), Vec::new(), BTreeMap::new());
         for (id, plan) in &plans {
             let Installed { state, manifest } = &installed[*id];
             let Some(version) = &plan.version else {
@@ -244,10 +310,11 @@ impl Extensions {
                 continue;
             };
             let folder = root.join(id).join(version.to_string());
-            match load(manifest, &folder) {
-                Ok(code) => {
+            match load(manifest, &folder, python.as_ref()) {
+                Ok((code, worker)) => {
                     tracing::info!("extension {id} {version}: loaded");
                     nodes.extend(code);
+                    workers.extend(worker);
                     let sha256 = state.sha256.clone();
                     let manifest = manifest.clone();
                     loaded.push(Loaded {
@@ -272,7 +339,9 @@ impl Extensions {
             loaded,
             registry,
             nodes,
+            workers,
             failed,
+            python,
             installed: Mutex::new(installed),
         })
     }
@@ -285,7 +354,9 @@ impl Extensions {
             loaded: Vec::new(),
             registry: Registry::new(),
             nodes: Vec::new(),
+            workers: Vec::new(),
             failed: BTreeMap::new(),
+            python: None,
             installed: Mutex::default(),
         }
     }
@@ -309,6 +380,15 @@ impl Extensions {
     /// registry.
     pub fn nodes(&self) -> &[Arc<dyn Node>] {
         &self.nodes
+    }
+
+    /// The workers of the Python extensions this start loaded.
+    pub fn workers(&self) -> Vec<WorkerState> {
+        let state = |worker: &Arc<Worker>| WorkerState {
+            id: worker.id().to_owned(),
+            pid: worker.pid(),
+        };
+        self.workers.iter().map(state).collect()
     }
 
     /// The installed extensions, by ID.
@@ -393,6 +473,10 @@ impl Extensions {
                 }
                 fs::create_dir_all(&folder).map_err(io(&folder))?;
                 fs::rename(staging.path(), &target).map_err(io(&target))?;
+                if let Err(error) = self.prepare(&manifest, &target) {
+                    let _ = fs::remove_dir_all(&target);
+                    return Err(error);
+                }
                 true
             }
         };
@@ -401,6 +485,20 @@ impl Extensions {
         }
         installed.insert(id.clone(), Installed { state, manifest });
         Ok((self.describe_one(&installed, &id)?, unpacked))
+    }
+
+    /// Makes a Python extension's environment in its folder, when OScope
+    /// runs Python, and keeps the nodes its worker describes.
+    fn prepare(&self, manifest: &Manifest, folder: &Path) -> Result<(), ExtError> {
+        let (Some(entry), Some(python)) = (&manifest.python, &self.python) else {
+            return Ok(());
+        };
+        let described = prepare(folder, &manifest.id, entry, python)?;
+        let worker = Worker::new(&manifest.id, folder, &entry.entry, python);
+        provided(manifest, &worker::nodes(&worker, &described)).map_err(ExtError::Python)?;
+        let path = folder.join(OSCOPE_FOLDER).join(NODES);
+        let text = serde_json::to_vec_pretty(&described).map_err(|e| io(&path)(e.into()))?;
+        fs::write(&path, text).map_err(io(&path))
     }
 
     /// Enables the extension `id`: the next start loads it, if it can.

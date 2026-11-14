@@ -2,6 +2,7 @@
 
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use clap::Parser;
 use oscope_server::{Cli, Config, ConfigError, DEFAULT_PORT, Logging};
@@ -56,6 +57,13 @@ keep_days = 7
 
 [devices]
 camera = {{ kind = "simulated" }}
+
+[python]
+uv = "tools/uv"
+sdk = "sdk"
+wheelhouse = "wheels"
+call_timeout_s = 30
+idle_s = 0.5
 "#,
         scratch.display()
     );
@@ -71,6 +79,14 @@ camera = {{ kind = "simulated" }}
         keep_days: 7,
     };
     assert_eq!(config.logging, logging);
+    let python = config.python.runtime();
+    let at = |name: &str| Some(folder.path().join(name));
+    assert_eq!(
+        (python.uv, Some(python.sdk), python.wheelhouse),
+        (at("tools/uv"), at("sdk"), at("wheels"))
+    );
+    let times = (python.call_timeout, python.idle);
+    assert_eq!(times, (Duration::from_secs(30), Duration::from_millis(500)));
 }
 
 #[test]

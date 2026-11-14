@@ -1,0 +1,23 @@
+[project]
+name = "oscope-ext"
+version = "0.1.0"
+description = "The SDK of OScope's Python extensions: nodes, and the worker that runs them (ADR-0020)."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = ["numpy>=2"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+# uv builds a package of its own build backend without fetching it.
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv]
+# Packages at least two weeks old when P26 began (CLAUDE.md).
+exclude-newer = "2026-10-31T00:00:00Z"
+# Built again when any source changes, not only this file: OScope installs
+# the SDK from this folder into each extension's environment.
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.py" }]

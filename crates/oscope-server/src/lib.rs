@@ -32,7 +32,9 @@ use serde_json::{Value, json};
 
 mod config;
 
-pub use config::{Config, ConfigError, DEFAULT_PORT, Jobs, Listen, Logging, Ring, Storage};
+pub use config::{
+    Config, ConfigError, DEFAULT_PORT, Jobs, Listen, Logging, PythonConfig, Ring, Storage,
+};
 
 /// The exit code that asks a supervisor to start the server again
 /// (ADR-0015): `EX_TEMPFAIL`.
@@ -316,7 +318,8 @@ async fn serve(
     logs::install(&store, &config.logging.level)?;
     let devices = devices(cli, &config).await?;
     let jobs = jobs(&roots.data.join("index.sqlite"), &config)?;
-    let extensions = Extensions::open(roots.data.join("extensions"))?;
+    let python = Some(config.python.runtime());
+    let extensions = Extensions::open_with(roots.data.join("extensions"), python)?;
     let token = write_token(&roots)?;
     let ring = ring(cli, &config)?;
     let ring_name = ring.as_ref().map(|r| r.name().to_owned());
