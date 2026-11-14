@@ -112,6 +112,13 @@ fn the_recorder_keeps_up_with_the_test_sensor_at_the_design_rate() {
     let reader = RecordingReader::open(&folder).unwrap();
     let frames = reader.frames();
     assert_eq!(frames.len() as u64, recording.frames);
+    // At the design rate: a frame each 69 ms, on the sensor's schedule.
+    let span = frames[frames.len() - 1].meta.host_time.0 - frames[0].meta.host_time.0;
+    let interval = span as f64 / 1e6 / (frames.len() - 1) as f64;
+    assert!(
+        (68.0..70.0).contains(&interval),
+        "{interval} ms between frames"
+    );
     let row = 2 * WIDTH as usize;
     for (k, entry) in frames.iter().enumerate() {
         assert_eq!(entry.index, k as u64);

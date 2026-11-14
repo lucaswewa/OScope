@@ -211,14 +211,24 @@ async fn run() -> anyhow::Result<()> {
         keep_bytes: args.keep_gb.map(|gb| (gb * 1e9) as u64),
         ..RecordingOptions::default()
     };
-    let recorder = Recorder::start(&bus, &scratch, options, QUEUE)?;
+    // The camera streams first, as for the preview: the simulator's first
+    // frame renders its field, which takes seconds.
     let (pool, frame_bytes) = pool(camera.as_ref()).await?;
+    camera.start(pool, acquisition.sink()).await?;
+    let warming = Instant::now();
+    while bus.published() < 2 {
+        ensure!(
+            warming.elapsed() < Duration::from_secs(120),
+            "no frame came in 2 minutes"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let recorder = Recorder::start(&bus, &scratch, options, QUEUE)?;
     println!(
         "Recording {source}: frames of {:.1} MB at 14.5 fps, {:.0} MB/s, for {seconds} s.",
         frame_bytes as f64 / 1e6,
         frame_bytes as f64 * 14.5 / 1e6
     );
-    camera.start(pool, acquisition.sink()).await?;
     let started = Instant::now();
     let every = if seconds > 60.0 { 10.0 } else { 1.0 };
     let mut next = every;
@@ -350,8 +360,11 @@ fn check(
     let Samples::U16(samples) = read else {
         bail!("not 16-bit samples");
     };
+    // Row y of the sensor's frame n is (y + n) mod 256, times 257: the
+    // recording started at a frame after the first.
+    let n = usize::from(samples[0] / 257);
     for (y, row) in samples.chunks_exact(width as usize).enumerate() {
-        let level = (y % 256) as u16 * 257;
+        let level = ((y + n) % 256) as u16 * 257;
         ensure!(
             row.iter().all(|&s| s == level),
             "row {y} of the first frame"
