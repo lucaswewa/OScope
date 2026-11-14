@@ -8,6 +8,7 @@ use std::process::ExitCode;
 use anyhow::{Context, ensure};
 use ex_common::{Example, get};
 use oscope_api::Api;
+use oscope_store::{Scratch, ScratchPolicy};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -22,7 +23,9 @@ async fn main() -> ExitCode {
 
 async fn run() -> anyhow::Result<()> {
     let example = Example::from_args("ex-server-hello", 8211)?;
-    let api = Api::builder(&example.roots);
+    // A scratch space, as the server has: the `system` Thing gives its health.
+    let scratch = Scratch::open(&example.roots.scratch, ScratchPolicy::default())?;
+    let api = Api::builder(&example.roots).scratch(scratch);
     let page = concat!(env!("CARGO_MANIFEST_DIR"), "/page");
     example.serve(api, page, smoke).await
 }
@@ -50,8 +53,8 @@ async fn smoke(address: SocketAddr) -> anyhow::Result<()> {
         println!("  {name}: {}", value.body);
     }
     ensure!(
-        properties.len() == 8,
-        "8 properties, not {}",
+        properties.len() == 9,
+        "9 properties, not {}",
         properties.len()
     );
     let ping = get(address, "/api/v1/media/ping").await?;

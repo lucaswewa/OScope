@@ -132,7 +132,7 @@ fn json<T: Serialize>(value: &T) -> Result<String> {
 
 /// Writes `value` as a versioned document at `path`, through a file renamed
 /// over it, so that a reader finds the old document or the new, whole.
-fn write<T: Versioned>(path: &Path, value: &T) -> Result<()> {
+pub(crate) fn write<T: Versioned>(path: &Path, value: &T) -> Result<()> {
     let document = to_document(value).map_err(|e| document_error(path, e))?;
     let text = serde_json::to_string_pretty(&document).map_err(|e| document_error(path, e))?;
     let temporary = path.with_extension("json.tmp");
@@ -140,14 +140,14 @@ fn write<T: Versioned>(path: &Path, value: &T) -> Result<()> {
     fs::rename(&temporary, path).map_err(io(path))
 }
 
-fn read<T: Versioned>(path: &Path) -> Result<T> {
+pub(crate) fn read<T: Versioned>(path: &Path) -> Result<T> {
     let text = fs::read_to_string(path).map_err(io(path))?;
     let document: Value = serde_json::from_str(&text).map_err(|e| document_error(path, e))?;
     from_document(document).map_err(|e| document_error(path, e))
 }
 
 /// `name`, trimmed: 1 to 200 characters.
-fn checked_name(name: &str) -> Result<String> {
+pub(crate) fn checked_name(name: &str) -> Result<String> {
     let name = name.trim();
     match name.chars().count() {
         1..=200 => Ok(name.to_owned()),

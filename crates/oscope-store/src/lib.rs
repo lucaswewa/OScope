@@ -1,10 +1,10 @@
-//! Data on disk (D15, D16, plan §5.12, ADR-0021): projects, with their
-//! acquisitions, results and reports, in folders under the data root; their
-//! images as OME-Zarr v3 stores; and the SQLite index of them, which can be
-//! rebuilt from the folders.
+//! Data on disk (D15, D16, plan §5.12, ADR-0021, ADR-0022): projects, with
+//! their acquisitions, results and reports, in folders under the data root;
+//! their images as OME-Zarr v3 stores; the SQLite index of them, which can be
+//! rebuilt from the folders; and the scratch space, whose recordings hold
+//! frames as the camera gave them until they are ingested.
 //!
-//! Layer L2 of ADR-0005. The scratch frame log comes with P29, and the tile
-//! cache with P40.
+//! Layer L2 of ADR-0005. The tile cache comes with P40.
 //!
 //! ```text
 //! {data root}/projects/<project>/project.json
@@ -12,19 +12,28 @@
 //!     results/<id>/result.json, image.ome.zarr/ (if an image), thumbnail.jpg
 //!     reports/<id>/report.json
 //! {data root}/index.sqlite
+//! {scratch root}/recordings/<recording>/recording.json, 000000.frames, …
 //! ```
 
 mod image;
 mod index;
+mod ingest;
+mod recording;
 mod records;
+mod scratch;
 mod store;
 mod thumbnail;
 
 pub use image::{CHUNK, ImageInfo, ImageReader, ImageWriter, PixelSize, SampleType, Samples};
+pub use ingest::ingest;
+pub use recording::{
+    FrameEntry, Recording, RecordingOptions, RecordingReader, RecordingWriter, SEGMENT_BYTES,
+};
 pub use records::{
     Acquisition, FrameRecord, Input, NodeVersion, Project, Provenance, Record, RecordKind, Report,
     ResultRecord,
 };
+pub use scratch::{Scratch, ScratchHealth, ScratchPolicy, ScratchState};
 pub use store::{Change, Contents, Draft, NewProject, Page, Query, Store, Summary};
 
 /// What the store refuses, or fails at.
@@ -34,8 +43,8 @@ pub enum StoreError {
     /// No project, or no record, has this ID.
     #[error("no {kind} {id}")]
     NotFound {
-        /// What was looked for: `project`, `acquisition`, `result` or
-        /// `report`.
+        /// What was looked for: `project`, `acquisition`, `result`,
+        /// `report` or `recording`.
         kind: &'static str,
         /// Its ID.
         id: String,
@@ -65,6 +74,9 @@ pub enum StoreError {
     /// An OME-Zarr store failed.
     #[error("OME-Zarr: {0}")]
     Zarr(String),
+    /// The work was stopped before it finished.
+    #[error("cancelled")]
+    Cancelled,
 }
 
 /// The store's results.

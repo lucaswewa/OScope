@@ -28,6 +28,7 @@ use oscope_api::{Api, ApiError, Roots, VERSION};
 use oscope_ext::{Drivers, ExtError, Extensions, OWN_DRIVERS};
 use oscope_jobs::{JobService, JobsConfig};
 use oscope_shm::{RingConfig, RingWriter, ShmError};
+use oscope_store::ScratchPolicy;
 use serde_json::{Value, json};
 
 mod config;
@@ -209,6 +210,9 @@ pub enum Error {
     /// The projects' index couldn't be opened.
     #[error("the projects: {0}")]
     Projects(String),
+    /// The scratch space couldn't be opened.
+    #[error("the scratch space: {0}")]
+    Scratch(String),
     /// The extensions couldn't be read, or a package made.
     #[error("extensions: {0}")]
     Extensions(#[from] ExtError),
@@ -345,6 +349,9 @@ async fn serve(
     let devices = devices(cli, &config, Some(extensions.drivers())).await?;
     let jobs = jobs(&roots.data.join("index.sqlite"), &config)?;
     let projects = projects(&roots.data, &roots.data.join("index.sqlite"))?;
+    // Recordings a crash cut short are recovered here (ADR-0022).
+    let scratch = oscope_store::Scratch::open(&roots.scratch, ScratchPolicy::default())
+        .map_err(|e| Error::Scratch(e.to_string()))?;
     let token = write_token(&roots)?;
     let ring = ring(cli, &config)?;
     let ring_name = ring.as_ref().map(|r| r.name().to_owned());
@@ -354,7 +361,8 @@ async fn serve(
         .devices(devices)
         .jobs(jobs)
         .extensions(extensions)
-        .projects(projects);
+        .projects(projects)
+        .scratch(scratch);
     if let Some(ring) = ring {
         api = api.ring(ring);
     }

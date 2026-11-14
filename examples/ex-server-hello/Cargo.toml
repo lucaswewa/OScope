@@ -10,6 +10,7 @@ publish.workspace = true
 anyhow.workspace = true
 ex-common.workspace = true
 oscope-api.workspace = true
+oscope-store.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]

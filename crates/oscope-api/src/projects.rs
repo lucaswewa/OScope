@@ -1,12 +1,16 @@
 //! The `projects` Thing (D16, plan §5.12, ADR-0021): the projects on disk,
 //! as the Gallery shows them: listed, searched and paged; made, renamed,
-//! tagged, described and deleted; each one's contents; and thumbnails.
+//! tagged, described and deleted; each one's contents; and thumbnails. With
+//! a scratch space, it registers the job that ingests recordings into
+//! projects, `projects.ingest` (ADR-0022).
 
 use std::sync::{Arc, OnceLock};
 
+use oscope_acquire::{INGEST, ingest_jobs};
 use oscope_core::ProjectId;
+use oscope_jobs::JobService;
 use oscope_store::{
-    Change, Contents, NewProject, Page, Project, Query as Search, Store, StoreError,
+    Change, Contents, NewProject, Page, Project, Query as Search, Scratch, Store, StoreError,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -124,6 +128,13 @@ impl ProjectsThing {
             .server()
             .service::<Store>()
             .ok_or_else(|| anyhow::anyhow!("the server has no project store"))?;
+        // Recordings from the scratch space, ingested as jobs (ADR-0022).
+        if let (Some(scratch), Some(jobs)) = (
+            ctx.server().service::<Scratch>(),
+            ctx.server().service::<JobService>(),
+        ) {
+            jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));
+        }
         let _ = self.store.set(store);
         Ok(())
     }

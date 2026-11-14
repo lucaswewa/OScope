@@ -8,7 +8,7 @@ The program that runs the microscope. It reads its configuration, then serves OS
 
 For now there are two Things, `system` and `logs`:
 
-- **`system`:** OScope's version and Git commit, the operating system, the processor, the memory, the uptime, and the data and scratch roots with their free space;
+- **`system`:** OScope's version and Git commit, the operating system, the processor, the memory, the uptime, the data and scratch roots with their free space, and the scratch space's health;
 - **`logs`:** the server's log, with filters and paging, the daily files, and the live tail at `/api/v1/media/logs`.
 
 [ADR-0006](../../docs/adr/0006-control-plane-and-media-plane.md) describes the layout, and [ADR-0009](../../docs/adr/0009-logging.md) the logs.
@@ -68,6 +68,8 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 **The job history** is kept in `{data_root}/index.sqlite` ([ADR-0016](../../docs/adr/0016-the-job-service.md)). Jobs a stop cut short are marked *interrupted* at the next start.
 
 **Projects** are kept in `{data_root}/projects`, each in a folder with its acquisitions, results and reports, their images as OME-Zarr v3, and listed in `{data_root}/index.sqlite` beside the jobs ([ADR-0021](../../docs/adr/0021-projects-ome-zarr-and-the-index.md)). The `projects` Thing lists, searches and pages them for the Gallery; makes, renames, tags, describes and deletes them; and serves their thumbnails. Its `rebuild_index` action makes the index again from the folders, which are the truth.
+
+**Recordings** of frames as the camera gives them go to `{scratch_root}/recordings`, in segment files with an index, until a `projects.ingest` job writes them into a project's acquisition and deletes them ([ADR-0022](../../docs/adr/0022-scratch-recording-and-ingest.md)). When the server starts, it empties `{scratch_root}/tmp` and recovers the recordings a crash cut short. The `system` Thing's `scratch` property says whether there is room to record.
 
 **Each start writes a new local token,** 32 random bytes in hex, to `{data_root}/run/local.token`. Only the account the server runs as can read it: mode 0600 on Linux, a one-entry access list on Windows. It is for the desktop app, which proves itself with it once authentication comes (ADR-0031).
 

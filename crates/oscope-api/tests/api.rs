@@ -95,7 +95,7 @@ async fn the_system_thing_reports_the_build_the_computer_and_its_folders() {
 
     let td = client.get("/api/v1/system/").await.json();
     let properties = td["properties"].as_object().unwrap();
-    assert_eq!(properties.len(), 8);
+    assert_eq!(properties.len(), 9);
     assert!(properties.values().all(|p| p["readOnly"] == true), "{td}");
     assert_eq!(properties["uptime"]["unit"], "s");
 }
@@ -113,6 +113,14 @@ async fn a_root_that_is_missing_is_an_error_not_a_panic() {
     let answer = client.get("/api/v1/system/scratch_root").await;
     assert!(answer.status.is_server_error(), "{}", answer.status);
     assert!(answer.text().contains("never-made"), "{}", answer.text());
+    // A server without a scratch space has no scratch health to give.
+    let answer = client.get("/api/v1/system/scratch").await;
+    assert!(answer.status.is_server_error(), "{}", answer.status);
+    assert!(
+        answer.text().contains("no scratch space"),
+        "{}",
+        answer.text()
+    );
 }
 
 /// Lets in only `Authorization: Bearer let-me-in`.

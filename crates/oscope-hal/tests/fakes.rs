@@ -1,8 +1,10 @@
 //! The fakes' own behaviour: the camera's frames and their pattern, its
-//! refusals while streaming, its software trigger and lost frames; the
-//! stage's alarm and homing; and the scripts.
+//! refusals while streaming, its software trigger, its schedule and lost
+//! frames; the stage's alarm and homing; and the scripts.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 
 use oscope_core::{
     BayerPattern, Clock, FakeClock, FrameBuffer, FrameMeta, FramePool, HeapAllocator, PixelFormat,
@@ -102,6 +104,33 @@ async fn a_software_trigger_gives_one_frame_each() {
     }
     camera.stop().await.unwrap();
     assert!(frames.recv().await.is_none(), "a frame without a trigger");
+}
+
+#[tokio::test]
+async fn a_free_running_camera_keeps_its_schedule_losing_frames_while_held() {
+    // 100 fps in 8 bits, a frame each 10 ms. The sink holds the camera's
+    // thread for 55 ms at the third frame, as a lossless subscriber can.
+    let camera = camera();
+    let (sender, mut frames) = unbounded_channel();
+    let count = AtomicU64::new(0);
+    let sink: FrameSink = Arc::new(move |buffer, meta| {
+        if count.fetch_add(1, Ordering::Relaxed) == 2 {
+            std::thread::sleep(Duration::from_millis(55));
+        }
+        let _ = sender.send((buffer, meta));
+    });
+    camera
+        .start(FramePool::new(640 * 480, 8, &HeapAllocator), sink)
+        .await
+        .unwrap();
+    let mut metas = Vec::new();
+    while metas.len() < 4 {
+        let (_, meta) = frames.recv().await.unwrap();
+        metas.push(meta);
+    }
+    camera.stop().await.unwrap();
+    // The frames whose time passed meanwhile are lost, and counted.
+    assert!(metas[3].dropped_before >= 3, "{:?}", metas[3]);
 }
 
 #[tokio::test]

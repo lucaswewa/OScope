@@ -8,9 +8,12 @@ publish.workspace = true
 
 [dependencies]
 chrono.workspace = true
+crc32fast.workspace = true
+fs4.workspace = true
 oscope-compute.workspace = true
 oscope-core.workspace = true
 oscope-imaging.workspace = true
+rayon.workspace = true
 rusqlite.workspace = true
 schemars.workspace = true
 serde.workspace = true
