@@ -264,6 +264,28 @@ extern "C" fn no_capture(
     abi::FAILED
 }
 
+extern "C" fn no_read(
+    _: *const abi::Host,
+    _: *mut abi::Call,
+    _: u32,
+    _: abi::Str,
+    _: *mut u8,
+    _: usize,
+) -> abi::Status {
+    abi::FAILED
+}
+
+extern "C" fn no_write(
+    _: *const abi::Host,
+    _: *mut abi::Call,
+    _: u32,
+    _: abi::Str,
+    _: *const u8,
+    _: usize,
+) -> abi::Status {
+    abi::FAILED
+}
+
 /// A table of `describe`, speaking ABI `version`.
 const fn table(
     version: u32,
@@ -275,6 +297,8 @@ const fn table(
         run: never,
         driver_call: no_driver_call,
         capture: no_capture,
+        read: no_read,
+        write: no_write,
     }
 }
 
@@ -303,11 +327,11 @@ fn another_abi_version_and_a_description_the_pipeline_cannot_take_are_refused() 
     let cases: [(abi::Entry, &str); 4] = [
         (
             next_version,
-            "it was built for the extension ABI 3, and this OScope speaks 2",
+            "it was built for the extension ABI 4, and this OScope speaks 3",
         ),
         (
             masked,
-            "node `test.mask`: in ABI 2, every port is an image, and none is optional",
+            "node `test.mask`: in ABI 3, every port is an image, and none is optional",
         ),
         (nothing, "its entry gave no table"),
         (unchecked, "node `test.unchecked`: its parameters' schema: "),

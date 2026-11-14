@@ -7,7 +7,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use oscope_acquire::{Acquisition, FrameBus, QUEUE, Recorder};
+use oscope_acquire::{Acquisition, FrameBus, QUEUE, Recorder, Take};
 use oscope_core::{
     BayerPattern, Frame, FrameId, FrameMeta, FramePool, HeapAllocator, Ms, PixelFormat,
     SystemClock, Timestamp,
@@ -164,6 +164,32 @@ fn stopping_writes_every_frame_published_before() {
         assert_eq!((entry.index, entry.meta.id), (n as u64, FrameId(n as u64)));
         assert!(reader.pixels(entry).unwrap().iter().all(|&b| b == n as u8));
     }
+}
+
+#[test]
+fn a_burst_takes_its_frames_exposed_after_it_starts_then_stops() {
+    let root = tempfile::tempdir().unwrap();
+    let scratch = scratch(root.path(), 0);
+    let bus = FrameBus::new();
+    let take = Take {
+        frames: Some(3),
+        after: Some(Timestamp(100)),
+    };
+    let recorder = Recorder::taking(&bus, &scratch, options("burst"), 8, take).unwrap();
+    // Frames exposed from 0, every 50: the first two before the burst.
+    let pool = FramePool::new(64 * 48 * 2, 8, &HeapAllocator);
+    for n in 0..7 {
+        let mut buffer = pool.take().unwrap();
+        buffer.bytes_mut().fill(n as u8);
+        let meta = FrameMeta::new(FrameId(n), PixelFormat::Mono16, 64, 48, Timestamp(50 * n));
+        bus.publish(Frame::new(buffer, meta).unwrap());
+    }
+    assert!(wait_for(|| recorder.finished()));
+    let recording = recorder.stop().unwrap();
+    assert_eq!(recording.frames, 3);
+    let reader = RecordingReader::open(&scratch.folder(recording.id).unwrap()).unwrap();
+    let ids: Vec<u64> = reader.frames().iter().map(|f| f.meta.id.0).collect();
+    assert_eq!(ids, [2, 3, 4]);
 }
 
 #[test]

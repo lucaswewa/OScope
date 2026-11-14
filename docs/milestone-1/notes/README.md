@@ -48,4 +48,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P26 | Python extension runtime and SDK | Done | [P26-python-ext.md](P26-python-ext.md) |
 | P27 | Driver and panel extensions | Done | [P27-drivers-panels.md](P27-drivers-panels.md) |
 | P28 | Projects, OME-Zarr store, SQLite index | Done | [P28-projects-store.md](P28-projects-store.md) |
-| P29 | Scratch recorder and ingest | In review | [P29-scratch-recorder.md](P29-scratch-recorder.md) |
+| P29 | Scratch recorder and ingest | Done | [P29-scratch-recorder.md](P29-scratch-recorder.md) |
+| P30 | Capture, downloads, importers and exporters | In review | [P30-capture-io.md](P30-capture-io.md) |

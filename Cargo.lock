@@ -638,6 +638,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-capture"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-checkpoint-b"
 version = "0.1.0"
 dependencies = [
@@ -955,8 +968,10 @@ dependencies = [
  "oscope-ext-sdk",
  "oscope-hal",
  "oscope-imaging",
+ "oscope-jobs",
  "oscope-pipeline",
  "oscope-sim",
+ "oscope-store",
  "serde_json",
  "tempfile",
  "teta-wot",
@@ -2076,6 +2091,7 @@ dependencies = [
  "oscope-hal",
  "oscope-pipeline",
  "oscope-shm",
+ "oscope-store",
  "schemars",
  "semver",
  "serde",
@@ -2229,6 +2245,7 @@ dependencies = [
  "oscope-compute",
  "oscope-core",
  "oscope-imaging",
+ "png",
  "rayon",
  "rusqlite",
  "schemars",
@@ -2236,9 +2253,12 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tiff",
  "tracing",
  "uuid",
  "zarrs",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]

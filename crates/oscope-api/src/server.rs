@@ -18,6 +18,7 @@ use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuild
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
 
+use crate::capture::CaptureThing;
 use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
 };
@@ -27,7 +28,7 @@ use crate::logs::{LogStore, Logs};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::system::{System, VERSION};
-use crate::{media, pages};
+use crate::{data, media, pages};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
 /// The OpenAPI document is at the root, `/openapi.json`, with its docs pages
@@ -85,6 +86,7 @@ pub struct ApiBuilder {
     pages: Option<PathBuf>,
     logs: LogStore,
     restart: Arc<Restart>,
+    store: Option<Arc<oscope_store::Store>>,
 }
 
 /// A request to restart the server, which the `system` Thing's `restart`
@@ -170,7 +172,8 @@ impl ApiBuilder {
             .thing("stage", StageThing::default())
             .thing("illumination", IlluminationThing::default())
             .thing("objective", ObjectiveThing::default())
-            .thing("preview", PreviewThing::default());
+            .thing("preview", PreviewThing::default())
+            .thing("capture", CaptureThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }
@@ -207,11 +210,14 @@ impl ApiBuilder {
         self
     }
 
-    /// Serves the projects in `store` as the `projects` Thing (ADR-0021).
+    /// Serves the projects in `store` as the `projects` Thing (ADR-0021),
+    /// and their files at `/api/v1/data/{project}/{path}` (P30).
     pub fn projects(mut self, store: oscope_store::Store) -> Self {
+        let store = Arc::new(store);
+        self.store = Some(Arc::clone(&store));
         self.things = self
             .things
-            .service(Arc::new(store))
+            .service(store)
             .thing("projects", ProjectsThing::default());
         self
     }
@@ -229,6 +235,9 @@ impl ApiBuilder {
         let mut routes = Router::new()
             .route("/health", get(|| async { Json(json!({"status": "ok"})) }))
             .merge(media::router(self.logs.clone()));
+        if let Some(store) = &self.store {
+            routes = routes.merge(data::router(Arc::clone(store)));
+        }
         if let Some(folder) = &self.pages {
             routes = routes.merge(pages::router(folder)?);
         }
@@ -267,6 +276,7 @@ impl Api {
             pages: None,
             logs: LogStore::default(),
             restart,
+            store: None,
         }
     }
 

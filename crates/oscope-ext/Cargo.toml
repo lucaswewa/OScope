@@ -15,6 +15,7 @@ oscope-hal.workspace = true
 oscope-core.workspace = true
 oscope-pipeline.workspace = true
 oscope-shm.workspace = true
+oscope-store.workspace = true
 schemars.workspace = true
 semver.workspace = true
 serde.workspace = true

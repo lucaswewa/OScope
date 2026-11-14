@@ -1,5 +1,5 @@
-//! The C ABI between OScope and a Rust extension's library, version 2
-//! (ADR-0019; drivers, ADR-0036).
+//! The C ABI between OScope and a Rust extension's library, version 3
+//! (ADR-0019; drivers, ADR-0036; importers and exporters, ADR-0037).
 //!
 //! The library exports [`ENTRY`], which gives its [`Extension`] table. The
 //! host calls the table's functions, lending each call its own [`Host`]
@@ -23,7 +23,7 @@
 use std::ffi::c_void;
 
 /// The ABI's version: 2 added drivers (ADR-0036).
-pub const ABI_VERSION: u32 = 2;
+pub const ABI_VERSION: u32 = 3;
 
 /// The name of the function every extension exports, ending with its NUL:
 /// an [`Entry`].
@@ -164,6 +164,26 @@ pub struct Extension {
         call: *mut Call,
         driver: u32,
         pixels: *mut u8,
+        len: usize,
+    ) -> Status,
+    /// Reads into the `len` bytes at `pixels` what `params`, JSON, ask of
+    /// driver `driver`: an importer's plane (ADR-0037).
+    pub read: extern "C" fn(
+        host: *const Host,
+        call: *mut Call,
+        driver: u32,
+        params: Str,
+        pixels: *mut u8,
+        len: usize,
+    ) -> Status,
+    /// Gives driver `driver` the `len` bytes at `pixels`, as `params`, JSON,
+    /// say: an exporter's plane (ADR-0037).
+    pub write: extern "C" fn(
+        host: *const Host,
+        call: *mut Call,
+        driver: u32,
+        params: Str,
+        pixels: *const u8,
         len: usize,
     ) -> Status,
 }

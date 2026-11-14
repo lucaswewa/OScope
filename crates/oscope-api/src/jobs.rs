@@ -42,7 +42,7 @@ impl JobRef {
 
 /// A job service error, as an action's: its kind and status, as ADR-0034
 /// has them.
-fn action_error(error: JobError) -> ActionError {
+pub(crate) fn action_error(error: JobError) -> ActionError {
     let (status, kind) = status(&error);
     ActionError::handled(format!("{kind} ({status}): {error}"))
 }

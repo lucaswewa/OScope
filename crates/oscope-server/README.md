@@ -71,6 +71,12 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 
 **Recordings** of frames as the camera gives them go to `{scratch_root}/recordings`, in segment files with an index, until a `projects.ingest` job writes them into a project's acquisition and deletes them ([ADR-0022](../../docs/adr/0022-scratch-recording-and-ingest.md)). When the server starts, it empties `{scratch_root}/tmp` and recovers the recordings a crash cut short. The `system` Thing's `scratch` property says whether there is room to record.
 
+**Captures and files** (P30, [ADR-0037](../../docs/adr/0037-importers-exporters-and-the-abi-s-third-version.md)):
+
+- **The `capture` Thing** takes a single frame, or a burst of 1 to 10,000, into a new acquisition, as a job, with a display rendition if asked.
+- **Imports and exports:** the `projects.import` job reads TIFF, its stacks, PNG and JPEG into acquisitions, and `projects.export` writes OME-TIFF, 16-bit TIFF and PNG. `GET /api/v1/projects/formats` lists the formats, the extensions' among them.
+- **Downloads:** `GET /api/v1/data/{project}/{path}` serves a project's files, with Range requests.
+
 **Each start writes a new local token,** 32 random bytes in hex, to `{data_root}/run/local.token`. Only the account the server runs as can read it: mode 0600 on Linux, a one-entry access list on Windows. It is for the desktop app, which proves itself with it once authentication comes (ADR-0031).
 
 ## The sidecar contract

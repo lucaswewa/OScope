@@ -108,8 +108,8 @@ impl Library {
             nodes: descriptors,
             drivers,
         } = serde_json::from_str(&json).map_err(|e| format!("its description: {e}"))?;
-        check(&descriptors, "in ABI 2")?;
-        let kinds = ["camera", "stage", "illumination"];
+        check(&descriptors, "in ABI 3")?;
+        let kinds = ["camera", "stage", "illumination", "importer", "exporter"];
         if let Some(driver) = drivers.iter().find(|d| !kinds.contains(&d.kind.as_str())) {
             return Err(format!(
                 "driver `{}`: no driver is a {}",
@@ -157,6 +157,37 @@ impl Library {
         let (data, len) = (pixels.as_mut_ptr(), pixels.len());
         call(0, |host, call| {
             (table.capture)(host, call, driver, data, len)
+        })
+        .map(drop)
+    }
+
+    /// Reads into `pixels` what `params` ask of its importer `driver`
+    /// (ADR-0037).
+    pub fn read(
+        &self,
+        driver: u32,
+        params: &serde_json::Value,
+        pixels: &mut [u8],
+    ) -> Result<(), String> {
+        let (table, params) = (self.table, params.to_string());
+        let (data, len) = (pixels.as_mut_ptr(), pixels.len());
+        call(0, |host, call| {
+            (table.read)(host, call, driver, abi::Str::new(&params), data, len)
+        })
+        .map(drop)
+    }
+
+    /// Gives its exporter `driver` the `pixels`, as `params` say (ADR-0037).
+    pub fn write(
+        &self,
+        driver: u32,
+        params: &serde_json::Value,
+        pixels: &[u8],
+    ) -> Result<(), String> {
+        let (table, params) = (self.table, params.to_string());
+        let (data, len) = (pixels.as_ptr(), pixels.len());
+        call(0, |host, call| {
+            (table.write)(host, call, driver, abi::Str::new(&params), data, len)
         })
         .map(drop)
     }

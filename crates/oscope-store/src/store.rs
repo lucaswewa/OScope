@@ -224,6 +224,14 @@ pub struct Store {
     index: Mutex<Index>,
 }
 
+impl std::fmt::Debug for Store {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Store")
+            .field("root", &self.root)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Store {
     /// Opens the projects of `data_root`, whose folder is made with the
     /// first, and their index at `index`: a file, made with its folder if

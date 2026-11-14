@@ -87,6 +87,20 @@ impl Segment {
         Ok(())
     }
 
+    /// Copies `bytes` into it, from its start.
+    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), ShmError> {
+        if bytes.len() > self.len() {
+            let (length, most) = (bytes.len(), self.len());
+            return Err(ShmError::TooLarge { length, most });
+        }
+        // SAFETY: as in `write_f32`: at least `bytes.len()` bytes, this
+        // segment's, on this side's turn.
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), self.mapping.base(), bytes.len());
+        }
+        Ok(())
+    }
+
     /// Copies its first bytes into `bytes`, filling it.
     pub fn read_bytes(&self, bytes: &mut [u8]) -> Result<(), ShmError> {
         if bytes.len() > self.len() {

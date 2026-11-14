@@ -4,9 +4,10 @@
 //! Unsafe code is allowed here, in the generated C ABI glue (plan §4.3).
 //!
 //! An extension is a `cdylib` crate. It implements [`ProcessingNode`] for
-//! each of its nodes, and [`CameraDriver`], [`StageDriver`] or
-//! [`IlluminationDriver`] for each of its drivers (ADR-0036), and lists them
-//! with [`export!`], which makes the C ABI of [`abi`] for them:
+//! each of its nodes; [`CameraDriver`], [`StageDriver`] or
+//! [`IlluminationDriver`] for each of its drivers (ADR-0036); and
+//! [`Importer`] or [`Exporter`] for each of its file formats (ADR-0037). It
+//! lists them with [`export!`], which makes the C ABI of [`abi`] for them:
 //!
 //! ```
 //! use oscope_ext_sdk::{Descriptor, Image, Outputs, ProcessingNode, serde_json};
@@ -51,7 +52,8 @@ pub mod abi;
 mod drivers;
 
 pub use drivers::{
-    CameraDriver, Driver, IlluminationDriver, NamedDriver, StageDriver, camera, illumination, stage,
+    CameraDriver, Driver, Exporter, Format, IlluminationDriver, ImageDescription, Importer,
+    NamedDriver, PixelSize, Sample, StageDriver, camera, exporter, illumination, importer, stage,
 };
 pub use {oscope_core, oscope_hal, serde_json};
 
@@ -378,6 +380,8 @@ pub mod __private {
             run: run::<N>,
             driver_call: driver_call::<N>,
             capture: capture::<N>,
+            read: read::<N>,
+            write: write::<N>,
         }
     }
 
@@ -445,6 +449,64 @@ pub mod __private {
                 _ => unsafe { std::slice::from_raw_parts_mut(pixels, len) },
             };
             find::<N>(driver)?.capture(pixels)
+        })
+    }
+
+    /// Parameters as JSON: none if empty.
+    ///
+    /// # Safety
+    ///
+    /// The host lends the text for the call (ADR-0019).
+    unsafe fn json(params: abi::Str) -> Result<serde_json::Value, String> {
+        // SAFETY: the caller has the host's word that the text is lent for
+        // the call.
+        match unsafe { text(params) }? {
+            "" => Ok(serde_json::Value::Null),
+            params => serde_json::from_str(params).map_err(|e| format!("the parameters: {e}")),
+        }
+    }
+
+    extern "C" fn read<N: Exported>(
+        host: *const abi::Host,
+        call: *mut abi::Call,
+        driver: u32,
+        params: abi::Str,
+        pixels: *mut u8,
+        len: usize,
+    ) -> abi::Status {
+        guard(host, call, |_| {
+            // SAFETY: the host lends the parameters for the call (ADR-0019).
+            let params = unsafe { json(params) }?;
+            let pixels = match len {
+                0 => &mut [][..],
+                _ if pixels.is_null() => return Err("a plane without pixels".to_owned()),
+                // SAFETY: the host lends `len` bytes at `pixels` for the
+                // call, and touches them only after it (ADR-0037).
+                _ => unsafe { std::slice::from_raw_parts_mut(pixels, len) },
+            };
+            find::<N>(driver)?.read(params, pixels)
+        })
+    }
+
+    extern "C" fn write<N: Exported>(
+        host: *const abi::Host,
+        call: *mut abi::Call,
+        driver: u32,
+        params: abi::Str,
+        pixels: *const u8,
+        len: usize,
+    ) -> abi::Status {
+        guard(host, call, |_| {
+            // SAFETY: the host lends the parameters for the call (ADR-0019).
+            let params = unsafe { json(params) }?;
+            let pixels = match len {
+                0 => &[][..],
+                _ if pixels.is_null() => return Err("a plane without pixels".to_owned()),
+                // SAFETY: the host lends `len` bytes at `pixels` for the
+                // call, and doesn't change them during it (ADR-0037).
+                _ => unsafe { std::slice::from_raw_parts(pixels, len) },
+            };
+            find::<N>(driver)?.write(params, pixels)
         })
     }
 

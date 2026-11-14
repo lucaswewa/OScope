@@ -5,6 +5,8 @@
 //! and installed. OScope loads it at its next start. `ex-rust-ext` does all
 //! of that.
 
+pub mod pgm;
+
 use oscope_ext_sdk::{Descriptor, Image, Outputs, ProcessingNode, serde_json};
 
 /// The weights, row by row from the top: a difference across the diagonal
@@ -74,7 +76,13 @@ impl ProcessingNode for Emboss {
     }
 }
 
-oscope_ext_sdk::export!(Emboss);
+oscope_ext_sdk::export!(
+    nodes: [Emboss],
+    drivers: [
+        oscope_ext_sdk::importer("example.pgm.read", pgm::PgmReader),
+        oscope_ext_sdk::exporter("example.pgm.write", pgm::PgmWriter::default()),
+    ],
+);
 
 #[cfg(test)]
 mod tests {

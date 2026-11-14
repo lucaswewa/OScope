@@ -1,4 +1,4 @@
-//! The ABI's layouts, which are its version 2: a change fails here first.
+//! The ABI's layouts, which are its version 3: a change fails here first.
 //! And the SDK's own: descriptors as the host reads them, images, and
 //! running a node in memory.
 
@@ -12,8 +12,8 @@ use oscope_ext_sdk::{
 use serde_json::json;
 
 #[test]
-fn the_abi_s_layouts_are_version_2_s() {
-    assert_eq!(abi::ABI_VERSION, 2);
+fn the_abi_s_layouts_are_version_3_s() {
+    assert_eq!(abi::ABI_VERSION, 3);
     assert_eq!(abi::ENTRY, b"oscope_extension\0");
     assert_eq!((abi::OK, abi::FAILED, abi::PANICKED), (0, 1, 2));
     // 64-bit pointers: OScope's platforms are x86_64 (ADR-0003).
@@ -52,15 +52,17 @@ fn the_abi_s_layouts_are_version_2_s() {
         offset_of!(Host, reply),
     ];
     assert_eq!(host, [0, 8, 16, 24, 32]);
-    assert_eq!((size_of::<Extension>(), align_of::<Extension>()), (40, 8));
+    assert_eq!((size_of::<Extension>(), align_of::<Extension>()), (56, 8));
     let extension = [
         offset_of!(Extension, abi_version),
         offset_of!(Extension, describe),
         offset_of!(Extension, run),
         offset_of!(Extension, driver_call),
         offset_of!(Extension, capture),
+        offset_of!(Extension, read),
+        offset_of!(Extension, write),
     ];
-    assert_eq!(extension, [0, 8, 16, 24, 32]);
+    assert_eq!(extension, [0, 8, 16, 24, 32, 40, 48]);
 }
 
 #[test]
@@ -235,7 +237,7 @@ fn the_glue_refuses_another_host_and_catches_panics() {
     let said = TOLD.lock().unwrap().clone();
     assert_eq!(
         said,
-        "the host speaks the extension ABI 3, and this extension 2"
+        "the host speaks the extension ABI 4, and this extension 3"
     );
 
     let ours = host(abi::ABI_VERSION);

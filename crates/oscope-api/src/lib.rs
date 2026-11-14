@@ -17,8 +17,11 @@
 //! and graceful shutdown as the Things.
 
 mod batch;
+pub mod capture;
+mod data;
 pub mod devices;
 pub mod extensions;
+mod files;
 pub mod jobs;
 pub mod logs;
 mod media;
@@ -28,6 +31,7 @@ pub mod projects;
 mod server;
 pub mod system;
 
+pub use files::Formats;
 pub use server::{API_PREFIX, Api, ApiBuilder, ApiError, MEDIA_PREFIX, Restart, Roots};
 pub use system::{GIT_COMMIT, VERSION};
 /// Running as a Windows service: `teta-wot`'s (P19, ADR-0015), which only
