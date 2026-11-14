@@ -441,10 +441,11 @@ fn median(mut values: Vec<f64>) -> f64 {
     }
 }
 
-/// Measures the stage: homes it if asked and it can, records the soft
-/// limits, and measures x's and y's backlash where it was, from frames
-/// reached from below and from above (ISO 230-2's reversal value). It needs
-/// the active geometry of the fitted objective at the camera's binning.
+/// Measures the stage: x's and y's backlash where it is, from frames
+/// reached from below and from above (ISO 230-2's reversal value); then
+/// homes it if asked and it can, records the soft limits, and takes it back.
+/// It needs the active geometry of the fitted objective at the camera's
+/// binning.
 pub async fn measure_stage(
     rig: &Rig,
     options: &StageOptions,
@@ -454,20 +455,7 @@ pub async fn measure_stage(
     let motion = options.motion;
     let a = motion.approach_um;
     let start = rig.here().await?;
-    let capabilities = rig.stage.capabilities().clone();
-    let homed_at = match options.home && capabilities.homing {
-        true => {
-            report.progress(0.0, "homing");
-            Some(rig.stage.home().await.map_err(device)?.position)
-        }
-        false => None,
-    };
-    let soft_limits = SoftLimits {
-        x: capabilities.x,
-        y: capabilities.y,
-        z: capabilities.z,
-    };
-    report.progress(0.1, "back where it was");
+    report.progress(0.0, "the first frame");
     let first = rig.visit(start, (a, a), motion).await?;
     let (instrument, objective, _) = rig.instrument(first.binning).await?;
     let key = geometry_key(&objective.name, first.binning);
@@ -488,7 +476,7 @@ pub async fn measure_stage(
         for cycle in 0..options.cycles {
             check(report)?;
             let done = axis as u32 * options.cycles + cycle;
-            let fraction = 0.1 + 0.9 * f64::from(done) / f64::from(total);
+            let fraction = 0.8 * f64::from(done) / f64::from(total);
             report.progress(fraction, &format!("{name}'s backlash, cycle {}", cycle + 1));
             let (below, above) = match axis {
                 0 => ((a, 0.0), (-a, 0.0)),
@@ -504,7 +492,23 @@ pub async fn measure_stage(
         }
         backlash[axis] = median(found);
     }
+    // Homing last: no frame is needed after its long way there and back.
+    let capabilities = rig.stage.capabilities().clone();
+    let homed_at = match options.home && capabilities.homing {
+        true => {
+            check(report)?;
+            report.progress(0.8, "homing");
+            Some(rig.stage.home().await.map_err(device)?.position)
+        }
+        false => None,
+    };
+    report.progress(0.9, "back where it was");
     rig.go(start, (a, a)).await?;
+    let soft_limits = SoftLimits {
+        x: capabilities.x,
+        y: capabilities.y,
+        z: capabilities.z,
+    };
     let values = StageValues {
         backlash_um: PerAxis {
             x: backlash[0],
