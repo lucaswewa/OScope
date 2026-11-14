@@ -108,6 +108,38 @@ impl Example {
         self.numbers.get(option).copied()
     }
 
+    /// Runs `work` once the server answers, without `--smoke`: what an
+    /// example does for its page, such as starting the camera, through the
+    /// API as a client would, after the Things have started. A failure is
+    /// printed. `--smoke` checks do their own.
+    pub fn when_serving<F>(&self, work: impl FnOnce(SocketAddr) -> F + Send + 'static)
+    where
+        F: Future<Output = anyhow::Result<()>> + Send,
+    {
+        if self.smoke {
+            return;
+        }
+        let (name, address) = (
+            self.name.clone(),
+            SocketAddr::from(([127, 0, 0, 1], self.port)),
+        );
+        tokio::spawn(async move {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+            while !get(address, "/health")
+                .await
+                .is_ok_and(|answer| answer.status == 200)
+            {
+                if std::time::Instant::now() > deadline {
+                    return eprintln!("{name}: the server didn't answer in 60 s");
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+            if let Err(error) = work(address).await {
+                eprintln!("{name}: {error:#}");
+            }
+        });
+    }
+
     /// Serves `api`, with the example's logs and the files in `page` at the
     /// same origin. Without
     /// `--smoke` it serves until Ctrl-C. With it, it serves until `check`,
