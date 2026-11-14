@@ -14,9 +14,11 @@ cuda = ["oscope-acquire/cuda"]
 anyhow.workspace = true
 chrono.workspace = true
 fs4.workspace = true
+futures-util.workspace = true
 oscope-acquire.workspace = true
 oscope-compute.workspace = true
 oscope-core.workspace = true
+oscope-ext.workspace = true
 oscope-hal.workspace = true
 oscope-imaging.workspace = true
 oscope-jobs.workspace = true
@@ -27,6 +29,7 @@ schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sysinfo.workspace = true
+tempfile.workspace = true
 teta-wot.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["fs", "macros", "net", "rt", "sync", "time"] }
@@ -38,9 +41,7 @@ tracing-subscriber.workspace = true
 teta-wot = { workspace = true, features = ["windows-service"] }
 
 [dev-dependencies]
-futures-util.workspace = true
 insta = { workspace = true, features = ["json"] }
-tempfile.workspace = true
 teta-wot = { workspace = true, features = ["testing"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
 tokio-tungstenite = { workspace = true, features = ["connect"] }

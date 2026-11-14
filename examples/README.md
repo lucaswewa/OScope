@@ -8,7 +8,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 - **Running it.** `cargo run -p ex-<name>` runs it with its defaults, which need no hardware: the simulator, or a fake.
 - **Its README** says what it shows, then *How to try it*: the commands, the pages to open, and what you should see.
 - **`--smoke`.** Every example takes `--smoke`. It then runs headless for a few seconds, checks what it shows, and exits with 0 only if all went well. The local replays of CI run it ([`scripts/`](../scripts/README.md)). GitHub CI does too while `RUN_EXAMPLES` is `"true"` in its workflows: it is `"false"` for now, to save CI minutes, until the owner turns it back on.
-- **Ports.** An example that serves something listens on a port from 8211 to 8219 by default, the range kept for manual checks. Its `--smoke` run uses a port from 8220 to 8229, or one the system picks.
+- **Ports.** An example that serves something listens on a port from 8211 to 8219, or from P24 on 8230 to 8249, by default: the ranges kept for manual checks. Its `--smoke` run uses a port from 8220 to 8229, or one the system picks.
 - **Data.** An example writes under a data root of its own, `.oscope/ex-<name>/` by default, which Git ignores. Its `--smoke` run uses a temporary folder.
 - **Pages.** A page an example serves is plain HTML and JavaScript, in the example's `page/` folder. [`examples/common`](common/README.md) serves it next to the API, at the same origin, and runs the `--smoke` checks.
 - **Vendored files.** JavaScript libraries go in `examples/vendor/`, each with its licence. That folder isn't a crate, so it must be excluded from the workspace when it arrives (`exclude = ["examples/vendor"]` in the root `Cargo.toml`).
@@ -42,6 +42,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-pipeline`](ex-pipeline/README.md) | P21 | A recipe of typed nodes run on a field of the simulated slide from the command line: its graph, each step's time, a second run from the memo cache, an edit that re-runs only what follows it, a tiled run the same to the bit, and a batch over more fields as a compute job |
 | [`ex-live-recipe`](ex-live-recipe/README.md) | P22 | Live recipes of stock nodes on the live view: a choice of recipes, each checked against its latency budget before it runs; a flat field and a dark frame captured from the camera and applied over the region shown |
 | [`ex-filters`](ex-filters/README.md) | P23 | The general image-processing toolkit on a field of the simulated slide, compared on a page: the Gaussian, median and bilateral filters, the unsharp mask, CLAHE, thresholds, morphology, the distance transform and labelled nuclei, each with its time on the CPU and the GPU |
+| [`ex-omext`](ex-omext/README.md) | P24 | Extensions' packages: a dummy extension packed the same way each time, installed through the upload route, refused when it is for another API or could write outside its folder, and listed; on a page, installing, enabling, disabling and uninstalling, each loaded at the next start, and a restart |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example.
 

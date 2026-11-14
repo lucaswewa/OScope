@@ -42,4 +42,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P20 | Job service and the `jobs` Thing | Done | [P20-jobs.md](P20-jobs.md) |
 | P21 | Pipeline engine | Done | [P21-pipeline.md](P21-pipeline.md) |
 | P22 | Stock nodes I: correction and display; live recipes | Done | [P22-stock-nodes.md](P22-stock-nodes.md) |
-| P23 | Stock nodes II: filters, enhancement, threshold, morphology | In review | [P23-filters.md](P23-filters.md) |
+| P23 | Stock nodes II: filters, enhancement, threshold, morphology | Done | [P23-filters.md](P23-filters.md) |
+| P24 | `.omext` packages, registry, `extensions` Thing | In review | [P24-omext.md](P24-omext.md) |

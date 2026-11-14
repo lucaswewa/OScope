@@ -1,0 +1,1074 @@
+---
+source: crates/oscope-api/tests/extensions.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Extensions",
+  "properties": {
+    "host": {
+      "description": "The extension API this OScope offers, and its platform.",
+      "title": "The extension API this OScope offers, and its platform.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "api": {
+          "description": "The extension API it offers, which a package's `oscope-api` range\nmust match.",
+          "type": "string"
+        },
+        "platform": {
+          "description": "Its platform, which a Rust package needs a library for.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "api"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/extensions/host",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "installed": {
+      "description": "Each with its manifest, the SHA-256 of its package, the version this\nstart loaded and the one the next start will.",
+      "title": "The installed extensions, by ID.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "description": "An installed extension, as the `extensions` Thing describes it.",
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "description": "The installed version's manifest.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Its ID, in reverse DNS: at least two dotted names, in lower case.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Its name, for people.",
+                "type": "string"
+              },
+              "version": {
+                "description": "Its version.",
+                "type": "string"
+              },
+              "license": {
+                "description": "Its licence, as an SPDX expression such as `MIT`.",
+                "type": "string"
+              },
+              "publisher": {
+                "description": "Who publishes it.",
+                "type": "string"
+              },
+              "description": {
+                "description": "What it does.",
+                "default": "",
+                "type": "string"
+              },
+              "oscope-api": {
+                "description": "The versions of the extension API it works with, such as `^1.0`.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "What it is written in.",
+                "oneOf": [
+                  {
+                    "description": "A native library behind the Rust SDK's C ABI (ADR-0019).",
+                    "const": "rust",
+                    "type": "string"
+                  },
+                  {
+                    "description": "A Python package, run in a worker of its own (ADR-0020).",
+                    "const": "python",
+                    "type": "string"
+                  }
+                ]
+              },
+              "assets": {
+                "description": "The files in the package it uses as they are: panel schemas and\nreport templates.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "provides": {
+                "description": "What it adds to OScope: names, by contribution.",
+                "type": "object",
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "rust": {
+                "description": "A Rust package's libraries.",
+                "oneOf": [
+                  {
+                    "description": "A Rust package's libraries.",
+                    "type": "object",
+                    "properties": {
+                      "libraries": {
+                        "description": "For each platform it is built for, its library's path in the package.",
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "libraries"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "python": {
+                "description": "A Python package's environment and entry point.",
+                "oneOf": [
+                  {
+                    "description": "A Python package's environment and entry point (ADR-0020).",
+                    "type": "object",
+                    "properties": {
+                      "requires-python": {
+                        "description": "The Python versions it needs, such as `>=3.12`.",
+                        "type": "string"
+                      },
+                      "dependencies": {
+                        "description": "The packages it needs, as uv takes them, such as `numpy>=2`.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "entry": {
+                        "description": "The module OScope imports, such as `emboss.nodes`.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "requires-python",
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "version",
+              "license",
+              "publisher",
+              "oscope-api",
+              "kind",
+              "provides"
+            ],
+            "additionalProperties": false
+          },
+          "sha256": {
+            "description": "The SHA-256 of the package it came from, in hex.",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "Whether it is enabled: the next start loads it, if it can.",
+            "type": "boolean"
+          },
+          "uninstalled": {
+            "description": "Whether it is uninstalled: the next start removes its files.",
+            "type": "boolean"
+          },
+          "loaded": {
+            "description": "The version this start loaded, if it loaded it.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next": {
+            "description": "The version the next start loads, if it will.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problem": {
+            "description": "Why the next start can't load it, though it is enabled.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "manifest",
+          "sha256",
+          "enabled",
+          "uninstalled"
+        ]
+      },
+      "forms": [
+        {
+          "href": "/api/v1/extensions/installed",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "provided": {
+      "description": "For each contribution, each name and the extension that provides it.",
+      "title": "What the extensions this start loaded provide.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "forms": [
+        {
+          "href": "/api/v1/extensions/provided",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ],
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      }
+    },
+    "restart_needed": {
+      "description": "Whether the next start loads other extensions than this one did.",
+      "title": "Whether the next start loads other extensions than this one did.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/extensions/restart_needed",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "disable": {
+      "description": "Disables an extension: the next start doesn't load it.",
+      "title": "Disables an extension: the next start doesn't load it.",
+      "forms": [
+        {
+          "href": "/api/v1/extensions/disable",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "disable_input",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "An installed extension, as the `extensions` Thing describes it.",
+        "title": "disable_output",
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "description": "The installed version's manifest.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Its ID, in reverse DNS: at least two dotted names, in lower case.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Its name, for people.",
+                "type": "string"
+              },
+              "version": {
+                "description": "Its version.",
+                "type": "string"
+              },
+              "license": {
+                "description": "Its licence, as an SPDX expression such as `MIT`.",
+                "type": "string"
+              },
+              "publisher": {
+                "description": "Who publishes it.",
+                "type": "string"
+              },
+              "description": {
+                "description": "What it does.",
+                "default": "",
+                "type": "string"
+              },
+              "oscope-api": {
+                "description": "The versions of the extension API it works with, such as `^1.0`.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "What it is written in.",
+                "oneOf": [
+                  {
+                    "description": "A native library behind the Rust SDK's C ABI (ADR-0019).",
+                    "const": "rust",
+                    "type": "string"
+                  },
+                  {
+                    "description": "A Python package, run in a worker of its own (ADR-0020).",
+                    "const": "python",
+                    "type": "string"
+                  }
+                ]
+              },
+              "assets": {
+                "description": "The files in the package it uses as they are: panel schemas and\nreport templates.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "provides": {
+                "description": "What it adds to OScope: names, by contribution.",
+                "type": "object",
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "rust": {
+                "description": "A Rust package's libraries.",
+                "oneOf": [
+                  {
+                    "description": "A Rust package's libraries.",
+                    "type": "object",
+                    "properties": {
+                      "libraries": {
+                        "description": "For each platform it is built for, its library's path in the package.",
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "libraries"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "python": {
+                "description": "A Python package's environment and entry point.",
+                "oneOf": [
+                  {
+                    "description": "A Python package's environment and entry point (ADR-0020).",
+                    "type": "object",
+                    "properties": {
+                      "requires-python": {
+                        "description": "The Python versions it needs, such as `>=3.12`.",
+                        "type": "string"
+                      },
+                      "dependencies": {
+                        "description": "The packages it needs, as uv takes them, such as `numpy>=2`.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "entry": {
+                        "description": "The module OScope imports, such as `emboss.nodes`.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "requires-python",
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "version",
+              "license",
+              "publisher",
+              "oscope-api",
+              "kind",
+              "provides"
+            ],
+            "additionalProperties": false
+          },
+          "sha256": {
+            "description": "The SHA-256 of the package it came from, in hex.",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "Whether it is enabled: the next start loads it, if it can.",
+            "type": "boolean"
+          },
+          "uninstalled": {
+            "description": "Whether it is uninstalled: the next start removes its files.",
+            "type": "boolean"
+          },
+          "loaded": {
+            "description": "The version this start loaded, if it loaded it.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next": {
+            "description": "The version the next start loads, if it will.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problem": {
+            "description": "Why the next start can't load it, though it is enabled.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "manifest",
+          "sha256",
+          "enabled",
+          "uninstalled"
+        ]
+      },
+      "synchronous": false
+    },
+    "enable": {
+      "description": "Enables an extension: the next start loads it, if it can.",
+      "title": "Enables an extension: the next start loads it, if it can.",
+      "forms": [
+        {
+          "href": "/api/v1/extensions/enable",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "enable_input",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "An installed extension, as the `extensions` Thing describes it.",
+        "title": "enable_output",
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "description": "The installed version's manifest.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Its ID, in reverse DNS: at least two dotted names, in lower case.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Its name, for people.",
+                "type": "string"
+              },
+              "version": {
+                "description": "Its version.",
+                "type": "string"
+              },
+              "license": {
+                "description": "Its licence, as an SPDX expression such as `MIT`.",
+                "type": "string"
+              },
+              "publisher": {
+                "description": "Who publishes it.",
+                "type": "string"
+              },
+              "description": {
+                "description": "What it does.",
+                "default": "",
+                "type": "string"
+              },
+              "oscope-api": {
+                "description": "The versions of the extension API it works with, such as `^1.0`.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "What it is written in.",
+                "oneOf": [
+                  {
+                    "description": "A native library behind the Rust SDK's C ABI (ADR-0019).",
+                    "const": "rust",
+                    "type": "string"
+                  },
+                  {
+                    "description": "A Python package, run in a worker of its own (ADR-0020).",
+                    "const": "python",
+                    "type": "string"
+                  }
+                ]
+              },
+              "assets": {
+                "description": "The files in the package it uses as they are: panel schemas and\nreport templates.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "provides": {
+                "description": "What it adds to OScope: names, by contribution.",
+                "type": "object",
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "rust": {
+                "description": "A Rust package's libraries.",
+                "oneOf": [
+                  {
+                    "description": "A Rust package's libraries.",
+                    "type": "object",
+                    "properties": {
+                      "libraries": {
+                        "description": "For each platform it is built for, its library's path in the package.",
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "libraries"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "python": {
+                "description": "A Python package's environment and entry point.",
+                "oneOf": [
+                  {
+                    "description": "A Python package's environment and entry point (ADR-0020).",
+                    "type": "object",
+                    "properties": {
+                      "requires-python": {
+                        "description": "The Python versions it needs, such as `>=3.12`.",
+                        "type": "string"
+                      },
+                      "dependencies": {
+                        "description": "The packages it needs, as uv takes them, such as `numpy>=2`.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "entry": {
+                        "description": "The module OScope imports, such as `emboss.nodes`.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "requires-python",
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "version",
+              "license",
+              "publisher",
+              "oscope-api",
+              "kind",
+              "provides"
+            ],
+            "additionalProperties": false
+          },
+          "sha256": {
+            "description": "The SHA-256 of the package it came from, in hex.",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "Whether it is enabled: the next start loads it, if it can.",
+            "type": "boolean"
+          },
+          "uninstalled": {
+            "description": "Whether it is uninstalled: the next start removes its files.",
+            "type": "boolean"
+          },
+          "loaded": {
+            "description": "The version this start loaded, if it loaded it.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next": {
+            "description": "The version the next start loads, if it will.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problem": {
+            "description": "Why the next start can't load it, though it is enabled.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "manifest",
+          "sha256",
+          "enabled",
+          "uninstalled"
+        ]
+      },
+      "synchronous": false
+    },
+    "uninstall": {
+      "description": "If this start didn't load it, its files go at once, and it answers\n`null`; if it did, they go at the next start.",
+      "title": "Uninstalls an extension.",
+      "forms": [
+        {
+          "href": "/api/v1/extensions/uninstall",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "uninstall_input",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "uninstall_output",
+        "oneOf": [
+          {
+            "description": "An installed extension, as the `extensions` Thing describes it.",
+            "type": "object",
+            "properties": {
+              "manifest": {
+                "description": "The installed version's manifest.",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Its ID, in reverse DNS: at least two dotted names, in lower case.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Its name, for people.",
+                    "type": "string"
+                  },
+                  "version": {
+                    "description": "Its version.",
+                    "type": "string"
+                  },
+                  "license": {
+                    "description": "Its licence, as an SPDX expression such as `MIT`.",
+                    "type": "string"
+                  },
+                  "publisher": {
+                    "description": "Who publishes it.",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "What it does.",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "oscope-api": {
+                    "description": "The versions of the extension API it works with, such as `^1.0`.",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "description": "What it is written in.",
+                    "oneOf": [
+                      {
+                        "description": "A native library behind the Rust SDK's C ABI (ADR-0019).",
+                        "const": "rust",
+                        "type": "string"
+                      },
+                      {
+                        "description": "A Python package, run in a worker of its own (ADR-0020).",
+                        "const": "python",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "assets": {
+                    "description": "The files in the package it uses as they are: panel schemas and\nreport templates.",
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "provides": {
+                    "description": "What it adds to OScope: names, by contribution.",
+                    "type": "object",
+                    "additionalProperties": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "rust": {
+                    "description": "A Rust package's libraries.",
+                    "oneOf": [
+                      {
+                        "description": "A Rust package's libraries.",
+                        "type": "object",
+                        "properties": {
+                          "libraries": {
+                            "description": "For each platform it is built for, its library's path in the package.",
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "libraries"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "python": {
+                    "description": "A Python package's environment and entry point.",
+                    "oneOf": [
+                      {
+                        "description": "A Python package's environment and entry point (ADR-0020).",
+                        "type": "object",
+                        "properties": {
+                          "requires-python": {
+                            "description": "The Python versions it needs, such as `>=3.12`.",
+                            "type": "string"
+                          },
+                          "dependencies": {
+                            "description": "The packages it needs, as uv takes them, such as `numpy>=2`.",
+                            "default": [],
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "entry": {
+                            "description": "The module OScope imports, such as `emboss.nodes`.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "requires-python",
+                          "entry"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "version",
+                  "license",
+                  "publisher",
+                  "oscope-api",
+                  "kind",
+                  "provides"
+                ],
+                "additionalProperties": false
+              },
+              "sha256": {
+                "description": "The SHA-256 of the package it came from, in hex.",
+                "type": "string"
+              },
+              "enabled": {
+                "description": "Whether it is enabled: the next start loads it, if it can.",
+                "type": "boolean"
+              },
+              "uninstalled": {
+                "description": "Whether it is uninstalled: the next start removes its files.",
+                "type": "boolean"
+              },
+              "loaded": {
+                "description": "The version this start loaded, if it loaded it.",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "next": {
+                "description": "The version the next start loads, if it will.",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "problem": {
+                "description": "Why the next start can't load it, though it is enabled.",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "manifest",
+              "sha256",
+              "enabled",
+              "uninstalled"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "synchronous": false
+    }
+  },
+  "events": {
+    "changed": {
+      "description": "Its ID.",
+      "title": "An extension was installed, enabled, disabled or uninstalled.",
+      "forms": [
+        {
+          "href": "/api/v1/extensions/changed",
+          "op": [
+            "subscribeevent",
+            "unsubscribeevent"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://testserver/api/v1/extensions/ws",
+          "op": [
+            "subscribeevent"
+          ]
+        }
+      ],
+      "data": {
+        "type": "string"
+      }
+    }
+  },
+  "description": "The extensions: packages that add processing nodes, drivers, workflows,\npanels, importers, exporters and reports (ADR-0018). They load when the\nserver starts, so each change here waits for the next start: `system`'s\n`restart`.\n\nInstall a package by posting it to `install`, as the request's body.",
+  "forms": [
+    {
+      "href": "/api/v1/extensions/properties",
+      "op": [
+        "readallproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/extensions/actions",
+      "op": [
+        "queryallactions"
+      ]
+    },
+    {
+      "href": "/api/v1/extensions/events",
+      "op": [
+        "subscribeallevents",
+        "unsubscribeallevents"
+      ],
+      "subprotocol": "sse"
+    }
+  ],
+  "base": "http://testserver/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Function"
+}

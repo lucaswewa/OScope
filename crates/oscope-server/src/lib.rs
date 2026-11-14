@@ -10,6 +10,8 @@
 //!   closes, and exit code 75 to be restarted;
 //! - **as a Windows service** (`service install`, `uninstall`, `run`), or
 //!   under systemd (`packaging/linux/oscope.service`).
+//!
+//! `ext pack` makes an extension's package from a folder (ADR-0018).
 
 use std::future::Future;
 use std::io::Read;
@@ -23,6 +25,7 @@ use clap::{Parser, Subcommand};
 use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
+use oscope_ext::{ExtError, Extensions};
 use oscope_jobs::{JobService, JobsConfig};
 use oscope_shm::{RingConfig, RingWriter, ShmError};
 use serde_json::{Value, json};
@@ -63,7 +66,7 @@ pub struct Cli {
     /// stop when stdin closes, and exit with code 75 to be restarted.
     #[arg(long, conflicts_with_all = ["print_openapi", "print_td"])]
     pub managed: bool,
-    /// Service mode.
+    /// Service mode, and extensions.
     #[command(subcommand)]
     pub command: Option<Command>,
 }
@@ -76,6 +79,23 @@ pub enum Command {
     /// (`packaging/linux/oscope.service`).
     #[command(subcommand)]
     Service(ServiceCommand),
+    /// Extensions (ADR-0018).
+    #[command(subcommand)]
+    Ext(ExtCommand),
+}
+
+/// What the server can do with extensions without serving.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum ExtCommand {
+    /// Packs a folder with a `manifest.toml` into an `.omext` package, the
+    /// same bytes each time.
+    Pack {
+        /// The folder.
+        folder: PathBuf,
+        /// The package to write; by default `{id}-{version}.omext`, here.
+        #[arg(long, value_name = "FILE")]
+        out: Option<PathBuf>,
+    },
 }
 
 /// Windows service mode.
@@ -184,6 +204,9 @@ pub enum Error {
     /// The job service couldn't open its history.
     #[error("the job service: {0}")]
     Jobs(String),
+    /// The extensions couldn't be read, or a package made.
+    #[error("extensions: {0}")]
+    Extensions(#[from] ExtError),
 }
 
 impl Error {
@@ -209,8 +232,12 @@ impl Error {
 /// {version} serving on http://{address}/`, or managed, the JSON ready line
 /// (ADR-0015).
 pub fn run(cli: &Cli) -> Result<Stopped, Error> {
-    if let Some(Command::Service(command)) = &cli.command {
-        return service(cli, command);
+    match &cli.command {
+        Some(Command::Service(command)) => return service(cli, command),
+        Some(Command::Ext(ExtCommand::Pack { folder, out })) => {
+            return pack(folder, out.as_deref());
+        }
+        None => {}
     }
     let config = cli.config()?;
     let address = SocketAddr::new(config.server.address, config.server.port);
@@ -221,7 +248,13 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
         let devices = runtime.block_on(devices(cli, &config))?;
         // A history in memory: printing creates no files.
         let jobs = runtime.block_on(async { jobs(Path::new(":memory:"), &config) })?;
-        let api = Api::builder(&roots).devices(devices).jobs(jobs).build()?;
+        // No extension is read either.
+        let extensions = Extensions::empty(roots.data.join("extensions"));
+        let api = Api::builder(&roots)
+            .devices(devices)
+            .jobs(jobs)
+            .extensions(extensions)
+            .build()?;
         let base = format!("http://{address}/");
         match cli.print_openapi {
             true => print(&api.openapi()),
@@ -283,6 +316,7 @@ async fn serve(
     logs::install(&store, &config.logging.level)?;
     let devices = devices(cli, &config).await?;
     let jobs = jobs(&roots.data.join("index.sqlite"), &config)?;
+    let extensions = Extensions::open(roots.data.join("extensions"))?;
     let token = write_token(&roots)?;
     let ring = ring(cli, &config)?;
     let ring_name = ring.as_ref().map(|r| r.name().to_owned());
@@ -290,7 +324,8 @@ async fn serve(
         .logs(store)
         .settings(roots.data.join("settings"))
         .devices(devices)
-        .jobs(jobs);
+        .jobs(jobs)
+        .extensions(extensions);
     if let Some(ring) = ring {
         api = api.ring(ring);
     }
@@ -342,6 +377,32 @@ fn jobs(path: &Path, config: &Config) -> Result<JobService, Error> {
         gpu_mib: config.jobs.gpu_mib,
     };
     JobService::open(path, jobs).map_err(|e| Error::Jobs(e.to_string()))
+}
+
+/// Packs `folder` into `out`, or `{id}-{version}.omext` here, and prints
+/// the package's path, size and SHA-256.
+fn pack(folder: &Path, out: Option<&Path>) -> Result<Stopped, Error> {
+    let out = match out {
+        Some(out) => out.to_owned(),
+        None => {
+            let path = folder.join(oscope_ext::MANIFEST);
+            let text =
+                std::fs::read_to_string(&path).map_err(|source| ExtError::Io { path, source })?;
+            let manifest = oscope_ext::Manifest::parse(&text)?;
+            PathBuf::from(format!("{}-{}.omext", manifest.id, manifest.version))
+        }
+    };
+    let manifest = oscope_ext::pack(folder, &out)?;
+    let size = std::fs::metadata(&out).map_or(0, |m| m.len());
+    let sha256 = oscope_ext::sha256(&out)?;
+    println!(
+        "packed {} {} into {}",
+        manifest.id,
+        manifest.version,
+        out.display()
+    );
+    println!("{size} bytes, SHA-256 {sha256}");
+    Ok(Stopped::Asked)
 }
 
 /// Completes when stdin closes: the supervisor's way to stop the server.

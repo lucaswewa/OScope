@@ -13,6 +13,7 @@ cuda = ["oscope-api/cuda"]
 [dependencies]
 clap.workspace = true
 oscope-api.workspace = true
+oscope-ext.workspace = true
 oscope-jobs.workspace = true
 oscope-shm.workspace = true
 rand.workspace = true

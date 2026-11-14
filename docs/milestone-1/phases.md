@@ -163,7 +163,7 @@ These phases land in the `teta-wot` repository as branches `u/uNN-short-name`, u
   - the clean room (§4.1);
   - dependencies (§4.2);
   - unsafe code (§4.3);
-  - ports: the owner's server on 8210; manual checks on 8211–8219; tests on 8220–8229; Vite (M2) on 8280–8289;
+  - ports: the owner's server on 8210; manual checks on 8211–8219, then 8230–8249; tests on 8220–8229; Vite (M2) on 8280–8289;
   - line endings (LF);
   - the checks to run before a PR.
 - A rewrite of the root `README.md`.

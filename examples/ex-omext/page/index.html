@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extensions</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --text: #1d2125;
+    --muted: #5d6874;
+    --page: #ffffff;
+    --line: #d9dee3;
+    --note: #fff4d6;
+    --bad: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --text: #e4e7ea; --muted: #9ba6b1; --page: #16191c; --line: #2e353b; --note: #3a3220; --bad: #f97066; }
+  }
+  body { margin: 0 auto; max-width: 980px; padding: 16px; font: 14px/1.5 system-ui, sans-serif; color: var(--text); background: var(--page); }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1.05rem; margin: 20px 0 6px; }
+  .muted { color: var(--muted); }
+  .bad { color: var(--bad); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+  .note { background: var(--note); padding: 6px 10px; border-radius: 4px; }
+  button, input { font: inherit; padding: 3px 8px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td button { margin: 0 4px 4px 0; }
+  #installed td:first-child div:first-child { font-weight: 600; }
+  code { font-size: 0.9em; }
+  .wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Extensions</h1>
+<p class="muted">Packages that add nodes, drivers, workflows, panels, importers, exporters and reports. They load when the server starts, so each change here waits for the next start.</p>
+<p id="host" class="muted">…</p>
+<div class="row note" id="restart" hidden>
+  <span>Changes wait for the next start.</span>
+  <button id="again">Start again</button>
+</div>
+<div class="row">
+  <input type="file" id="file" accept=".omext">
+  <button id="install">Install</button>
+</div>
+<p id="message" class="muted"></p>
+<h2>Installed</h2>
+<div class="wrap"><table><thead><tr><th>Extension</th><th>Publisher</th><th>Provides</th><th>Package</th><th>State</th><th></th></tr></thead><tbody id="installed"></tbody></table></div>
+<h2>Provided by the extensions loaded</h2>
+<div class="wrap"><table><thead><tr><th>Kind</th><th>Name</th><th>From</th></tr></thead><tbody id="provided"></tbody></table></div>
+<script src="app.js"></script>
+</body>
+</html>

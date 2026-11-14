@@ -1,6 +1,6 @@
 # P23: Stock nodes II: filters, enhancement, threshold, morphology
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p23-filters` / [#36](https://github.com/lucaswewa/OScope/pull/36)
 - Size: L · estimated ~3,400 before it started (the CPU references of the Gaussian, median and bilateral filters and of CLAHE ~450, their CUDA kernels and launches ~500; twelve stock nodes, with thresholds, morphology, the distance transform and labelling, ~800; tests ~700; `ex-filters` with its page ~550; glue ~50; and a tenth on top); one pull request, at the owner's standing choice for P12–P23 · measured **2,829** hand-written lines added (code 1,610, of which the CUDA kernels 223 and their launches 208; tests 682; examples 537), and 3 removed. **That is 1,929 over L's 900, and about a sixth under the estimate.**
 

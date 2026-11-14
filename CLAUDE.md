@@ -76,7 +76,7 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
   - For anything that supervises, recovers or detects, break the code on purpose once and check that the test fails; say so in the notes.
 - **Ports:**
   - the owner's server: 8210;
-  - manual checks: 8211–8219;
+  - manual checks: 8211–8219, then 8230–8249;
   - tests: 8220–8229;
   - Vite (M2): 8280–8289.
 
