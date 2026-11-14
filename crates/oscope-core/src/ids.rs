@@ -66,6 +66,11 @@ uuid_id!(
     /// A report: a document made from a project's data (P28, P47).
     ReportId
 );
+uuid_id!(
+    /// A recording: frames logged to the scratch disk, until ingested into a
+    /// project (P29).
+    RecordingId
+);
 
 /// A frame, numbered in the order frames arrive, from 0 (P03).
 #[derive(

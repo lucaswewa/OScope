@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
+use oscope_store::{Scratch, ScratchHealth};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{CpuRefreshKind, RefreshKind, System as Host};
@@ -78,6 +79,8 @@ pub struct System {
     scratch_root: PathBuf,
     #[thing(init = OnceLock::new())]
     restart: OnceLock<Arc<Restart>>,
+    #[thing(init = OnceLock::new())]
+    scratch: OnceLock<Arc<Scratch>>,
 }
 
 #[thing_impl]
@@ -86,6 +89,9 @@ impl System {
     async fn connect(&self, ctx: ThingCtx) -> anyhow::Result<()> {
         if let Some(restart) = ctx.server().service::<Restart>() {
             let _ = self.restart.set(restart);
+        }
+        if let Some(scratch) = ctx.server().service::<Scratch>() {
+            let _ = self.scratch.set(scratch);
         }
         Ok(())
     }
@@ -157,6 +163,17 @@ impl System {
     #[property(blocking)]
     fn scratch_root(&self) -> Result<Folder, PropertyError> {
         folder(&self.scratch_root)
+    }
+
+    /// The scratch space's health: whether there is room to record, its
+    /// disk's space, and the recordings waiting there to be ingested
+    /// (ADR-0022).
+    #[property(blocking)]
+    fn scratch(&self) -> Result<ScratchHealth, PropertyError> {
+        let scratch = self.scratch.get().ok_or_else(|| {
+            PropertyError::failed(std::io::Error::other("the server has no scratch space"))
+        })?;
+        scratch.health().map_err(PropertyError::failed)
     }
 }
 

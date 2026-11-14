@@ -13,6 +13,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use rayon::prelude::*;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -524,14 +525,15 @@ impl ImageWriter {
 
     /// Makes the pyramid's other levels from what was written: the image.
     pub fn finish(self) -> Result<ImageInfo> {
-        for level in 1..self.info.levels {
-            for plane in 0..u64::from(self.info.planes) {
-                match self.info.sample {
-                    SampleType::U8 => make_level::<u8>(&self.arrays, &self.info, level, plane),
-                    SampleType::U16 => make_level::<u16>(&self.arrays, &self.info, level, plane),
-                    SampleType::F32 => make_level::<f32>(&self.arrays, &self.info, level, plane),
-                }?;
-            }
+        let (arrays, info) = (&self.arrays, &self.info);
+        for level in 1..info.levels {
+            (0..u64::from(info.planes))
+                .into_par_iter()
+                .try_for_each(|plane| match info.sample {
+                    SampleType::U8 => make_level::<u8>(arrays, info, level, plane),
+                    SampleType::U16 => make_level::<u16>(arrays, info, level, plane),
+                    SampleType::F32 => make_level::<f32>(arrays, info, level, plane),
+                })?;
         }
         Ok(self.info)
     }

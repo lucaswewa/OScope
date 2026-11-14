@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oscope_core::{
     BayerPattern, Clock, FrameId, FrameMeta, FramePool, Ms, PixelFormat, Timestamp, Um,
@@ -26,7 +26,9 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 ///   frame: row `y` of frame `n` holds `(y + n) mod 256` in every sample,
 ///   times 257 in 16 bits.
 /// - **Free-running,** it delivers a frame at its mode's rate, or once each
-///   exposure if that is longer. **Under a software trigger,** it delivers
+///   exposure if that is longer, on a fixed schedule: a frame whose time
+///   passes while the sink holds its thread is lost, and the next frame's
+///   `dropped_before` counts it. **Under a software trigger,** it delivers
 ///   one for each [`Camera::trigger`]. An external trigger never comes.
 /// - **When the pool has no free slab,** the frame is lost, and the next
 ///   frame's `dropped_before` counts it.
@@ -173,13 +175,25 @@ impl Run {
         let Ok((roi, width, height)) = self.capabilities.frame_shape(&first) else {
             return;
         };
-        let (mut id, mut dropped) = (FrameId(0), 0);
+        let (mut id, mut dropped, mut next) = (FrameId(0), 0, Instant::now());
         while !self.stop.load(Ordering::Acquire) {
             let now = lock(&self.settings).clone();
             let exposure = now.exposure.to_duration().unwrap_or_default();
             let due = match first.trigger {
                 Trigger::FreeRunning => {
-                    thread::sleep(exposure.max(Duration::from_secs_f64(1.0 / fps)));
+                    // A fixed schedule: the frames whose time passed while
+                    // the sink held this thread are lost.
+                    let period = exposure.max(Duration::from_secs_f64(1.0 / fps));
+                    next += period;
+                    let at = Instant::now();
+                    match next.checked_duration_since(at) {
+                        Some(wait) => thread::sleep(wait),
+                        None => {
+                            let missed = (at - next).as_secs_f64() / period.as_secs_f64();
+                            dropped += missed as u64;
+                            next += period.mul_f64(missed.floor());
+                        }
+                    }
                     true
                 }
                 Trigger::Software | Trigger::External { .. } => {
@@ -197,20 +211,14 @@ impl Run {
                 dropped += 1;
                 continue;
             };
-            let sample = first.format.sample_bytes();
+            // A row's level, times 257 in 16 bits, is the level in each of a
+            // sample's bytes: a row is its level in every byte.
             let row = first.format.pixel_bytes() * width as usize;
             for (y, line) in buffer.bytes_mut()[..row * height as usize]
                 .chunks_exact_mut(row)
                 .enumerate()
             {
-                let level = ((y as u64 + id.0) % 256) as u16;
-                if sample == 2 {
-                    for s in line.as_chunks_mut::<2>().0 {
-                        *s = (level * 257).to_le_bytes();
-                    }
-                } else {
-                    line.fill(level as u8);
-                }
+                line.fill(((y as u64 + id.0) % 256) as u8);
             }
             let host_time = self.clock.now();
             let mut meta = FrameMeta::new(id, first.format, width, height, host_time);

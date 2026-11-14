@@ -1,6 +1,6 @@
 # P28: Projects, OME-Zarr store, SQLite index
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p28-projects-store` / [#42](https://github.com/lucaswewa/OScope/pull/42)
 - Size: L · estimated ~3,600 before it started (records and folders ~400; OME-Zarr through `zarrs` ~450; the index, its search, paging and rebuild ~350; thumbnails ~100; the `projects` Thing ~350; the server's wiring ~50; tests ~800; `ex-projects` and its page ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,813** hand-written lines added (Rust code 2,305, of which `oscope-store` 2,001; tests 1,090; `ex-projects` 408; glue 10), and 9 removed. **That is 2,913 over L's 900, and about 6 % over the estimate.**
 

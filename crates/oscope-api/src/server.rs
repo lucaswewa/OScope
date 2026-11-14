@@ -216,6 +216,14 @@ impl ApiBuilder {
         self
     }
 
+    /// Serves `scratch`'s health from the `system` Thing, and ingests its
+    /// recordings into the projects with the `projects.ingest` job
+    /// (ADR-0022).
+    pub fn scratch(mut self, scratch: oscope_store::Scratch) -> Self {
+        self.things = self.things.service(Arc::new(scratch));
+        self
+    }
+
     /// Builds the server. Nothing starts until [`Api::serve`].
     pub fn build(self) -> Result<Api, ApiError> {
         let mut routes = Router::new()

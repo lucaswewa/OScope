@@ -926,6 +926,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-record"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "oscope-acquire",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "ex-rust-ext"
 version = "0.1.0"
 dependencies = [
@@ -1965,12 +1982,15 @@ dependencies = [
  "oscope-core",
  "oscope-hal",
  "oscope-imaging",
+ "oscope-jobs",
  "oscope-pipeline",
  "oscope-shm",
+ "oscope-store",
  "rayon",
  "schemars",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
@@ -2202,10 +2222,13 @@ name = "oscope-store"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "crc32fast",
+ "fs4",
  "jsonschema",
  "oscope-compute",
  "oscope-core",
  "oscope-imaging",
+ "rayon",
  "rusqlite",
  "schemars",
  "serde",
