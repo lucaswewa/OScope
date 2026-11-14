@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p29-scratch-recorder` / [#43](https://github.com/lucaswewa/OScope/pull/43)
-- Size: M · estimated ~2,900 before it started (the frame log ~520; scratch space ~170; ingest ~210; the recorder ~260; the ingest job and the scratch's health over HTTP ~130; the server's wiring ~25; tests ~790; `ex-record` ~300; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,913** hand-written lines added (Rust code 1,455, of which `oscope-store` 1,089 and `oscope-acquire` 290; tests 1,036; `ex-record` 378; glue 44), and 44 removed. **That is 2,313 over M's 600, and on the estimate.**
+- Size: M · estimated ~2,900 before it started (the frame log ~520; scratch space ~170; ingest ~210; the recorder ~260; the ingest job and the scratch's health over HTTP ~130; the server's wiring ~25; tests ~790; `ex-record` ~300; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,920** hand-written lines added (Rust code 1,455, of which `oscope-store` 1,089 and `oscope-acquire` 290; tests 1,036; examples 384, `ex-record`'s 378 among them; glue 45), and 47 removed. **That is 2,320 over M's 600, and on the estimate.**
 
 ## Summary
 
@@ -32,6 +32,7 @@ The raw half of the dual stream ([spec](../phases.md#p29); plan §5.5; [ADR-0022
 | `oscope-core` | `RecordingId` |
 | `oscope-hal` | The fake camera's schedule and fill |
 | `examples/ex-record` | Recording at the design rate, then ingest |
+| `examples/ex-server-hello` | Opens a scratch space, as the server does: its smoke reads every property of the `system` Thing, now nine |
 | Workspace | `crc32fast`, already in the lock, taken directly and optimised in dev builds; `oscope-acquire` takes `oscope-store`, `oscope-jobs` and `tokio`'s `macros` |
 
 ## How to try it
@@ -70,7 +71,7 @@ On data like a slide's, ingest is slower than recording: it runs afterwards, as 
 
 **Worth your review:**
 
-- **One pull request,** as you decided for P24–P34. It came in on the estimate, and 2,313 lines over M's 600. The frame log, with its recovery, took 663 lines, more than its ~520; the tests are more than a third.
+- **One pull request,** as you decided for P24–P34. It came in on the estimate, and 2,320 lines over M's 600. The frame log, with its recovery, took 663 lines, more than its ~520; the tests are more than a third.
 - **The 10-minute run met §5.20's budget** on this PC's NVMe: 579 MB/s for 600 s, none dropped. But the queue once held 11 of its 16 frames, so a slower or busier disk could fill it. The instrument's own scratch NVMe (D17) is the one that counts: this was the PC's only disk, shared with everything else.
 - **The fake camera changed** (`oscope-hal`). It slept a whole frame interval after each frame, so at the design size it delivered 13.4 fps, not 14.5. It now keeps a fixed schedule, as a free-running sensor does, and the frames whose time passes while its sink holds it are lost and counted. Its 16-bit rows are filled a byte at a time: 257 times a level has the level in both bytes. Every test that uses it passed unchanged.
 - **`crc32fast` is optimised in dev builds:** the workspace's first `[profile]` section. Unoptimised, it checks 0.7 GB/s, too slow for the recorder's tests at the design rate on two cores.
@@ -101,7 +102,7 @@ On data like a slide's, ingest is slower than recording: it runs afterwards, as 
 | `oscope-api`, `oscope-server` | `api`, `cli` | The `system` Thing's ninth property; without a scratch space, an error that says so |
 | `ex-record` | `--smoke` | 1.5 s of the test sensor at a quarter size, none dropped, ingested, every frame a plane, the first as the sensor drew it, the recording gone |
 
-**Where they ran:** {{REPLAYS}} On Windows, `oscope-store`'s `recordings` and `ingest` suites, `oscope-acquire`'s `recorder`, `oscope-hal`'s `fakes`, `oscope-api`'s `recordings` and `ex-record --smoke` passed 5 times out of 5 each with their binaries pinned to two cores, `recorder` 10 times. The first pinned runs of `recorder` failed 2 times of 5. Its check that the frames came at the design rate wanted a mean interval of 68 to 70 ms, and on two cores the first frame came late, filling a fresh 40 MB buffer, which shortened the mean to 67.9 ms. The check now takes its bound from the sensor's schedule: with none dropped, each frame comes less than a period late, so the mean is within a period, over the intervals, of 69 ms.
+**Where they ran:** on Windows, and on Linux under WSL, both with uv, in the local replays (`scripts/ci-local.sh` on Windows, and `scripts/ci-clone.sh` on a fresh clone under WSL: 39 of 39 steps each, 383 tests in 153 suites, the Python tests real). The first replay under WSL failed one step: `ex-server-hello --smoke` reads every property of the `system` Thing, and the new `scratch` property answers with an error on a server without a scratch space. The example now opens one, as the server does. A Windows replay run beside the second failed `ex-sim-stage --smoke`: a stage motion came 56 ms late in simulated time at 20×, 2.8 ms on the host, while the two replays shared the processor. That smoke then passed 5 times out of 5 alone and 5 out of 5 pinned to two cores, and the Windows replay run alone passed every step. On Windows, `oscope-store`'s `recordings` and `ingest` suites, `oscope-acquire`'s `recorder`, `oscope-hal`'s `fakes`, `oscope-api`'s `recordings` and `ex-record --smoke` passed 5 times out of 5 each with their binaries pinned to two cores, `recorder` 10 times. The first pinned runs of `recorder` failed 2 times of 5. Its check that the frames came at the design rate wanted a mean interval of 68 to 70 ms, and on two cores the first frame came late, filling a fresh 40 MB buffer, which shortened the mean to 67.9 ms. The check now takes its bound from the sensor's schedule: with none dropped, each frame comes less than a period late, so the mean is within a period, over the intervals, of 69 ms.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): twenty-four of twenty-four caught. Reading the tests against the list first found five gaps, now covered: no check of a normally closed segment's footer; frame 0 dropping nothing, so counting its drops couldn't show; no header claiming a huge length; frames too small to be still queued at a stop; and nothing holding the fake camera up.
 
