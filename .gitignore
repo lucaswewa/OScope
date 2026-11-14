@@ -30,3 +30,8 @@ rustc-ice-*.txt
 .oscope/
 node_modules/
 web/dist/
+
+# Python: the SDK's environment and caches (P26)
+.venv/
+__pycache__/
+.pytest_cache/

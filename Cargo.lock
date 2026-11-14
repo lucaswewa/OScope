@@ -680,6 +680,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-python-node"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-ext",
+ "oscope-hal",
+ "oscope-imaging",
+ "oscope-pipeline",
+ "oscope-sim",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "ex-rust-ext"
 version = "0.1.0"
 dependencies = [
@@ -1456,10 +1472,12 @@ dependencies = [
 name = "oscope-ext"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "libloading",
  "oscope-compute",
  "oscope-ext-sdk",
  "oscope-pipeline",
+ "oscope-shm",
  "schemars",
  "semver",
  "serde",

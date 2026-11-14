@@ -2,7 +2,7 @@
 
 Extensions' packages (P24, [ADR-0018](../../docs/adr/0018-the-omext-package-format.md)): an `.omext` packed from a folder, installed through the API's upload route, and listed by the `extensions` Thing. Every change waits for the next start, as extensions load only then.
 
-The extension is a dummy, `org.oscope.examples.hello`, in [`hello/`](hello): a Python extension that provides a node, `hello.greet`, and a panel, `hello.greeting`. OScope runs no Python extension before P26, so it installs, loads and lists it, and nothing of it runs.
+The extension is a dummy, `org.oscope.examples.hello`, in [`hello/`](hello): a Python extension that provides a node, `hello.greet`, and a panel, `hello.greeting`. The example opens its extensions without Python, so it installs, loads and lists it, and nothing of it runs. `oscope-server`, which runs Python extensions (P26), makes its environment when it installs it, and runs its node.
 
 ## How to try it
 

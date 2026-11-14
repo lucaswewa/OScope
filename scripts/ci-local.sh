@@ -35,6 +35,19 @@ mkdir -p "$logs" || exit 2
 changes=$(git status --porcelain | wc -l)
 echo "$root at $(git rev-parse --short HEAD), with $changes changed files; logs in $logs"
 
+# uv, for Python extensions (ADR-0020): on PATH, or where its installers put
+# it. Found, it runs the Python SDK's tests, and the tests that need Python.
+uv=$(command -v uv || true)
+for candidate in "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv"   "$(cygpath -u "${LOCALAPPDATA:-}" 2>/dev/null)"/Microsoft/WinGet/Packages/astral-sh.uv_*/uv.exe; do
+  if [ -z "$uv" ] && [ -x "$candidate" ]; then
+    uv=$candidate
+  fi
+done
+if [ -n "$uv" ]; then
+  OSCOPE_UV=$(cygpath -w "$uv" 2>/dev/null || echo "$uv")
+  export OSCOPE_UV OSCOPE_PYTHON=1
+fi
+
 passed=0
 failed=0
 count=0
@@ -60,6 +73,13 @@ step "toolchain" rustup toolchain install
 step "fmt" cargo fmt --all --check
 step "clippy" cargo clippy --workspace --all-targets --locked -- -D warnings
 step "tests" cargo test --workspace --locked
+python_sdk() { (cd python/oscope-ext && "$uv" run --locked pytest -q); }
+if [ -n "$uv" ]; then
+  step "python sdk tests" python_sdk
+else
+  failed=$((failed + 1))
+  echo "FAIL  python: uv isn't installed, for the Python extensions' tests (CLAUDE.md)"
+fi
 step "docs" env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 if command -v cargo-deny > /dev/null; then
   version=$(cargo deny --version 2> /dev/null)

@@ -1,6 +1,6 @@
 # P25: Rust extension ABI and SDK
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p25-rust-ext` / [#39](https://github.com/lucaswewa/OScope/pull/39)
 - Size: L · estimated ~2,300 before it started (the C ABI's tables and views, the safe `ProcessingNode` trait, the `export!` macro and its glue, with panics caught, ~450; the loader with its version check, the host's table and the nodes it gives the pipeline, loaded at each start and offered to live recipes, ~450; tests ~550; the sample `ext-rust-node` and `ex-rust-ext` ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,247** hand-written lines added (code 1,078; tests 735; examples 434, of which the sample 142), and 31 removed. **That is 1,347 over L's 900, and about 2 % under the estimate.**
 

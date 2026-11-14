@@ -7,10 +7,12 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+chrono.workspace = true
 libloading.workspace = true
 oscope-compute.workspace = true
 oscope-ext-sdk.workspace = true
 oscope-pipeline.workspace = true
+oscope-shm.workspace = true
 schemars.workspace = true
 semver.workspace = true
 serde.workspace = true

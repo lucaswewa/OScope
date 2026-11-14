@@ -44,4 +44,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P22 | Stock nodes I: correction and display; live recipes | Done | [P22-stock-nodes.md](P22-stock-nodes.md) |
 | P23 | Stock nodes II: filters, enhancement, threshold, morphology | Done | [P23-filters.md](P23-filters.md) |
 | P24 | `.omext` packages, registry, `extensions` Thing | Done | [P24-omext.md](P24-omext.md) |
-| P25 | Rust extension ABI and SDK | In review | [P25-rust-ext.md](P25-rust-ext.md) |
+| P25 | Rust extension ABI and SDK | Done | [P25-rust-ext.md](P25-rust-ext.md) |
+| P26 | Python extension runtime and SDK | In review | [P26-python-ext.md](P26-python-ext.md) |

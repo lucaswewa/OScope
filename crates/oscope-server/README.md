@@ -63,7 +63,7 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 - 2 for a wrong command line or configuration file, a wrong log level among them, with a message that says what is wrong and where;
 - 1 if the server can't serve, for example because the port is taken.
 
-**Extensions** are installed in `{data_root}/extensions`, and load at start-up ([ADR-0018](../../docs/adr/0018-the-omext-package-format.md)): the `extensions` Thing installs, enables, disables and uninstalls them, each for the next start. A start finishes those changes first: it removes uninstalled extensions and versions replaced.
+**Extensions** are installed in `{data_root}/extensions`, and load at start-up ([ADR-0018](../../docs/adr/0018-the-omext-package-format.md)): the `extensions` Thing installs, enables, disables and uninstalls them, each for the next start. A start finishes those changes first: it removes uninstalled extensions and versions replaced. Rust extensions' libraries load then ([ADR-0019](../../docs/adr/0019-the-rust-extension-abi.md)). Python extensions run with the configuration's `[python]` settings ([ADR-0020](../../docs/adr/0020-the-python-extension-runtime.md)): installing one makes its environment with uv, so uv must be installed; its worker starts on the first run of one of its nodes.
 
 **The job history** is kept in `{data_root}/index.sqlite` ([ADR-0016](../../docs/adr/0016-the-job-service.md)). Jobs a stop cut short are marked *interrupted* at the next start.
 
@@ -132,6 +132,13 @@ enabled = true                    # by default only with --managed
 name = "preview"                  # by default; preview-{pid} with --managed
 slots = 3
 slot_bytes = 8388608              # the largest preview
+
+[python]                          # Python extensions (P26)
+uv = "C:/tools/uv.exe"            # found when not given: OSCOPE_UV, then PATH, then ~/.local/bin
+sdk = "python/oscope-ext"         # the SDK's source; this source tree's by default
+wheelhouse = "wheels"             # install from these wheels alone, offline
+call_timeout_s = 120              # how long a node may run
+idle_s = 300                      # how long an idle worker is kept
 ```
 
 - **Relative folders** are relative to the file's own folder.

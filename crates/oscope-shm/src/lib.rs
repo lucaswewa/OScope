@@ -11,26 +11,31 @@
 //!   locks, and never a torn one.
 //! - **[`write_private`]:** a file only the account the process runs as can
 //!   read, for the local token.
+//!
+//! And a Python worker's frames (ADR-0020): **[`Segment`],** a block of
+//! named shared memory another process maps by name.
 
 mod map;
 mod private;
 mod ring;
+mod segment;
 
 pub use private::write_private;
 pub use ring::{Read, RingConfig, RingReader, RingWriter};
+pub use segment::Segment;
 
 /// What shared memory can't do.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum ShmError {
     /// A name that isn't 1 to 64 letters, digits, `-` and `_`.
-    #[error("{0:?} isn't a ring's name: 1 to 64 letters, digits, - and _")]
+    #[error("{0:?} isn't a name for shared memory: 1 to 64 letters, digits, - and _")]
     Name(String),
     /// A ring needs at least 2 slots, of at least a byte.
     #[error("a ring of {} slots of {} bytes: at least 2 of 1", .0.slots, .0.slot_bytes)]
     Config(RingConfig),
     /// The shared memory couldn't be made or opened.
-    #[error("the ring {name}: {source}")]
+    #[error("the shared memory {name}: {source}")]
     Io {
         /// Its name.
         name: String,
@@ -64,7 +69,7 @@ impl ShmError {
         }
     }
 
-    /// Whether no ring of that name exists.
+    /// Whether no shared memory of that name exists.
     pub fn is_not_found(&self) -> bool {
         matches!(self, ShmError::Io { source, .. } if source.kind() == std::io::ErrorKind::NotFound)
     }

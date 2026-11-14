@@ -3,7 +3,10 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 
+use std::time::Duration;
+
 use oscope_api::logs;
+use oscope_ext::PythonRuntime;
 use serde::Deserialize;
 
 /// The port the server listens on unless told otherwise (plan D34).
@@ -37,6 +40,13 @@ pub const DEFAULT_PORT: u16 = 8210;
 /// name = "preview"                # by default; preview-{pid} with --managed
 /// slots = 3
 /// slot_bytes = 8388608            # the largest preview
+///
+/// [python]                        # Python extensions (ADR-0020)
+/// uv = "C:/tools/uv.exe"          # found when not given: OSCOPE_UV, then PATH
+/// sdk = "python/oscope-ext"       # the SDK's source; this source tree's by default
+/// wheelhouse = "wheels"           # install from these wheels alone, offline
+/// call_timeout_s = 120            # how long a node may run
+/// idle_s = 300                    # how long an idle worker is kept
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -54,6 +64,56 @@ pub struct Config {
     pub shm: Ring,
     /// The job service.
     pub jobs: Jobs,
+    /// Python extensions.
+    pub python: PythonConfig,
+}
+
+/// Python extensions (ADR-0020). Folders are relative to the file's folder.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct PythonConfig {
+    /// uv: when not given, `OSCOPE_UV`, then `PATH`, then where its
+    /// installers put it.
+    pub uv: Option<PathBuf>,
+    /// The SDK's source folder: this source tree's `python/oscope-ext` when
+    /// not given.
+    pub sdk: Option<PathBuf>,
+    /// A folder of wheels to install from, offline, instead of the package
+    /// index.
+    pub wheelhouse: Option<PathBuf>,
+    /// How long a node may run, in seconds.
+    pub call_timeout_s: f64,
+    /// How long an idle worker is kept, in seconds.
+    pub idle_s: f64,
+}
+
+impl Default for PythonConfig {
+    fn default() -> Self {
+        let defaults = PythonRuntime::default();
+        Self {
+            uv: None,
+            sdk: None,
+            wheelhouse: None,
+            call_timeout_s: defaults.call_timeout.as_secs_f64(),
+            idle_s: defaults.idle.as_secs_f64(),
+        }
+    }
+}
+
+impl PythonConfig {
+    /// How the server runs Python extensions.
+    pub fn runtime(&self) -> PythonRuntime {
+        let defaults = PythonRuntime::default();
+        let seconds = |s: f64| Duration::try_from_secs_f64(s.max(0.0)).unwrap_or(Duration::MAX);
+        PythonRuntime {
+            uv: self.uv.clone(),
+            sdk: self.sdk.clone().unwrap_or(defaults.sdk),
+            wheelhouse: self.wheelhouse.clone(),
+            call_timeout: seconds(self.call_timeout_s),
+            idle: seconds(self.idle_s),
+            ..defaults
+        }
+    }
 }
 
 /// The job service (ADR-0016).
@@ -206,6 +266,13 @@ impl Config {
         let folder = path.parent().unwrap_or(Path::new(""));
         config.storage.data_root = folder.join(&config.storage.data_root);
         config.storage.scratch_root = folder.join(&config.storage.scratch_root);
+        let python = &mut config.python;
+        for path in [&mut python.uv, &mut python.sdk, &mut python.wheelhouse]
+            .into_iter()
+            .flatten()
+        {
+            *path = folder.join(&*path);
+        }
         Ok(config)
     }
 }

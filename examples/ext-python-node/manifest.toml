@@ -1,0 +1,18 @@
+# A sample Python extension (P26, ADR-0020): total-variation denoising, from
+# scikit-image. OScope makes its environment with uv when it is installed.
+id = "org.oscope.examples.tv-denoise"
+name = "Total-variation denoising"
+version = "0.1.0"
+license = "MIT"
+publisher = "OScope examples"
+description = "A sample Python extension: scikit-image's total-variation denoising."
+oscope-api = "^1.0"
+kind = "python"
+
+[provides]
+nodes = ["example.denoise_tv"]
+
+[python]
+requires-python = ">=3.12,<3.15"
+dependencies = ["scikit-image>=0.25"]
+entry = "tv_denoise"

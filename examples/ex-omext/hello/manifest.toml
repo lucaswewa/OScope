@@ -1,5 +1,6 @@
-# A dummy extension for ex-omext. OScope installs and lists it, but runs no
-# Python extension before P26: `hello.greet` is a name, not yet a node.
+# A dummy extension for ex-omext, which opens its extensions without Python:
+# it lists `hello.greet`, and runs nothing. A server that runs Python (P26)
+# makes its environment when it installs it, and runs it.
 id = "org.oscope.examples.hello"
 name = "Hello"
 version = "0.1.0"

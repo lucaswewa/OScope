@@ -12,7 +12,9 @@
 //! from a folder.
 //!
 //! A Rust extension's [`Library`] is loaded then too, and its nodes go to
-//! the pipeline (ADR-0019).
+//! the pipeline (ADR-0019). A Python extension's environment is made when it
+//! is installed, and its worker runs its nodes, started on first use
+//! (ADR-0020): with a [`PythonRuntime`] only.
 
 use std::path::{Path, PathBuf};
 
@@ -20,11 +22,14 @@ mod installed;
 mod manifest;
 mod native;
 mod package;
+mod python;
+mod worker;
 
-pub use installed::{Extension, Extensions, Loaded, Registry};
+pub use installed::{Extension, Extensions, Loaded, Registry, WorkerState};
 pub use manifest::{API_VERSION, Contribution, Kind, Manifest, PLATFORM, PLATFORMS, Python, Rust};
 pub use native::{Library, MAX_SAMPLES};
 pub use package::{MANIFEST, MAX_ENTRIES, MAX_UNPACKED, Package, pack, sha256};
+pub use python::{OSCOPE_FOLDER, PythonRuntime, find_uv};
 
 /// Why a package, a manifest or an extension was refused, or a file failed.
 #[derive(Debug, thiserror::Error)]
@@ -65,6 +70,9 @@ pub enum ExtError {
         /// Why.
         why: String,
     },
+    /// A Python extension's environment or worker failed (ADR-0020).
+    #[error("Python: {0}")]
+    Python(String),
     /// No extension with this ID is installed.
     #[error("no extension `{0}` is installed")]
     Unknown(String),

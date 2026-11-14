@@ -45,7 +45,9 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-omext`](ex-omext/README.md) | P24 | Extensions' packages: a dummy extension packed the same way each time, installed through the upload route, refused when it is for another API or could write outside its folder, and listed; on a page, installing, enabling, disabling and uninstalling, each loaded at the next start, and a restart |
 | [`ext-rust-node`](ext-rust-node/README.md) | P25 | A sample Rust extension, not a program: an emboss node, built against the SDK alone, with `export!` making its C ABI |
 | [`ex-rust-ext`](ex-rust-ext/README.md) | P25 | The sample Rust extension built, packed for this platform, installed, loaded at a start with its ABI checked, and run in a recipe whole and tile by tile, the same to the bit as its own code run directly |
+| [`ext-python-node`](ext-python-node/README.md) | P26 | A sample Python extension, not a crate: scikit-image's total-variation denoising as a node, its parameters' schema from its type hints |
+| [`ex-python-node`](ex-python-node/README.md) | P26 | The sample Python extension installed, its environment made by uv; its worker started on the first run of a recipe and kept warm, with each run's time; noise removed from a field of the simulated slide, measured |
 
-`examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` is a library too: the sample extension that `ex-rust-ext` loads.
+`examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` is a library too: the sample extension that `ex-rust-ext` loads. `ext-python-node` is a Python extension, which the workspace leaves out.
 
 P01's example is the server's own command line: [`crates/oscope-server/README.md`](../crates/oscope-server/README.md) says how to try it.

@@ -1,13 +1,14 @@
 //! The preview ring and the private file: messages read back whole, what is
 //! refused, the ring gone with its writer, the ring consistent while it is
-//! read and written at once, and the file its owner's alone.
+//! read and written at once, and the file its owner's alone. And segments:
+//! samples read back, their names, and gone with their maker.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Barrier};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use oscope_shm::{Read, RingConfig, RingReader, RingWriter, ShmError, write_private};
+use oscope_shm::{Read, RingConfig, RingReader, RingWriter, Segment, ShmError, write_private};
 
 /// A name of this test's own, so that tests running at once don't meet.
 fn name(tag: &str) -> String {
@@ -212,4 +213,50 @@ fn the_private_file_is_its_owner_s_alone() {
         assert!(entries[0].to_lowercase().contains(&me), "{listing}");
         assert!(entries[0].ends_with(":(F)"), "{listing}");
     }
+}
+
+#[test]
+fn a_segment_reads_back_its_samples_and_goes_with_its_maker() {
+    let name = name("segment");
+    let mut segment = Segment::create(&name, 16).unwrap();
+    assert_eq!((segment.name(), segment.len()), (name.as_str(), 16));
+    let os_name = segment.os_name();
+    #[cfg(windows)]
+    assert_eq!(os_name, format!(r"Local\oscope-{name}"));
+    #[cfg(unix)]
+    assert_eq!(os_name, format!("/dev/shm/oscope-{name}"));
+    let mut read = [0.0; 4];
+    segment.read_f32(&mut read).unwrap();
+    assert_eq!(read, [0.0; 4], "zeroed when made");
+    segment.write_f32(&[1.5, -2.0, 3.25]).unwrap();
+    segment.read_f32(&mut read).unwrap();
+    assert_eq!(read, [1.5, -2.0, 3.25, 0.0]);
+    let too_many = segment.write_f32(&[0.0; 5]).unwrap_err();
+    assert!(
+        matches!(
+            too_many,
+            ShmError::TooLarge {
+                length: 20,
+                most: 16
+            }
+        ),
+        "{too_many}"
+    );
+    assert!(
+        matches!(Segment::create(&name, 16), Err(ShmError::Io { .. })),
+        "the name is in use"
+    );
+    assert!(matches!(Segment::create("a/b", 16), Err(ShmError::Name(_))));
+    // An empty segment is a byte long: Windows maps nothing smaller.
+    assert_eq!(
+        Segment::create(&format!("{name}-empty"), 0).unwrap().len(),
+        1
+    );
+    drop(segment);
+    #[cfg(unix)]
+    assert!(
+        !std::path::Path::new(&os_name).exists(),
+        "the file goes with its maker"
+    );
+    Segment::create(&name, 16).expect("the name is free again");
 }
