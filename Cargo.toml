@@ -60,11 +60,15 @@ rusqlite = { version = "0.41.1", features = ["bundled"] }
 semver = { version = "1.0.28", features = ["serde"] }
 sha2 = "0.10.9"
 zip = { version = "=9.1.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+# New in P25: loading Rust extensions (ADR-0019). Already in the lock, through
+# cudarc; 0.9.1 is under two weeks old.
+libloading = "0.9.0"
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
 oscope-compute = { path = "crates/oscope-compute" }
 oscope-ext = { path = "crates/oscope-ext" }
+oscope-ext-sdk = { path = "crates/oscope-ext-sdk" }
 oscope-hal = { path = "crates/oscope-hal" }
 oscope-imaging = { path = "crates/oscope-imaging" }
 oscope-jobs = { path = "crates/oscope-jobs" }

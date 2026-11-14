@@ -9,18 +9,20 @@
 //!    └─ <version>/     the package, unpacked: manifest.toml, …
 //! ```
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 
+use oscope_pipeline::Node;
+
 use crate::manifest::is_id;
-use crate::{Contribution, ExtError, MANIFEST, Manifest, Package, io};
+use crate::{Contribution, ExtError, Library, MANIFEST, Manifest, Package, io};
 
 /// Where packages arrive and unpack, in the extensions' folder.
 const INCOMING: &str = ".incoming";
@@ -89,15 +91,28 @@ struct Plan {
     problem: Option<String>,
 }
 
+/// The stock nodes' IDs, which no extension may provide.
+fn stock() -> &'static BTreeSet<String> {
+    static STOCK: OnceLock<BTreeSet<String>> = OnceLock::new();
+    STOCK.get_or_init(|| {
+        let registry = oscope_pipeline::stock::registry(PathBuf::new());
+        registry.descriptors().map(|d| d.id.clone()).collect()
+    })
+}
+
 /// What a start loads: each extension that is enabled and suits this
-/// OScope, in the order of their IDs, unless an extension loaded before it
-/// provides one of its names. Then it loads none of them.
+/// OScope, in the order of their IDs, unless OScope's stock nodes or an
+/// extension loaded before it provide one of its names. Then it loads none
+/// of them.
 fn plan(installed: &BTreeMap<String, Installed>) -> (BTreeMap<&str, Plan>, Registry) {
     let (mut plans, mut registry) = (BTreeMap::new(), Registry::new());
     for (id, Installed { state, manifest }) in installed {
         let mut plan = Plan::default();
         if state.enabled && !state.uninstalled {
             let taken = manifest.provided().find_map(|(contribution, name)| {
+                if contribution == Contribution::Nodes && stock().contains(name) {
+                    return Some(format!("OScope's stock nodes have `{name}` already"));
+                }
                 let other = registry.get(&contribution)?.get(name)?;
                 Some(format!(
                     "{other} provides {contribution} `{name}` too, and loads first"
@@ -117,6 +132,44 @@ fn plan(installed: &BTreeMap<String, Installed>) -> (BTreeMap<&str, Plan>, Regis
     (plans, registry)
 }
 
+/// Loads an extension's code, for the kinds that have code so far: a Rust
+/// extension's library, whose nodes must be those its manifest provides.
+fn load(manifest: &Manifest, folder: &Path) -> Result<Vec<Arc<dyn Node>>, String> {
+    let Some(library) = manifest.library() else {
+        return Ok(Vec::new());
+    };
+    let path = library
+        .split('/')
+        .fold(folder.to_owned(), |path, part| path.join(part));
+    let library = Library::load(&path).map_err(|e| e.to_string())?;
+    let list = |ids: BTreeSet<&str>| match ids.is_empty() {
+        true => "none".to_owned(),
+        false => ids
+            .into_iter()
+            .map(|id| format!("`{id}`"))
+            .collect::<Vec<_>>()
+            .join(", "),
+    };
+    let described = library
+        .descriptors()
+        .iter()
+        .map(|d| d.id.as_str())
+        .collect();
+    let provided = manifest
+        .provides
+        .get(&Contribution::Nodes)
+        .into_iter()
+        .flatten();
+    let provided = provided.map(String::as_str).collect();
+    if described != provided {
+        let (described, provided) = (list(described), list(provided));
+        return Err(format!(
+            "its library has the nodes {described}, and its manifest provides {provided}"
+        ));
+    }
+    Ok(library.nodes())
+}
+
 /// The installed extensions, in a folder of the data root: what this start
 /// loaded, and what the next start will.
 ///
@@ -124,12 +177,25 @@ fn plan(installed: &BTreeMap<String, Installed>) -> (BTreeMap<&str, Plan>, Regis
 /// server is built. So installing, enabling, disabling and uninstalling
 /// change the files, and [`open`](Self::open) acts on them at the next
 /// start.
-#[derive(Debug)]
 pub struct Extensions {
     root: PathBuf,
     loaded: Vec<Loaded>,
     registry: Registry,
+    nodes: Vec<Arc<dyn Node>>,
+    /// The extensions whose code this start couldn't load: the version, and
+    /// why.
+    failed: BTreeMap<String, (Version, String)>,
     installed: Mutex<BTreeMap<String, Installed>>,
+}
+
+impl std::fmt::Debug for Extensions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let loaded: Vec<_> = self.loaded.iter().map(|l| &l.manifest.id).collect();
+        f.debug_struct("Extensions")
+            .field("root", &self.root)
+            .field("loaded", &loaded)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Extensions {
@@ -138,10 +204,11 @@ impl Extensions {
     /// First it finishes the changes made for this start: it removes the
     /// uninstalled extensions, every version but the installed one, and
     /// unfinished installs. Then it loads each extension that is enabled
-    /// and suits this OScope, in the order of their IDs. One that provides
-    /// a name that an extension loaded before it provides isn't loaded at
-    /// all. An extension whose folder can't be read is left out, with a
-    /// warning, and left on disk.
+    /// and suits this OScope, in the order of their IDs, with its code: a
+    /// Rust extension's library. One that provides a name that the stock
+    /// nodes or an extension loaded before it provide isn't loaded at all,
+    /// nor one whose code fails to load. An extension whose folder can't be
+    /// read is left out, with a warning, and left on disk.
     pub fn open(root: impl Into<PathBuf>) -> Result<Extensions, ExtError> {
         let root = root.into();
         let mut installed = BTreeMap::new();
@@ -166,26 +233,46 @@ impl Extensions {
                 }
             }
         }
-        let (plans, registry) = plan(&installed);
-        let mut loaded = Vec::new();
+        let (plans, mut registry) = plan(&installed);
+        let (mut loaded, mut nodes, mut failed) = (Vec::new(), Vec::new(), BTreeMap::new());
         for (id, plan) in &plans {
             let Installed { state, manifest } = &installed[*id];
-            if let Some(version) = &plan.version {
-                tracing::info!("extension {id} {version}: loaded");
-                loaded.push(Loaded {
-                    manifest: manifest.clone(),
-                    folder: root.join(id).join(version.to_string()),
-                    sha256: state.sha256.clone(),
-                });
-            } else if let Some(problem) = &plan.problem {
-                tracing::warn!("extension {id} isn't loaded: {problem}");
+            let Some(version) = &plan.version else {
+                if let Some(problem) = &plan.problem {
+                    tracing::warn!("extension {id} isn't loaded: {problem}");
+                }
+                continue;
+            };
+            let folder = root.join(id).join(version.to_string());
+            match load(manifest, &folder) {
+                Ok(code) => {
+                    tracing::info!("extension {id} {version}: loaded");
+                    nodes.extend(code);
+                    let sha256 = state.sha256.clone();
+                    let manifest = manifest.clone();
+                    loaded.push(Loaded {
+                        manifest,
+                        folder,
+                        sha256,
+                    });
+                }
+                Err(problem) => {
+                    tracing::warn!("extension {id} {version} couldn't be loaded: {problem}");
+                    registry
+                        .values_mut()
+                        .for_each(|names| names.retain(|_, by| by != id));
+                    failed.insert((*id).to_owned(), (version.clone(), problem));
+                }
             }
         }
+        registry.retain(|_, names| !names.is_empty());
         drop(plans);
         Ok(Extensions {
             root,
             loaded,
             registry,
+            nodes,
+            failed,
             installed: Mutex::new(installed),
         })
     }
@@ -197,6 +284,8 @@ impl Extensions {
             root: root.into(),
             loaded: Vec::new(),
             registry: Registry::new(),
+            nodes: Vec::new(),
+            failed: BTreeMap::new(),
             installed: Mutex::default(),
         }
     }
@@ -214,6 +303,12 @@ impl Extensions {
     /// What the extensions this start loaded provide.
     pub fn registry(&self) -> &Registry {
         &self.registry
+    }
+
+    /// The nodes of the extensions this start loaded, for the pipeline's
+    /// registry.
+    pub fn nodes(&self) -> &[Arc<dyn Node>] {
+        &self.nodes
     }
 
     /// The installed extensions, by ID.
@@ -375,18 +470,29 @@ impl Extensions {
             let loaded = self.loaded.iter().find(|loaded| loaded.manifest.id == id);
             loaded.map(|loaded| loaded.manifest.version.clone())
         };
-        installed
-            .iter()
-            .map(|(id, Installed { state, manifest })| Extension {
+        let describe = |(id, Installed { state, manifest }): (&String, &Installed)| {
+            let plan = &plans[id.as_str()];
+            // Code that failed to load this start fails at the next, unless
+            // another version is installed.
+            let failed = self
+                .failed
+                .get(id)
+                .filter(|(version, _)| *version == state.version);
+            let (next, problem) = match failed {
+                Some((_, why)) if plan.version.is_some() => (None, Some(why.clone())),
+                _ => (plan.version.clone(), plan.problem.clone()),
+            };
+            Extension {
                 manifest: manifest.clone(),
                 sha256: state.sha256.clone(),
                 enabled: state.enabled,
                 uninstalled: state.uninstalled,
                 loaded: loaded(id),
-                next: plans[id.as_str()].version.clone(),
-                problem: plans[id.as_str()].problem.clone(),
-            })
-            .collect()
+                next,
+                problem,
+            }
+        };
+        installed.iter().map(describe).collect()
     }
 
     fn describe_one(

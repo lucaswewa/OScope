@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[dependencies]
+serde_json.workspace = true
+
 # The workspace's lints, with unsafe code allowed (plan §4.3). Clippy checks
 # that every unsafe block has a `SAFETY:` comment.
 [lints.rust]

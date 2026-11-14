@@ -1,0 +1,18 @@
+# The package's manifest (ADR-0018). The libraries are the crate's, built
+# for each platform and copied into `lib/` before packing: ex-rust-ext packs
+# the one it built, for this platform.
+id = "org.oscope.examples.emboss"
+name = "Emboss"
+version = "0.1.0"
+license = "MIT"
+publisher = "OScope examples"
+description = "A sample Rust extension: a node that embosses an image."
+oscope-api = "^1.0"
+kind = "rust"
+
+[provides]
+nodes = ["example.emboss"]
+
+[rust.libraries]
+windows-x86_64 = "lib/ext_rust_node.dll"
+linux-x86_64 = "lib/libext_rust_node.so"

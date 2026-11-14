@@ -408,8 +408,8 @@ expression: td
       "additionalProperties": false
     },
     "nodes": {
-      "description": "The nodes live recipes may use: the stock nodes (P22).",
-      "title": "The nodes live recipes may use: the stock nodes (P22).",
+      "description": "The stock nodes (P22), and the nodes of the extensions this start\nloaded (P25).",
+      "title": "The nodes live recipes may use.",
       "writeOnly": false,
       "readOnly": true,
       "type": "array",

@@ -18,6 +18,7 @@ use oscope_acquire::preview::{
 use oscope_acquire::stats::StatsRequest;
 use oscope_compute::{Compute, ComputeConfig, Image, Shape, cpu};
 use oscope_core::{Frame, PixelRect};
+use oscope_ext::Extensions;
 use oscope_imaging::color::{ColourCorrection, Curve, Display, encode_tiff16};
 use oscope_pipeline::{Descriptor, Engine, Recipe, stock};
 use schemars::JsonSchema;
@@ -418,7 +419,15 @@ impl PreviewThing {
             || PathBuf::from("references"),
             |r| r.data.join("references"),
         );
-        let registry = stock::registry(&references);
+        let mut registry = stock::registry(&references);
+        // The nodes of the extensions this start loaded (ADR-0019), checked
+        // already: no stock node has their IDs.
+        let extensions = ctx.server().service::<Extensions>();
+        for node in extensions.iter().flat_map(|extensions| extensions.nodes()) {
+            if let Err(error) = registry.register(Arc::clone(node)) {
+                tracing::warn!("a live recipe can't use an extension's node: {error}");
+            }
+        }
         let engine = Arc::new(Engine::new(registry, Arc::clone(preview.compute()), 0));
         if let Some(slot) = ctx.server().service::<RingSlot>()
             && let Some(ring) = lock(&slot.0).take()
@@ -447,7 +456,10 @@ impl PreviewThing {
         Ok(())
     }
 
-    /// The nodes live recipes may use: the stock nodes (P22).
+    /// The nodes live recipes may use.
+    ///
+    /// The stock nodes (P22), and the nodes of the extensions this start
+    /// loaded (P25).
     #[property]
     async fn nodes(&self) -> Result<Vec<Descriptor>, PropertyError> {
         let service = self.service.get();

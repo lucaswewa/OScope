@@ -43,7 +43,9 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-live-recipe`](ex-live-recipe/README.md) | P22 | Live recipes of stock nodes on the live view: a choice of recipes, each checked against its latency budget before it runs; a flat field and a dark frame captured from the camera and applied over the region shown |
 | [`ex-filters`](ex-filters/README.md) | P23 | The general image-processing toolkit on a field of the simulated slide, compared on a page: the Gaussian, median and bilateral filters, the unsharp mask, CLAHE, thresholds, morphology, the distance transform and labelled nuclei, each with its time on the CPU and the GPU |
 | [`ex-omext`](ex-omext/README.md) | P24 | Extensions' packages: a dummy extension packed the same way each time, installed through the upload route, refused when it is for another API or could write outside its folder, and listed; on a page, installing, enabling, disabling and uninstalling, each loaded at the next start, and a restart |
+| [`ext-rust-node`](ext-rust-node/README.md) | P25 | A sample Rust extension, not a program: an emboss node, built against the SDK alone, with `export!` making its C ABI |
+| [`ex-rust-ext`](ex-rust-ext/README.md) | P25 | The sample Rust extension built, packed for this platform, installed, loaded at a start with its ABI checked, and run in a recipe whole and tile by tile, the same to the bit as its own code run directly |
 
-`examples/common` is the examples' shared library, `ex-common`, not an example.
+`examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` is a library too: the sample extension that `ex-rust-ext` loads.
 
 P01's example is the server's own command line: [`crates/oscope-server/README.md`](../crates/oscope-server/README.md) says how to try it.
