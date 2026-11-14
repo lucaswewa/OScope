@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p29-scratch-recorder` / [#43](https://github.com/lucaswewa/OScope/pull/43)
-- Size: M · estimated ~2,900 before it started (the frame log ~520; scratch space ~170; ingest ~210; the recorder ~260; the ingest job and the scratch's health over HTTP ~130; the server's wiring ~25; tests ~790; `ex-record` ~300; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured {{SIZE}}
+- Size: M · estimated ~2,900 before it started (the frame log ~520; scratch space ~170; ingest ~210; the recorder ~260; the ingest job and the scratch's health over HTTP ~130; the server's wiring ~25; tests ~790; `ex-record` ~300; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,913** hand-written lines added (Rust code 1,455, of which `oscope-store` 1,089 and `oscope-acquire` 290; tests 1,036; `ex-record` 378; glue 44), and 44 removed. **That is 2,313 over M's 600, and on the estimate.**
 
 ## Summary
 
@@ -70,11 +70,11 @@ On data like a slide's, ingest is slower than recording: it runs afterwards, as 
 
 **Worth your review:**
 
-- **One pull request,** as you decided for P24–P34. {{OVERRUN}}
+- **One pull request,** as you decided for P24–P34. It came in on the estimate, and 2,313 lines over M's 600. The frame log, with its recovery, took 663 lines, more than its ~520; the tests are more than a third.
 - **The 10-minute run met §5.20's budget** on this PC's NVMe: 579 MB/s for 600 s, none dropped. But the queue once held 11 of its 16 frames, so a slower or busier disk could fill it. The instrument's own scratch NVMe (D17) is the one that counts: this was the PC's only disk, shared with everything else.
 - **The fake camera changed** (`oscope-hal`). It slept a whole frame interval after each frame, so at the design size it delivered 13.4 fps, not 14.5. It now keeps a fixed schedule, as a free-running sensor does, and the frames whose time passes while its sink holds it are lost and counted. Its 16-bit rows are filled a byte at a time: 257 times a level has the level in both bytes. Every test that uses it passed unchanged.
 - **`crc32fast` is optimised in dev builds:** the workspace's first `[profile]` section. Unoptimised, it checks 0.7 GB/s, too slow for the recorder's tests at the design rate on two cores.
-- **The `zstd` crates P28 took early:** {{ZSTD}}
+- **The `zstd` crates P28 took early:** `zstd` 0.13.4 and `zstd-safe` 7.4.0 turn two weeks old at 14:12 UTC on 2026-11-15, after this pull request. They are verified then: not yanked, the same licence, and a fresh `cargo deny check`. The notes of the phase in progress then record it.
 - **A recording's frames are an acquisition's planes,** on NGFF's `z` axis. Time-lapses and scans may want axes of their own (P36, P39).
 - **No HTTP for the recorder yet.** P30's `capture` Thing records bursts. P29 gives HTTP the ingest job and the scratch's health.
 - **132 GB of incremental build caches** were deleted from `target/` before the 10-minute run, to give the disk room: C: had 113 GiB free.
@@ -101,7 +101,36 @@ On data like a slide's, ingest is slower than recording: it runs afterwards, as 
 | `oscope-api`, `oscope-server` | `api`, `cli` | The `system` Thing's ninth property; without a scratch space, an error that says so |
 | `ex-record` | `--smoke` | 1.5 s of the test sensor at a quarter size, none dropped, ingested, every frame a plane, the first as the sensor drew it, the recording gone |
 
-{{CHECKS}}
+**Where they ran:** {{REPLAYS}} On Windows, `oscope-store`'s `recordings` and `ingest` suites, `oscope-acquire`'s `recorder`, `oscope-hal`'s `fakes`, `oscope-api`'s `recordings` and `ex-record --smoke` passed 5 times out of 5 each with their binaries pinned to two cores, `recorder` 10 times. The first pinned runs of `recorder` failed 2 times of 5. Its check that the frames came at the design rate wanted a mean interval of 68 to 70 ms, and on two cores the first frame came late, filling a fresh 40 MB buffer, which shortened the mean to 67.9 ms. The check now takes its bound from the sensor's schedule: with none dropped, each frame comes less than a period late, so the mean is within a period, over the intervals, of 69 ms.
+
+**Mutation checks** (each broke the code on purpose, then the tests were run): twenty-four of twenty-four caught. Reading the tests against the list first found five gaps, now covered: no check of a normally closed segment's footer; frame 0 dropping nothing, so counting its drops couldn't show; no header claiming a huge length; frames too small to be still queued at a stop; and nothing holding the fake camera up.
+
+| Broken on purpose | Caught by |
+|---|---|
+| Records' checksums not checked when scanning | `recordings_cut_short_are_recovered` |
+| A frame's pixels not checked when read | `damaged_frames_other_formats_and_bad_options_are_refused` |
+| No footer when a segment closes | `frames_round_trip_through_segments_with_their_metadata`, and two more |
+| Preallocation never trimmed | the same, and `a_recording_holds_the_michrome_20_s_frames` |
+| Rolling never deletes | `a_rolling_recording_keeps_within_its_bytes` |
+| Free space not checked | `the_scratch_space_reports_its_health_and_cleans_up` |
+| Drops counted before the first frame too | `frames_round_trip_through_segments_with_their_metadata` |
+| A last segment without a header kept | `recordings_cut_short_are_recovered` |
+| Recovered segments not given a footer | the same |
+| A record's length not bounded by its file | the same: its test binary aborts, asked for a terabyte |
+| `tmp/` not emptied | `the_scratch_space_reports_its_health_and_cleans_up` |
+| A recording in progress recovered | the same |
+| Never low | the same |
+| Frames written into the wrong planes | `ingested_data_equals_the_recorded_frames`, and two more |
+| The recording kept after its ingest | `ingested_data_equals_the_recorded_frames` |
+| Cancelling ignored | `ingest_refuses_what_it_cannot_take_and_stops_when_cancelled` |
+| Frames of other sizes accepted | the same |
+| Positions not kept | `ingested_data_equals_the_recorded_frames` |
+| Stopping drops the frames queued | `stopping_writes_every_frame_published_before` |
+| A failed write doesn't end the recording | `a_recording_that_cannot_write_ends_without_holding_the_camera_up` |
+| The recorder's queue drops frames when full | `stopping_writes_every_frame_published_before` |
+| The fake camera counts no frame lost while held | `a_free_running_camera_keeps_its_schedule_losing_frames_while_held` |
+| The fake camera sleeps a whole period after each frame | `the_recorder_keeps_up_with_the_test_sensor_at_the_design_rate` |
+| The ingest job not registered | `a_recording_is_ingested_into_a_project_by_a_job` |
 
 ## Follow-ups and known gaps
 
