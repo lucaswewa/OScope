@@ -322,18 +322,51 @@ fn attribute<'a>(xml: &'a str, from: &str, name: &str) -> Option<&'a str> {
     Some(&rest[start..start + end])
 }
 
+/// `text` for an XML attribute, in ASCII, as TIFF's text is: other
+/// characters as references.
 fn escape(text: &str) -> String {
-    text.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
+    text.chars()
+        .map(|c| match c {
+            '&' => "&amp;".to_owned(),
+            '<' => "&lt;".to_owned(),
+            '>' => "&gt;".to_owned(),
+            '"' => "&quot;".to_owned(),
+            c if c.is_ascii() => c.to_string(),
+            c => format!("&#x{:X};", u32::from(c)),
+        })
+        .collect()
 }
 
+/// An XML attribute's text, its references read.
 fn unescape(text: &str) -> String {
-    text.replace("&quot;", "\"")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&amp;", "&")
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(at) = rest.find('&') {
+        out.push_str(&rest[..at]);
+        let Some(end) = rest[at..].find(';') else {
+            break;
+        };
+        let name = &rest[at + 1..at + end];
+        let code = match name {
+            "amp" => Some('&'),
+            "lt" => Some('<'),
+            "gt" => Some('>'),
+            "quot" => Some('"'),
+            "apos" => Some('\''),
+            _ => name
+                .strip_prefix("#x")
+                .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+                .or_else(|| name.strip_prefix('#').and_then(|dec| dec.parse().ok()))
+                .and_then(char::from_u32),
+        };
+        match code {
+            Some(c) => out.push(c),
+            None => out.push_str(&rest[at..=at + end]),
+        }
+        rest = &rest[at + end + 1..];
+    }
+    out.push_str(rest);
+    out
 }
 
 impl Ome {
@@ -345,10 +378,10 @@ impl Ome {
             SampleType::U16 => "uint16",
             SampleType::F32 => "float",
         };
+        // In µm, the schema's unit when none is given: TIFF's text is ASCII.
         let physical = info.pixel_size.map_or_else(String::new, |p| {
             format!(
-                " PhysicalSizeX=\"{}\" PhysicalSizeXUnit=\"µm\" PhysicalSizeY=\"{}\" \
-                 PhysicalSizeYUnit=\"µm\" PhysicalSizeZ=\"{}\" PhysicalSizeZUnit=\"µm\"",
+                " PhysicalSizeX=\"{}\" PhysicalSizeY=\"{}\" PhysicalSizeZ=\"{}\"",
                 p.x, p.y, p.z
             )
         });
@@ -436,6 +469,7 @@ where
 /// Writes every plane as a page, 16 bits if `sixteen`, the first with
 /// `description`.
 fn pages<W: Write + Seek, K: TiffKind>(
+    path: &Path,
     mut encoder: TiffEncoder<W, K>,
     info: &ImageInfo,
     description: Option<&str>,
@@ -443,7 +477,7 @@ fn pages<W: Write + Seek, K: TiffKind>(
     plane: &mut dyn FnMut(u32) -> Result<Samples>,
 ) -> Result<()> {
     let size = (info.width as u32, info.height as u32);
-    let bad = |e: tiff::TiffError| StoreError::Refused(format!("a TIFF: {e}"));
+    let bad = |e: tiff::TiffError| unreadable(path, format!("a TIFF: {e}"));
     for p in 0..info.planes {
         let mut samples = plane(p)?;
         if sixteen {
@@ -502,10 +536,11 @@ impl Exporter for TiffExporter {
         let file = BufWriter::new(File::create(path).map_err(io(path))?);
         let xml = self.ome.then(|| Ome::xml(info, name));
         let description = xml.as_deref();
-        let bad = |e: tiff::TiffError| StoreError::Refused(format!("a TIFF: {e}"));
+        let bad = |e: tiff::TiffError| unreadable(path, format!("a TIFF: {e}"));
         // Classic TIFF's offsets are 32 bits: over 4 GB, BigTIFF.
         match bytes * sample_bytes > 4_000_000_000 {
             true => pages(
+                path,
                 TiffEncoder::new_big(file).map_err(bad)?,
                 info,
                 description,
@@ -513,6 +548,7 @@ impl Exporter for TiffExporter {
                 plane,
             ),
             false => pages(
+                path,
                 TiffEncoder::new(file).map_err(bad)?,
                 info,
                 description,
