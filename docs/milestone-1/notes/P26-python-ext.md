@@ -94,7 +94,7 @@ The sample's environment takes 213 MB on disk.
 | `oscope-server` | `config` (a test extended) | `[python]` read, its folders relative to the file, its time-outs |
 | `ex-python-node` | `--smoke` | Installed and loaded; three runs on a small field; denoising gains more than 3 dB |
 
-**Where they ran:** on Windows, and on Linux under WSL, both with uv; the `python`, `packages` and `shm` suites and `ex-python-node --smoke` 5 times out of 5 each with their binaries pinned to two cores. The pinned Python runs took 9.4–9.8 s each.
+**Where they ran:** on Windows, and on Linux under WSL, both with uv. The first replay under WSL failed one test: on Linux, a worker killed between calls stays a zombie until its parent reaps it, and the test waited for it to leave `ps`. The supervisor already reaps it, with `try_wait`, before the next call, so only the test changed: it now counts a zombie as dead. On Windows, the `python`, `packages` and `shm` suites and `ex-python-node --smoke` passed 5 times out of 5 each with their binaries pinned to two cores. The pinned Python runs took 9.4–9.8 s each.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): eleven of twelve caught. The one missed was equivalent: it put `int` before `bool` in the hint lookup, which compares with `is`, so the order never mattered. Its comment, which said it did, was wrong and is gone. A mutant dropping `Literal` hints took its place, and was caught.
 
