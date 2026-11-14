@@ -64,6 +64,26 @@ fn known_shifts_are_recovered_within_a_tenth_of_a_pixel_sharp_or_blurred() {
 }
 
 #[test]
+fn large_shifts_lose_no_precision_to_the_window_or_the_shrinking_overlap() {
+    let mut random = StdRng::seed_from_u64(37);
+    // Blurred as the 20× blurs: a broad peak, which the window's weight and
+    // the shrinking overlap would lean toward smaller shifts without the
+    // overlap pass.
+    let field = Field::new(512, 2.3, 9);
+    for shift in [(100.3, -0.4), (-0.3, 110.6), (90.45, 75.2), (-95.7, -60.15)] {
+        let (a, b) = pair(&field, shift, 10.0, &mut random);
+        let anywhere = register(&a, &b, &RegisterOptions::default()).unwrap();
+        let near = RegisterOptions {
+            expected: Some((shift.0.round() + 4.0, shift.1.round() - 3.0)),
+            ..RegisterOptions::default()
+        };
+        let found = register(&a, &b, &near).unwrap();
+        assert!(error(&anywhere, shift) <= 0.05, "{shift:?}: {anywhere:?}");
+        assert!(error(&found, shift) <= 0.05, "{shift:?}: {found:?}");
+    }
+}
+
+#[test]
 fn a_featureless_pair_scores_low_and_a_good_pair_high() {
     let mut random = StdRng::seed_from_u64(32);
     for blur in [0.0, 1.7] {

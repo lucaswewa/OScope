@@ -956,6 +956,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-register"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-imaging",
+ "oscope-sim",
+]
+
+[[package]]
 name = "ex-rust-ext"
 version = "0.1.0"
 dependencies = [

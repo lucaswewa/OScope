@@ -117,7 +117,9 @@ async fn consecutive_frames_of_a_jog_register_to_the_stage_s_displacement() {
         let error = (found.dx - expected.0)
             .abs()
             .max((found.dy - expected.1).abs());
-        assert!(error <= 0.1, "found {found:?}, expected {expected:?}");
+        // 0.010 and 0.018 px were found: without the overlap pass, the
+        // longer jog's was 0.074.
+        assert!(error <= 0.05, "found {found:?}, expected {expected:?}");
         // The longer jog's frames overlap less: 0.98 and 0.86 were found.
         assert!(found.confidence > 0.75, "{found:?}");
     }

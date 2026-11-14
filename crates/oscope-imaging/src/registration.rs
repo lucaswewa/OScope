@@ -11,11 +11,14 @@
 //!    every shift) are gathered with a pixel around them, by either backend.
 //! 4. From that region, the same code finds the integer peak, refines it by
 //!    the three-point Gaussian estimate, and scores it by the peak ratio.
+//! 5. Unless the integer peak is at no shift, the part the images share at
+//!    it is registered again about no shift, where the window and the
+//!    shrinking overlap don't lean the peak: the overlap pass.
 
 use std::f64::consts::PI;
 use std::sync::Arc;
 
-use oscope_compute::Image;
+use oscope_compute::{Image, Shape};
 use rayon::prelude::*;
 use rustfft::num_complex::Complex32;
 use rustfft::{Fft, FftPlanner};
@@ -25,6 +28,9 @@ pub mod gpu;
 
 /// The working memory that the CPU's pairs may take at once, about.
 const CPU_MEMORY: usize = 256 << 20;
+
+/// The overlap pass's widest and tallest cut, in pixels.
+const OVERLAP_SIDE: usize = 512;
 
 /// Why a registration can't be made.
 #[derive(Debug, thiserror::Error)]
@@ -237,11 +243,18 @@ pub(crate) fn means(pairs: &[(&Image, &Image)]) -> Result<Vec<f32>, Registration
     Ok(means)
 }
 
+/// A first registration, and the integer peak's shift it was refined from.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Located {
+    pub(crate) registration: Registration,
+    pub(crate) whole: (i64, i64),
+}
+
 /// The registration that a gathered `region`'s `values` give: the integer
 /// peak among the shifts considered, refined along each axis by the
 /// three-point Gaussian estimate, and scored by the highest value outside
 /// its neighbourhood of `reach` pixels each way.
-pub(crate) fn locate(values: &[f32], region: Region, reach: usize) -> Registration {
+pub(crate) fn locate(values: &[f32], region: Region, reach: usize) -> Located {
     let (w, h) = (region.w, region.h);
     let at = |x: usize, y: usize| values[y * w + x];
     // The shifts considered are the rows and columns inside the margin, row
@@ -265,8 +278,9 @@ pub(crate) fn locate(values: &[f32], region: Region, reach: usize) -> Registrati
             (x + 1, y, v)
         })
         .reduce(|| (1, 1, f32::NEG_INFINITY), first);
-    let dx = (region.x0 + px as i64) as f64 + refine(at(px - 1, py), c0, at(px + 1, py));
-    let dy = (region.y0 + py as i64) as f64 + refine(at(px, py - 1), c0, at(px, py + 1));
+    let whole = (region.x0 + px as i64, region.y0 + py as i64);
+    let dx = whole.0 as f64 + refine(at(px - 1, py), c0, at(px + 1, py));
+    let dy = whole.1 as f64 + refine(at(px, py - 1), c0, at(px, py + 1));
     // The highest value outside the peak's neighbourhood: in a row beside
     // it, only left and right of the neighbourhood.
     let c2 = rows()
@@ -283,12 +297,82 @@ pub(crate) fn locate(values: &[f32], region: Region, reach: usize) -> Registrati
         true => (1.0 - f64::from(c2.max(0.0)) / f64::from(c0)).clamp(0.0, 1.0),
         false => 0.0,
     };
-    Registration {
+    let registration = Registration {
         dx,
         dy,
         confidence,
         peak: f64::from(c0),
+    };
+    Located {
+        registration,
+        whole,
     }
+}
+
+/// `image`'s `w` × `h` pixels from `(x, y)`, row by row in parallel.
+fn cut(image: &Image, (x, y): (usize, usize), (w, h): (usize, usize)) -> Image {
+    let width = image.width() as usize;
+    let mut data = vec![0.0; w * h];
+    let rows = image.data().par_chunks(width).skip(y);
+    data.par_chunks_mut(w)
+        .zip(rows)
+        .for_each(|(out, row)| out.copy_from_slice(&row[x..x + w]));
+    Image::from_vec(Shape::new(w as u32, h as u32, 1), data).expect("a cut's samples")
+}
+
+/// The part that `a` and `b` share at the whole shift `(sx, sy)`, where
+/// `B(x, y) ≈ A(x − sx, y − sy)`: its middle, at most [`OVERLAP_SIDE`] a
+/// side, cut from each; or `None` if it's under 8 × 8.
+fn shared(a: &Image, b: &Image, (sx, sy): (i64, i64)) -> Option<(Image, Image)> {
+    let axis = |size: u32, s: i64| -> Option<(usize, usize, usize)> {
+        let span = size as i64 - s.abs();
+        if span < 8 {
+            return None;
+        }
+        let side = (span as usize).min(OVERLAP_SIDE);
+        let inset = (span as usize - side) / 2;
+        // In B, the part starts at s if s > 0; in A, at −s if s < 0.
+        Some((
+            (-s).max(0) as usize + inset,
+            s.max(0) as usize + inset,
+            side,
+        ))
+    };
+    let (ax, bx, w) = axis(a.width(), sx)?;
+    let (ay, by, h) = axis(a.height(), sy)?;
+    Some((cut(a, (ax, ay), (w, h)), cut(b, (bx, by), (w, h))))
+}
+
+/// The overlap pass: unless `first`'s integer peak is at no shift, the part
+/// that `a` and `b` share at it, registered `again` about no shift within
+/// 2 px. The shift is the integer peak's plus the second's; the confidence
+/// and peak stay the first's. Where the part shared is under 8 × 8, or the
+/// second peak isn't positive, the first registration stands.
+pub(crate) fn overlap_pass(
+    (a, b): (&Image, &Image),
+    first: Located,
+    options: &RegisterOptions,
+    again: impl FnOnce(&Image, &Image, &RegisterOptions) -> Result<Located, RegistrationError>,
+) -> Result<Registration, RegistrationError> {
+    let (sx, sy) = first.whole;
+    let parts = shared(a, b, first.whole);
+    let Some((a, b)) = parts.filter(|_| first.whole != (0, 0)) else {
+        return Ok(first.registration);
+    };
+    let near = RegisterOptions {
+        expected: Some((0.0, 0.0)),
+        radius: 2,
+        ..*options
+    };
+    let second = again(&a, &b, &near)?.registration;
+    if second.peak.is_nan() || second.peak <= 0.0 {
+        return Ok(first.registration);
+    }
+    Ok(Registration {
+        dx: sx as f64 + second.dx,
+        dy: sy as f64 + second.dy,
+        ..first.registration
+    })
 }
 
 /// The three-point Gaussian estimate of the peak's offset from its middle
@@ -430,6 +514,22 @@ pub fn register_batch(
     pairs: &[(&Image, &Image)],
     options: &RegisterOptions,
 ) -> Result<Vec<Registration>, RegistrationError> {
+    let first = first_pass(pairs, options)?;
+    let again = |a: &Image, b: &Image, options: &RegisterOptions| {
+        Ok(first_pass(&[(a, b)], options)?.remove(0))
+    };
+    pairs
+        .par_iter()
+        .zip(first)
+        .map(|(pair, first)| overlap_pass(*pair, first, options, again))
+        .collect()
+}
+
+/// The first pass on the CPU: steps 1 to 4 for each pair.
+fn first_pass(
+    pairs: &[(&Image, &Image)],
+    options: &RegisterOptions,
+) -> Result<Vec<Located>, RegistrationError> {
     let setup = Setup::new(pairs, options)?;
     let means = means(pairs)?;
     let transforms = Transforms::new(setup.width, setup.height);
@@ -437,7 +537,7 @@ pub fn register_batch(
     let at_once = (CPU_MEMORY / working).max(1);
     let mut out = Vec::with_capacity(pairs.len());
     for (chunk, means) in pairs.chunks(at_once).zip(means.chunks(2 * at_once)) {
-        let found: Vec<Registration> = chunk
+        let found: Vec<Located> = chunk
             .par_iter()
             .zip(means.par_chunks(2))
             .map(|(pair, means)| {
@@ -479,7 +579,7 @@ mod tests {
             h: 19,
         };
         for centre in [(0.0, 0.0), (0.3, -0.45), (-2.5, 4.49), (6.2, -7.8)] {
-            let found = locate(&gaussian_region(region, centre, 2.0, 0.8), region, 6);
+            let found = locate(&gaussian_region(region, centre, 2.0, 0.8), region, 6).registration;
             assert!(
                 (found.dx - centre.0).abs() < 1e-4,
                 "{found:?} for {centre:?}"
@@ -505,15 +605,19 @@ mod tests {
         // Inside the neighbourhood, a second bump doesn't count; outside, it
         // does, but not in the margin, which holds no shift considered.
         values[index(3, 3)] = 0.6;
-        assert!(locate(&values, region, 3).confidence > 0.999);
+        assert!(locate(&values, region, 3).registration.confidence > 0.999);
         values[index(-12, 0)] = 0.7;
-        assert!(locate(&values, region, 3).confidence > 0.999);
+        assert!(locate(&values, region, 3).registration.confidence > 0.999);
         values[index(-11, 0)] = 0.2;
-        assert!((locate(&values, region, 3).confidence - 0.75).abs() < 1e-6);
+        assert!((locate(&values, region, 3).registration.confidence - 0.75).abs() < 1e-6);
         // Nothing positive: no confidence, and no refinement.
         let flat = vec![-0.1; values.len()];
         let found = locate(&flat, region, 3);
-        assert_eq!((found.confidence, found.dx, found.dy), (0.0, -11.0, -11.0));
+        let r = found.registration;
+        assert_eq!(
+            (r.confidence, r.dx, r.dy, found.whole),
+            (0.0, -11.0, -11.0, (-11, -11))
+        );
     }
 
     #[test]

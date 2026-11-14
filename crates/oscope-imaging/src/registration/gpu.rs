@@ -6,7 +6,9 @@
 use oscope_compute::cuda::{Correlation, Cuda};
 use oscope_compute::{Image, Lane};
 
-use super::{RegisterOptions, Registration, RegistrationError, Setup, locate, means};
+use super::{
+    Located, RegisterOptions, Registration, RegistrationError, Setup, locate, means, overlap_pass,
+};
 
 /// The GPU memory that a call's pairs may take at once, about.
 const GPU_MEMORY: usize = 1 << 30;
@@ -24,13 +26,30 @@ pub fn register(
 
 /// Registers each pair's B against its A on the GPU, their transforms
 /// batched, as many pairs at once as fit in 1 GiB: [`super::register_batch`]'s
-/// twin.
+/// twin. Each pair's overlap pass follows, alone.
 pub fn register_batch(
     cuda: &Cuda,
     lane: Lane,
     pairs: &[(&Image, &Image)],
     options: &RegisterOptions,
 ) -> Result<Vec<Registration>, RegistrationError> {
+    let first = first_pass(cuda, lane, pairs, options)?;
+    let again = |a: &Image, b: &Image, options: &RegisterOptions| {
+        Ok(first_pass(cuda, lane, &[(a, b)], options)?.remove(0))
+    };
+    let pairs = pairs.iter().zip(first);
+    pairs
+        .map(|(pair, first)| overlap_pass(*pair, first, options, again))
+        .collect()
+}
+
+/// The first pass on the GPU: steps 1 to 4 for each pair.
+fn first_pass(
+    cuda: &Cuda,
+    lane: Lane,
+    pairs: &[(&Image, &Image)],
+    options: &RegisterOptions,
+) -> Result<Vec<Located>, RegistrationError> {
     let setup = Setup::new(pairs, options)?;
     let means = means(pairs)?;
     let region = setup.region;

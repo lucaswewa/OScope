@@ -95,6 +95,8 @@ pub struct Cuda {
     batch: Arc<CudaStream>,
     kernels: Kernels,
     info: GpuInfo,
+    /// Each lane's latest cuFFT plans: live's, then batch's.
+    plans: [registration::Plans; 2],
 }
 
 impl Cuda {
@@ -163,6 +165,7 @@ impl Cuda {
             batch,
             kernels,
             info,
+            plans: Default::default(),
         })
     }
 

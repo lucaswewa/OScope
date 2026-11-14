@@ -3,9 +3,12 @@
 //! `oscope_imaging::registration::gpu`. The kernels are in
 //! `kernels/registration.cu`, and cuFFT's batched plans make the transforms.
 
+use std::fmt;
+use std::sync::{Arc, Mutex, PoisonError};
+
 use cudarc::cufft::CudaFft;
 use cudarc::cufft::sys::{cufftType, float2};
-use cudarc::driver::PushKernelArg;
+use cudarc::driver::{CudaStream, PushKernelArg};
 
 use super::color::flat;
 use super::{Cuda, Image};
@@ -32,6 +35,60 @@ pub struct Correlation<'a> {
 
 fn cufft(error: cudarc::cufft::result::CufftError) -> ComputeError {
     ComputeError::Cuda(format!("cuFFT: {error:?}"))
+}
+
+/// cuFFT's plans for one shape: `pairs` pairs of `width` × `height`.
+struct PlanPair {
+    shape: (usize, usize, usize),
+    forward: CudaFft,
+    inverse: CudaFft,
+}
+
+/// The shapes a lane keeps plans for: making a plan takes a millisecond or
+/// so, and a lane registers the same shapes again and again.
+const KEPT: usize = 4;
+
+/// A lane's latest plans, the most recent first. A call holds them while
+/// it runs: the lane's stream runs its calls in turn anyway.
+#[derive(Default)]
+pub(super) struct Plans(Mutex<Vec<PlanPair>>);
+
+impl fmt::Debug for Plans {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Plans")
+    }
+}
+
+impl PlanPair {
+    /// The plans, each a batched two-dimensional transform: `height` rows of
+    /// `width` real values, and a half spectrum of `width / 2 + 1` complex
+    /// ones a row.
+    fn new(shape: (usize, usize, usize), stream: &Arc<CudaStream>) -> Result<Self, ComputeError> {
+        let (width, height, pairs) = shape;
+        let dims = [height as i32, width as i32];
+        let (real, complex) = ((width * height) as i32, (height * (width / 2 + 1)) as i32);
+        let plan = |kind, from, to, batch: usize| {
+            let stream = Arc::clone(stream);
+            CudaFft::plan_many(
+                &dims,
+                None,
+                1,
+                from,
+                None,
+                1,
+                to,
+                kind,
+                batch as i32,
+                stream,
+            )
+            .map_err(cufft)
+        };
+        Ok(Self {
+            shape,
+            forward: plan(cufftType::CUFFT_R2C, real, complex, 2 * pairs)?,
+            inverse: plan(cufftType::CUFFT_C2R, complex, real, pairs)?,
+        })
+    }
 }
 
 fn setting(what: &str, expected: usize, got: usize) -> ComputeError {
@@ -89,6 +146,26 @@ impl Cuda {
             return Err(ComputeError::Setting("an empty region".to_owned()));
         }
         let stream = self.stream(lane);
+        let index = match lane {
+            Lane::Live => 0,
+            Lane::Batch => 1,
+        };
+        let mut kept = self.plans[index]
+            .0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        let key = (width, height, n);
+        match kept.iter().position(|p| p.shape == key) {
+            Some(at) => {
+                let plans = kept.remove(at);
+                kept.insert(0, plans);
+            }
+            None => {
+                kept.insert(0, PlanPair::new(key, stream)?);
+                kept.truncate(KEPT);
+            }
+        }
+        let plans = &kept[0];
         let len = width * height;
         let mut images = stream.alloc_zeros::<f32>(2 * n * len)?;
         for (i, image) in pairs.iter().flat_map(|(a, b)| [a, b]).enumerate() {
@@ -117,25 +194,11 @@ impl Cuda {
         // its own samples.
         unsafe { launch.launch(flat((2 * n * len) as u64)) }?;
 
-        // The transforms, as one batched plan each way: `height` rows of
-        // `width`, the half spectrum `half` complex values a row.
-        let dims = [h as i32, w as i32];
-        let (real, complex) = ((len) as i32, (height * half) as i32);
-        let forward = CudaFft::plan_many(
-            &dims,
-            None,
-            1,
-            real,
-            None,
-            1,
-            complex,
-            cufftType::CUFFT_R2C,
-            count as i32,
-            stream.clone(),
-        )
-        .map_err(cufft)?;
         let mut spectra = stream.alloc_zeros::<float2>(2 * n * height * half)?;
-        forward.exec_r2c(&images, &mut spectra).map_err(cufft)?;
+        plans
+            .forward
+            .exec_r2c(&images, &mut spectra)
+            .map_err(cufft)?;
         drop(images);
 
         let mut cross = stream.alloc_zeros::<float2>(n * height * half)?;
@@ -149,21 +212,11 @@ impl Cuda {
         unsafe { launch.launch(flat((n * height * half) as u64)) }?;
         drop(spectra);
 
-        let inverse = CudaFft::plan_many(
-            &dims,
-            None,
-            1,
-            complex,
-            None,
-            1,
-            real,
-            cufftType::CUFFT_C2R,
-            pairs32 as i32,
-            stream.clone(),
-        )
-        .map_err(cufft)?;
         let mut surfaces = stream.alloc_zeros::<f32>(n * len)?;
-        inverse.exec_c2r(&mut cross, &mut surfaces).map_err(cufft)?;
+        plans
+            .inverse
+            .exec_c2r(&mut cross, &mut surfaces)
+            .map_err(cufft)?;
 
         let mut out = stream.alloc_zeros::<f32>(n * region)?;
         let (x0, y0) = c.from;
