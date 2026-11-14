@@ -17,8 +17,10 @@ use super::fit::{apply, decompose, fit_matrix};
 use super::set::{Geometry, Instrument, PerAxis, SoftLimits, StageValues, geometry_key};
 use super::store::CalibrationStore;
 
-/// How long each frame is waited for, as captures wait (P30).
-const FRAME_WAIT: Duration = Duration::from_secs(10);
+/// How long each frame is waited for: a camera gives one within a frame's
+/// interval, but after a long move the simulator renders its 20 MP frames
+/// afresh, which takes it seconds.
+const FRAME_WAIT: Duration = Duration::from_secs(30);
 /// The least confidence a registration may have.
 const CONFIDENCE: f64 = 0.5;
 /// The widest and tallest part of a frame used, in pixels.
@@ -229,7 +231,7 @@ impl Rig {
         let next = self.bus.next_frame_after(arrived.time + settle);
         let frame = tokio::time::timeout(FRAME_WAIT, next)
             .await
-            .map_err(|_| failed("no frame came within 10 s: is the camera streaming?"))?
+            .map_err(|_| failed("no frame came within 30 s: is the camera streaming?"))?
             .ok_or_else(|| failed("the camera's frames stopped"))?;
         grey(&frame)
     }
