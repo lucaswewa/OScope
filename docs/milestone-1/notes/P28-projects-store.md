@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p28-projects-store` / [#42](https://github.com/lucaswewa/OScope/pull/42)
-- Size: L · estimated ~3,600 before it started (records and folders ~400; OME-Zarr through `zarrs` ~450; the index, its search, paging and rebuild ~350; thumbnails ~100; the `projects` Thing ~350; the server's wiring ~50; tests ~800; `ex-projects` and its page ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,808** hand-written lines added (Rust code 2,305, of which `oscope-store` 2,001; tests 1,090; `ex-projects` 408; glue 5), and 9 removed. **That is 2,908 over L's 900, and about 6 % over the estimate.**
+- Size: L · estimated ~3,600 before it started (records and folders ~400; OME-Zarr through `zarrs` ~450; the index, its search, paging and rebuild ~350; thumbnails ~100; the `projects` Thing ~350; the server's wiring ~50; tests ~800; `ex-projects` and its page ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,813** hand-written lines added (Rust code 2,305, of which `oscope-store` 2,001; tests 1,090; `ex-projects` 408; glue 10), and 9 removed. **That is 2,913 over L's 900, and about 6 % over the estimate.**
 
 ## Summary
 
@@ -64,7 +64,7 @@ Writing level 0 alone runs at about P29's 580 MB/s, but not with the pyramid. P2
 
 **Worth your review:**
 
-- **One pull request,** as you decided for P24–P34. It came in about 6 % over the estimate, and 2,908 lines over L's 900. The store's folders, drafts and lock, 604 lines, took more than estimated; the tests are more than a quarter.
+- **One pull request,** as you decided for P24–P34. It came in about 6 % over the estimate, and 2,913 lines over L's 900. The store's folders, drafts and lock, 604 lines, took more than estimated; the tests are more than a quarter.
 - **`zarrs` 0.22, not 0.23.** 0.23 requires `paste`, which RustSec marks unmaintained (RUSTSEC-2024-0436), and `cargo deny` refuses it. I tried to add the advisory to `deny.toml`'s `ignore`, with a reason; auto mode's checks stopped me, as that is your decision. 0.22.10 (2025-11-29) has none of it, and everything P28 uses. If you would rather have 0.23, its advisory needs your word.
 - **The `zstd` crates, taken at 13 days old.** RustSec's RUSTSEC-2026-0391, -0398 and -0403 are fixed in `zstd` 0.13.4 and `zstd-safe` 7.4.0, released on 2026-11-01 at 14:12 UTC. P28 was written against 0.13.3 and 7.3.0. You allowed versions younger than two weeks, provided that they are verified once two weeks old, so P28 takes the fixed ones now. After 14:12 UTC on 2026-11-15 they are checked again: not yanked, the same licence, and no advisory in a fresh `cargo deny check`. P29's notes record the result. Taking them, Cargo also moved `tempfile`'s `getrandom` from 0.4.3 to 0.3.4, both already in the lock.
 - **`jsonschema` 0.33.0, not 0.60.** You chose the `jsonschema` crate for the NGFF checks. Its newer versions need `borrow-or-share` 0.2.4, whose licence, MIT-0, isn't among `deny.toml`'s. 0.33.0 takes `fluent-uri` 0.3, which takes any `borrow-or-share` 0.2: 0.2.1 is licensed CC0-1.0 OR MIT, both allowed. 0.2.0, 0.2.1 and 0.2.2 came out the same day, and differ only in their licence.
@@ -73,6 +73,7 @@ Writing level 0 alone runs at about P29's 580 MB/s, but not with the pyramid. P2
 - **A project's thumbnail is its newest acquisition's,** not its newest image's: a derived grey map shows a slide less well than the slide does. Without acquisitions, its newest image result's.
 - **The records' instrument, objective, calibration, camera and plan are JSON** for now: `oscope-store` is in L2 beside `oscope-hal`, and may not depend on it. P29 and P30, which write acquisitions, fill them.
 - **Deleting a project removes it,** with everything in it: there is no wastebasket. The page asks before it deletes.
+- **CI now builds with line tables only.** GitHub's first run of this pull request failed on Ubuntu, but not in a test: the linker died of a bus error as the runner's disk filled. With full debug info, the test build's files come to 11.0 GiB on Linux, 9.3 GiB of them in the 129 test and example binaries. P28 added three of those binaries and `ex-projects`. `ci.yml` now sets `CARGO_PROFILE_DEV_DEBUG: line-tables-only`, which brings the files to 4.8 GiB. Built that way, the replay under WSL passed every step. Backtraces keep their files and lines. The local replays keep full debug info, which local disks hold.
 
 **Other choices:**
 

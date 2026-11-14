@@ -33,6 +33,11 @@ jobs:
             os: ubuntu-24.04
     env:
       CARGO_TERM_COLOR: always
+      # Debug info as line tables only, so that the test and example binaries
+      # fit the Ubuntu runner's disk: with full debug info they passed 11 GiB
+      # in P28, and the linker died of a bus error. Backtraces keep their files
+      # and lines. The local replays keep full debug info.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - uses: actions/checkout@v7
       # rustup reads rust-toolchain.toml and installs the pinned toolchain.
