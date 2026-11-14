@@ -17,6 +17,7 @@ use oscope_core::{FrameView, HeapAllocator, Slab, SlabAllocator};
 use crate::{ComputeError, GpuInfo, Image, Lane, Shape, cpu};
 
 mod color;
+mod filters;
 mod sim;
 
 pub use color::DemosaicKernel;
@@ -27,6 +28,9 @@ const IMAGE_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/image.fat
 
 /// The colour kernels, compiled from `kernels/color.cu`.
 const COLOR_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/color.fatbin"));
+
+/// The filter kernels, compiled from `kernels/filters.cu` (P23).
+const FILTER_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/filters.fatbin"));
 
 /// The simulated camera's kernel, compiled from `kernels/sim.cu`.
 const SIM_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sim.fatbin"));
@@ -67,6 +71,11 @@ struct Kernels {
     correct: CudaFunction,
     display: CudaFunction,
     expose: CudaFunction,
+    convolve: CudaFunction,
+    median: CudaFunction,
+    bilateral: CudaFunction,
+    clahe_maps: CudaFunction,
+    clahe_apply: CudaFunction,
 }
 
 /// A GPU, ready for kernels.
@@ -101,6 +110,7 @@ impl Cuda {
         let module = context.load_module(Ptx::from_binary(IMAGE_KERNELS.to_vec()))?;
         let color = context.load_module(Ptx::from_binary(COLOR_KERNELS.to_vec()))?;
         let sim = context.load_module(Ptx::from_binary(SIM_KERNELS.to_vec()))?;
+        let filters = context.load_module(Ptx::from_binary(FILTER_KERNELS.to_vec()))?;
         let kernels = Kernels {
             to_f32_u16: module.load_function("to_f32_u16")?,
             to_f32_u8: module.load_function("to_f32_u8")?,
@@ -112,6 +122,11 @@ impl Cuda {
             correct: color.load_function("correct")?,
             display: color.load_function("display")?,
             expose: sim.load_function("expose")?,
+            convolve: filters.load_function("convolve")?,
+            median: filters.load_function("median")?,
+            bilateral: filters.load_function("bilateral")?,
+            clahe_maps: filters.load_function("clahe_maps")?,
+            clahe_apply: filters.load_function("clahe_apply")?,
         };
         let memory_pool = keep_freed_memory(&context).is_ok();
         let mut version = 0;

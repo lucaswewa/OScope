@@ -790,8 +790,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P20 | Job service and the `jobs` Thing | P16 | L | 0016 | Done |
 | P21 | Pipeline engine | P20, P07 | L | 0017 | Done |
-| P22 | Stock nodes I: correction and display; live recipes | P21, P08c | M | — | In review |
-| P23 | Stock nodes II: filters, enhancement, threshold, morphology | P22 | L | — | Planned |
+| P22 | Stock nodes I: correction and display; live recipes | P21, P08c | M | — | Done |
+| P23 | Stock nodes II: filters, enhancement, threshold, morphology | P22 | L | — | In review |
 
 ### Stage 6: Extensions (ends with Checkpoint B)
 
@@ -1078,3 +1078,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-13 | P21 was estimated at about 3,100 lines before it started (`oscope-pipeline`: values, nodes, the registry and the parameters' JSON Schema validator ~650; recipes and their validation ~330; the plan, with its order, placement and halos ~250; running it, with the memo cache ~400; tiles, live mode and the batch job ~420; trivial nodes ~250; tests ~800; `ex-pipeline` ~350): more than three times L's 900. One pull request, with the overrun explained, rather than the spec's split of tiled execution into P21b, as the owner decided for P12–P23. Parameters are checked by OScope's own validator for the subset of JSON Schema that nodes use, rather than the `jsonschema` crate, which brings about 30 crates |
 | 2026-11-13 | P21's pull request, #34, was squash-merged as `37e1d69`. GitHub answered 502 during the merge and left the pull request open, so it was closed by hand, with a comment naming the commit |
 | 2026-11-13 | P22 was estimated at about 3,200 lines before it started (fifteen stock nodes over P08–P08c's functions, a reference reader and a resampler ~1,000; live recipes in the preview chain and the `preview` Thing, with references captured from the camera ~450; tests ~700; `ex-live-recipe` with its page ~650; glue ~50; and a tenth on top, after P21): more than five times M's 600. One pull request, with the overrun explained, as the owner decided for P12–P23 |
+| 2026-11-13 | P23 was estimated at about 3,400 lines before it started (the CPU references of the Gaussian, median and bilateral filters and of CLAHE ~450, their CUDA kernels and launches ~500; twelve stock nodes, with thresholds, morphology, the distance transform and labelling, ~800; tests ~700; `ex-filters` with its page ~550; glue ~50; and a tenth on top): nearly four times L's 900. One pull request, with the overrun explained, as the owner decided for P12–P23 |
