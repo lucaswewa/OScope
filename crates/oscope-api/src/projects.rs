@@ -1,13 +1,16 @@
 //! The `projects` Thing (D16, plan §5.12, ADR-0021): the projects on disk,
 //! as the Gallery shows them: listed, searched and paged; made, renamed,
-//! tagged, described and deleted; each one's contents; and thumbnails. With
-//! a scratch space, it registers the job that ingests recordings into
-//! projects, `projects.ingest` (ADR-0022).
+//! tagged, described and deleted; each one's contents; and thumbnails. It
+//! registers the jobs that import files into projects and export their
+//! images, `projects.import` and `projects.export`, and lists their formats
+//! (ADR-0037); with a scratch space, the one that ingests recordings,
+//! `projects.ingest` (ADR-0022).
 
 use std::sync::{Arc, OnceLock};
 
 use oscope_acquire::{INGEST, ingest_jobs};
 use oscope_core::ProjectId;
+use oscope_ext::Extensions;
 use oscope_jobs::JobService;
 use oscope_store::{
     Change, Contents, NewProject, Page, Project, Query as Search, Scratch, Store, StoreError,
@@ -21,6 +24,8 @@ use teta_wot::http::axum::extract::Query;
 use teta_wot::http::axum::http::{StatusCode, header};
 use teta_wot::http::axum::response::{IntoResponse, Response};
 use teta_wot::prelude::*;
+
+use crate::files::{Codecs, EXPORT, Formats, IMPORT, export_jobs, import_jobs};
 
 /// What a rebuild of the index found.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -77,6 +82,7 @@ pub struct ProjectsThing {
     #[event]
     changed: Event<ProjectId>,
     store: OnceLock<Arc<Store>>,
+    codecs: OnceLock<Arc<Codecs>>,
 }
 
 impl ProjectsThing {
@@ -128,15 +134,31 @@ impl ProjectsThing {
             .server()
             .service::<Store>()
             .ok_or_else(|| anyhow::anyhow!("the server has no project store"))?;
-        // Recordings from the scratch space, ingested as jobs (ADR-0022).
-        if let (Some(scratch), Some(jobs)) = (
-            ctx.server().service::<Scratch>(),
-            ctx.server().service::<JobService>(),
-        ) {
-            jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));
+        // Importers and exporters: OScope's own, then the extensions'.
+        let extensions = ctx.server().service::<Extensions>();
+        let codecs = Arc::new(Codecs::new(extensions.as_deref()));
+        if let Some(jobs) = ctx.server().service::<JobService>() {
+            jobs.register(IMPORT, import_jobs(Arc::clone(&store), Arc::clone(&codecs)));
+            jobs.register(EXPORT, export_jobs(Arc::clone(&store), Arc::clone(&codecs)));
+            // Recordings from the scratch space, ingested as jobs (ADR-0022).
+            if let Some(scratch) = ctx.server().service::<Scratch>() {
+                jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));
+            }
         }
+        let _ = self.codecs.set(codecs);
         let _ = self.store.set(store);
         Ok(())
+    }
+
+    /// The formats the server imports, with the `projects.import` job, and
+    /// exports to, with `projects.export` (ADR-0037): OScope's own, then its
+    /// extensions'.
+    #[endpoint(get, "formats")]
+    async fn formats(&self) -> Response {
+        match self.codecs.get() {
+            Some(codecs) => Json::<Formats>(codecs.formats()).into_response(),
+            None => failed(&StoreError::Index("the Thing hasn't started".to_owned())),
+        }
     }
 
     /// A page of the projects, the most recently changed first.

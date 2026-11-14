@@ -5,10 +5,12 @@
 //! [`Acquisition`], which completes a camera's frames and publishes them on
 //! it (P16); the [`preview`] (P17); live [`stats`] (P18); and the
 //! [`Recorder`], with the job that ingests its recordings into projects
-//! ([`ingest_jobs`]) (P29).
+//! ([`ingest_jobs`]) (P29); and captures, single and bursts
+//! ([`capture_jobs`]) (P30).
 
 mod acquisition;
 mod bus;
+mod capture;
 mod ingest;
 pub mod preview;
 mod recorder;
@@ -16,5 +18,6 @@ pub mod stats;
 
 pub use acquisition::Acquisition;
 pub use bus::{FrameBus, LatestReceiver, SubscriberStats, WhenFull};
+pub use capture::{BURST, BURST_MAX, Rig, SINGLE, capture_jobs};
 pub use ingest::{INGEST, ingest_jobs};
-pub use recorder::{QUEUE, Recorder, RecorderStats};
+pub use recorder::{QUEUE, Recorder, RecorderStats, Take};

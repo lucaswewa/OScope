@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-use oscope_core::{Frame, RecordingId};
+use oscope_core::{Frame, RecordingId, Timestamp};
 use oscope_store::{Recording, RecordingOptions, RecordingWriter, Scratch, StoreError};
 use tokio::sync::{Notify, mpsc};
 
@@ -68,6 +68,15 @@ pub struct Recorder {
     thread: Option<JoinHandle<Result<Recording, StoreError>>>,
 }
 
+/// Which of the frames published a recorder takes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Take {
+    /// At most this many: then it stops by itself, as a burst does.
+    pub frames: Option<u64>,
+    /// Only those whose exposure starts at or after this moment.
+    pub after: Option<Timestamp>,
+}
+
 impl Recorder {
     /// Starts recording the frames published on `bus` into `scratch`, with a
     /// queue of `queue` frames.
@@ -77,6 +86,18 @@ impl Recorder {
         options: RecordingOptions,
         queue: usize,
     ) -> Result<Self, StoreError> {
+        Self::taking(bus, scratch, options, queue, Take::default())
+    }
+
+    /// Starts recording, as [`start`](Self::start) does, the frames that
+    /// `take` says.
+    pub fn taking(
+        bus: &FrameBus,
+        scratch: &Scratch,
+        options: RecordingOptions,
+        queue: usize,
+        take: Take,
+    ) -> Result<Self, StoreError> {
         let writer = scratch.record(options)?;
         let id = writer.id();
         let frames = bus.subscribe_lossless("recorder", queue, WhenFull::Wait);
@@ -84,7 +105,7 @@ impl Recorder {
         let (c, s) = (Arc::clone(&counts), Arc::clone(&stop));
         let thread = std::thread::Builder::new()
             .name("recorder".to_owned())
-            .spawn(move || record(writer, frames, &c, &s))
+            .spawn(move || record(writer, frames, take, &c, &s))
             .map_err(|source| StoreError::Io {
                 path: scratch.root().to_owned(),
                 source,
@@ -101,6 +122,12 @@ impl Recorder {
     /// Its recording's ID.
     pub fn id(&self) -> RecordingId {
         self.id
+    }
+
+    /// Whether it has stopped writing: taken the frames it was to take, or
+    /// failed.
+    pub fn finished(&self) -> bool {
+        self.thread.as_ref().is_none_or(JoinHandle::is_finished)
     }
 
     /// What it has done so far.
@@ -145,11 +172,12 @@ impl Drop for Recorder {
 fn record(
     mut writer: RecordingWriter,
     mut frames: mpsc::Receiver<Frame>,
+    take: Take,
     counts: &Counts,
     stop: &Notify,
 ) -> Result<Recording, StoreError> {
     let written = match tokio::runtime::Builder::new_current_thread().build() {
-        Ok(runtime) => runtime.block_on(write(&mut writer, &mut frames, counts, stop)),
+        Ok(runtime) => runtime.block_on(write(&mut writer, &mut frames, take, counts, stop)),
         Err(source) => Err(StoreError::Io {
             path: writer.folder().to_owned(),
             source,
@@ -164,6 +192,7 @@ fn record(
 async fn write(
     writer: &mut RecordingWriter,
     frames: &mut mpsc::Receiver<Frame>,
+    take: Take,
     counts: &Counts,
     stop: &Notify,
 ) -> Result<(), StoreError> {
@@ -186,6 +215,12 @@ async fn write(
         let Some(frame) = frame else {
             return Ok(());
         };
+        if take
+            .after
+            .is_some_and(|after| frame.meta().exposure_start < after)
+        {
+            continue;
+        }
         counts
             .queued_max
             .fetch_max(frames.len() + 1, Ordering::Relaxed);
@@ -198,5 +233,8 @@ async fn write(
         counts
             .discarded
             .store(recording.discarded, Ordering::Relaxed);
+        if take.frames.is_some_and(|n| recording.frames >= n) {
+            return Ok(());
+        }
     }
 }
