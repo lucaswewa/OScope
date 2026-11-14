@@ -414,6 +414,7 @@ async fn the_things_describe_themselves() {
         "simulation",
         "preview",
         "capture",
+        "calibration",
     ] {
         // The ID differs from computer to computer: its form, then the rest.
         let mut td = tds[name].clone();

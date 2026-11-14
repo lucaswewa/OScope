@@ -2046,6 +2046,7 @@ dependencies = [
  "oscope-shm",
  "oscope-sim",
  "oscope-store",
+ "oscope-workflows",
  "schemars",
  "serde",
  "serde_json",
@@ -2057,6 +2058,7 @@ dependencies = [
  "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
+ "uuid",
  "zune-core",
  "zune-jpeg",
 ]
@@ -2281,6 +2283,24 @@ version = "0.1.0"
 [[package]]
 name = "oscope-workflows"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "oscope-acquire",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-imaging",
+ "oscope-jobs",
+ "oscope-sim",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+]
 
 [[package]]
 name = "outref"

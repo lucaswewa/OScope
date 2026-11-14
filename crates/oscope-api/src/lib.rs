@@ -17,6 +17,7 @@
 //! and graceful shutdown as the Things.
 
 mod batch;
+pub mod calibration;
 pub mod capture;
 mod data;
 pub mod devices;

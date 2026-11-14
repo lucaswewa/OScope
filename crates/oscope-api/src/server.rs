@@ -18,6 +18,7 @@ use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuild
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
 
+use crate::calibration::CalibrationThing;
 use crate::capture::CaptureThing;
 use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
@@ -173,7 +174,8 @@ impl ApiBuilder {
             .thing("illumination", IlluminationThing::default())
             .thing("objective", ObjectiveThing::default())
             .thing("preview", PreviewThing::default())
-            .thing("capture", CaptureThing::default());
+            .thing("capture", CaptureThing::default())
+            .thing("calibration", CalibrationThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }

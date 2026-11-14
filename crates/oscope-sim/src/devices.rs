@@ -159,14 +159,23 @@ impl Illumination for SimLights {
 pub struct SimMount {
     mount: ManualObjectiveMount,
     camera: Arc<SimCamera>,
+    scale: f64,
 }
 
 impl SimMount {
     /// A mount for `catalogue`'s objectives over `camera`.
     pub fn new(catalogue: ObjectiveCatalogue, camera: Arc<SimCamera>) -> Self {
+        Self::scaled(catalogue, camera, 1.0)
+    }
+
+    /// A mount whose objectives truly magnify `scale` times what `catalogue`
+    /// says, as a tube lens a little off would make them: what calibration
+    /// measures (P32).
+    pub fn scaled(catalogue: ObjectiveCatalogue, camera: Arc<SimCamera>, scale: f64) -> Self {
         Self {
             mount: ManualObjectiveMount::new(catalogue),
             camera,
+            scale,
         }
     }
 }
@@ -188,8 +197,9 @@ impl ObjectiveMount for SimMount {
         Box::pin(async move {
             let objective = self.mount.fit(name).await?;
             let pixel = self.camera.capabilities().pixel_size;
-            self.camera
-                .set_optics(Optics::new(self.mount.catalogue(), &objective, pixel));
+            let mut optics = Optics::new(self.mount.catalogue(), &objective, pixel);
+            optics.magnification *= self.scale;
+            self.camera.set_optics(optics);
             Ok(objective)
         })
     }
@@ -204,6 +214,10 @@ impl ObjectiveMount for SimMount {
 /// objective = "10x"       # fitted at start
 /// sample = "H&E tissue"   # loaded at start; "" for none
 /// focus = 5000.0          # the stage z, in µm, at which the slide is sharp
+/// rotation = 0.0          # the camera's turn on the stage, in degrees
+/// mirrored = false        # whether its image is mirrored
+/// scale = 1.0             # the true magnification over the catalogue's
+/// backlash = 2.0          # the stage's play when an axis reverses, in µm
 ///
 /// [[devices.simulator.samples]]   # beyond the built-in ones
 /// name = "my section"
@@ -224,6 +238,15 @@ pub struct SimulatorConfig {
     pub sample: String,
     /// The stage z at which the slide's surface is in focus.
     pub focus: f64,
+    /// The camera's turn on the stage, in degrees: what calibration
+    /// recovers (P32), as are the three below.
+    pub rotation: f64,
+    /// Whether the camera's image is mirrored.
+    pub mirrored: bool,
+    /// The true magnification over the catalogue's.
+    pub scale: f64,
+    /// The stage's play when an axis reverses, in µm.
+    pub backlash: f64,
     /// Samples beyond the built-in ones.
     pub samples: Vec<SampleEntry>,
 }
@@ -236,6 +259,10 @@ impl Default for SimulatorConfig {
             objective: "10x".to_owned(),
             sample: "H&E tissue".to_owned(),
             focus: 5_000.0,
+            rotation: 0.0,
+            mirrored: false,
+            scale: 1.0,
+            backlash: 2.0,
             samples: Vec::new(),
         }
     }
@@ -270,15 +297,29 @@ impl Simulator {
         } else {
             return Err(format!("a clock rate of {}", config.rate));
         };
+        let truth = [config.rotation, config.scale, config.backlash];
+        if !truth.iter().all(|v| v.is_finite()) || config.scale <= 0.0 || config.backlash < 0.0 {
+            let (r, s, b) = (config.rotation, config.scale, config.backlash);
+            return Err(format!(
+                "a rotation of {r}°, a scale of {s} and a backlash of {b} µm: \
+                 a scale more than 0 and a backlash of at least 0 are needed"
+            ));
+        }
         let clock = Arc::new(SimClock::new(rate));
-        let stage = Arc::new(SimStage::new(SimStageConfig::default(), Arc::clone(&clock)));
+        let stage_config = SimStageConfig {
+            backlash: Um(config.backlash),
+            ..SimStageConfig::default()
+        };
+        let stage = Arc::new(SimStage::new(stage_config, Arc::clone(&clock)));
         let world = Arc::new(RwLock::new(World::empty()));
         world.write().unwrap_or_else(PoisonError::into_inner).focus = Um(config.focus);
-        let camera_config = match config.sensor.as_str() {
+        let mut camera_config = match config.sensor.as_str() {
             "full" => SimCameraConfig::default(),
             "quarter" => SimCameraConfig::quarter(),
             other => return Err(format!("a sensor `{other}`: `full` or `quarter`")),
         };
+        camera_config.mounting.rotation = config.rotation.to_radians();
+        camera_config.mounting.mirrored = config.mirrored;
         let catalogue = ObjectiveCatalogue::mitutoyo();
         let first = catalogue
             .get(&config.objective)
@@ -293,7 +334,11 @@ impl Simulator {
             optics,
         ));
         let lights = Arc::new(SimLights::new(Arc::clone(&camera)));
-        let mount = Arc::new(SimMount::new(catalogue, Arc::clone(&camera)));
+        let mount = Arc::new(SimMount::scaled(
+            catalogue,
+            Arc::clone(&camera),
+            config.scale,
+        ));
         mount
             .fit(config.objective.clone())
             .await
