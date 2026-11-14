@@ -16,6 +16,7 @@ oscope-api.workspace = true
 oscope-ext.workspace = true
 oscope-jobs.workspace = true
 oscope-shm.workspace = true
+oscope-store.workspace = true
 rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true

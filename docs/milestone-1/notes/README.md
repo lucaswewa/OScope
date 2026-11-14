@@ -46,4 +46,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P24 | `.omext` packages, registry, `extensions` Thing | Done | [P24-omext.md](P24-omext.md) |
 | P25 | Rust extension ABI and SDK | Done | [P25-rust-ext.md](P25-rust-ext.md) |
 | P26 | Python extension runtime and SDK | Done | [P26-python-ext.md](P26-python-ext.md) |
-| P27 | Driver and panel extensions | In review | [P27-drivers-panels.md](P27-drivers-panels.md) |
+| P27 | Driver and panel extensions | Done | [P27-drivers-panels.md](P27-drivers-panels.md) |
+| P28 | Projects, OME-Zarr store, SQLite index | In review | [P28-projects-store.md](P28-projects-store.md) |
