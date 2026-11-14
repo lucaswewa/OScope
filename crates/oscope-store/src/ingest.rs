@@ -38,29 +38,6 @@ fn layout(format: PixelFormat) -> Result<(SampleType, u32, Vec<String>)> {
     })
 }
 
-/// A frame's bytes, little-endian, as samples of `sample`.
-fn samples(sample: SampleType, pixels: Vec<u8>) -> Samples {
-    match sample {
-        SampleType::U8 => Samples::U8(pixels),
-        SampleType::U16 => Samples::U16(
-            pixels
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|b| u16::from_le_bytes(*b))
-                .collect(),
-        ),
-        SampleType::F32 => Samples::F32(
-            pixels
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|b| f32::from_le_bytes(*b))
-                .collect(),
-        ),
-    }
-}
-
 /// The camera's settings, as at a frame.
 fn camera(meta: &FrameMeta) -> Value {
     json!({
@@ -163,7 +140,12 @@ pub fn ingest(
             .try_for_each(|(plane, frame)| {
                 let pixels = reader.pixels(frame)?;
                 let size = (u64::from(frame.meta.width), u64::from(frame.meta.height));
-                image.write(plane as u32, (0, 0), size, &samples(sample, pixels))?;
+                image.write(
+                    plane as u32,
+                    (0, 0),
+                    size,
+                    &Samples::from_le_bytes(sample, pixels),
+                )?;
                 match progress(done.fetch_add(1, Ordering::Relaxed) + 1, total) {
                     true => Ok(()),
                     false => Err(StoreError::Cancelled),

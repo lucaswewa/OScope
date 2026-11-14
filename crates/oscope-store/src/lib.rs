@@ -15,6 +15,7 @@
 //! {scratch root}/recordings/<recording>/recording.json, 000000.frames, …
 //! ```
 
+mod formats;
 mod image;
 mod index;
 mod ingest;
@@ -24,6 +25,9 @@ mod scratch;
 mod store;
 mod thumbnail;
 
+pub use formats::{
+    Exporter, Format, Importer, Rendition, export, exporters, import, importers, render,
+};
 pub use image::{CHUNK, ImageInfo, ImageReader, ImageWriter, PixelSize, SampleType, Samples};
 pub use ingest::ingest;
 pub use recording::{

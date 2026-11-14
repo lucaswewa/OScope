@@ -2076,6 +2076,7 @@ dependencies = [
  "oscope-hal",
  "oscope-pipeline",
  "oscope-shm",
+ "oscope-store",
  "schemars",
  "semver",
  "serde",
@@ -2229,6 +2230,7 @@ dependencies = [
  "oscope-compute",
  "oscope-core",
  "oscope-imaging",
+ "png",
  "rayon",
  "rusqlite",
  "schemars",
@@ -2236,9 +2238,12 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tiff",
  "tracing",
  "uuid",
  "zarrs",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]

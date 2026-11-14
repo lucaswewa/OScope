@@ -7,9 +7,10 @@
 //! captures, through a [`Link`]: a Rust library's, or a Python worker's.
 
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -18,6 +19,9 @@ use oscope_hal::{
     Axis, Camera, CameraCapabilities, CameraSettings, Error, FrameSink, HalFuture, Illumination,
     IlluminationCapabilities, PositionSample, PositionTrack, Result, Stage, StageCapabilities,
     StageStatus, Trigger, UmPerS,
+};
+use oscope_store::{
+    Exporter, Format, ImageInfo, Importer, Result as StoreResult, Samples, StoreError,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value as Json, json};
@@ -29,13 +33,18 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// How OScope reaches a driver: a method call with JSON, and a camera's
-/// capture into OScope's buffer. Both block.
+/// How OScope reaches a driver: a method call with JSON, a camera's capture
+/// into OScope's buffer, and an importer's and an exporter's planes. All
+/// block.
 pub(crate) trait Link: Send + Sync {
     /// Calls its method `method` with `params`: its answer.
     fn call(&self, method: &str, params: Json) -> std::result::Result<Json, String>;
     /// Captures a camera's next frame into `pixels`.
     fn capture(&self, pixels: &mut [u8]) -> std::result::Result<(), String>;
+    /// Reads into `pixels` what `params` ask of an importer.
+    fn read(&self, params: Json, pixels: &mut [u8]) -> std::result::Result<(), String>;
+    /// Gives an exporter `pixels`, as `params` say.
+    fn write(&self, params: Json, pixels: &[u8]) -> std::result::Result<(), String>;
 }
 
 /// A Rust extension's driver, by its place in the library's description.
@@ -52,6 +61,14 @@ impl Link for NativeLink {
     fn capture(&self, pixels: &mut [u8]) -> std::result::Result<(), String> {
         self.library.capture(self.index, pixels)
     }
+
+    fn read(&self, params: Json, pixels: &mut [u8]) -> std::result::Result<(), String> {
+        self.library.read(self.index, &params, pixels)
+    }
+
+    fn write(&self, params: Json, pixels: &[u8]) -> std::result::Result<(), String> {
+        self.library.write(self.index, &params, pixels)
+    }
 }
 
 /// A Python extension's driver, by name, in its worker.
@@ -67,6 +84,154 @@ impl Link for PythonLink {
 
     fn capture(&self, pixels: &mut [u8]) -> std::result::Result<(), String> {
         self.worker.capture(&self.name, pixels)
+    }
+
+    fn read(&self, params: Json, pixels: &mut [u8]) -> std::result::Result<(), String> {
+        self.worker.read(&self.name, &params, pixels)
+    }
+
+    fn write(&self, params: Json, pixels: &[u8]) -> std::result::Result<(), String> {
+        self.worker.write(&self.name, &params, pixels)
+    }
+}
+
+/// The importers and exporters of the extensions this start loaded, as
+/// `oscope-store` takes them (ADR-0037).
+#[derive(Clone, Default)]
+pub struct Formats {
+    /// The importers.
+    pub importers: Vec<Arc<dyn Importer>>,
+    /// The exporters.
+    pub exporters: Vec<Arc<dyn Exporter>>,
+}
+
+impl std::fmt::Debug for Formats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Formats")
+            .field("importers", &self.importers.len())
+            .field("exporters", &self.exporters.len())
+            .finish()
+    }
+}
+
+impl Formats {
+    /// Adds the importer or exporter `name`, reached through `link`.
+    pub(crate) fn add(&mut self, name: &str, kind: &str, link: Arc<dyn Link>) {
+        let (name, format) = (name.to_owned(), OnceLock::new());
+        match kind {
+            "importer" => self
+                .importers
+                .push(Arc::new(ExtImporter { name, link, format })),
+            _ => self.exporters.push(Arc::new(ExtExporter {
+                name,
+                link,
+                format,
+                busy: Mutex::new(()),
+            })),
+        }
+    }
+}
+
+/// The format of the importer or exporter `name`, which it says when first
+/// asked: its ID is its name. One that won't say has no extensions.
+fn format_of(name: &str, link: &dyn Link, format: &OnceLock<Format>) -> Format {
+    let told = || {
+        let answer = link.call("format", Json::Null)?;
+        serde_json::from_value::<oscope_ext_sdk::Format>(answer).map_err(|e| e.to_string())
+    };
+    let made = || match told() {
+        Ok(told) => Format {
+            id: name.to_owned(),
+            name: told.name,
+            extensions: told
+                .extensions
+                .iter()
+                .map(|e| e.to_ascii_lowercase())
+                .collect(),
+        },
+        Err(error) => {
+            tracing::warn!("{name} gave no format: {error}");
+            Format {
+                id: name.to_owned(),
+                name: name.to_owned(),
+                extensions: Vec::new(),
+            }
+        }
+    };
+    format.get_or_init(made).clone()
+}
+
+fn failed(name: &str, path: &Path, error: String) -> StoreError {
+    StoreError::Document {
+        path: path.to_owned(),
+        reason: format!("{name}: {error}"),
+    }
+}
+
+/// An extension's importer.
+struct ExtImporter {
+    name: String,
+    link: Arc<dyn Link>,
+    format: OnceLock<Format>,
+}
+
+impl Importer for ExtImporter {
+    fn format(&self) -> Format {
+        format_of(&self.name, &*self.link, &self.format)
+    }
+
+    fn probe(&self, path: &Path) -> StoreResult<ImageInfo> {
+        let answer = self.link.call("probe", json!({ "path": path }));
+        let answer = answer.map_err(|e| failed(&self.name, path, e))?;
+        let mut info: ImageInfo = serde_json::from_value(answer)
+            .map_err(|e| failed(&self.name, path, format!("its probe's answer: {e}")))?;
+        info.levels = 0;
+        Ok(info)
+    }
+
+    fn read(&self, path: &Path, info: &ImageInfo, plane: u32) -> StoreResult<Samples> {
+        let len = info.width * info.height * u64::from(info.channels) * info.sample.bytes();
+        let mut bytes = vec![0; len as usize];
+        let params = json!({ "path": path, "plane": plane });
+        self.link
+            .read(params, &mut bytes)
+            .map_err(|e| failed(&self.name, path, e))?;
+        Ok(Samples::from_le_bytes(info.sample, bytes))
+    }
+}
+
+/// An extension's exporter: one image at a time.
+struct ExtExporter {
+    name: String,
+    link: Arc<dyn Link>,
+    format: OnceLock<Format>,
+    busy: Mutex<()>,
+}
+
+impl Exporter for ExtExporter {
+    fn format(&self) -> Format {
+        format_of(&self.name, &*self.link, &self.format)
+    }
+
+    fn write(
+        &self,
+        path: &Path,
+        info: &ImageInfo,
+        name: &str,
+        plane: &mut dyn FnMut(u32) -> StoreResult<Samples>,
+    ) -> StoreResult<()> {
+        let _one_at_a_time = lock(&self.busy);
+        let failed = |e: String| failed(&self.name, path, e);
+        let begin = json!({ "path": path, "image": info, "name": name });
+        self.link.call("begin", begin).map_err(failed)?;
+        let written = (0..info.planes).try_for_each(|p| {
+            let bytes = plane(p)?.to_le_bytes();
+            self.link
+                .write(json!({ "plane": p }), &bytes)
+                .map_err(failed)
+        });
+        let ended = self.link.call("end", Json::Null).map_err(failed);
+        written.and(ended.map(drop))
     }
 }
 

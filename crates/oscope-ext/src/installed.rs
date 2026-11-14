@@ -21,7 +21,7 @@ use tempfile::NamedTempFile;
 
 use oscope_pipeline::Node;
 
-use crate::drivers::{Drivers, Link, NativeLink, PythonLink};
+use crate::drivers::{Drivers, Formats, Link, NativeLink, PythonLink};
 use crate::manifest::is_id;
 use crate::native::{DriverInfo, check, registered};
 use crate::panels::{self, Panel};
@@ -242,6 +242,11 @@ fn provided(
     } else {
         "module"
     };
+    // Drivers of devices, importers and exporters each have their list.
+    let of = |kinds: &[&str]| {
+        let named = drivers.iter().filter(|d| kinds.contains(&d.kind.as_str()));
+        named.map(|d| d.name.as_str()).collect::<BTreeSet<_>>()
+    };
     let names = [
         (
             Contribution::Nodes,
@@ -254,8 +259,10 @@ fn provided(
         (
             Contribution::Drivers,
             "drivers",
-            drivers.iter().map(|d| d.name.as_str()).collect(),
+            of(&["camera", "stage", "illumination"]),
         ),
+        (Contribution::Importers, "importers", of(&["importer"])),
+        (Contribution::Exporters, "exporters", of(&["exporter"])),
     ];
     for (contribution, what, described) in names {
         let provided = manifest.provides.get(&contribution).into_iter().flatten();
@@ -293,6 +300,7 @@ pub struct Extensions {
     nodes: Vec<Arc<dyn Node>>,
     workers: Vec<Arc<Worker>>,
     drivers: Drivers,
+    formats: Formats,
     panels: BTreeMap<String, (String, Panel)>,
     /// The extensions whose code this start couldn't load: the version, and
     /// why.
@@ -363,6 +371,7 @@ impl Extensions {
         let (mut loaded, mut nodes, mut workers, mut failed) =
             (Vec::new(), Vec::new(), Vec::new(), BTreeMap::new());
         let (mut drivers, mut panels) = (Drivers::default(), BTreeMap::new());
+        let mut formats = Formats::default();
         for (id, plan) in &plans {
             let Installed { state, manifest } = &installed[*id];
             let Some(version) = &plan.version else {
@@ -378,7 +387,10 @@ impl Extensions {
                     nodes.extend(code.nodes);
                     workers.extend(code.worker);
                     for (info, link) in code.drivers {
-                        drivers.add(&info.name, &info.kind, link);
+                        match info.kind.as_str() {
+                            "importer" | "exporter" => formats.add(&info.name, &info.kind, link),
+                            _ => drivers.add(&info.name, &info.kind, link),
+                        }
                     }
                     for (name, panel) in code.panels {
                         panels.insert(name, ((*id).to_owned(), panel));
@@ -409,6 +421,7 @@ impl Extensions {
             nodes,
             workers,
             drivers,
+            formats,
             panels,
             failed,
             python,
@@ -426,6 +439,7 @@ impl Extensions {
             nodes: Vec::new(),
             workers: Vec::new(),
             drivers: Drivers::default(),
+            formats: Formats::default(),
             panels: BTreeMap::new(),
             failed: BTreeMap::new(),
             python: None,
@@ -458,6 +472,12 @@ impl Extensions {
     /// configuration's `[devices]` to name (ADR-0036).
     pub fn drivers(&self) -> &Drivers {
         &self.drivers
+    }
+
+    /// The importers and exporters of the extensions this start loaded
+    /// (ADR-0037).
+    pub fn formats(&self) -> &Formats {
+        &self.formats
     }
 
     /// The panels of the extensions this start loaded, by name: each with

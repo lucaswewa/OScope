@@ -264,6 +264,28 @@ extern "C" fn no_capture(
     abi::FAILED
 }
 
+extern "C" fn no_read(
+    _: *const abi::Host,
+    _: *mut abi::Call,
+    _: u32,
+    _: abi::Str,
+    _: *mut u8,
+    _: usize,
+) -> abi::Status {
+    abi::FAILED
+}
+
+extern "C" fn no_write(
+    _: *const abi::Host,
+    _: *mut abi::Call,
+    _: u32,
+    _: abi::Str,
+    _: *const u8,
+    _: usize,
+) -> abi::Status {
+    abi::FAILED
+}
+
 /// A table of `describe`, speaking ABI `version`.
 const fn table(
     version: u32,
@@ -275,6 +297,8 @@ const fn table(
         run: never,
         driver_call: no_driver_call,
         capture: no_capture,
+        read: no_read,
+        write: no_write,
     }
 }
 

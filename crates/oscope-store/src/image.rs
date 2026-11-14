@@ -48,6 +48,15 @@ pub enum SampleType {
 }
 
 impl SampleType {
+    /// A sample's bytes.
+    pub fn bytes(self) -> u64 {
+        match self {
+            Self::U8 => 1,
+            Self::U16 => 2,
+            Self::F32 => 4,
+        }
+    }
+
     fn data_type(self) -> DataType {
         match self {
             Self::U8 => DataType::UInt8,
@@ -79,6 +88,38 @@ pub enum Samples {
 }
 
 impl Samples {
+    /// Samples of `sample` from their bytes, little-endian.
+    pub fn from_le_bytes(sample: SampleType, bytes: Vec<u8>) -> Samples {
+        match sample {
+            SampleType::U8 => Samples::U8(bytes),
+            SampleType::U16 => Samples::U16(
+                bytes
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|b| u16::from_le_bytes(*b))
+                    .collect(),
+            ),
+            SampleType::F32 => Samples::F32(
+                bytes
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|b| f32::from_le_bytes(*b))
+                    .collect(),
+            ),
+        }
+    }
+
+    /// Their bytes, little-endian.
+    pub fn to_le_bytes(&self) -> Vec<u8> {
+        match self {
+            Samples::U8(v) => v.clone(),
+            Samples::U16(v) => v.iter().flat_map(|s| s.to_le_bytes()).collect(),
+            Samples::F32(v) => v.iter().flat_map(|s| s.to_le_bytes()).collect(),
+        }
+    }
+
     /// How many samples there are.
     pub fn len(&self) -> usize {
         match self {

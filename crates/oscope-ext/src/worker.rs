@@ -148,6 +148,36 @@ impl Worker {
         })
     }
 
+    /// Reads into `pixels` what `params` ask of its importer `name`,
+    /// through a segment (ADR-0037).
+    pub(crate) fn read(&self, name: &str, params: &Json, pixels: &mut [u8]) -> Result<(), String> {
+        self.with_process(|process, deadline| {
+            let made = Segment::create(&segment_name(), pixels.len());
+            let segment = made.map_err(|e| Failure::Node(e.to_string()))?;
+            let call = json!({ "name": name, "params": params, "segment": segment.os_name(), "bytes": pixels.len() });
+            process.send(&json!({ "read": call }))?;
+            process.answer(deadline)?;
+            segment
+                .read_bytes(pixels)
+                .map_err(|e| Failure::Node(e.to_string()))
+        })
+    }
+
+    /// Gives its exporter `name` the `pixels`, as `params` say, through a
+    /// segment (ADR-0037).
+    pub(crate) fn write(&self, name: &str, params: &Json, pixels: &[u8]) -> Result<(), String> {
+        self.with_process(|process, deadline| {
+            let made = Segment::create(&segment_name(), pixels.len());
+            let mut segment = made.map_err(|e| Failure::Node(e.to_string()))?;
+            segment
+                .write_bytes(pixels)
+                .map_err(|e| Failure::Node(e.to_string()))?;
+            let call = json!({ "name": name, "params": params, "segment": segment.os_name(), "bytes": pixels.len() });
+            process.send(&json!({ "write": call }))?;
+            process.answer(deadline).map(drop)
+        })
+    }
+
     /// Runs its node `node` on `images`, with `params`: its outputs, in
     /// order.
     pub(crate) fn run(

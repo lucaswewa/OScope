@@ -13,6 +13,10 @@ UTF-8 JSON, both ways:
 - ``{"driver": {"name", "method", "params"}}``: ``{"result": ...}`` (ADR-0036).
 - ``{"capture": {"name", "segment", "bytes"}}``: the camera's next frame,
   written into the segment, then ``{"result": null}``.
+- ``{"read": {"name", "params", "segment", "bytes"}}``: an importer's plane,
+  written into the segment, then ``{"result": null}`` (ADR-0037).
+- ``{"write": {"name", "params", "segment", "bytes"}}``: the plane in the
+  segment, given to an exporter, then ``{"result": null}``.
 - ``{"run": {"node": id, "params": {...}, "inputs": [...]}}``, each input
   ``{"segment", "width", "height", "channels"}``: for each output in turn, the
   worker asks ``{"output": {"port", "width", "height", "channels"}}``, and the
@@ -60,7 +64,7 @@ def serve(incoming: BinaryIO, outgoing: BinaryIO) -> None:
         elif "describe" in message:
             nodes = [node.descriptor() for node in _nodes.nodes()]
             write(outgoing, {"nodes": nodes, "drivers": _drivers.drivers()})
-        elif "driver" in message or "capture" in message:
+        elif any(key in message for key in ("driver", "capture", "read", "write")):
             try:
                 write(outgoing, {"result": drive(message)})
             except Exception as error:
@@ -77,17 +81,31 @@ def serve(incoming: BinaryIO, outgoing: BinaryIO) -> None:
 
 
 def drive(message: dict[str, Any]) -> Any:
-    """A driver's call, or a camera's capture into the host's segment."""
+    """A driver's call; a camera's capture or an importer's plane into the
+    host's segment; or the plane in the host's segment to an exporter."""
     if "driver" in message:
         call = message["driver"]
         return _drivers.call(call["name"], call["method"], call.get("params"))
-    request = message["capture"]
-    frame = _drivers.capture(request["name"])
-    if frame.nbytes != request["bytes"]:
-        raise ValueError(f"a frame of {frame.nbytes} bytes, where the settings make {request['bytes']}")
-    segment = Segment(request["segment"], frame.nbytes, write=True)
+    if "write" in message:
+        request = message["write"]
+        segment = Segment(request["segment"], request["bytes"], write=False)
+        try:
+            pixels = segment.bytes(request["bytes"]).copy()
+        finally:
+            segment.close()
+        _drivers.write(request["name"], request.get("params"), pixels)
+        return None
+    if "read" in message:
+        request = message["read"]
+        data, what = _drivers.read(request["name"], request.get("params")), ("a plane", "its probe makes")
+    else:
+        request = message["capture"]
+        data, what = _drivers.capture(request["name"]), ("a frame", "the settings make")
+    if data.nbytes != request["bytes"]:
+        raise ValueError(f"{what[0]} of {data.nbytes} bytes, where {what[1]} {request['bytes']}")
+    segment = Segment(request["segment"], data.nbytes, write=True)
     try:
-        segment.bytes(frame.nbytes)[...] = frame
+        segment.bytes(data.nbytes)[...] = data
     finally:
         segment.close()
     return None

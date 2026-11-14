@@ -1,6 +1,6 @@
 # P29: Scratch recorder and ingest
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p29-scratch-recorder` / [#43](https://github.com/lucaswewa/OScope/pull/43)
 - Size: M · estimated ~2,900 before it started (the frame log ~520; scratch space ~170; ingest ~210; the recorder ~260; the ingest job and the scratch's health over HTTP ~130; the server's wiring ~25; tests ~790; `ex-record` ~300; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,920** hand-written lines added (Rust code 1,455, of which `oscope-store` 1,089 and `oscope-acquire` 290; tests 1,036; examples 384, `ex-record`'s 378 among them; glue 45), and 47 removed. **That is 2,320 over M's 600, and on the estimate.**
 

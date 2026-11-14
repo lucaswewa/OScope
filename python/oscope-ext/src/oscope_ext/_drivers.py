@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-KINDS = ("camera", "stage", "illumination")
+KINDS = ("camera", "stage", "illumination", "importer", "exporter")
 
 _DRIVERS: dict[str, tuple[str, type]] = {}
 _INSTANCES: dict[str, Any] = {}
@@ -36,9 +36,17 @@ def driver(name: str, *, kind: str):
       "speed"})``, ``jog({"axis", "towards_max", "speed"})``, ``stop()``,
       ``home()``, ``clear_alarm()``, ``arm_trigger({"axis", "positions"})``.
     - Lights: ``capabilities()``, ``state()``, ``set(light)``.
+    - An importer (ADR-0037): ``format()`` (``{"name", "extensions"}``),
+      ``probe({"path"})`` (``{"width", "height", "channels", "planes",
+      "sample"}``, ``sample`` one of ``u8``, ``u16`` and ``f32``, and
+      optionally ``pixel_size`` and ``channel_names``), and
+      ``read({"path", "plane"})`` (the plane, as an array of its samples).
+    - An exporter: ``format()``, ``begin({"path", "image", "name"})``,
+      ``write({"plane"}, pixels)`` (the plane's samples, little-endian, as a
+      flat array of bytes), and ``end()``.
     """
     if kind not in KINDS:
-        raise ValueError(f"a driver is a camera, a stage or illumination, not {kind!r}")
+        raise ValueError(f"a driver is one of {', '.join(KINDS)}, not {kind!r}")
 
     def declare(cls: type) -> type:
         if name in _DRIVERS:
@@ -69,6 +77,20 @@ def call(name: str, method: str, params: Any) -> Any:
     if target is None or method.startswith("_"):
         raise AttributeError(f"the driver {name} has no method {method}")
     return target() if params is None else target(params)
+
+
+def read(name: str, params: Any) -> np.ndarray:
+    """The importer ``name``'s plane, as ``params`` ask, as bytes in an
+    array, little-endian."""
+    plane = np.ascontiguousarray(_instance(name).read(params))
+    if plane.dtype.byteorder == ">":
+        plane = plane.astype(plane.dtype.newbyteorder("<"))
+    return plane.reshape(-1).view(np.uint8)
+
+
+def write(name: str, params: Any, pixels: np.ndarray) -> None:
+    """Gives the exporter ``name`` a plane's bytes, as ``params`` say."""
+    _instance(name).write(params, pixels)
 
 
 def capture(name: str) -> np.ndarray:
