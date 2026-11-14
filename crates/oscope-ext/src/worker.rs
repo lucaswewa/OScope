@@ -17,6 +17,7 @@ use oscope_shm::Segment;
 use serde_json::{Value as Json, json};
 
 use crate::MAX_SAMPLES;
+use crate::native::DriverInfo;
 use crate::python::{PythonRuntime, interpreter};
 
 /// The largest message from a worker: 64 MiB.
@@ -113,17 +114,38 @@ impl Worker {
         self.take(&mut lock(&self.process));
     }
 
-    /// The nodes its module declares.
-    pub(crate) fn describe(&self) -> Result<Vec<Descriptor>, String> {
+    /// The nodes and drivers its module declares.
+    pub(crate) fn describe(&self) -> Result<Described, String> {
         let answer = self.with_process(|process, deadline| {
             process.send(&json!({ "describe": {} }))?;
             process.receive(deadline)
         })?;
-        let nodes = answer
-            .get("nodes")
-            .cloned()
-            .ok_or_else(|| format!("{}: no nodes in {answer}", self.id))?;
-        serde_json::from_value(nodes).map_err(|e| format!("{}: its nodes: {e}", self.id))
+        Described::read(answer).map_err(|e| format!("{}: its description: {e}", self.id))
+    }
+
+    /// Calls its driver `name`'s method `method` with `params`: its answer
+    /// (ADR-0036).
+    pub(crate) fn driver(&self, name: &str, method: &str, params: &Json) -> Result<Json, String> {
+        self.with_process(|process, deadline| {
+            let call = json!({ "name": name, "method": method, "params": params });
+            process.send(&json!({ "driver": call }))?;
+            process.answer(deadline)
+        })
+    }
+
+    /// Captures its camera driver `name`'s next frame into `pixels`,
+    /// through a segment.
+    pub(crate) fn capture(&self, name: &str, pixels: &mut [u8]) -> Result<(), String> {
+        self.with_process(|process, deadline| {
+            let made = Segment::create(&segment_name(), pixels.len());
+            let segment = made.map_err(|e| Failure::Node(e.to_string()))?;
+            let call = json!({ "name": name, "segment": segment.os_name(), "bytes": pixels.len() });
+            process.send(&json!({ "capture": call }))?;
+            process.answer(deadline)?;
+            segment
+                .read_bytes(pixels)
+                .map_err(|e| Failure::Node(e.to_string()))
+        })
     }
 
     /// Runs its node `node` on `images`, with `params`: its outputs, in
@@ -310,6 +332,18 @@ impl Process {
         sent.map_err(|e| Failure::Worker(format!("can't write to it: {e}")))
     }
 
+    /// A driver call's answer: its result, or why it failed.
+    fn answer(&mut self, deadline: Instant) -> Result<Json, Failure> {
+        let mut message = self.receive(deadline)?;
+        if let Some(result) = message.get_mut("result") {
+            return Ok(result.take());
+        }
+        match message.get("error").and_then(Json::as_str) {
+            Some(error) => Err(Failure::Node(error.to_owned())),
+            None => Err(Failure::Worker(format!("it sent {message}"))),
+        }
+    }
+
     fn receive(&mut self, deadline: Instant) -> Result<Json, Failure> {
         let wait = deadline.saturating_duration_since(Instant::now());
         match self.messages.recv_timeout(wait) {
@@ -390,6 +424,27 @@ impl Process {
             } else {
                 return Err(Failure::Worker(format!("it sent {message}")));
             }
+        }
+    }
+}
+
+/// What a Python extension's module declares: its nodes and drivers.
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+pub(crate) struct Described {
+    pub(crate) nodes: Vec<Descriptor>,
+    #[serde(default)]
+    pub(crate) drivers: Vec<DriverInfo>,
+}
+
+impl Described {
+    /// Reads a description, or P26's, which was a list of nodes.
+    pub(crate) fn read(json: Json) -> Result<Described, serde_json::Error> {
+        match json {
+            Json::Array(_) => Ok(Described {
+                nodes: serde_json::from_value(json)?,
+                drivers: Vec::new(),
+            }),
+            json => serde_json::from_value(json),
         }
     }
 }

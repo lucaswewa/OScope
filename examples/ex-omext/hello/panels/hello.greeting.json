@@ -1,0 +1,13 @@
+{
+  "title": "Greeting",
+  "description": "Greets someone, and shows the live view as it is.",
+  "form": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "default": "world" }
+    },
+    "additionalProperties": false
+  },
+  "submit": { "kind": "node", "node": "hello.greet" },
+  "view": "image"
+}

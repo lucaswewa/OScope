@@ -8,8 +8,11 @@ Each message is a little-endian ``u32`` length, then that many bytes of
 UTF-8 JSON, both ways:
 
 - ``{"ping": {}}``: ``{"pong": {}}``.
-- ``{"describe": {}}``: ``{"nodes": [...]}``, each node as the pipeline
-  describes it.
+- ``{"describe": {}}``: ``{"nodes": [...], "drivers": [...]}``, each node
+  as the pipeline describes it, each driver its name and kind.
+- ``{"driver": {"name", "method", "params"}}``: ``{"result": ...}`` (ADR-0036).
+- ``{"capture": {"name", "segment", "bytes"}}``: the camera's next frame,
+  written into the segment, then ``{"result": null}``.
 - ``{"run": {"node": id, "params": {...}, "inputs": [...]}}``, each input
   ``{"segment", "width", "height", "channels"}``: for each output in turn, the
   worker asks ``{"output": {"port", "width", "height", "channels"}}``, and the
@@ -28,7 +31,7 @@ import sys
 import traceback
 from typing import Any, BinaryIO
 
-from . import _nodes
+from . import _drivers, _nodes
 from ._shm import Segment
 
 
@@ -55,7 +58,14 @@ def serve(incoming: BinaryIO, outgoing: BinaryIO) -> None:
         if "ping" in message:
             write(outgoing, {"pong": {}})
         elif "describe" in message:
-            write(outgoing, {"nodes": [node.descriptor() for node in _nodes.nodes()]})
+            nodes = [node.descriptor() for node in _nodes.nodes()]
+            write(outgoing, {"nodes": nodes, "drivers": _drivers.drivers()})
+        elif "driver" in message or "capture" in message:
+            try:
+                write(outgoing, {"result": drive(message)})
+            except Exception as error:
+                failed = {"error": f"{type(error).__name__}: {error}", "traceback": traceback.format_exc()}
+                write(outgoing, failed)
         elif "run" in message:
             try:
                 run(message["run"], incoming, outgoing)
@@ -64,6 +74,23 @@ def serve(incoming: BinaryIO, outgoing: BinaryIO) -> None:
                 write(outgoing, failed)
         else:
             write(outgoing, {"error": f"an unknown message: {sorted(message)}"})
+
+
+def drive(message: dict[str, Any]) -> Any:
+    """A driver's call, or a camera's capture into the host's segment."""
+    if "driver" in message:
+        call = message["driver"]
+        return _drivers.call(call["name"], call["method"], call.get("params"))
+    request = message["capture"]
+    frame = _drivers.capture(request["name"])
+    if frame.nbytes != request["bytes"]:
+        raise ValueError(f"a frame of {frame.nbytes} bytes, where the settings make {request['bytes']}")
+    segment = Segment(request["segment"], frame.nbytes, write=True)
+    try:
+        segment.bytes(frame.nbytes)[...] = frame
+    finally:
+        segment.close()
+    return None
 
 
 def run(request: dict[str, Any], incoming: BinaryIO, outgoing: BinaryIO) -> None:

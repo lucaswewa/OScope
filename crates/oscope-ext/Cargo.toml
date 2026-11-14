@@ -11,6 +11,8 @@ chrono.workspace = true
 libloading.workspace = true
 oscope-compute.workspace = true
 oscope-ext-sdk.workspace = true
+oscope-hal.workspace = true
+oscope-core.workspace = true
 oscope-pipeline.workspace = true
 oscope-shm.workspace = true
 schemars.workspace = true
@@ -19,10 +21,14 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["rt", "time"] }
 thiserror.workspace = true
 toml.workspace = true
 tracing.workspace = true
 zip.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # The workspace's lints, with unsafe code allowed (plan §4.3). Clippy checks
 # that every unsafe block has a `SAFETY:` comment.

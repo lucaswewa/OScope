@@ -47,7 +47,10 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-rust-ext`](ex-rust-ext/README.md) | P25 | The sample Rust extension built, packed for this platform, installed, loaded at a start with its ABI checked, and run in a recipe whole and tile by tile, the same to the bit as its own code run directly |
 | [`ext-python-node`](ext-python-node/README.md) | P26 | A sample Python extension, not a crate: scikit-image's total-variation denoising as a node, its parameters' schema from its type hints |
 | [`ex-python-node`](ex-python-node/README.md) | P26 | The sample Python extension installed, its environment made by uv; its worker started on the first run of a recipe and kept warm, with each run's time; noise removed from a field of the simulated slide, measured |
+| [`ext-rust-camera`](ext-rust-camera/README.md) | P27 | A sample Rust extension, not a program: a camera driver streaming a moving test pattern, which passes the HAL's conformance suite |
+| [`ex-ext-camera`](ex-ext-camera/README.md) | P27 | The server with an extension's camera instead of the simulator: the sample installed, its driver named by the devices' configuration, its frames in the live view |
+| [`ex-checkpoint-b`](ex-checkpoint-b/README.md) | P27 | Checkpoint B: one recipe of a stock node, a Rust extension's and a Python extension's, live on the preview, then as a batch job over the camera's next frames |
 
-`examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` is a library too: the sample extension that `ex-rust-ext` loads. `ext-python-node` is a Python extension, which the workspace leaves out.
+`examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` and `ext-rust-camera` are libraries too: the sample extensions that `ex-rust-ext` and `ex-ext-camera` load. `ext-python-node` is a Python extension, which the workspace leaves out.
 
 P01's example is the server's own command line: [`crates/oscope-server/README.md`](../crates/oscope-server/README.md) says how to try it.

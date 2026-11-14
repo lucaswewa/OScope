@@ -1,0 +1,17 @@
+# The package's manifest (ADR-0018). ex-ext-camera packs the library it
+# built, for this platform alone.
+id = "org.oscope.examples.fakecam"
+name = "Fake camera"
+version = "0.1.0"
+license = "MIT"
+publisher = "OScope examples"
+description = "A sample Rust extension: a camera driver that streams a moving test pattern."
+oscope-api = "^1.0"
+kind = "rust"
+
+[provides]
+drivers = ["example.fakecam"]
+
+[rust.libraries]
+windows-x86_64 = "lib/ext_rust_camera.dll"
+linux-x86_64 = "lib/libext_rust_camera.so"

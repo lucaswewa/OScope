@@ -257,6 +257,49 @@ expression: td
         }
       ]
     },
+    "panels": {
+      "description": "Each one's name, extension, title and description: `panel/{name}`\ngives it whole.",
+      "title": "The panels of the extensions this start loaded, for the app to draw.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "description": "A panel of the extensions loaded, as `panels` lists it (ADR-0036).",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Its name.",
+            "type": "string"
+          },
+          "extension": {
+            "description": "The extension that describes it.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Its title.",
+            "type": "string"
+          },
+          "description": {
+            "description": "What it is for.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "extension",
+          "title",
+          "description"
+        ]
+      },
+      "forms": [
+        {
+          "href": "/api/v1/extensions/panels",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
     "provided": {
       "description": "For each contribution, each name and the extension that provides it.",
       "title": "What the extensions this start loaded provide.",

@@ -154,6 +154,12 @@ fn a_manifest_says_what_is_wrong_with_it() {
             "unknown variant `widgets`",
         ),
         (
+            "nodes = [\"hello.greet\"]",
+            "nodes = [\"hello.greet\"]
+drivers = [\"fake\"]",
+            "provides.drivers \"fake\" is one of OScope's own drivers",
+        ),
+        (
             "entry = \"hello\"",
             "entry = \"hello-world\"",
             "isn't a module's dotted name",

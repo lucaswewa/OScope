@@ -460,6 +460,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-checkpoint-b"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "ex-rust-ext",
+ "futures-util",
+ "oscope-acquire",
+ "oscope-api",
+ "oscope-ext",
+ "oscope-jobs",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
 name = "ex-common"
 version = "0.1.0"
 dependencies = [
@@ -510,6 +527,26 @@ dependencies = [
  "oscope-imaging",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "ex-ext-camera"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "ex-rust-ext",
+ "ext-rust-camera",
+ "futures-util",
+ "oscope-acquire",
+ "oscope-api",
+ "oscope-core",
+ "oscope-ext",
+ "oscope-hal",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-tungstenite",
 ]
 
 [[package]]
@@ -829,6 +866,13 @@ dependencies = [
  "oscope-sim",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "ext-rust-camera"
+version = "0.1.0"
+dependencies = [
+ "oscope-ext-sdk",
 ]
 
 [[package]]
@@ -1475,7 +1519,9 @@ dependencies = [
  "chrono",
  "libloading",
  "oscope-compute",
+ "oscope-core",
  "oscope-ext-sdk",
+ "oscope-hal",
  "oscope-pipeline",
  "oscope-shm",
  "schemars",
@@ -1485,6 +1531,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "thiserror",
+ "tokio",
  "toml",
  "tracing",
  "zip",
@@ -1494,6 +1541,9 @@ dependencies = [
 name = "oscope-ext-sdk"
 version = "0.1.0"
 dependencies = [
+ "oscope-core",
+ "oscope-hal",
+ "serde",
  "serde_json",
 ]
 

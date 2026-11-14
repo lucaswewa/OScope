@@ -1,6 +1,6 @@
 # P26: Python extension runtime and SDK
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p26-python-ext` / [#40](https://github.com/lucaswewa/OScope/pull/40)
 - Size: L · estimated ~3,000 before it started (the Python SDK, its node decorator, schemas from type hints, shared-memory views and message loop, with its pytest suite, ~650; finding uv and building each extension's environment at install, online or from a wheelhouse, ~250; the worker supervisor and the shared-memory transport, ~650; Rust tests ~450; the scikit-image sample and `ex-python-node` ~350; CI, scripts and the server's settings ~150; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,278** hand-written lines added (Rust code 971; the Python SDK 352; tests 621, of which Python 192; examples 295; CI and scripts 39), and 58 removed. **That is 1,378 over L's 900, and about a quarter under the estimate.**
 

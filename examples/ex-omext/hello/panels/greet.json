@@ -1,7 +1,0 @@
-{
-  "title": "Greeting",
-  "type": "object",
-  "properties": {
-    "name": { "type": "string", "default": "world" }
-  }
-}

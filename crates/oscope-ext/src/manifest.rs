@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 
-use crate::ExtError;
+use crate::{ExtError, OWN_DRIVERS};
 
 /// The version of the extension API this OScope offers, which a package's
 /// `oscope-api` range must match. A minor version adds to the API; a major
@@ -203,12 +203,15 @@ impl Manifest {
     ///
     /// - its ID is reverse DNS, and its name, licence and publisher aren't
     ///   empty;
-    /// - it provides something, each name dotted names, given once;
+    /// - it provides something, each name dotted names, given once, and no
+    ///   driver named as one of OScope's own ([`OWN_DRIVERS`]);
     /// - a Rust package has `[rust]` and no `[python]`, with a library for
     ///   at least one of the [`PLATFORMS`], and no other; a Python package
     ///   has `[python]` and no `[rust]`, with an entry that is a module's
     ///   dotted name;
-    /// - the paths it names are plain relative paths, as in a package.
+    /// - the paths it names are plain relative paths, as in a package;
+    /// - each panel it provides has its document, `panels/<name>.json`,
+    ///   among its assets (ADR-0036).
     pub fn check(&self) -> Result<(), ExtError> {
         if !is_id(&self.id) {
             return Err(wrong(format!(
@@ -233,6 +236,16 @@ impl Manifest {
                     "provides.{contribution} {name:?} isn't dotted names, or is there twice"
                 )));
             }
+        }
+        let drivers = self.provides.get(&Contribution::Drivers);
+        if let Some(name) = drivers
+            .into_iter()
+            .flatten()
+            .find(|n| OWN_DRIVERS.contains(&n.as_str()))
+        {
+            return Err(wrong(format!(
+                "provides.drivers {name:?} is one of OScope's own drivers"
+            )));
         }
         if self.provides.values().all(Vec::is_empty) {
             return Err(wrong("[provides] names nothing"));
@@ -273,6 +286,19 @@ impl Manifest {
         }
         for asset in &self.assets {
             check_path(asset).map_err(|why| wrong(format!("assets {asset:?} {why}")))?;
+        }
+        let panels = self
+            .provides
+            .get(&Contribution::Panels)
+            .into_iter()
+            .flatten();
+        for panel in panels {
+            let asset = crate::panels::asset(panel);
+            if !self.assets.contains(&asset) {
+                return Err(wrong(format!(
+                    "provides.panels {panel:?}: {asset:?} isn't among its assets"
+                )));
+            }
         }
         Ok(())
     }

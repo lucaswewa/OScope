@@ -20,12 +20,14 @@ use oscope_compute::{Compute, ComputeConfig, Image, Shape, cpu};
 use oscope_core::{Frame, PixelRect};
 use oscope_ext::Extensions;
 use oscope_imaging::color::{ColourCorrection, Curve, Display, encode_tiff16};
+use oscope_jobs::JobService;
 use oscope_pipeline::{Descriptor, Engine, Recipe, stock};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use teta_wot::http::Subscriber;
 use teta_wot::prelude::*;
 
+use crate::batch;
 use crate::devices::Devices;
 use crate::server::{RingSlot, Roots};
 
@@ -415,7 +417,7 @@ impl PreviewThing {
             tokio::task::spawn_blocking(|| Compute::new(&ComputeConfig::default())).await??;
         let preview = Preview::new(Arc::new(compute));
         let roots = ctx.server().service::<Roots>();
-        let references = roots.map_or_else(
+        let references = roots.as_ref().map_or_else(
             || PathBuf::from("references"),
             |r| r.data.join("references"),
         );
@@ -429,6 +431,20 @@ impl PreviewThing {
             }
         }
         let engine = Arc::new(Engine::new(registry, Arc::clone(preview.compute()), 0));
+        // Recipes over the camera's frames as batch jobs (Checkpoint B), on
+        // the same nodes as live recipes.
+        if let Some(jobs) = ctx.server().service::<JobService>() {
+            let data = roots
+                .as_ref()
+                .map_or_else(|| PathBuf::from("."), |r| r.data.clone());
+            let made = batch::factory(
+                Arc::clone(&engine),
+                preview.clone(),
+                Arc::clone(&devices),
+                data.join("batch"),
+            );
+            jobs.register("pipeline.batch", made);
+        }
         if let Some(slot) = ctx.server().service::<RingSlot>()
             && let Some(ring) = lock(&slot.0).take()
         {

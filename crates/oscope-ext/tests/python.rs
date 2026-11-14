@@ -12,7 +12,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use oscope_compute::{Compute, ComputeConfig, Image, Shape};
+use oscope_core::{
+    Clock, FrameBuffer, FramePool, HeapAllocator, PixelFormat, SystemClock, Um, Xyz,
+};
 use oscope_ext::{Extensions, OSCOPE_FOLDER, PythonRuntime};
+use oscope_hal::{Camera, Error, FrameSink, Trigger, conformance};
 use oscope_pipeline::{Engine, Plan, Recipe, Registry, RunOptions, Value, Values};
 use serde_json::json;
 
@@ -37,6 +41,7 @@ kind = "python"
 
 [provides]
 nodes = ["test.scale", "test.split", "test.sleep", "test.crash", "test.fail"]
+drivers = ["test.stage", "test.lights", "test.camera"]
 
 [python]
 requires-python = ">=3.12,<3.15"
@@ -48,7 +53,8 @@ const MODULE: &str = r#""""Nodes for OScope's tests of Python extensions."""
 import os
 import time
 
-from oscope_ext import node
+import numpy as np
+from oscope_ext import driver, node
 
 
 @node("test.scale", tileable=0)
@@ -76,6 +82,102 @@ def crash(image):
 @node("test.fail")
 def fail(image):
     raise ValueError("no good")
+
+
+@driver("test.stage", kind="stage")
+class Stage:
+    """A stage that arrives on the second look at its status, and trips a
+    limit switch on arriving at x = 12,345 µm."""
+
+    def __init__(self):
+        self.at = {"x": 0.0, "y": 0.0, "z": 0.0}
+        self.state = {"state": "idle"}
+        self.target, self.looks = None, 0
+
+    def capabilities(self):
+        travel = lambda mm: {"min": 0.0, "max": mm * 1000.0}
+        return {
+            "model": "test stage", "x": travel(100), "y": travel(75), "z": travel(20),
+            "max_speed": 50000.0, "default_speed": 10000.0, "homing": True,
+            "encoders": False, "trigger_output": False, "report_interval": 10.0,
+        }
+
+    def status(self):
+        if self.target is not None:
+            self.looks += 1
+            if self.looks == 2:
+                self.at, self.target = self.target, None
+                tripped = self.at["x"] == 12345.0
+                self.state = {"state": "alarm", "reason": "a limit switch"} if tripped else {"state": "idle"}
+        return self.state
+
+    def position(self):
+        return self.at
+
+    def move_to(self, request):
+        self.target, self.looks = dict(request["target"]), 0
+        self.state = {"state": "moving"}
+
+    def clear_alarm(self):
+        self.state = {"state": "idle"}
+
+    def jog(self, request):
+        self.state = {"state": "moving"}
+
+    def stop(self):
+        self.state = {"state": "idle"}
+
+    def home(self):
+        self.at = {"x": 0.0, "y": 0.0, "z": 0.0}
+
+
+@driver("test.lights", kind="illumination")
+class Lights:
+    def __init__(self):
+        self.lights = [{"channel": "transmitted", "on": False, "intensity": 0.0}]
+
+    def capabilities(self):
+        return {"model": "test lights", "channels": [{"name": "transmitted", "kind": "transmitted", "dimmable": True}]}
+
+    def state(self):
+        return self.lights
+
+    def set(self, light):
+        self.lights = [light if old["channel"] == light["channel"] else old for old in self.lights]
+
+
+@driver("test.camera", kind="camera")
+class Camera:
+    """A 64 × 48 sensor in 8 or 16 bits of grey, its frames counting up."""
+
+    def __init__(self):
+        self.wide, self.count = False, 0
+
+    def capabilities(self):
+        rate = lambda kind, fps: {"format": {"kind": kind}, "fps": fps}
+        mode = {"name": "full", "width": 64, "height": 48, "binning": 1, "line_time": None,
+                "rates": [rate("mono8", 100.0), rate("mono16", 50.0)]}
+        return {
+            "model": "test camera", "sensor_width": 64, "sensor_height": 48, "pixel_size": 5.0,
+            "shutter": "global", "modes": [mode], "exposure_min": 0.01, "exposure_max": 1000.0,
+            "gain_min": 0.0, "gain_max": 10.0, "roi": None,
+            "trigger": {"software": False, "external": False, "output": False},
+            "sensor_timestamps": False, "temperature": False,
+        }
+
+    def configure(self, settings):
+        self.wide = settings["format"]["kind"] == "mono16"
+
+    def start(self, settings):
+        self.configure(settings)
+
+    def capture(self):
+        time.sleep(0.01)
+        self.count += 1
+        return np.full((48, 64), self.count % 256, dtype=np.uint16 if self.wide else np.uint8)
+
+    def stop(self):
+        pass
 "#;
 
 /// Packs the test extension, with `manifest`, into `folder`.
@@ -362,4 +464,74 @@ fn a_module_whose_nodes_are_not_its_manifest_s_is_refused_at_install() {
         "{error}"
     );
     assert!(!root.join(ID).join("1.0.0").exists(), "nothing left");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn python_drivers_pass_the_hal_conformance_suite() {
+    if !enabled() {
+        return;
+    }
+    let folder = tempfile::tempdir().unwrap();
+    let extensions = installed(folder.path(), &PythonRuntime::default());
+    let names: Vec<_> = extensions.drivers().names().collect();
+    assert_eq!(
+        names,
+        [
+            ("test.camera", "camera"),
+            ("test.lights", "illumination"),
+            ("test.stage", "stage")
+        ]
+    );
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock::new());
+    let drivers = extensions.drivers();
+    let stage = drivers
+        .stage("test.stage", Arc::clone(&clock))
+        .unwrap()
+        .unwrap();
+    conformance::stage(&*stage, Um(1.0)).await.unwrap();
+    // A move that ends in alarm fails with it, and the next is refused,
+    // without moving, until the alarm is cleared.
+    let alarm = |result: Result<_, Error>| matches!(result, Err(Error::Alarm { .. }));
+    let at = |x: f64| Xyz::new(Um(x), Um(0.0), Um(0.0));
+    assert!(alarm(stage.move_to(at(12_345.0), None).await));
+    assert!(alarm(stage.move_to(at(1.0), None).await));
+    let still = stage.position().await.unwrap().position;
+    assert_eq!(still, at(12_345.0));
+    stage.clear_alarm().await.unwrap();
+    assert_eq!(
+        stage.move_to(at(1.0), None).await.unwrap().position,
+        at(1.0)
+    );
+    let lights = drivers.illumination("test.lights").unwrap().unwrap();
+    conformance::illumination(&*lights).await.unwrap();
+    // Frames through shared memory.
+    let camera = drivers.camera("test.camera", clock).unwrap().unwrap();
+    conformance::camera(&*camera).await.unwrap();
+    // Their pixels come through: each frame is its count, one more each time.
+    let [first, second] = two_frames(&*camera).await;
+    assert!(first.iter().all(|byte| *byte == first[0]));
+    assert_eq!(second, vec![first[0].wrapping_add(1); first.len()]);
+}
+
+/// The bytes of `camera`'s next two frames, in its full mode, in 8 bits of
+/// grey, free-running.
+async fn two_frames(camera: &dyn Camera) -> [Vec<u8>; 2] {
+    let mut settings = camera.settings().await.unwrap();
+    settings.mode = "full".to_owned();
+    settings.format = PixelFormat::Mono8;
+    settings.roi = None;
+    settings.trigger = Trigger::FreeRunning;
+    let settings = camera.configure(settings).await.unwrap();
+    let (_, width, height) = camera.capabilities().frame_shape(&settings).unwrap();
+    let bytes = settings.format.frame_bytes(width, height);
+    let (sender, frames) = std::sync::mpsc::channel();
+    let sink: FrameSink = Arc::new(move |buffer: FrameBuffer, _| {
+        let _ = sender.send(buffer.bytes()[..bytes].to_vec());
+    });
+    let pool = FramePool::new(bytes, 4, &HeapAllocator);
+    camera.start(pool, sink).await.unwrap();
+    let next = || frames.recv_timeout(Duration::from_secs(10)).unwrap();
+    let both = [next(), next()];
+    camera.stop().await.unwrap();
+    both
 }

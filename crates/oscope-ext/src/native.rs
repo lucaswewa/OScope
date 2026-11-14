@@ -22,6 +22,7 @@ static HOST: abi::Host = abi::Host {
     describe,
     output,
     fail,
+    reply,
 };
 
 /// What the host keeps for a call to an extension.
@@ -30,14 +31,32 @@ struct Call {
     description: Option<String>,
     outputs: Vec<Option<Image>>,
     failure: Option<String>,
+    answer: Option<String>,
 }
 
-/// A Rust extension's library, loaded: its table, and the nodes it
-/// describes. A library is never unloaded: a Rust library's statics and
+/// A driver an extension describes (ADR-0036).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct DriverInfo {
+    /// Its name, which the configuration names it by.
+    pub name: String,
+    /// Its kind: `camera`, `stage` or `illumination`.
+    pub kind: String,
+}
+
+/// What an extension describes.
+#[derive(serde::Deserialize)]
+struct Description {
+    nodes: Vec<Descriptor>,
+    drivers: Vec<DriverInfo>,
+}
+
+/// A Rust extension's library, loaded: its table, and the nodes and drivers
+/// it describes. A library is never unloaded: a Rust library's statics and
 /// thread-locals can't be torn down safely while the process runs.
 pub struct Library {
     table: &'static abi::Extension,
     descriptors: Vec<Descriptor>,
+    drivers: Vec<DriverInfo>,
 }
 
 impl std::fmt::Debug for Library {
@@ -85,10 +104,23 @@ impl Library {
         let table: &'static abi::Extension = unsafe { &*table };
         let described = call(0, |host, call| (table.describe)(host, call))?;
         let json = described.description.ok_or("it described nothing")?;
-        let descriptors: Vec<Descriptor> =
-            serde_json::from_str(&json).map_err(|e| format!("its description: {e}"))?;
-        check(&descriptors, "in ABI 1")?;
-        let library = Arc::new(Library { table, descriptors });
+        let Description {
+            nodes: descriptors,
+            drivers,
+        } = serde_json::from_str(&json).map_err(|e| format!("its description: {e}"))?;
+        check(&descriptors, "in ABI 2")?;
+        let kinds = ["camera", "stage", "illumination"];
+        if let Some(driver) = drivers.iter().find(|d| !kinds.contains(&d.kind.as_str())) {
+            return Err(format!(
+                "driver `{}`: no driver is a {}",
+                driver.name, driver.kind
+            ));
+        }
+        let library = Arc::new(Library {
+            table,
+            descriptors,
+            drivers,
+        });
         registered(&library.nodes())?;
         Ok(library)
     }
@@ -96,6 +128,37 @@ impl Library {
     /// What its nodes are, in its order.
     pub fn descriptors(&self) -> &[Descriptor] {
         &self.descriptors
+    }
+
+    /// Its drivers, in its order.
+    pub fn drivers(&self) -> &[DriverInfo] {
+        &self.drivers
+    }
+
+    /// Calls its driver `driver`'s method `method` with `params`: its answer.
+    pub fn driver_call(
+        &self,
+        driver: u32,
+        method: &str,
+        params: &serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let (method, params) = (abi::Str::new(method), params.to_string());
+        let table = self.table;
+        let made = call(0, |host, call| {
+            (table.driver_call)(host, call, driver, method, abi::Str::new(&params))
+        })?;
+        let answer = made.answer.ok_or("it gave no answer")?;
+        serde_json::from_str(&answer).map_err(|e| format!("its answer: {e}"))
+    }
+
+    /// Captures its camera `driver`'s next frame into `pixels`.
+    pub fn capture(&self, driver: u32, pixels: &mut [u8]) -> Result<(), String> {
+        let table = self.table;
+        let (data, len) = (pixels.as_mut_ptr(), pixels.len());
+        call(0, |host, call| {
+            (table.capture)(host, call, driver, data, len)
+        })
+        .map(drop)
     }
 
     /// Its nodes, for the pipeline's registry.
@@ -197,6 +260,11 @@ extern "C" fn describe(call: *mut abi::Call, json: abi::Str) {
 extern "C" fn fail(call: *mut abi::Call, message: abi::Str) {
     // SAFETY: as in `describe`.
     unsafe { with_call(call, |call| call.failure = Some(copy(message))) };
+}
+
+extern "C" fn reply(call: *mut abi::Call, json: abi::Str) {
+    // SAFETY: as in `describe`.
+    unsafe { with_call(call, |call| call.answer = Some(copy(json))) };
 }
 
 extern "C" fn output(

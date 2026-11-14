@@ -215,3 +215,53 @@ async fn the_extensions_thing_describes_itself() {
     assert!(id.as_str().unwrap().starts_with("urn:uuid:"), "{id}");
     insta::assert_json_snapshot!("extensions", td);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_panels_of_the_extensions_loaded_are_served_for_the_app() {
+    let folder = tempfile::tempdir().unwrap();
+    let data = folder.path().join("data");
+    let source = folder.path().join("panelled");
+    std::fs::create_dir_all(source.join("panels")).unwrap();
+    std::fs::create_dir_all(source.join("hello")).unwrap();
+    let manifest = format!(
+        "id = \"{ID}\"\nname = \"Hello\"\nversion = \"1.0.0\"\nlicense = \"MIT\"\n\
+         publisher = \"Example Lab\"\noscope-api = \"^1.0\"\nkind = \"python\"\n\
+         assets = [\"panels/hello.greeting.json\"]\n\n\
+         [provides]\nnodes = [\"hello.greet\"]\npanels = [\"hello.greeting\"]\n\n\
+         [python]\nrequires-python = \">=3.12\"\nentry = \"hello\"\n"
+    );
+    std::fs::write(source.join("manifest.toml"), manifest).unwrap();
+    std::fs::write(source.join("hello/__init__.py"), "").unwrap();
+    let panel = json!({
+        "title": "Greeting",
+        "description": "Says hello.",
+        "form": { "type": "object", "properties": { "name": { "type": "string" } } },
+        "submit": { "kind": "node", "node": "hello.greet" },
+        "view": "text",
+    });
+    std::fs::write(source.join("panels/hello.greeting.json"), panel.to_string()).unwrap();
+    let package = folder.path().join("panelled.omext");
+    oscope_ext::pack(&source, &package).unwrap();
+    let client = server(&data).await;
+    assert_eq!(
+        upload(&client, std::fs::read(&package).unwrap())
+            .await
+            .status,
+        201
+    );
+    assert_eq!(
+        client.get("/api/v1/extensions/panels").await.json(),
+        json!([])
+    );
+    client.stop().await;
+
+    // The next start serves it.
+    let client = server(&data).await;
+    let listed = client.get("/api/v1/extensions/panels").await.json();
+    let entry = json!({ "name": "hello.greeting", "extension": ID, "title": "Greeting", "description": "Says hello." });
+    assert_eq!(listed, json!([entry]));
+    let whole = client.get("/api/v1/extensions/panel/hello.greeting").await;
+    assert_eq!((whole.status.as_u16(), whole.json()), (200, panel));
+    let none = client.get("/api/v1/extensions/panel/hello.nothing").await;
+    assert_eq!(none.status, 404);
+}

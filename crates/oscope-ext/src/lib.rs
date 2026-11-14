@@ -18,17 +18,21 @@
 
 use std::path::{Path, PathBuf};
 
+mod drivers;
 mod installed;
 mod manifest;
 mod native;
 mod package;
+mod panels;
 mod python;
 mod worker;
 
+pub use drivers::{Drivers, OWN_DRIVERS};
 pub use installed::{Extension, Extensions, Loaded, Registry, WorkerState};
 pub use manifest::{API_VERSION, Contribution, Kind, Manifest, PLATFORM, PLATFORMS, Python, Rust};
-pub use native::{Library, MAX_SAMPLES};
+pub use native::{DriverInfo, Library, MAX_SAMPLES};
 pub use package::{MANIFEST, MAX_ENTRIES, MAX_UNPACKED, Package, pack, sha256};
+pub use panels::{Panel, Submit, View};
 pub use python::{OSCOPE_FOLDER, PythonRuntime, find_uv};
 
 /// Why a package, a manifest or an extension was refused, or a file failed.

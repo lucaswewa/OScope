@@ -9,7 +9,7 @@ publisher = "OScope examples"
 description = "A dummy extension: a greeting node and its panel, listed but not run."
 oscope-api = "^1.0"
 kind = "python"
-assets = ["panels/greet.json"]
+assets = ["panels/hello.greeting.json"]
 
 [provides]
 nodes = ["hello.greet"]

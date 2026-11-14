@@ -199,7 +199,8 @@ fn describe_as(
 ) -> abi::Status {
     // SAFETY: the host lends its table for the call.
     let host = unsafe { &*host };
-    (host.describe)(call, abi::Str::new(&json!([node]).to_string()));
+    let described = json!({ "nodes": [node], "drivers": [] });
+    (host.describe)(call, abi::Str::new(&described.to_string()));
     abi::OK
 }
 
@@ -214,7 +215,7 @@ fn node(id: &str, inputs: serde_json::Value, params: serde_json::Value) -> serde
     })
 }
 
-/// Describes a node with a mask for its input, which ABI 1 doesn't carry.
+/// Describes a node with a mask for its input, which ABI 2 doesn't carry.
 extern "C" fn describe_mask(host: *const abi::Host, call: *mut abi::Call) -> abi::Status {
     let inputs = json!([{ "name": "mask", "type": "mask" }]);
     describe_as(
@@ -243,6 +244,26 @@ extern "C" fn never(
     abi::FAILED
 }
 
+extern "C" fn no_driver_call(
+    _: *const abi::Host,
+    _: *mut abi::Call,
+    _: u32,
+    _: abi::Str,
+    _: abi::Str,
+) -> abi::Status {
+    abi::FAILED
+}
+
+extern "C" fn no_capture(
+    _: *const abi::Host,
+    _: *mut abi::Call,
+    _: u32,
+    _: *mut u8,
+    _: usize,
+) -> abi::Status {
+    abi::FAILED
+}
+
 /// A table of `describe`, speaking ABI `version`.
 const fn table(
     version: u32,
@@ -252,6 +273,8 @@ const fn table(
         abi_version: version,
         describe,
         run: never,
+        driver_call: no_driver_call,
+        capture: no_capture,
     }
 }
 
@@ -280,11 +303,11 @@ fn another_abi_version_and_a_description_the_pipeline_cannot_take_are_refused() 
     let cases: [(abi::Entry, &str); 4] = [
         (
             next_version,
-            "it was built for the extension ABI 2, and this OScope speaks 1",
+            "it was built for the extension ABI 3, and this OScope speaks 2",
         ),
         (
             masked,
-            "node `test.mask`: in ABI 1, every port is an image, and none is optional",
+            "node `test.mask`: in ABI 2, every port is an image, and none is optional",
         ),
         (nothing, "its entry gave no table"),
         (unchecked, "node `test.unchecked`: its parameters' schema: "),
