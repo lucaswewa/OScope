@@ -8,7 +8,8 @@ The page reads the Thing's Description, then every property it lists, once a sec
 - the operating system and the processor;
 - the memory;
 - the uptime;
-- the data and scratch roots, with their free space.
+- the data and scratch roots, with their free space;
+- the scratch space's health: whether there is room to record (P29).
 
 Below them, it shows the Thing Description itself.
 
@@ -40,7 +41,7 @@ cargo run -p ex-server-hello -- --smoke
 It checks four things:
 
 - the page and its script are served;
-- the Thing Description lists 8 properties;
+- the Thing Description lists 9 properties;
 - each property answers at the address its form gives;
 - the media plane answers `pong`.
 
