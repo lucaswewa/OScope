@@ -62,6 +62,10 @@ uuid_id!(
     /// A result: an image, a table or a report that a job made.
     ResultId
 );
+uuid_id!(
+    /// A report: a document made from a project's data (P28, P47).
+    ReportId
+);
 
 /// A frame, numbered in the order frames arrive, from 0 (P03).
 #[derive(

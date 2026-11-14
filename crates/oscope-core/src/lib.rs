@@ -6,7 +6,8 @@
 //! - [`units`]: lengths in micrometres ([`Um`]) and durations in milliseconds ([`Ms`]).
 //! - [`clock`]: the [`Clock`] and its [`Timestamp`]s.
 //! - [`geometry`]: points, sizes, rectangles, stage positions, and [`Affine2`].
-//! - [`ids`]: [`FrameId`], [`JobId`], [`ProjectId`], [`AcquisitionId`] and [`ResultId`].
+//! - [`ids`]: [`FrameId`], [`JobId`], [`ProjectId`], [`AcquisitionId`], [`ResultId`]
+//!   and [`ReportId`].
 //! - [`error`]: this crate's [`Error`], and the error conventions of every crate.
 //! - [`version`]: documents that carry their schema's version.
 //! - [`frame`]: frames in pooled memory, their metadata, and views of them.
@@ -26,6 +27,6 @@ pub use frame::{
     LightState, PixelFormat, PoolStats, Slab, SlabAllocator,
 };
 pub use geometry::{Affine2, PixelRect, Point2, Rect, Size2, Xyz};
-pub use ids::{AcquisitionId, FrameId, JobId, ProjectId, ResultId};
+pub use ids::{AcquisitionId, FrameId, JobId, ProjectId, ReportId, ResultId};
 pub use units::{Ms, Um};
 pub use version::{Versioned, from_document, to_document};

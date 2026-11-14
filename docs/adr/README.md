@@ -26,6 +26,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0018](0018-the-omext-package-format.md) | The `.omext` package format | Accepted | P24 |
 | [0019](0019-the-rust-extension-abi.md) | The Rust extension ABI | Accepted; extended by 0036 | P25 |
 | [0020](0020-the-python-extension-runtime.md) | The Python extension runtime | Accepted; extended by 0036 | P26 |
+| [0021](0021-projects-ome-zarr-and-the-index.md) | Projects, OME-Zarr v3 and the SQLite index | Accepted | P28 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |

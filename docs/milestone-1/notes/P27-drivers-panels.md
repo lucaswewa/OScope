@@ -1,6 +1,6 @@
 # P27: Driver and panel extensions
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p27-drivers-panels` / [#41](https://github.com/lucaswewa/OScope/pull/41)
 - Size: L · estimated ~3,700 before it started (driver traits in both SDKs, with the Rust ABI's second version, ~650; the host's adapters that make extension drivers the HAL's, and the drivers' registry, ~650; panels ~200; the batch job for Checkpoint B ~200; the samples and examples ~450; tests ~600; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,188** hand-written lines added (Rust code 1,624; the Python SDK 117; tests 771, of which Python 74; examples 676), and 163 removed. **That is 2,288 over L's 900, and about a seventh under the estimate.**
 

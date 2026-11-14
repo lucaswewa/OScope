@@ -206,6 +206,9 @@ pub enum Error {
     /// The job service couldn't open its history.
     #[error("the job service: {0}")]
     Jobs(String),
+    /// The projects' index couldn't be opened.
+    #[error("the projects: {0}")]
+    Projects(String),
     /// The extensions couldn't be read, or a package made.
     #[error("extensions: {0}")]
     Extensions(#[from] ExtError),
@@ -249,14 +252,16 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
         let roots = roots(&config);
         // No extension is loaded: a driver of one is printed as a fake.
         let devices = runtime.block_on(devices(cli, &config, None))?;
-        // A history in memory: printing creates no files.
+        // A history and an index in memory: printing creates no files.
         let jobs = runtime.block_on(async { jobs(Path::new(":memory:"), &config) })?;
+        let projects = projects(&roots.data, Path::new(":memory:"))?;
         // No extension is read either.
         let extensions = Extensions::empty(roots.data.join("extensions"));
         let api = Api::builder(&roots)
             .devices(devices)
             .jobs(jobs)
             .extensions(extensions)
+            .projects(projects)
             .build()?;
         let base = format!("http://{address}/");
         match cli.print_openapi {
@@ -339,6 +344,7 @@ async fn serve(
     let extensions = Extensions::open_with(roots.data.join("extensions"), python)?;
     let devices = devices(cli, &config, Some(extensions.drivers())).await?;
     let jobs = jobs(&roots.data.join("index.sqlite"), &config)?;
+    let projects = projects(&roots.data, &roots.data.join("index.sqlite"))?;
     let token = write_token(&roots)?;
     let ring = ring(cli, &config)?;
     let ring_name = ring.as_ref().map(|r| r.name().to_owned());
@@ -347,7 +353,8 @@ async fn serve(
         .settings(roots.data.join("settings"))
         .devices(devices)
         .jobs(jobs)
-        .extensions(extensions);
+        .extensions(extensions)
+        .projects(projects);
     if let Some(ring) = ring {
         api = api.ring(ring);
     }
@@ -399,6 +406,11 @@ fn jobs(path: &Path, config: &Config) -> Result<JobService, Error> {
         gpu_mib: config.jobs.gpu_mib,
     };
     JobService::open(path, jobs).map_err(|e| Error::Jobs(e.to_string()))
+}
+
+/// The projects of the data root `data`, and their index at `index`.
+fn projects(data: &Path, index: &Path) -> Result<oscope_store::Store, Error> {
+    oscope_store::Store::open(data, index).map_err(|e| Error::Projects(e.to_string()))
 }
 
 /// Packs `folder` into `out`, or `{id}-{version}.omext` here, and prints

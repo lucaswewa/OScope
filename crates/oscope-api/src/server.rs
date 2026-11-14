@@ -25,6 +25,7 @@ use crate::extensions::ExtensionsThing;
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::preview::PreviewThing;
+use crate::projects::ProjectsThing;
 use crate::system::{System, VERSION};
 use crate::{media, pages};
 
@@ -203,6 +204,15 @@ impl ApiBuilder {
             .things
             .service(Arc::new(extensions))
             .thing("extensions", ExtensionsThing::default());
+        self
+    }
+
+    /// Serves the projects in `store` as the `projects` Thing (ADR-0021).
+    pub fn projects(mut self, store: oscope_store::Store) -> Self {
+        self.things = self
+            .things
+            .service(Arc::new(store))
+            .thing("projects", ProjectsThing::default());
         self
     }
 

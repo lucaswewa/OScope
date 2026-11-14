@@ -67,6 +67,8 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 
 **The job history** is kept in `{data_root}/index.sqlite` ([ADR-0016](../../docs/adr/0016-the-job-service.md)). Jobs a stop cut short are marked *interrupted* at the next start.
 
+**Projects** are kept in `{data_root}/projects`, each in a folder with its acquisitions, results and reports, their images as OME-Zarr v3, and listed in `{data_root}/index.sqlite` beside the jobs ([ADR-0021](../../docs/adr/0021-projects-ome-zarr-and-the-index.md)). The `projects` Thing lists, searches and pages them for the Gallery; makes, renames, tags, describes and deletes them; and serves their thumbnails. Its `rebuild_index` action makes the index again from the folders, which are the truth.
+
 **Each start writes a new local token,** 32 random bytes in hex, to `{data_root}/run/local.token`. Only the account the server runs as can read it: mode 0600 on Linux, a one-entry access list on Windows. It is for the desktop app, which proves itself with it once authentication comes (ADR-0031).
 
 ## The sidecar contract

@@ -65,6 +65,10 @@ zip = { version = "=9.1.3", default-features = false, features = ["deflate-flate
 # New in P25: loading Rust extensions (ADR-0019). Already in the lock, through
 # cudarc; 0.9.1 is under two weeks old.
 libloading = "0.9.0"
+# New in P28: OME-Zarr v3 stores (D15, ADR-0021), with only the codecs OScope
+# writes; and, for tests only, NGFF's JSON Schemas checked without fetching.
+jsonschema = { version = "0.33.0", default-features = false }
+zarrs = { version = "0.22.10", default-features = false, features = ["filesystem", "zstd"] }
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
@@ -78,6 +82,7 @@ oscope-pipeline = { path = "crates/oscope-pipeline" }
 oscope-sim = { path = "crates/oscope-sim" }
 oscope-server = { path = "crates/oscope-server" }
 oscope-shm = { path = "crates/oscope-shm" }
+oscope-store = { path = "crates/oscope-store" }
 oscope-core = { path = "crates/oscope-core" }
 
 # Every crate takes these with `[lints] workspace = true`, except the crates

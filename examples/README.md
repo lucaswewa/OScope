@@ -50,6 +50,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ext-rust-camera`](ext-rust-camera/README.md) | P27 | A sample Rust extension, not a program: a camera driver streaming a moving test pattern, which passes the HAL's conformance suite |
 | [`ex-ext-camera`](ex-ext-camera/README.md) | P27 | The server with an extension's camera instead of the simulator: the sample installed, its driver named by the devices' configuration, its frames in the live view |
 | [`ex-checkpoint-b`](ex-checkpoint-b/README.md) | P27 | Checkpoint B: one recipe of a stock node, a Rust extension's and a Python extension's, live on the preview, then as a batch job over the camera's next frames |
+| [`ex-projects`](ex-projects/README.md) | P28 | Projects on disk: two projects, each with an acquisition of the simulated slide stored as OME-Zarr, and a result with its provenance; a Gallery-style page of their cards, searched and paged; and how to open the stores in napari or Python |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` and `ext-rust-camera` are libraries too: the sample extensions that `ex-rust-ext` and `ex-ext-camera` load. `ext-python-node` is a Python extension, which the workspace leaves out.
 
