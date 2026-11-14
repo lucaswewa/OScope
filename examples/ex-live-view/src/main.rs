@@ -56,6 +56,13 @@ async fn run() -> anyhow::Result<()> {
     let api = Api::builder(&example.roots)
         .settings(example.roots.data.join("settings"))
         .devices(Arc::new(devices));
+    // The camera starts streaming once the server answers, through the
+    // API, after the Things have started and set their saved settings.
+    example.when_serving(|address| async move {
+        let started = post(address, "/api/v1/camera/start_streaming", &json!({})).await?;
+        ensure!(started.status == 201, "start_streaming: {}", started.status);
+        Ok(())
+    });
     example.serve(api, page, smoke).await
 }
 

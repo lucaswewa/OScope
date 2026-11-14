@@ -55,14 +55,19 @@ async function refresh() {
   }
 }
 
-async function start() {
-  for (const objective of (await read("objective/catalogue")).objectives) {
+// The objectives and samples to choose from. The catalogue lists its
+// objectives as `objective`, the name its TOML gives each table.
+async function lists() {
+  for (const objective of (await read("objective/catalogue")).objective) {
     $("objective").add(new Option(objective.name, objective.name));
   }
   for (const sample of await read("simulation/samples")) {
     const truth = sample.ground_truth ? ", with ground truth" : "";
     $("sample").add(new Option(`${sample.name} (${sample.kind}${truth})`, sample.name));
   }
+}
+
+function start() {
   // Jogs: held down, the stage jogs; let go, it halts.
   for (const [axis, sign] of [["x", "−"], ["x", "+"], ["y", "−"], ["y", "+"], ["z", "−"], ["z", "+"]]) {
     const button = document.createElement("button");
@@ -84,6 +89,7 @@ async function start() {
   $("unload").onclick = () => invoke("simulation/unload");
   refresh();
   setInterval(refresh, 250);
+  lists().catch((error) => say(`The objectives or samples couldn't be listed: ${error.message}`, true));
 }
 
-start().catch((error) => say(`Couldn't start: ${error.message}`, true));
+start();

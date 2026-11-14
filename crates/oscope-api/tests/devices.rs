@@ -509,3 +509,97 @@ async fn a_move_stops_when_halted_or_cancelled() {
         .unwrap();
     assert!(x < 35_000.0, "the stage went on to x = {x}");
 }
+
+/// Waits until the stage is moving, or isn't: up to 30 s.
+async fn until_moving(client: &TestClient, moving: bool) {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while client.get("/api/v1/stage/moving").await.json() != moving {
+        assert!(
+            Instant::now() < deadline,
+            "the stage never became moving: {moving}"
+        );
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn halts_and_jogs_say_where_the_stage_came_to_rest() {
+    // In real time: a homing halted on the way, a jog halted, and a jog
+    // that reached its soft limit by itself before its halt each say where
+    // the stage came to rest; a halt while it is still says nothing.
+    let folder = tempfile::tempdir().unwrap();
+    let (client, _) = sim_server(folder.path(), 1.0).await;
+    let mut moved = client.events("/api/v1/stage/moved").await;
+    let mut next = async || {
+        moved
+            .next_within(Duration::from_secs(30))
+            .await
+            .expect("a moved event")
+    };
+    let x = |sample: &Value| sample["position"]["x"].as_f64().unwrap();
+
+    let started = client
+        .post_json("/api/v1/stage/home", Some(&json!({})))
+        .await;
+    let homing = started.json()["href"].as_str().unwrap().to_owned();
+    until_moving(&client, true).await;
+    invoke(&client, "stage/halt", json!({})).await;
+    let ended = ended(&client, &homing).await;
+    assert!(
+        ended["error"].to_string().contains("stopped (409)"),
+        "{ended}"
+    );
+    let halted = next().await;
+    let position = client.get("/api/v1/stage/position").await.json();
+    assert_eq!(x(&halted), x(&position), "where the homing stopped");
+
+    assert_eq!(
+        invoke(&client, "stage/home", json!({})).await["status"],
+        "completed"
+    );
+    let home = x(&next().await);
+    let jog = json!({"axis": "x", "towards_max": true, "speed": 2000.0});
+    assert_eq!(
+        invoke(&client, "stage/jog", jog).await["status"],
+        "completed"
+    );
+    // Halted once it has gone a tenth of a millimetre.
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while x(&client.get("/api/v1/stage/position").await.json()) < home + 100.0 {
+        assert!(Instant::now() < deadline, "the jog never went 100 µm");
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    invoke(&client, "stage/halt", json!({})).await;
+    let jogged = x(&next().await);
+    assert!(
+        jogged > home,
+        "a jog towards x's maximum, from {home} to {jogged}"
+    );
+
+    // Back towards x's minimum, at 10 mm/s, until the soft limit stops it.
+    let jog = json!({"axis": "x", "towards_max": false});
+    assert_eq!(
+        invoke(&client, "stage/jog", jog).await["status"],
+        "completed"
+    );
+    until_moving(&client, true).await;
+    until_moving(&client, false).await;
+    invoke(&client, "stage/halt", json!({})).await;
+    let limit = x(&next().await);
+    assert!(
+        limit < jogged && limit.abs() < 2.5,
+        "at the soft limit, within its backlash: {limit}"
+    );
+
+    // Still, a halt says nothing: the next event is the move's.
+    invoke(&client, "stage/halt", json!({})).await;
+    let target = json!({"x": 3_000.0, "y": 2_000.0, "z": 1_000.0});
+    assert_eq!(
+        invoke(&client, "stage/move_to", target).await["status"],
+        "completed"
+    );
+    assert!(
+        (x(&next().await) - 3_000.0).abs() < 2.5,
+        "the move's arrival, and nothing before it"
+    );
+}
