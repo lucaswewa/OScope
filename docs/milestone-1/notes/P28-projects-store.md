@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p28-projects-store` / [#42](https://github.com/lucaswewa/OScope/pull/42)
-- Size: L · estimated ~3,600 before it started (records and folders ~400; OME-Zarr through `zarrs` ~450; the index, its search, paging and rebuild ~350; thumbnails ~100; the `projects` Thing ~350; the server's wiring ~50; tests ~800; `ex-projects` and its page ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured measured **3,722** hand-written lines added (Rust code 2,267, of which `oscope-store` 1,980; tests 1,042; `ex-projects` 408; glue 5), and 9 removed. **That is 2,822 over L's 900, and about 3 % over the estimate.**
+- Size: L · estimated ~3,600 before it started (records and folders ~400; OME-Zarr through `zarrs` ~450; the index, its search, paging and rebuild ~350; thumbnails ~100; the `projects` Thing ~350; the server's wiring ~50; tests ~800; `ex-projects` and its page ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured measured **3,808** hand-written lines added (Rust code 2,305, of which `oscope-store` 2,001; tests 1,090; `ex-projects` 408; glue 5), and 9 removed. **That is 2,908 over L's 900, and about 6 % over the estimate.**
 
 ## Summary
 
@@ -64,7 +64,7 @@ Writing level 0 alone runs at about P29's 580 MB/s, but not with the pyramid. P2
 
 **Worth your review:**
 
-- **One pull request,** as you decided for P24–P34. It came in about 3 % over the estimate, and 2,822 lines over L's 900. The store's folders, drafts and lock, 604 lines, took more than estimated; the tests are more than a quarter.
+- **One pull request,** as you decided for P24–P34. It came in about 6 % over the estimate, and 2,908 lines over L's 900. The store's folders, drafts and lock, 604 lines, took more than estimated; the tests are more than a quarter.
 - **`zarrs` 0.22, not 0.23.** 0.23 requires `paste`, which RustSec marks unmaintained (RUSTSEC-2024-0436), and `cargo deny` refuses it. I tried to add the advisory to `deny.toml`'s `ignore`, with a reason; auto mode's checks stopped me, as that is your decision. 0.22.10 (2025-11-29) has none of it, and everything P28 uses. If you would rather have 0.23, its advisory needs your word.
 - **The `zstd` crates and three advisories.** RustSec's RUSTSEC-2026-0391, -0398 and -0403 are fixed in `zstd` 0.13.4 and `zstd-safe` 7.4.0, released on 2026-11-01. P28 was written against 0.13.3 and 7.3.0, and took the fixed versions once two weeks old, on 2026-11-15 after 14:12 UTC, before opening the pull request.
 - **`jsonschema` 0.33.0, not 0.60.** You chose the `jsonschema` crate for the NGFF checks. Its newer versions need `borrow-or-share` 0.2.4, whose licence, MIT-0, isn't among `deny.toml`'s. 0.33.0 takes `fluent-uri` 0.3, which takes any `borrow-or-share` 0.2: 0.2.1 is licensed CC0-1.0 OR MIT, both allowed. 0.2.0, 0.2.1 and 0.2.2 came out the same day, and differ only in their licence.
@@ -77,6 +77,7 @@ Writing level 0 alone runs at about P29's 580 MB/s, but not with the pyramid. P2
 **Other choices:**
 
 - **The folders are the truth.** Every change writes them first, then the index. A rebuild reads them alone.
+- **A rebuild leaves out a document that doesn't read,** logs it and reports it, rather than failing: one damaged file shouldn't keep the rest out of the index.
 - **The index keeps each record's whole document,** so listing a page or a project's contents reads no folder.
 - **The image's levels** halve until one fits a chunk, each pixel the mean of the 2 × 2 below it, and are centred on those pixels by a `translation`: napari and ome-zarr-py then overlay them exactly.
 - **A record's thumbnail is asked for by its ID,** which must be a UUID: `thumbnail/{id}/..%2F..` could otherwise read a `thumbnail.jpg` outside the project.
@@ -87,15 +88,15 @@ Writing level 0 alone runs at about P29's 580 MB/s, but not with the pyramid. P2
 | Crate | Test | What it checks |
 |---|---|---|
 | `oscope-store` | `images` (4) | **Round trips** at every level and every plane, for `u8`, `u16` and `f32`, and 1 to 4 channels, of 1,301 × 1,029 written in strips of uneven heights: each level equal to its definition, the mean of 2 × 2 pixels or fewer at an odd edge, and a region across chunks' edges read back. **The MIChrome 20's whole sensor,** 5,472 × 3,648 in 16 bits, in five levels, the last in one chunk. **NGFF 0.5:** the metadata valid against the official `image.schema` and `strict_image.schema`, and the schemas shown to refuse a wrong version or missing axes; the translation of a level, the units; each array a Zarr v3 array of chunks of 512, compressed with zstd. **Refused:** no pixels, 5 channels, names for some channels, a pixel of no size, a region outside, samples of the wrong type or number |
-| `oscope-store` | `projects` (6) | **Projects** made, trimmed, tagged; listed the most recently changed first; searched in any case, with `%` and `_` plain characters; by whole tags; paged; renamed, retagged, their metadata set and removed; refused and not found; deleted. **Records** drafted, not listed until committed, their folder gone when dropped; an acquisition with its pyramid, thumbnail and document; results with their provenance and files, with or without an image; a report; the project changed by each commit; the thumbnails of the project and of each record. **The rebuilt index** equals the live one, row for row, into an empty index and in place, leaving out a draft and finishing a half-deleted project. **Eight writers at once,** each with its own store and connection, as other processes would have: 24 projects, 24 metadata keys in one project with none lost, 8 acquisitions, and the rebuilt index equal. **Thumbnails** of a dim 16-bit image stretched to white, and of an 8-bit one shown as it is. **A page** holds 500 projects at most |
-| `oscope-api` | `projects` (2) | **Over HTTP:** made, with the `changed` event; listed, searched by text and tag, paged; renamed, its sample set, tagged, its metadata set and removed; an acquisition from another store on the same folders, in the project's contents and thumbnails; refusals (400) and unknowns (404), an ID that isn't one (400); deleted; the index rebuilt. **The TD** (a snapshot) |
+| `oscope-store` | `projects` (7) | **Projects** made, trimmed, tagged; listed the most recently changed first; searched in any case, with `%` and `_` plain characters; by whole tags; paged; renamed, retagged, their metadata set and removed; refused and not found; deleted. **Records** drafted, not listed until committed, their folder gone when dropped; an acquisition with its pyramid, thumbnail and document; results with their provenance and files, with or without an image; a report; the project changed by each commit; the thumbnails of the project and of each record. **The rebuilt index** equals the live one, row for row, into an empty index and in place, leaving out a draft and finishing a half-deleted project. **Eight writers at once,** each with its own store and connection, as other processes would have: 24 projects, 24 metadata keys in one project with none lost, 8 acquisitions, and the rebuilt index equal. **Thumbnails** of a dim 16-bit image stretched to white, and of an 8-bit one shown as it is. **A page** holds 500 projects at most. **A rebuild with damaged documents,** a report cut short and a project that isn't JSON: both left out and reported, everything else indexed |
+| `oscope-api` | `projects` (2) | **Over HTTP:** made, with the `changed` event; listed, searched by text and tag, paged; renamed, its sample set, tagged, its metadata set and removed; an acquisition from another store on the same folders, in the project's contents and thumbnails; refusals (400) and unknowns (404), an ID that isn't one (400); deleted; the index rebuilt, leaving nothing out. **The TD** (a snapshot) |
 | `ex-projects` | `--smoke` | Two projects listed, each with its thumbnail and its acquisition's store, read back and of NGFF 0.5; a search |
 
 The page's `app.js` ran under the Node harness against the example: no error, two cards, `1–2 of 2`. `open_store.py` read both stores with zarr and ome-zarr-py.
 
 **Where they ran:** {{REPLAYS}} On Windows, the `images`, `projects` (both) suites and `ex-projects --smoke` passed 5 times out of 5 each with their binaries pinned to two cores: 11.2–11.9 s for `images`, with the MIChrome 20's whole frame, and 5.3–6.1 s for the smoke.
 
-**Mutation checks** (each broke the code on purpose, then the tests were run): seventeen of seventeen caught. Reading the tests against the list first found three gaps, now covered: no report in the rebuild's test, no check that a thumbnail is stretched, and no test of the page's limit.
+**Mutation checks** (each broke the code on purpose, then the tests were run): eighteen of eighteen caught. Reading the tests against the list first found three gaps, now covered: no report in the rebuild's test, no check that a thumbnail is stretched, and no test of the page's limit.
 
 | Broken on purpose | Caught by |
 |---|---|
@@ -115,6 +116,7 @@ The page's `app.js` ran under the Node harness against the example: no error, tw
 | A project's cover from its results first | `records_are_drafted_then_committed_with_their_thumbnails` |
 | Thumbnails of 16-bit images not stretched | `thumbnails_stretch_dim_images_and_show_8_bit_ones_as_they_are` |
 | Not found answered as an internal error | `projects_are_made_listed_changed_and_deleted_over_http` |
+| A damaged document stopping a rebuild | `a_rebuild_leaves_out_documents_that_do_not_read` |
 | A record's thumbnail asked for by any path, not only an ID | `records_are_drafted_then_committed_with_their_thumbnails`, `projects_are_made_listed_changed_and_deleted_over_http` |
 
 ## Follow-ups and known gaps

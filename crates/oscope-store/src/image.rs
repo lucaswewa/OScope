@@ -480,7 +480,8 @@ impl ImageWriter {
 
     /// Writes `samples`, interleaved, as the pixels of plane `plane` whose
     /// top-left is (`x`, `y`), `width` × `height` of them, at full
-    /// resolution.
+    /// resolution. A chunk is read, changed and written back, so regions
+    /// that share a chunk must not be written at once.
     pub fn write(
         &self,
         plane: u32,

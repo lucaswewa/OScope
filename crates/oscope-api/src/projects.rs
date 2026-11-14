@@ -8,6 +8,8 @@ use oscope_core::ProjectId;
 use oscope_store::{
     Change, Contents, NewProject, Page, Project, Query as Search, Store, StoreError,
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use teta_wot::http::PathParams;
 use teta_wot::http::axum::Json;
@@ -15,6 +17,15 @@ use teta_wot::http::axum::extract::Query;
 use teta_wot::http::axum::http::{StatusCode, header};
 use teta_wot::http::axum::response::{IntoResponse, Response};
 use teta_wot::prelude::*;
+
+/// What a rebuild of the index found.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Rebuilt {
+    /// How many projects the index lists.
+    pub projects: usize,
+    /// The documents it left out, because they didn't read.
+    pub skipped: Vec<String>,
+}
 
 /// The HTTP status and kind an error answers with (ADR-0034's shape).
 fn status(error: &StoreError) -> (u16, &'static str) {
@@ -239,12 +250,18 @@ impl ProjectsThing {
 
     /// Rebuilds the index from the folders, which are the truth.
     ///
-    /// For an index lost or damaged: the projects it then lists.
+    /// For an index lost or damaged: how many projects it then lists, and
+    /// the documents left out because they didn't read.
     #[action]
-    async fn rebuild_index(&self) -> Result<usize, ActionError> {
+    async fn rebuild_index(&self) -> Result<Rebuilt, ActionError> {
         let rebuilt = self.blocking(|store| {
-            store.rebuild_index()?;
-            store.list(&Search::default()).map(|page| page.total)
+            let skipped = store.rebuild_index()?;
+            let projects = store.list(&Search::default())?.total;
+            let skipped = skipped
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect();
+            Ok(Rebuilt { projects, skipped })
         });
         rebuilt.await.map_err(action_error)
     }

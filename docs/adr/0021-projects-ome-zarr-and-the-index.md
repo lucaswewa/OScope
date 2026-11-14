@@ -49,7 +49,7 @@ The reader opens a store of one multiscale image of axes `c, z, y, x`: OScope's 
 - **Pages** list projects, the most recently changed first, each with its counts of acquisitions, results and reports.
   - **Search:** a text, in any case, in names, samples and tags, where `%` and `_` are plain characters; and a tag, matched whole.
   - **Paging:** 50 to a page by default, 500 at most.
-- **Rebuilding** reads every folder and replaces both tables at once. It leaves out records without their document (drafts), and finishes deleting `.deleting-` folders. A rebuilt index equals the live one, row for row.
+- **Rebuilding** reads every folder and replaces both tables at once. It leaves out records without their document (drafts), and finishes deleting `.deleting-` folders. A document that doesn't read is left out too, logged and reported, so that one damaged file can't keep the others out. A rebuilt index equals the live one, row for row.
 
 **4. Thumbnails** are JPEGs of at most 256 pixels across, made when a record with an image is committed.
 
@@ -59,7 +59,7 @@ The reader opens a store of one multiscale image of axes `c, z, y, x`: OScope's 
 
 **5. The `projects` Thing:**
 - **endpoints:** `GET list?text=…&tag=…&offset=…&limit=…`, `project/{id}` (a project and its records), `thumbnail/{id}` and `thumbnail/{id}/{record}`;
-- **actions:** `create`, `rename`, `set_sample`, `tag`, `set_metadata` (`null` removes a key), `delete` and `rebuild_index`;
+- **actions:** `create`, `rename`, `set_sample`, `tag`, `set_metadata` (`null` removes a key), `delete`, and `rebuild_index`, which says how many projects the index then lists and which documents it left out;
 - **the event `changed`,** with the project's ID.
 
 The server opens the store at start-up; the printed documents use an index in memory, and make no folder.

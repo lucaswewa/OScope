@@ -199,7 +199,11 @@ async fn projects_are_made_listed_changed_and_deleted_over_http() {
     let gone = client.get(&format!("/api/v1/projects/project/{id}")).await;
     assert_eq!(gone.status, 404);
     let rebuilt = invoke(&client, "rebuild_index", json!({})).await;
-    assert_eq!(rebuilt["output"], 1, "{rebuilt}");
+    assert_eq!(
+        rebuilt["output"],
+        json!({"projects": 1, "skipped": []}),
+        "{rebuilt}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

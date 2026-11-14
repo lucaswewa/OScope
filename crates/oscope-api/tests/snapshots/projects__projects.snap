@@ -199,7 +199,7 @@ expression: td
       "synchronous": false
     },
     "rebuild_index": {
-      "description": "For an index lost or damaged: the projects it then lists.",
+      "description": "For an index lost or damaged: how many projects it then lists, and\nthe documents left out because they didn't read.",
       "title": "Rebuilds the index from the folders, which are the truth.",
       "forms": [
         {
@@ -239,9 +239,27 @@ expression: td
         ]
       },
       "output": {
+        "description": "What a rebuild of the index found.",
         "title": "rebuild_index_output",
-        "type": "integer",
-        "minimum": 0
+        "type": "object",
+        "properties": {
+          "projects": {
+            "description": "How many projects the index lists.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "skipped": {
+            "description": "The documents it left out, because they didn't read.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "projects",
+          "skipped"
+        ]
       },
       "synchronous": false
     },

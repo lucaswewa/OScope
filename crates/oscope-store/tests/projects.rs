@@ -384,11 +384,17 @@ fn a_rebuilt_index_equals_the_live_one() {
     let elsewhere = tempfile::tempdir().unwrap();
     let rebuilt = Store::open(folder.path(), &elsewhere.path().join("index.sqlite")).unwrap();
     assert_eq!(rebuilt.index_rows().unwrap(), Vec::<String>::new());
-    rebuilt.rebuild_index().unwrap();
+    assert_eq!(
+        rebuilt.rebuild_index().unwrap(),
+        Vec::<std::path::PathBuf>::new()
+    );
     assert_eq!(rebuilt.index_rows().unwrap(), rows);
     assert!(!live.root().join(".deleting-x").exists());
     // And in place.
-    live.rebuild_index().unwrap();
+    assert_eq!(
+        live.rebuild_index().unwrap(),
+        Vec::<std::path::PathBuf>::new()
+    );
     assert_eq!(live.index_rows().unwrap(), rows);
     assert_eq!(
         rebuilt.list(&Query::default()).unwrap(),
@@ -442,7 +448,10 @@ fn writers_at_once_lose_nothing() {
     assert_eq!(contents.project.metadata.len(), 8 * 3, "no change lost");
     assert_eq!(contents.acquisitions.len(), 8);
     let rows = store.index_rows().unwrap();
-    store.rebuild_index().unwrap();
+    assert_eq!(
+        store.rebuild_index().unwrap(),
+        Vec::<std::path::PathBuf>::new()
+    );
     assert_eq!(store.index_rows().unwrap(), rows);
 }
 
@@ -502,4 +511,39 @@ fn a_page_holds_at_most_500_projects() {
         })
         .unwrap();
     assert_eq!(rest.projects.len(), 1);
+}
+
+#[test]
+fn a_rebuild_leaves_out_documents_that_do_not_read() {
+    let folder = tempfile::tempdir().unwrap();
+    let store = store(folder.path());
+    let kept = store.create(project("Kept", "", &[])).unwrap();
+    let damaged = store.create(project("Damaged", "", &[])).unwrap();
+    let report = store.report(kept.id, "report").unwrap().commit().unwrap();
+    let rows = store.index_rows().unwrap();
+    // A report's document cut short, and a project's that isn't JSON.
+    let report_file = store
+        .folder(kept.id)
+        .join("reports")
+        .join(report.id.to_string())
+        .join("report.json");
+    let text = std::fs::read_to_string(&report_file).unwrap();
+    std::fs::write(&report_file, &text[..text.len() / 2]).unwrap();
+    let project_file = store.folder(damaged.id).join("project.json");
+    std::fs::write(&project_file, "not JSON").unwrap();
+
+    let mut skipped = store.rebuild_index().unwrap();
+    skipped.sort();
+    let mut expected = vec![report_file, project_file];
+    expected.sort();
+    assert_eq!(skipped, expected);
+    // Everything else is there: the kept project, without its report.
+    let listed = store.list(&Query::default()).unwrap();
+    let names: Vec<_> = listed
+        .projects
+        .iter()
+        .map(|s| (s.project.name.as_str(), s.reports))
+        .collect();
+    assert_eq!(names, [("Kept", 0)]);
+    assert_eq!(store.index_rows().unwrap().len(), rows.len() - 2);
 }

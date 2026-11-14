@@ -501,9 +501,15 @@ impl Store {
     /// Rebuilds the index from the folders, which are the truth: after a
     /// crash, or with the index lost. Records without their document, being
     /// made or abandoned, are left out; projects half deleted are deleted.
-    pub fn rebuild_index(&self) -> Result<()> {
+    /// A document that doesn't read is left out too, and logged: it returns
+    /// those documents.
+    pub fn rebuild_index(&self) -> Result<Vec<PathBuf>> {
         let _lock = self.lock()?;
-        let (mut projects, mut records) = (Vec::new(), Vec::new());
+        let (mut projects, mut records, mut skipped) = (Vec::new(), Vec::new(), Vec::new());
+        let mut skip = |path: &Path, error: StoreError| {
+            tracing::warn!("the index leaves out {}: {error}", path.display());
+            skipped.push(path.to_owned());
+        };
         for folder in folders(&self.root)? {
             let name = folder
                 .file_name()
@@ -517,23 +523,37 @@ impl Store {
             if !file.is_file() {
                 continue;
             }
-            let project: Project = read(&file)?;
+            let project: Project = match read(&file) {
+                Ok(project) => project,
+                Err(error) => {
+                    skip(&file, error);
+                    continue;
+                }
+            };
             for kind in RecordKind::ALL {
                 for place in folders(&folder.join(kind.folder()))? {
                     let document = place.join(format!("{}.json", kind.name()));
-                    if document.is_file() {
-                        records.push(match kind {
-                            RecordKind::Acquisition => row(&read::<Acquisition>(&document)?)?,
-                            RecordKind::Result => row(&read::<ResultRecord>(&document)?)?,
-                            RecordKind::Report => row(&read::<Report>(&document)?)?,
-                        });
+                    if !document.is_file() {
+                        continue;
+                    }
+                    let found = match kind {
+                        RecordKind::Acquisition => {
+                            read::<Acquisition>(&document).and_then(|r| row(&r))
+                        }
+                        RecordKind::Result => read::<ResultRecord>(&document).and_then(|r| row(&r)),
+                        RecordKind::Report => read::<Report>(&document).and_then(|r| row(&r)),
+                    };
+                    match found {
+                        Ok(found) => records.push(found),
+                        Err(error) => skip(&document, error),
                     }
                 }
             }
             let document = json(&project)?;
             projects.push((project, document));
         }
-        self.index().replace(&projects, &records)
+        self.index().replace(&projects, &records)?;
+        Ok(skipped)
     }
 
     /// Every row of the index, as text, sorted: what
