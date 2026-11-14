@@ -72,6 +72,9 @@ zarrs = { version = "0.22.10", default-features = false, features = ["filesystem
 # New in P29: the scratch frame log's checksums (ADR-0022). Already in the lock,
 # through png.
 crc32fast = "1.5.3"
+# New in P31: FFTs on the CPU for phase correlation; its dependencies are
+# small, and all MIT OR Apache-2.0.
+rustfft = "6.4.1"
 ex-common = { path = "examples/common" }
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }

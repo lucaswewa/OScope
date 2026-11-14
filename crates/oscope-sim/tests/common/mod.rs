@@ -32,6 +32,21 @@ fn optics() -> Optics {
 /// target, or at nothing, on `rate`. The target's squares lie from
 /// (30, 10) mm on the slide, which sits at the stage's origin.
 pub fn rig(config: SimCameraConfig, target: bool, at: Point2, rate: Rate) -> Rig {
+    let world = if target {
+        let target = TestTarget::new(Point2::new(30_000.0, 10_000.0), 0.5, 0.0);
+        World::with_slide(
+            Slide::new(Arc::new(target), Point2::new(0.0, 0.0)),
+            Um(FOCUS),
+        )
+    } else {
+        World::empty()
+    };
+    rig_over(config, world, at, rate)
+}
+
+/// A camera of `config` over an exact stage at `at`, looking at `world`, on
+/// `rate`.
+pub fn rig_over(config: SimCameraConfig, world: World, at: Point2, rate: Rate) -> Rig {
     let clock = Arc::new(SimClock::new(rate));
     let stage = Arc::new(SimStage::new(
         SimStageConfig {
@@ -47,15 +62,6 @@ pub fn rig(config: SimCameraConfig, target: bool, at: Point2, rate: Rate) -> Rig
         },
         Arc::clone(&clock),
     ));
-    let world = if target {
-        let target = TestTarget::new(Point2::new(30_000.0, 10_000.0), 0.5, 0.0);
-        World::with_slide(
-            Slide::new(Arc::new(target), Point2::new(0.0, 0.0)),
-            Um(FOCUS),
-        )
-    } else {
-        World::empty()
-    };
     let camera = SimCamera::new(
         config,
         Arc::clone(&clock),
