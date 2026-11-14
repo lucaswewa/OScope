@@ -1,6 +1,6 @@
 # P31: Registration: phase correlation on CPU and CUDA
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p31-registration` / [#45](https://github.com/lucaswewa/OScope/pull/45)
 - Size: M · estimated ~1,900 before it started (phase correlation on the CPU ~450; on CUDA ~300; the batch API ~100; tests ~500; `ex-register` ~200; glue ~30; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,052** hand-written lines added (code 932: `oscope-imaging` 627, `oscope-compute` 305; tests 815; examples 262; glue 43), and 10 removed. **That is 1,452 over M's 600, and about 8 % over the estimate:** the overlap pass, the plans kept, and the tests of large shifts and of the setup came after it.
 
