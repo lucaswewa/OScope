@@ -30,8 +30,8 @@ register_batch(pairs, options) -> [Registration]
 
 1. **Mean and window.** From each image its mean is subtracted, then it is multiplied by the separable Hann window, w(x, y) = h(x) · h(y), with h(n) = ½ (1 − cos(2πn / (N − 1))) for n = 0 … N − 1 along an axis of N pixels (Harris, 1978). The window tapers each image to zero at its edges, so the discontinuity where the discrete Fourier transform wraps an image round doesn't dominate the spectrum.
 2. **Transforms.** F_A = F(a) and F_B = F(b), the two-dimensional discrete Fourier transforms, at the images' own size, without padding.
-3. **The normalised cross-power spectrum.** R = F_B · conj(F_A) / |F_B · conj(F_A)|. Where the magnitude is below ε (10⁻²⁰ of its largest), R is 0. Only the phase remains, so every frequency counts alike, whatever the image's contrast.
-4. **The correlation surface.** r = F⁻¹(R), whose real part is kept. If B is A shifted by d, the shift theorem makes R = e^(−2πi(k·d)/N), and r a Dirac impulse at d: its peak's place is the shift.
+3. **The normalised cross-power spectrum.** R = F_B · conj(F_A) / |F_B · conj(F_A)|. Where the magnitude is below 10⁻³⁰, R is 0. Only the phase remains, so every frequency counts alike, whatever the image's contrast.
+4. **The correlation surface.** r = F⁻¹(R), whose real part is kept, scaled by 1 / (W · H), so that a perfect match peaks at 1. If B is A shifted by d, the shift theorem makes R = e^(−2πi(k·d)/N), and r a Dirac impulse at d: its peak's place is the shift.
 5. **The integer peak.** The largest value of r, among the shifts allowed: a surface index (x, y) means a shift of x, or of x − W for x ≥ W/2, and likewise for y. So shifts run from −W/2 to W/2 − 1.
 
 ### The sub-pixel peak (Foroosh, Zerubia and Berthod, 2002)
@@ -47,7 +47,7 @@ That is their estimate's root of magnitude below one, toward the larger neighbou
 ### Confidence: the peak ratio
 
 - **c₀** is the peak's value. Phase correlation's Dirac peak has a height near the fraction of the images that overlap; noise gives a surface of many small peaks.
-- **c₂** is the largest value of r outside the 5 × 5 neighbourhood of the integer peak, on the whole surface.
+- **c₂** is the largest value of r outside the 5 × 5 neighbourhood of the integer peak, among the shifts considered: the whole surface without an expected shift.
 - **confidence = clamp(1 − max(c₂, 0) / c₀, 0, 1)**: near 1 when one peak stands out, near 0 when the best peak is barely above the rest, or c₀ ≤ 0.
 
 A registration reports **peak** = c₀ too. A caller decides on a threshold: the tests set what a good pair and a poor one score.
@@ -59,7 +59,7 @@ A registration reports **peak** = c₀ too. A caller decides on a threshold: the
 ### The backends
 
 - **The CPU,** with `rustfft`'s transforms, is the reference.
-- **CUDA,** with cuFFT's, computes the same steps on the GPU, then brings back only the search window of the surface, or all of it without an expected shift. The peak, its refinement and the confidence are then found as on the CPU.
+- **CUDA,** with cuFFT's, computes the same steps on the GPU, then gathers and brings back only the shifts considered, and a pixel around them: the search window, or the whole surface without an expected shift. The CPU gathers the same region from its surface. The peak, its refinement and the confidence are then found from the region by the same code for both.
 - **Equivalence:** for the same pair, the two agree within 0.01 px on the shift, and within 0.01 on the confidence.
 
 ### What the tests show
