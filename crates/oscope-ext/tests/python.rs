@@ -271,20 +271,25 @@ fn a_worker_that_dies_or_is_killed_mid_call_is_an_error_and_starts_again() {
     assert_ne!(extensions.workers()[0].pid, Some(second));
 }
 
-/// Whether the process `pid` runs.
+/// Whether the process `pid` runs. On Linux, a killed child stays a zombie
+/// until its parent reaps it, as the worker's next call does: not running.
 fn alive(pid: u32) -> bool {
-    let listed = if cfg!(windows) {
+    let pid = pid.to_string();
+    if cfg!(windows) {
         let filter = format!("PID eq {pid}");
-        std::process::Command::new("tasklist")
+        let listed = std::process::Command::new("tasklist")
             .args(["/FI", &filter, "/NH"])
-            .output()
+            .output();
+        String::from_utf8_lossy(&listed.unwrap().stdout).contains(&pid)
     } else {
-        std::process::Command::new("ps")
-            .args(["-p", &pid.to_string()])
-            .output()
-    };
-    let listed = listed.unwrap();
-    listed.status.success() && String::from_utf8_lossy(&listed.stdout).contains(&pid.to_string())
+        let listed = std::process::Command::new("ps")
+            .args(["-o", "stat=", "-p", &pid])
+            .output();
+        let state = String::from_utf8_lossy(&listed.unwrap().stdout)
+            .trim()
+            .to_owned();
+        !state.is_empty() && !state.starts_with('Z')
+    }
 }
 
 /// Kills the process `pid` and its children.
