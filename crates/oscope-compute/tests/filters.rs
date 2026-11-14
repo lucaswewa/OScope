@@ -17,7 +17,10 @@ fn a_gaussian_spreads_a_point_by_its_weights_and_keeps_a_level() {
     let weights = filters::gaussian_weights(1.0).unwrap();
     assert_eq!(weights.len(), 7, "three sigmas each side");
     assert!((weights.iter().sum::<f32>() - 1.0).abs() < 1e-6);
-    assert!((weights[3] / weights[4] - 0.5_f32.exp()).abs() < 1e-5, "exp(−k²/2σ²)");
+    assert!(
+        (weights[3] / weights[4] - 0.5_f32.exp()).abs() < 1e-5,
+        "exp(−k²/2σ²)"
+    );
     // A point in the middle of 15 × 15 becomes the weights' outer product.
     let mut point = vec![0.0; 225];
     point[7 * 15 + 7] = 1.0;
@@ -31,7 +34,10 @@ fn a_gaussian_spreads_a_point_by_its_weights_and_keeps_a_level() {
     let level = filters::gaussian(&image(9, 4, 3, vec![0.25; 108]), 2.5).unwrap();
     assert!(close(level.data(), &[0.25; 108], 1e-6));
     for sigma in [0.0, -1.0, 33.0, f32::NAN] {
-        assert!(matches!(filters::gaussian_weights(sigma), Err(ComputeError::Setting(_))));
+        assert!(matches!(
+            filters::gaussian_weights(sigma),
+            Err(ComputeError::Setting(_))
+        ));
     }
 }
 
@@ -48,7 +54,10 @@ fn a_median_takes_each_window_s_middle_value() {
     flat[2 * 10 + 2 * 2 + 1] = 0.25;
     let smoothed = filters::median(&image(5, 5, 2, flat), 1).unwrap();
     assert!(smoothed.data().iter().all(|&v| v == 0.5));
-    assert!(matches!(filters::median(&picture, 8), Err(ComputeError::Setting(_))));
+    assert!(matches!(
+        filters::median(&picture, 8),
+        Err(ComputeError::Setting(_))
+    ));
 }
 
 #[test]
@@ -58,7 +67,11 @@ fn a_bilateral_filter_keeps_edges_a_gaussian_blurs() {
     let step: Vec<f32> = (0..12).map(|x| if x < 6 { 0.0 } else { 1.0 }).collect();
     let row = image(12, 1, 1, step);
     let kept = filters::bilateral(&row, 2.0, 0.1).unwrap();
-    assert!(kept.data()[5] < 1e-6 && kept.data()[6] > 1.0 - 1e-6, "{:?}", kept.data());
+    assert!(
+        kept.data()[5] < 1e-6 && kept.data()[6] > 1.0 - 1e-6,
+        "{:?}",
+        kept.data()
+    );
     let blurred = filters::gaussian(&row, 2.0).unwrap();
     assert!(blurred.data()[5] > 0.2 && blurred.data()[6] < 0.8);
     // A level is kept, and a wide range is a Gaussian of the window.
@@ -72,10 +85,23 @@ fn a_bilateral_filter_keeps_edges_a_gaussian_blurs() {
     // At x = 6 the window's columns are 4–8, each column's weights summing
     // as its spatial column does, as every row is the same.
     let column = |dx: usize| (0..5).map(|dy| spatial[dy * 5 + dx]).sum::<f32>();
-    let expected: f32 = (0..5).map(|dx| column(dx) * if dx + 4 >= 6 { 1.0 } else { 0.0 }).sum::<f32>() / total;
-    assert!((wide.data()[6] - expected).abs() < 1e-5, "{} {expected} {row_weights:?}", wide.data()[6]);
-    assert!(matches!(filters::bilateral(&row, 9.0, 0.1), Err(ComputeError::Setting(_))));
-    assert!(matches!(filters::bilateral(&row, 1.0, 0.0), Err(ComputeError::Setting(_))));
+    let expected: f32 = (0..5)
+        .map(|dx| column(dx) * if dx + 4 >= 6 { 1.0 } else { 0.0 })
+        .sum::<f32>()
+        / total;
+    assert!(
+        (wide.data()[6] - expected).abs() < 1e-5,
+        "{} {expected} {row_weights:?}",
+        wide.data()[6]
+    );
+    assert!(matches!(
+        filters::bilateral(&row, 9.0, 0.1),
+        Err(ComputeError::Setting(_))
+    ));
+    assert!(matches!(
+        filters::bilateral(&row, 1.0, 0.0),
+        Err(ComputeError::Setting(_))
+    ));
 }
 
 #[test]
@@ -90,8 +116,15 @@ fn clahe_clips_shares_and_interpolates_as_worked_by_hand() {
         bins: 4,
     };
     let equalised = filters::clahe(&level, &one).unwrap();
-    assert!(equalised.data().iter().all(|&v| v == 0.875), "{:?}", &equalised.data()[..4]);
-    assert_eq!(filters::clahe_maps(&level, &one).unwrap(), [0.125, 0.25, 0.875, 1.0]);
+    assert!(
+        equalised.data().iter().all(|&v| v == 0.875),
+        "{:?}",
+        &equalised.data()[..4]
+    );
+    assert_eq!(
+        filters::clahe_maps(&level, &one).unwrap(),
+        [0.125, 0.25, 0.875, 1.0]
+    );
     // Without clipping, a ramp's histogram is flat and maps to itself, to
     // within a bin.
     let ramp: Vec<f32> = (0..256).map(|i| (i as f32 + 0.5) / 256.0).collect();
@@ -104,7 +137,9 @@ fn clahe_clips_shares_and_interpolates_as_worked_by_hand() {
     assert!(close(mapped.data(), &ramp, 1.0 / 256.0 + 1e-6));
     // Two tiles, dark and light: the pixels between their centres blend
     // their tables linearly, and those beyond take their own.
-    let halves: Vec<f32> = (0..64).map(|i| if i % 16 < 8 { 0.2 } else { 0.8 }).collect();
+    let halves: Vec<f32> = (0..64)
+        .map(|i| if i % 16 < 8 { 0.2 } else { 0.8 })
+        .collect();
     let two = Clahe {
         tiles: (2, 1),
         clip: 1e6,
@@ -115,14 +150,36 @@ fn clahe_clips_shares_and_interpolates_as_worked_by_hand() {
     // Each tile holds one level, so its table jumps to 1 at that level's
     // bin: the dark tile maps 0.2 (bin 0) to 1 and 0.8 (bin 3) to 1; the
     // light tile maps 0.2 to 0 and 0.8 to 1.
-    assert_eq!(row[..4], [1.0; 4], "beyond the dark tile's centre, its own table");
-    assert_eq!(row[12..], [1.0; 4], "beyond the light tile's centre, its own table");
+    assert_eq!(
+        row[..4],
+        [1.0; 4],
+        "beyond the dark tile's centre, its own table"
+    );
+    assert_eq!(
+        row[12..],
+        [1.0; 4],
+        "beyond the light tile's centre, its own table"
+    );
     // Between the centres (x 4 to 12), the dark pixels blend 1 and 0.
     let expected = |x: f32| 1.0 - (x + 0.5 - 4.0) / 8.0;
     for x in 4..8 {
-        assert!((row[x] - expected(x as f32)).abs() < 1e-6, "x {x}: {}", row[x]);
+        assert!(
+            (row[x] - expected(x as f32)).abs() < 1e-6,
+            "x {x}: {}",
+            row[x]
+        );
     }
-    for bad in [Clahe { tiles: (0, 1), ..one }, Clahe { clip: 0.5, ..one }, Clahe { bins: 1, ..one }] {
-        assert!(matches!(filters::clahe(&level, &bad), Err(ComputeError::Setting(_))));
+    for bad in [
+        Clahe {
+            tiles: (0, 1),
+            ..one
+        },
+        Clahe { clip: 0.5, ..one },
+        Clahe { bins: 1, ..one },
+    ] {
+        assert!(matches!(
+            filters::clahe(&level, &bad),
+            Err(ComputeError::Setting(_))
+        ));
     }
 }
