@@ -231,6 +231,20 @@ async fn captures_exports_downloads_and_imports() {
     assert_eq!(back["image"]["sample"], "u8");
     assert_eq!(back["instrument"]["imported"]["format"], "tiff");
 
+    // The captures' recordings are gone from the scratch space.
+    let scratch = client.get("/api/v1/system/scratch").await.json();
+    assert_eq!(scratch["recordings"], 0, "{scratch}");
+
+    // An importer named that can't read the file: the job fails, saying so.
+    let params = json!({"project": project, "path": file, "format": "jpeg"});
+    let wrong = job(
+        &client,
+        "jobs/submit",
+        json!({"kind": "projects.import", "params": params}),
+    )
+    .await;
+    assert_eq!(wrong["state"], "failed", "{wrong}");
+
     // What the data route refuses.
     for (bad, status) in [
         (format!("/api/v1/data/not-a-project/{record}"), 400),

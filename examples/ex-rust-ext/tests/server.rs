@@ -213,4 +213,18 @@ fn a_library_whose_nodes_are_not_its_manifest_s_does_not_load() {
     let said =
         "its library has the nodes `example.emboss`, and its manifest provides `example.relief`";
     assert_eq!(extension.problem.as_deref(), Some(said));
+
+    // Its manifest providing no importer.
+    let other = manifest.replace("importers = [\"example.pgm.read\"]\n", "");
+    std::fs::write(source.join("manifest.toml"), other).unwrap();
+    oscope_ext::pack(&source, &package).unwrap();
+    let root = folder.path().join("again");
+    Extensions::open(&root).unwrap().install(&package).unwrap();
+    let extensions = Extensions::open(&root).unwrap();
+    let extension = extensions.get("org.oscope.examples.emboss").unwrap();
+    let problem = extension.problem.as_deref().unwrap_or("");
+    assert!(
+        problem.contains("the importers `example.pgm.read`"),
+        "{problem}"
+    );
 }

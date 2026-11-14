@@ -343,12 +343,28 @@ fn a_bayer_capture_s_rendition_is_demosaiced() {
         pattern: BayerPattern::Rggb,
         significant_bits: 12,
     };
+    // RGGB: the red sites bright, the green and blue dark.
     let info = ImageInfo::new(96, 64, 1, SampleType::U16);
-    let raw = acquisition(&store, project, &info, json!({ "format": format }));
+    let mut draft = store.acquisition(project, "red", &info).unwrap();
+    draft.record().camera = json!({ "format": format });
+    let mosaic: Vec<u16> = (0..96 * 64)
+        .map(|i| {
+            if (i / 96) % 2 == 0 && i % 2 == 0 {
+                60_000
+            } else {
+                1_000
+            }
+        })
+        .collect();
+    let image = draft.image().unwrap();
+    image
+        .write(0, (0, 0), (96, 64), &Samples::U16(mosaic))
+        .unwrap();
+    let raw = draft.commit().unwrap();
     let path = render(&store, project, raw.id, Rendition::Png).unwrap();
     assert_eq!(path, format!("acquisitions/{}/rendition.png", raw.id));
     let file = File::open(store.folder(project).join(&path)).unwrap();
-    let reader = png::Decoder::new(std::io::BufReader::new(file))
+    let mut reader = png::Decoder::new(std::io::BufReader::new(file))
         .read_info()
         .unwrap();
     let png = reader.info();
@@ -356,6 +372,12 @@ fn a_bayer_capture_s_rendition_is_demosaiced() {
         (png.width, png.height, png.color_type),
         (96, 64, png::ColorType::Rgb)
     );
+    // Demosaiced: red, not a grey mosaic.
+    let mut pixels = vec![0; reader.output_buffer_size().unwrap()];
+    reader.next_frame(&mut pixels).unwrap();
+    let middle = (32 * 96 + 48) * 3;
+    let (r, g, b) = (pixels[middle], pixels[middle + 1], pixels[middle + 2]);
+    assert!(r > 200 && g < 60 && b < 60, "{r} {g} {b}");
     let path = render(&store, project, raw.id, Rendition::Jpeg).unwrap();
     assert!(store.folder(project).join(path).metadata().unwrap().len() > 100);
 }

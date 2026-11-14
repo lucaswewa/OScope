@@ -18,7 +18,7 @@ use oscope_core::{
 use oscope_ext::{Extensions, OSCOPE_FOLDER, PythonRuntime};
 use oscope_hal::{Camera, Error, FrameSink, Trigger, conformance};
 use oscope_pipeline::{Engine, Plan, Recipe, Registry, RunOptions, Value, Values};
-use oscope_store::{Exporter as _, ImageInfo, Importer as _, SampleType, Samples};
+use oscope_store::{ImageInfo, SampleType, Samples};
 use serde_json::json;
 
 const ID: &str = "org.example.testnodes";
