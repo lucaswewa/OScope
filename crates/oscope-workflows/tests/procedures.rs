@@ -31,7 +31,7 @@ struct Bench {
     _folder: tempfile::TempDir,
 }
 
-async fn bench() -> Bench {
+async fn bench(mode: &str) -> Bench {
     let config = SimulatorConfig {
         rate: 10.0,
         sensor: "quarter".to_owned(),
@@ -52,7 +52,9 @@ async fn bench() -> Bench {
     sim.stage.move_to(over, None).await.unwrap();
     let bus = Arc::new(FrameBus::new());
     let acquisition = Acquisition::new(Arc::clone(&bus), Duration::from_millis(50));
-    let settings = sim.camera.settings().await.unwrap();
+    let mut settings = sim.camera.settings().await.unwrap();
+    settings.mode = mode.to_owned();
+    let settings = sim.camera.configure(settings).await.unwrap();
     let (_, w, h) = sim.camera.capabilities().frame_shape(&settings).unwrap();
     let pool = FramePool::new(settings.format.frame_bytes(w, h), 8, &HeapAllocator);
     sim.camera.start(pool, acquisition.sink()).await.unwrap();
@@ -88,10 +90,9 @@ async fn geometry(bench: &Bench) -> (oscope_workflows::calibration::Geometry, In
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_geometry_and_the_stage_are_recovered_within_the_spec_s_tolerances() {
-    let bench = bench().await;
+    let bench = bench("full").await;
     let (geometry, instrument) = geometry(&bench).await;
     let truth = true_pixel(&bench.sim, "10x");
-    eprintln!("{geometry:?}");
     assert_eq!((geometry.objective.as_str(), geometry.binning), ("10x", 1));
     assert!(
         (geometry.pixel_um / truth - 1.0).abs() < 0.002,
@@ -116,7 +117,6 @@ async fn the_geometry_and_the_stage_are_recovered_within_the_spec_s_tolerances()
         .unwrap();
     let options = StageOptions::default();
     let (stage, _) = measure_stage(&bench.rig, &options, &Quiet).await.unwrap();
-    eprintln!("{stage:?}");
     for (axis, found) in [("x", stage.backlash_um.x), ("y", stage.backlash_um.y)] {
         assert!(
             (found - BACKLASH).abs() < 0.2,
@@ -135,11 +135,10 @@ async fn the_geometry_and_the_stage_are_recovered_within_the_spec_s_tolerances()
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_wrong_objective_is_flagged_and_its_geometry_refused() {
-    let bench = bench().await;
+    let bench = bench("full").await;
     let motion = Motion::default();
     // The 10× fitted and in the light path: plausible.
     let right = check_objective(&bench.rig, &motion, &Quiet).await.unwrap();
-    eprintln!("{right:?}");
     assert!(right.plausible && !right.calibrated, "{right:?}");
     assert!((right.measured_pixel_um / true_pixel(&bench.sim, "10x") - 1.0).abs() < 0.01);
     // The 20× fitted, with the 10× still in the light path.
@@ -149,10 +148,23 @@ async fn a_wrong_objective_is_flagged_and_its_geometry_refused() {
     optics.magnification *= SCALE;
     bench.sim.camera.set_optics(optics);
     let wrong = check_objective(&bench.rig, &motion, &Quiet).await.unwrap();
-    eprintln!("{wrong:?}");
     assert!(!wrong.plausible && wrong.nearest == "10x", "{wrong:?}");
     assert!((wrong.ratio - 2.0 / SCALE).abs() < 0.02, "{wrong:?}");
     let refused = measure_geometry(&bench.rig, &GeometryOptions::default(), &Quiet).await;
     let why = refused.unwrap_err().to_string();
     assert!(why.contains("is the 20x in the light path"), "{why}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_binned_camera_s_geometry_is_its_own() {
+    // Binned 2 × 2, a pixel is two of the sensor's a side.
+    let bench = bench("bin2").await;
+    let (geometry, instrument) = geometry(&bench).await;
+    assert_eq!((geometry.binning, instrument.binning), (2, 2));
+    let truth = 2.0 * true_pixel(&bench.sim, "10x");
+    assert!(
+        (geometry.pixel_um / truth - 1.0).abs() < 0.002,
+        "{geometry:?}"
+    );
+    assert!((geometry.nominal_pixel_um - 1.92).abs() < 1e-12);
 }

@@ -81,6 +81,7 @@ pub fn calibration_jobs(rig: Rig, last: LastCheck) -> Vec<(&'static str, Factory
     let geometry: Factory = Arc::new(move |value| {
         let params: Params<GeometryOptions> =
             Params::deserialize(value).map_err(|e| e.to_string())?;
+        params.options.check()?;
         let rig = geometry_rig.clone();
         Ok(Job {
             spec: spec(GEOMETRY, "Calibrate the geometry", value),
@@ -102,6 +103,7 @@ pub fn calibration_jobs(rig: Rig, last: LastCheck) -> Vec<(&'static str, Factory
     let stage_rig = rig.clone();
     let stage: Factory = Arc::new(move |value| {
         let params: Params<StageOptions> = Params::deserialize(value).map_err(|e| e.to_string())?;
+        params.options.check()?;
         let rig = stage_rig.clone();
         Ok(Job {
             spec: spec(STAGE, "Calibrate the stage", value),
@@ -126,6 +128,7 @@ pub fn calibration_jobs(rig: Rig, last: LastCheck) -> Vec<(&'static str, Factory
     });
     let check: Factory = Arc::new(move |value| {
         let motion = Motion::deserialize(value).map_err(|e| e.to_string())?;
+        motion.check()?;
         let (rig, last) = (rig.clone(), Arc::clone(&last));
         Ok(Job {
             spec: spec(CHECK, "Check the objective", value),

@@ -13,7 +13,7 @@ use oscope_imaging::registration::{self, RegisterOptions};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::fit::{apply, decompose, fit_matrix};
+use super::fit::{Decomposition, apply, decompose, fit_matrix};
 use super::set::{Geometry, Instrument, PerAxis, SoftLimits, StageValues, geometry_key};
 use super::store::CalibrationStore;
 
@@ -81,6 +81,19 @@ pub struct Motion {
     pub approach_um: f64,
     /// How long after the stage arrives its frame may start, in ms.
     pub settle_ms: f64,
+}
+
+impl Motion {
+    /// Checks it: an approach and a settling time, finite and not negative.
+    pub fn check(&self) -> Result<(), String> {
+        let (a, s) = (self.approach_um, self.settle_ms);
+        match a.is_finite() && a >= 0.0 && s.is_finite() && s >= 0.0 {
+            true => Ok(()),
+            false => Err(format!(
+                "an approach of {a} µm and a settling time of {s} ms"
+            )),
+        }
+    }
 }
 
 impl Default for Motion {
@@ -279,6 +292,18 @@ pub struct GeometryOptions {
     pub motion: Motion,
 }
 
+impl GeometryOptions {
+    /// Checks it: a step, if given, finite and more than 0, and the motion.
+    pub fn check(&self) -> Result<(), String> {
+        if let Some(step) = self.step_um
+            && !(step.is_finite() && step > 0.0)
+        {
+            return Err(format!("a step of {step} µm"));
+        }
+        self.motion.check()
+    }
+}
+
 /// Measures the fitted objective's geometry at the camera's binning: a
 /// 3 × 3 grid of positions around where the stage is, each reached from the
 /// same side, each frame registered against the middle's, and the matrix
@@ -289,6 +314,7 @@ pub async fn measure_geometry(
     options: &GeometryOptions,
     report: &dyn Report,
 ) -> Result<(Geometry, Instrument), CalibrationError> {
+    options.check().map_err(failed)?;
     let motion = options.motion;
     let before = (motion.approach_um, motion.approach_um);
     let start = rig.here().await?;
@@ -296,11 +322,9 @@ pub async fn measure_geometry(
     let middle = rig.visit(start, before, motion).await?;
     let (instrument, objective, nominal) = rig.instrument(middle.binning).await?;
     let side = f64::from(middle.image.width().min(middle.image.height())) * middle.span;
-    let step = match options.step_um {
-        Some(step) if step > 0.0 && step.is_finite() => step,
-        Some(step) => return Err(failed(format!("a step of {step} µm"))),
-        None => (side / 4.0 * nominal).round().max(1.0),
-    };
+    let step = options
+        .step_um
+        .unwrap_or_else(|| (side / 4.0 * nominal).round().max(1.0));
     let sigma = sigma(&objective, nominal, middle.span);
     // A snake through the grid, so that each move is short.
     let grid = [
@@ -329,25 +353,7 @@ pub async fn measure_geometry(
         fit_matrix(&moves, &shifts).ok_or_else(|| failed("the moves gave no matrix"))?;
     let parts = decompose(matrix).ok_or_else(|| failed("the fitted matrix can't be inverted"))?;
     let name = &objective.name;
-    if residual > RESIDUAL_PX {
-        return Err(failed(format!(
-            "the fit's residual, {residual:.2} px, is above {RESIDUAL_PX} px: did the sample or the stage move?"
-        )));
-    }
-    if (parts.pixel / nominal - 1.0).abs() > FROM_NOMINAL {
-        return Err(failed(format!(
-            "the pixel size measured, {:.4} µm, is {:.2} times the {name}'s nominal {nominal:.4} µm: \
-             is the {name} in the light path? The objective check names the one that is",
-            parts.pixel,
-            parts.pixel / nominal
-        )));
-    }
-    if (parts.aspect - 1.0).abs() > ASPECT || parts.skew.abs() > SKEW {
-        return Err(failed(format!(
-            "an aspect of {:.4} and a skew of {:.4}: a stage axis or the frames are at fault",
-            parts.aspect, parts.skew
-        )));
-    }
+    verdict(&parts, residual, nominal, name).map_err(failed)?;
     let geometry = Geometry {
         objective: name.clone(),
         binning: middle.binning,
@@ -365,6 +371,33 @@ pub async fn measure_geometry(
     Ok((geometry, instrument))
 }
 
+/// Whether a fitted geometry may be kept (P32's spec): refused if the fit's
+/// residual is above 0.5 px, the pixel size more than 25 % from the
+/// objective's nominal, the aspect more than 2 % from 1, or the skew more
+/// than 0.02.
+fn verdict(parts: &Decomposition, residual: f64, nominal: f64, name: &str) -> Result<(), String> {
+    if residual > RESIDUAL_PX {
+        return Err(format!(
+            "the fit's residual, {residual:.2} px, is above {RESIDUAL_PX} px: did the sample or the stage move?"
+        ));
+    }
+    if (parts.pixel / nominal - 1.0).abs() > FROM_NOMINAL {
+        return Err(format!(
+            "the pixel size measured, {:.4} µm, is {:.2} times the {name}'s nominal {nominal:.4} µm: \
+             is the {name} in the light path? The objective check names the one that is",
+            parts.pixel,
+            parts.pixel / nominal
+        ));
+    }
+    if (parts.aspect - 1.0).abs() > ASPECT || parts.skew.abs() > SKEW {
+        return Err(format!(
+            "an aspect of {:.4} and a skew of {:.4}: a stage axis or the frames are at fault",
+            parts.aspect, parts.skew
+        ));
+    }
+    Ok(())
+}
+
 /// What a stage calibration takes.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
@@ -376,6 +409,16 @@ pub struct StageOptions {
     /// How it moves.
     #[serde(flatten)]
     pub motion: Motion,
+}
+
+impl StageOptions {
+    /// Checks it: at least one cycle, and the motion.
+    pub fn check(&self) -> Result<(), String> {
+        match self.cycles {
+            0 => Err("no cycles of backlash to measure".to_owned()),
+            _ => self.motion.check(),
+        }
+    }
 }
 
 impl Default for StageOptions {
@@ -407,11 +450,9 @@ pub async fn measure_stage(
     options: &StageOptions,
     report: &dyn Report,
 ) -> Result<(StageValues, Instrument), CalibrationError> {
+    options.check().map_err(failed)?;
     let motion = options.motion;
     let a = motion.approach_um;
-    if options.cycles == 0 {
-        return Err(failed("no cycles of backlash to measure"));
-    }
     let start = rig.here().await?;
     let capabilities = rig.stage.capabilities().clone();
     let homed_at = match options.home && capabilities.homing {
@@ -509,6 +550,7 @@ pub async fn check_objective(
     motion: &Motion,
     report: &dyn Report,
 ) -> Result<CheckReport, CalibrationError> {
+    motion.check().map_err(failed)?;
     let motion = *motion;
     let before = (motion.approach_um, motion.approach_um);
     let start = rig.here().await?;
@@ -557,4 +599,47 @@ pub async fn check_objective(
         nearest,
         checked: Utc::now(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parts(pixel: f64, aspect: f64, skew: f64) -> Decomposition {
+        let (sx, sy) = (pixel * aspect.sqrt(), pixel / aspect.sqrt());
+        Decomposition {
+            rotation_deg: 30.0,
+            mirrored: true,
+            sx,
+            sy,
+            k: skew * pixel,
+            pixel,
+            aspect,
+            skew,
+        }
+    }
+
+    #[test]
+    fn a_geometry_is_refused_outside_the_spec_s_bounds() {
+        let kept = |p: Decomposition, residual: f64| verdict(&p, residual, 0.24, "10x");
+        assert_eq!(kept(parts(0.24, 1.0, 0.0), 0.0), Ok(()));
+        assert_eq!(kept(parts(0.24 * 1.24, 1.019, 0.019), 0.49), Ok(()));
+        let refused = |p: Decomposition, residual: f64, says: &str| {
+            let why = kept(p, residual).unwrap_err();
+            assert!(why.contains(says), "{why:?} doesn't say {says:?}");
+        };
+        refused(parts(0.24, 1.0, 0.0), 0.51, "residual");
+        refused(
+            parts(0.24 * 1.26, 1.0, 0.0),
+            0.0,
+            "is the 10x in the light path",
+        );
+        refused(
+            parts(0.24 * 0.74, 1.0, 0.0),
+            0.0,
+            "is the 10x in the light path",
+        );
+        refused(parts(0.24, 1.021, 0.0), 0.0, "an aspect");
+        refused(parts(0.24, 1.0, -0.021), 0.0, "a skew");
+    }
 }

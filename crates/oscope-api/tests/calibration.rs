@@ -173,7 +173,11 @@ async fn the_jobs_measure_and_the_sets_are_kept_listed_and_moved() {
     // it came from, just after the set it copies.
     assert_eq!(
         flags,
-        [(stage, true), (new.clone(), false), (geometry, true)]
+        [
+            (stage.clone(), true),
+            (new.clone(), false),
+            (geometry, true)
+        ]
     );
     let activated = invoke(&client, "calibration/activate", json!({"id": new})).await;
     assert_eq!(activated["status"], "completed", "{activated}");
@@ -192,8 +196,34 @@ async fn the_jobs_measure_and_the_sets_are_kept_listed_and_moved() {
         broken["error"].to_string().contains("refused (400)"),
         "{broken}"
     );
-    let wrong = invoke(&client, "calibration/geometry", json!({"step_um": -5.0})).await;
-    let failed = job(&client, "calibration/geometry", json!({"step_um": -5.0})).await;
-    assert_eq!(wrong["status"], "completed");
-    assert_eq!(failed["state"], "failed", "{failed}");
+    // Binned, the camera has no geometry in use until its binning's is
+    // calibrated.
+    let stopped = invoke(&client, "camera/stop_streaming", json!({})).await;
+    assert_eq!(stopped["status"], "completed", "{stopped}");
+    let format = client.get("/api/v1/camera/format").await.json();
+    let binned = json!({"mode": "bin2", "format": format});
+    assert_eq!(
+        invoke(&client, "camera/set_mode", binned).await["status"],
+        "completed"
+    );
+    let active = client.get("/api/v1/calibration/active").await.json();
+    assert_eq!(active["geometry"], Value::Null, "{active}");
+    assert_eq!(active["stage"]["id"], stage.as_str());
+    let full = json!({"mode": "full", "format": format});
+    assert_eq!(
+        invoke(&client, "camera/set_mode", full).await["status"],
+        "completed"
+    );
+    let active = client.get("/api/v1/calibration/active").await.json();
+    assert_eq!(active["geometry"]["id"], new.as_str());
+    // Parameters that can't be are refused as the job is submitted.
+    for wrong in [json!({"step_um": -5.0}), json!({"settle_ms": -1.0})] {
+        let refused = invoke(&client, "calibration/geometry", wrong).await;
+        assert!(
+            refused["error"].to_string().contains("refused (400)"),
+            "{refused}"
+        );
+    }
+    let none = invoke(&client, "calibration/stage", json!({"cycles": 0})).await;
+    assert!(none["error"].to_string().contains("no cycles"), "{none}");
 }
