@@ -1,5 +1,10 @@
 //! The `stage` Thing: where it is, and moving it (plan §5.4; P16).
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+use tokio::time::Instant;
+
 use oscope_core::{Um, Xyz};
 use oscope_hal::{Axis, Error, PositionSample, StageCapabilities, StageStatus, UmPerS};
 use teta_wot::prelude::*;
@@ -22,13 +27,19 @@ pub struct StageThing {
     /// Saved. None for the stage's own default.
     #[setting(unit = "µm/s")]
     speed: Prop<Option<f64>>,
-    /// The stage arrived where a move or homing sent it.
+    /// The stage came to rest after moving, and where.
+    ///
+    /// A move or homing arrived, or `halt` or a cancelled invocation stopped
+    /// one, or a jog.
     #[event]
     moved: Event<PositionSample>,
     /// The stage went into alarm: the controller's reason.
     #[event]
     alarm: Event<String>,
     link: Link,
+    /// Whether a jog was started since the last `halt`: a jog that reached
+    /// a limit has stopped by itself, but still gets its `moved`.
+    jogged: AtomicBool,
 }
 
 impl StageThing {
@@ -38,9 +49,40 @@ impl StageThing {
         speed.or(self.speed.get()).map(UmPerS)
     }
 
+    /// After a stop: `moved`, where the stage came to rest, or `alarm` if
+    /// the stop left it in one. The stage's latest report may be from just
+    /// before it was still, so this waits for one from after, five report
+    /// intervals at most.
+    async fn rested(&self, devices: &Devices) {
+        let stopped = devices.clock.now();
+        match devices.stage.status().await {
+            Ok(StageStatus::Alarm { reason }) => {
+                self.alarm.emit(reason);
+                return;
+            }
+            Ok(_) => {}
+            Err(_) => return,
+        }
+        let interval = devices.stage.capabilities().report_interval.0.max(1.0) / 1000.0;
+        let pause = Duration::from_secs_f64(interval / 2.0);
+        let deadline = Instant::now()
+            + Duration::from_secs_f64(5.0 * interval).max(Duration::from_millis(100));
+        loop {
+            let Ok(sample) = devices.stage.position().await else {
+                return;
+            };
+            if sample.time >= stopped || Instant::now() >= deadline {
+                self.moved.emit(sample);
+                return;
+            }
+            tokio::time::sleep(pause).await;
+        }
+    }
+
     /// Runs a move on the stage, its turn at the gate first: emits `moved`
     /// when it arrives, and `alarm` if it ends in one. If the invocation is
-    /// cancelled, the stage stops.
+    /// cancelled, the stage stops, and says where. A move a `halt` ends is
+    /// `halt`'s to report.
     async fn travel(
         &self,
         ctx: &ActionCtx,
@@ -52,6 +94,7 @@ impl StageThing {
             outcome = go(devices) => outcome,
             _ = ctx.cancelled() => {
                 devices.stage.stop().await.map_err(action_error)?;
+                self.rested(devices).await;
                 return Err(ActionError::from(Cancelled));
             }
         };
@@ -166,17 +209,27 @@ impl StageThing {
             .stage
             .jog(axis, towards_max, speed)
             .await
-            .map_err(action_error)
+            .map_err(action_error)?;
+        self.jogged.store(true, Ordering::Release);
+        Ok(())
     }
 
     /// Stops the stage.
     ///
-    /// A jog, or a move in progress. It doesn't wait its turn. (`stop` is
-    /// the name of every Thing's own stopping, in `teta-wot`: ADR-0034.)
+    /// A jog, or a move in progress. It doesn't wait its turn. If the stage
+    /// was moving, `moved` then says where it came to rest. (`stop` is the
+    /// name of every Thing's own stopping, in `teta-wot`: ADR-0034.)
     #[action]
     async fn halt(&self) -> Result<(), ActionError> {
         let devices = self.link.action()?;
-        devices.stage.stop().await.map_err(action_error)
+        let status = devices.stage.status().await;
+        let moving = status.is_ok_and(|s| s.is_moving() || matches!(s, StageStatus::Hold));
+        let jogged = self.jogged.swap(false, Ordering::AcqRel);
+        devices.stage.stop().await.map_err(action_error)?;
+        if moving || jogged {
+            self.rested(devices).await;
+        }
+        Ok(())
     }
 
     /// Clears an alarm, once its cause is dealt with.

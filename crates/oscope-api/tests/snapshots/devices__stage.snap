@@ -361,7 +361,7 @@ expression: td
       "synchronous": false
     },
     "halt": {
-      "description": "A jog, or a move in progress. It doesn't wait its turn. (`stop` is\nthe name of every Thing's own stopping, in `teta-wot`: ADR-0034.)",
+      "description": "A jog, or a move in progress. It doesn't wait its turn. If the stage\nwas moving, `moved` then says where it came to rest. (`stop` is the\nname of every Thing's own stopping, in `teta-wot`: ADR-0034.)",
       "title": "Stops the stage.",
       "forms": [
         {
@@ -782,8 +782,8 @@ expression: td
       }
     },
     "moved": {
-      "description": "The stage arrived where a move or homing sent it.",
-      "title": "The stage arrived where a move or homing sent it.",
+      "description": "A move or homing arrived, or `halt` or a cancelled invocation stopped\none, or a jog.",
+      "title": "The stage came to rest after moving, and where.",
       "forms": [
         {
           "href": "/api/v1/stage/moved",

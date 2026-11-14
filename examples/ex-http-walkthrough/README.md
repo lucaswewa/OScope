@@ -60,7 +60,8 @@ curl -X POST -H "Content-Type: application/json" \
      -d '{"x": 45000, "y": 12500, "z": 5000}' http://127.0.0.1:8212/api/v1/stage/move_to
 curl http://127.0.0.1:8212/api/v1/action_invocations/<id>     # pending, running, then completed
 
-# Events: the stage says where it arrived, as server-sent events.
+# Events: the stage says where it came to rest, as server-sent events: when a move
+# or homing arrives, a jog is let go of, or `halt` stops a move or homing.
 curl -N http://127.0.0.1:8212/api/v1/stage/moved
 
 # The rest of the instrument.

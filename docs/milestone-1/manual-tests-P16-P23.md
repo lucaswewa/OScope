@@ -19,7 +19,7 @@ Run `cargo run -p ex-http-walkthrough`, then open `http://127.0.0.1:8212/`.
 - [ ] Hold a jog button. The stage moves while you hold it and halts when you let go. **Halt** stops a move partway.
 - [ ] Fit the 50× objective. Turn the transmitted light on, then change its intensity. Load "test target", then unload it.
 - [ ] In another terminal, `curl -i -X PUT -H "Content-Type: application/json" -d 999 http://127.0.0.1:8212/api/v1/camera/gain` answers 400, saying what was wrong.
-- [ ] `curl -N http://127.0.0.1:8212/api/v1/stage/moved` prints an event each time you move the stage from the page.
+- [ ] `curl -N http://127.0.0.1:8212/api/v1/stage/moved` prints an event each time the stage comes to rest: when a move or a homing arrives, when you let go of a jog button, and when you **Halt** a move or a homing. A stop that leaves the stage in alarm prints on `/api/v1/stage/alarm` instead.
 - [ ] `http://127.0.0.1:8212/docs` lists every route, and you can try them there.
 - [ ] **Persistence:** stop the example and start it again. The objective you fitted, the lights and the stage speed come back as you left them.
 
