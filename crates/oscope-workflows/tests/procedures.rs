@@ -9,12 +9,18 @@ use std::time::Duration;
 
 use oscope_acquire::{Acquisition, FrameBus};
 use oscope_core::{FramePool, HeapAllocator, Um, Xyz};
+use oscope_core::{Ms, Point2};
+use oscope_hal::ObjectiveCatalogue;
 use oscope_hal::{Camera, ObjectiveMount, Stage};
-use oscope_sim::{HeTissue, Optics, Simulator, SimulatorConfig, Slide};
+use oscope_sim::{
+    HeTissue, Optics, Rate, Settling, SimCamera, SimCameraConfig, SimClock, SimMount, SimStage,
+    SimStageConfig, Simulator, SimulatorConfig, Slide, World,
+};
 use oscope_workflows::calibration::{
     CalibrationStore, GeometryOptions, Instrument, Motion, Quiet, Rig, StageOptions, Values,
     check_objective, measure_geometry, measure_stage,
 };
+use std::sync::RwLock;
 
 /// The truth injected.
 const ROTATION: f64 = 30.0;
@@ -167,4 +173,69 @@ async fn a_binned_camera_s_geometry_is_its_own() {
         "{geometry:?}"
     );
     assert!((geometry.nominal_pixel_um - 1.92).abs() < 1e-12);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn frames_wait_for_the_stage_to_settle() {
+    // A stage that overshoots each move by 20 µm, settling to 1/e in 50 ms:
+    // longer than a frame's interval, so frames that don't wait see several
+    // µm of it. Waiting 400 ms, they see 0.007 µm.
+    let island = HeTissue::new(1, Slide::COVERSLIP).islands()[0];
+    let clock = Arc::new(SimClock::new(Rate::Scaled(10.0)));
+    let stage = Arc::new(SimStage::new(
+        SimStageConfig {
+            backlash: Um(0.0),
+            settling: Settling {
+                overshoot: Um(20.0),
+                time: Ms(50.0),
+            },
+            require_homing: false,
+            start: Xyz::new(Um(island.x), Um(island.y), Um(1_002.0)),
+            ..SimStageConfig::default()
+        },
+        Arc::clone(&clock),
+    ));
+    let running = Arc::clone(&stage);
+    tokio::spawn(async move { running.run().await });
+    let tissue = Arc::new(HeTissue::new(1, Slide::COVERSLIP));
+    let world = World::with_slide(Slide::new(tissue, Point2::new(0.0, 0.0)), Um(1_000.0));
+    let catalogue = ObjectiveCatalogue::mitutoyo();
+    let optics = Optics::new(&catalogue, catalogue.get("10x").unwrap(), Um(9.6));
+    let camera = Arc::new(SimCamera::new(
+        SimCameraConfig::quarter(),
+        Arc::clone(&clock),
+        Arc::clone(&stage),
+        Arc::new(RwLock::new(world)),
+        optics,
+    ));
+    let mount = Arc::new(SimMount::new(catalogue, Arc::clone(&camera)));
+    mount.fit("10x".to_owned()).await.unwrap();
+    let bus = Arc::new(FrameBus::new());
+    let acquisition = Acquisition::new(Arc::clone(&bus), Duration::from_millis(50));
+    let settings = camera.settings().await.unwrap();
+    let (_, w, h) = camera.capabilities().frame_shape(&settings).unwrap();
+    let pool = FramePool::new(settings.format.frame_bytes(w, h), 8, &HeapAllocator);
+    camera.start(pool, acquisition.sink()).await.unwrap();
+    let folder = tempfile::tempdir().unwrap();
+    let rig = Rig {
+        stage: stage as Arc<dyn Stage>,
+        camera: camera as Arc<dyn Camera>,
+        objectives: mount as Arc<dyn ObjectiveMount>,
+        bus,
+        store: Arc::new(CalibrationStore::open(folder.path()).unwrap()),
+    };
+    let motion = Motion {
+        settle_ms: 400.0,
+        ..Motion::default()
+    };
+    let options = GeometryOptions {
+        motion,
+        ..GeometryOptions::default()
+    };
+    let (geometry, _) = measure_geometry(&rig, &options, &Quiet).await.unwrap();
+    assert!(
+        (geometry.pixel_um / 0.96 - 1.0).abs() < 0.002,
+        "{geometry:?}"
+    );
+    assert!(geometry.residual_px < 0.5, "{geometry:?}");
 }

@@ -144,6 +144,11 @@ fn the_store_reads_back_its_files_and_skips_what_isnt_a_set() {
         .save(geometry("10x", 1, 0.26), instrument(), None, false)
         .unwrap();
     assert_eq!(next.version, 3);
+    // A set made active by hand is read back active too.
+    store.activate(kept[1].id).unwrap();
+    let again = CalibrationStore::open(dir.path()).unwrap();
+    let key = geometry_key("10x", 1);
+    assert_eq!(again.active(&key).map(|s| s.id), Some(kept[1].id));
 }
 
 #[test]
