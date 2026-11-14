@@ -72,7 +72,9 @@ def split(image):
 
 
 @node("test.sleep")
-def sleep(image, *, seconds: float = 1.0):
+def sleep(image, *, seconds: float = 1.0, started: str = ""):
+    if started:
+        open(started, "w").close()
     time.sleep(seconds)
     return image
 
@@ -454,10 +456,10 @@ fn a_worker_that_dies_or_is_killed_mid_call_is_an_error_and_starts_again() {
 
     // Killed from outside, mid-call.
     let first = extensions.workers()[0].pid.unwrap();
-    let sleeping = Arc::clone(&engine);
-    let call =
-        std::thread::spawn(move || run(&sleeping, "test.sleep", json!({ "seconds": 60 }), ramp()));
-    std::thread::sleep(Duration::from_millis(500));
+    let (sleeping, started) = (Arc::clone(&engine), folder.path().join("started"));
+    let params = json!({ "seconds": 60, "started": started });
+    let call = std::thread::spawn(move || run(&sleeping, "test.sleep", params, ramp()));
+    wait_for("the call in the worker", || started.exists());
     kill(first);
     let error = call.join().unwrap().unwrap_err();
     assert!(error.contains("its worker was stopped"), "{error}");
@@ -493,9 +495,11 @@ fn alive(pid: u32) -> bool {
     }
 }
 
-/// Kills the process `pid` and its children.
+/// Kills the process `pid` and its children, and waits for it to be gone.
+/// `taskkill /T` can fail for a child that ends meanwhile: what counts is
+/// that the process has gone.
 fn kill(pid: u32) {
-    let status = if cfg!(windows) {
+    let _ = if cfg!(windows) {
         std::process::Command::new("taskkill")
             .args(["/F", "/T", "/PID", &pid.to_string()])
             .output()
@@ -504,7 +508,7 @@ fn kill(pid: u32) {
             .args(["-9", &pid.to_string()])
             .output()
     };
-    assert!(status.unwrap().status.success(), "killed {pid}");
+    wait_for("the worker killed", || !alive(pid));
 }
 
 #[test]
