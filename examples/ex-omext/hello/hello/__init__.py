@@ -6,6 +6,7 @@ from oscope_ext import node
 
 
 @node("hello.greet", category="example")
-def greet(image):
-    """Leaves the image as it is: a greeting."""
+def greet(image, *, name: str = "world"):
+    """Leaves the image as it is, and greets ``name`` in the log."""
+    print(f"hello, {name}")
     return image

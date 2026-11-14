@@ -5,9 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
-use oscope_pipeline::Descriptor;
-
-use crate::worker::Worker;
+use crate::worker::{Described, Worker};
 use crate::{ExtError, Python as Manifest};
 
 /// How OScope runs Python extensions (ADR-0020).
@@ -111,13 +109,13 @@ fn uv(
 /// a uv-managed Python its manifest allows, its dependencies and OScope's
 /// SDK. Online, it takes packages at least two weeks old (CLAUDE.md);
 /// offline, those in the wheelhouse. Then it starts the extension's worker
-/// once, for the nodes it describes.
+/// once, for the nodes and drivers it describes.
 pub(crate) fn prepare(
     folder: &Path,
     id: &str,
     manifest: &Manifest,
     settings: &PythonRuntime,
-) -> Result<Vec<Descriptor>, ExtError> {
+) -> Result<Described, ExtError> {
     let found = find_uv(settings.uv.as_deref())?;
     let venv = folder.join(OSCOPE_FOLDER).join("venv");
     let offline = settings.wheelhouse.is_some();

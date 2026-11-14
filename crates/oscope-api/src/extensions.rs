@@ -5,7 +5,7 @@
 use std::sync::{Arc, OnceLock};
 
 use futures_util::StreamExt;
-use oscope_ext::{API_VERSION, ExtError, Extension, Extensions, PLATFORM, Registry};
+use oscope_ext::{API_VERSION, ExtError, Extension, Extensions, PLATFORM, Panel, Registry};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -28,6 +28,19 @@ pub struct Host {
     pub api: String,
     /// Its platform, which a Rust package needs a library for.
     pub platform: Option<String>,
+}
+
+/// A panel of the extensions loaded, as `panels` lists it (ADR-0036).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PanelEntry {
+    /// Its name.
+    pub name: String,
+    /// The extension that describes it.
+    pub extension: String,
+    /// Its title.
+    pub title: String,
+    /// What it is for.
+    pub description: String,
 }
 
 /// The HTTP status and kind an error answers with (ADR-0034's shape).
@@ -160,6 +173,41 @@ impl ExtensionsThing {
         Host {
             api: API_VERSION.to_string(),
             platform: PLATFORM.map(str::to_owned),
+        }
+    }
+
+    /// The panels of the extensions this start loaded, for the app to draw.
+    ///
+    /// Each one's name, extension, title and description: `panel/{name}`
+    /// gives it whole.
+    #[property]
+    async fn panels(&self) -> Result<Vec<PanelEntry>, PropertyError> {
+        let service = self.reading()?;
+        let entry = |(name, (extension, panel)): (&String, &(String, Panel))| PanelEntry {
+            name: name.clone(),
+            extension: extension.clone(),
+            title: panel.title.clone(),
+            description: panel.description.clone(),
+        };
+        Ok(service.panels().iter().map(entry).collect())
+    }
+
+    /// One panel of the extensions loaded: its form, what submitting it
+    /// does, and how to show what comes back.
+    #[endpoint(get, "panel/{name}")]
+    async fn panel(&self, params: PathParams) -> Response {
+        let name = params.get("name").unwrap_or_default().to_owned();
+        let service = match self.service() {
+            Ok(service) => service,
+            Err(error) => return failed(&error),
+        };
+        match service.panels().get(&name) {
+            Some((_, panel)) => Json(panel.clone()).into_response(),
+            None => problem(
+                404,
+                "unknown",
+                format!("no extension loaded has a panel `{name}`"),
+            ),
         }
     }
 

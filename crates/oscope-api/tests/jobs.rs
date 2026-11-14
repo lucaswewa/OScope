@@ -125,7 +125,7 @@ async fn a_job_is_submitted_followed_and_listed() {
     let client = server(folder.path()).await;
     assert_eq!(
         client.get("/api/v1/jobs/kinds").await.json(),
-        json!(["test.count", "test.hold"])
+        json!(["pipeline.batch", "test.count", "test.hold"])
     );
     let mut changes = client.events("/api/v1/jobs/changed").await;
 

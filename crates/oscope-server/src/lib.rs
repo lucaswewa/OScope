@@ -25,7 +25,7 @@ use clap::{Parser, Subcommand};
 use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
-use oscope_ext::{ExtError, Extensions};
+use oscope_ext::{Drivers, ExtError, Extensions, OWN_DRIVERS};
 use oscope_jobs::{JobService, JobsConfig};
 use oscope_shm::{RingConfig, RingWriter, ShmError};
 use serde_json::{Value, json};
@@ -247,7 +247,8 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
         tokio::runtime::Runtime::new().map_err(|source| Error::Listen { address, source })?;
     if cli.print_openapi || cli.print_td {
         let roots = roots(&config);
-        let devices = runtime.block_on(devices(cli, &config))?;
+        // No extension is loaded: a driver of one is printed as a fake.
+        let devices = runtime.block_on(devices(cli, &config, None))?;
         // A history in memory: printing creates no files.
         let jobs = runtime.block_on(async { jobs(Path::new(":memory:"), &config) })?;
         // No extension is read either.
@@ -274,18 +275,35 @@ fn roots(config: &Config) -> Roots {
     }
 }
 
-/// The devices the configuration's `[devices]` names: imports' paths are
-/// from the configuration file's folder.
-async fn devices(cli: &Cli, config: &Config) -> Result<Arc<Devices>, Error> {
-    let devices_config: DevicesConfig = toml::Value::Table(config.devices.clone())
-        .try_into()
-        .map_err(|e: toml::de::Error| Error::Devices(e.to_string()))?;
+/// The devices the configuration's `[devices]` names, among them the
+/// drivers of the extensions loaded; imports' paths are from the
+/// configuration file's folder. Without the drivers, a driver that isn't
+/// OScope's own is taken as a fake, for the printed documents.
+async fn devices(
+    cli: &Cli,
+    config: &Config,
+    drivers: Option<&Drivers>,
+) -> Result<Arc<Devices>, Error> {
+    let mut devices_config: DevicesConfig =
+        toml::Value::Table(config.devices.clone())
+            .try_into()
+            .map_err(|e: toml::de::Error| Error::Devices(e.to_string()))?;
+    let none = Drivers::default();
+    let drivers = drivers.unwrap_or_else(|| {
+        let c = &mut devices_config;
+        for name in [&mut c.camera, &mut c.stage, &mut c.illumination] {
+            if !OWN_DRIVERS.contains(&name.as_str()) {
+                *name = "fake".to_owned();
+            }
+        }
+        &none
+    });
     let base = cli
         .config
         .as_deref()
         .and_then(Path::parent)
         .map_or_else(|| PathBuf::from("."), Path::to_owned);
-    let devices = Devices::from_config(&devices_config, &base)
+    let devices = Devices::from_config_with(&devices_config, &base, drivers)
         .await
         .map_err(Error::Devices)?;
     Ok(Arc::new(devices))
@@ -316,10 +334,11 @@ async fn serve(
         source,
     })?;
     logs::install(&store, &config.logging.level)?;
-    let devices = devices(cli, &config).await?;
-    let jobs = jobs(&roots.data.join("index.sqlite"), &config)?;
+    // Extensions first: the configuration may name their drivers.
     let python = Some(config.python.runtime());
     let extensions = Extensions::open_with(roots.data.join("extensions"), python)?;
+    let devices = devices(cli, &config, Some(extensions.drivers())).await?;
+    let jobs = jobs(&roots.data.join("index.sqlite"), &config)?;
     let token = write_token(&roots)?;
     let ring = ring(cli, &config)?;
     let ring_name = ring.as_ref().map(|r| r.name().to_owned());

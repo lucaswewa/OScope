@@ -113,7 +113,7 @@ fn a_library_whose_nodes_are_not_its_manifest_s_does_not_load() {
     let package = folder.path().join("emboss.omext");
     ex_rust_ext::pack(&ex_rust_ext::library().unwrap(), folder.path(), &package).unwrap();
     // The same library, its manifest providing another node.
-    let source = folder.path().join("emboss");
+    let source = folder.path().join("ext-rust-node");
     let manifest = std::fs::read_to_string(source.join("manifest.toml")).unwrap();
     let other = manifest.replace("\"example.emboss\"", "\"example.relief\"");
     std::fs::write(source.join("manifest.toml"), other).unwrap();

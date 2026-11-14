@@ -1,4 +1,4 @@
-//! The ABI's layouts, which are its version 1: a change fails here first.
+//! The ABI's layouts, which are its version 2: a change fails here first.
 //! And the SDK's own: descriptors as the host reads them, images, and
 //! running a node in memory.
 
@@ -12,8 +12,8 @@ use oscope_ext_sdk::{
 use serde_json::json;
 
 #[test]
-fn the_abi_s_layouts_are_version_1_s() {
-    assert_eq!(abi::ABI_VERSION, 1);
+fn the_abi_s_layouts_are_version_2_s() {
+    assert_eq!(abi::ABI_VERSION, 2);
     assert_eq!(abi::ENTRY, b"oscope_extension\0");
     assert_eq!((abi::OK, abi::FAILED, abi::PANICKED), (0, 1, 2));
     // 64-bit pointers: OScope's platforms are x86_64 (ADR-0003).
@@ -43,21 +43,24 @@ fn the_abi_s_layouts_are_version_1_s() {
     ] {
         assert_eq!((size, align, offsets), (24, 8, [0, 8, 12, 16]));
     }
-    assert_eq!((size_of::<Host>(), align_of::<Host>()), (32, 8));
+    assert_eq!((size_of::<Host>(), align_of::<Host>()), (40, 8));
     let host = [
         offset_of!(Host, abi_version),
         offset_of!(Host, describe),
         offset_of!(Host, output),
         offset_of!(Host, fail),
+        offset_of!(Host, reply),
     ];
-    assert_eq!(host, [0, 8, 16, 24]);
-    assert_eq!((size_of::<Extension>(), align_of::<Extension>()), (24, 8));
+    assert_eq!(host, [0, 8, 16, 24, 32]);
+    assert_eq!((size_of::<Extension>(), align_of::<Extension>()), (40, 8));
     let extension = [
         offset_of!(Extension, abi_version),
         offset_of!(Extension, describe),
         offset_of!(Extension, run),
+        offset_of!(Extension, driver_call),
+        offset_of!(Extension, capture),
     ];
-    assert_eq!(extension, [0, 8, 16]);
+    assert_eq!(extension, [0, 8, 16, 24, 32]);
 }
 
 #[test]
@@ -224,6 +227,7 @@ fn the_glue_refuses_another_host_and_catches_panics() {
         describe: told,
         output: no_output,
         fail: told,
+        reply: told,
     };
     let call = std::ptr::null_mut();
     let other = host(abi::ABI_VERSION + 1);
@@ -231,14 +235,17 @@ fn the_glue_refuses_another_host_and_catches_panics() {
     let said = TOLD.lock().unwrap().clone();
     assert_eq!(
         said,
-        "the host speaks the extension ABI 2, and this extension 1"
+        "the host speaks the extension ABI 3, and this extension 2"
     );
 
     let ours = host(abi::ABI_VERSION);
     assert_eq!((table.describe)(&ours, call), abi::OK);
     let described: serde_json::Value = serde_json::from_str(&TOLD.lock().unwrap()).unwrap();
     assert_eq!(
-        (described[0]["id"].as_str(), described[1]["id"].as_str()),
+        (
+            described["nodes"][0]["id"].as_str(),
+            described["nodes"][1]["id"].as_str()
+        ),
         (Some("test.sum"), Some("test.panics"))
     );
     let (params, none) = (Str::new("{}"), std::ptr::null());

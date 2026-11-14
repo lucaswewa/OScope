@@ -87,6 +87,20 @@ impl Segment {
         Ok(())
     }
 
+    /// Copies its first bytes into `bytes`, filling it.
+    pub fn read_bytes(&self, bytes: &mut [u8]) -> Result<(), ShmError> {
+        if bytes.len() > self.len() {
+            let (length, most) = (bytes.len(), self.len());
+            return Err(ShmError::TooLarge { length, most });
+        }
+        // SAFETY: as in `read_f32`: at least `bytes.len()` bytes, on this
+        // side's turn.
+        unsafe {
+            std::ptr::copy_nonoverlapping(self.mapping.base(), bytes.as_mut_ptr(), bytes.len());
+        }
+        Ok(())
+    }
+
     /// Copies its first samples into `samples`, filling it.
     pub fn read_f32(&self, samples: &mut [f32]) -> Result<(), ShmError> {
         let length = std::mem::size_of_val(samples);

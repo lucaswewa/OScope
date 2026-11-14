@@ -67,6 +67,31 @@ fn print_openapi_and_print_td_describe_the_api_and_create_nothing() {
 }
 
 #[test]
+fn printing_takes_an_extension_s_driver_for_a_fake_and_loads_no_extension() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("oscope.toml");
+    let devices = "[devices]
+camera = \"example.fakecam\"
+stage = \"example.stage\"
+";
+    std::fs::write(&path, devices).unwrap();
+    let root = folder.path().join("never-made");
+    let output = run(&[
+        "--print-td",
+        "--config",
+        path.to_str().unwrap(),
+        "--data-root",
+        root.to_str().unwrap(),
+    ]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+    let tds: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(tds["camera"]["properties"].is_object());
+    assert!(tds["stage"]["properties"].is_object());
+    assert!(!root.exists());
+}
+
+#[test]
 fn a_wrong_log_level_fails_with_exit_code_2() {
     let folder = tempfile::tempdir().unwrap();
     let path = folder.path().join("oscope.toml");

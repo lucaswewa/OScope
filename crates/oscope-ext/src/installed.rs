@@ -21,10 +21,12 @@ use tempfile::NamedTempFile;
 
 use oscope_pipeline::Node;
 
+use crate::drivers::{Drivers, Link, NativeLink, PythonLink};
 use crate::manifest::is_id;
-use crate::native::{check, registered};
+use crate::native::{DriverInfo, check, registered};
+use crate::panels::{self, Panel};
 use crate::python::prepare;
-use crate::worker::{self, Worker};
+use crate::worker::{self, Described, Worker};
 use crate::{
     Contribution, ExtError, Library, MANIFEST, Manifest, OSCOPE_FOLDER, Package, PythonRuntime, io,
 };
@@ -140,45 +142,90 @@ fn plan(installed: &BTreeMap<String, Installed>) -> (BTreeMap<&str, Plan>, Regis
 /// The nodes a Python extension's worker described when it was installed.
 const NODES: &str = "nodes.json";
 
-/// An extension's code, loaded: its nodes, and a Python extension's worker.
-type Code = (Vec<Arc<dyn Node>>, Option<Arc<Worker>>);
+/// An extension's code, loaded: its nodes, a Python extension's worker, and
+/// its drivers.
+#[derive(Default)]
+struct Code {
+    nodes: Vec<Arc<dyn Node>>,
+    worker: Option<Arc<Worker>>,
+    drivers: Vec<(DriverInfo, Arc<dyn Link>)>,
+    panels: Vec<(String, Panel)>,
+}
 
 /// Loads an extension's code: a Rust extension's library, or a Python
-/// extension's worker, to start on first use, when OScope runs Python.
-/// Its nodes must be those its manifest provides.
+/// extension's worker, to start on first use, when OScope runs Python; and
+/// its panels. Its nodes and drivers must be those its manifest provides.
 fn load(
     manifest: &Manifest,
     folder: &Path,
     python: Option<&PythonRuntime>,
 ) -> Result<Code, String> {
-    let (nodes, worker) = match (manifest.library(), &manifest.python, python) {
+    let mut code = match (manifest.library(), &manifest.python, python) {
         (Some(library), _, _) => {
             let path = library
                 .split('/')
                 .fold(folder.to_owned(), |path, part| path.join(part));
-            (
-                Library::load(&path).map_err(|e| e.to_string())?.nodes(),
-                None,
-            )
+            let library = Library::load(&path).map_err(|e| e.to_string())?;
+            let drivers = library.drivers().iter().zip(0..).map(|(info, index)| {
+                let link = NativeLink {
+                    library: Arc::clone(&library),
+                    index,
+                };
+                (info.clone(), Arc::new(link) as Arc<dyn Link>)
+            });
+            Code {
+                nodes: library.nodes(),
+                drivers: drivers.collect(),
+                ..Code::default()
+            }
         }
         (None, Some(entry), Some(python)) => {
             let path = folder.join(OSCOPE_FOLDER).join(NODES);
             let failed = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
             let text = fs::read(&path).map_err(|e| failed(&e))?;
-            let described: Vec<oscope_pipeline::Descriptor> =
-                serde_json::from_slice(&text).map_err(|e| failed(&e))?;
+            let json = serde_json::from_slice(&text).map_err(|e| failed(&e))?;
+            let described = Described::read(json).map_err(|e| failed(&e))?;
             let worker = Worker::new(&manifest.id, folder, &entry.entry, python);
-            (worker::nodes(&worker, &described), Some(worker))
+            code(&worker, described)
         }
-        _ => return Ok((Vec::new(), None)),
+        _ => {
+            let panels = panels::read(manifest, folder)?;
+            return Ok(Code {
+                panels,
+                ..Code::default()
+            });
+        }
     };
-    provided(manifest, &nodes)?;
-    Ok((nodes, worker))
+    let drivers: Vec<_> = code.drivers.iter().map(|(info, _)| info.clone()).collect();
+    provided(manifest, &code.nodes, &drivers)?;
+    code.panels = panels::read(manifest, folder)?;
+    Ok(code)
 }
 
-/// Checks that `nodes` are those `manifest` provides, and as the pipeline
-/// checks nodes.
-fn provided(manifest: &Manifest, nodes: &[Arc<dyn Node>]) -> Result<(), String> {
+/// A Python extension's code, from what its worker described.
+fn code(worker: &Arc<Worker>, described: Described) -> Code {
+    let link = |info: DriverInfo| {
+        let link = PythonLink {
+            worker: Arc::clone(worker),
+            name: info.name.clone(),
+        };
+        (info, Arc::new(link) as Arc<dyn Link>)
+    };
+    Code {
+        nodes: worker::nodes(worker, &described.nodes),
+        worker: Some(Arc::clone(worker)),
+        drivers: described.drivers.into_iter().map(link).collect(),
+        panels: Vec::new(),
+    }
+}
+
+/// Checks that `nodes` and `drivers` are those `manifest` provides, and the
+/// nodes as the pipeline checks nodes.
+fn provided(
+    manifest: &Manifest,
+    nodes: &[Arc<dyn Node>],
+    drivers: &[DriverInfo],
+) -> Result<(), String> {
     let descriptors: Vec<_> = nodes.iter().map(|node| node.descriptor().clone()).collect();
     check(&descriptors, "for an extension")?;
     registered(nodes)?;
@@ -190,23 +237,35 @@ fn provided(manifest: &Manifest, nodes: &[Arc<dyn Node>]) -> Result<(), String> 
             .collect::<Vec<_>>()
             .join(", "),
     };
-    let described = descriptors.iter().map(|d| d.id.as_str()).collect();
-    let provided = manifest
-        .provides
-        .get(&Contribution::Nodes)
-        .into_iter()
-        .flatten();
-    let provided = provided.map(String::as_str).collect();
-    if described != provided {
-        let (described, provided) = (list(described), list(provided));
-        let code = if manifest.library().is_some() {
-            "library"
-        } else {
-            "module"
-        };
-        return Err(format!(
-            "its {code} has the nodes {described}, and its manifest provides {provided}"
-        ));
+    let code = if manifest.library().is_some() {
+        "library"
+    } else {
+        "module"
+    };
+    let names = [
+        (
+            Contribution::Nodes,
+            "nodes",
+            descriptors
+                .iter()
+                .map(|d| d.id.as_str())
+                .collect::<BTreeSet<_>>(),
+        ),
+        (
+            Contribution::Drivers,
+            "drivers",
+            drivers.iter().map(|d| d.name.as_str()).collect(),
+        ),
+    ];
+    for (contribution, what, described) in names {
+        let provided = manifest.provides.get(&contribution).into_iter().flatten();
+        let provided = provided.map(String::as_str).collect();
+        if described != provided {
+            let (described, provided) = (list(described), list(provided));
+            return Err(format!(
+                "its {code} has the {what} {described}, and its manifest provides {provided}"
+            ));
+        }
     }
     Ok(())
 }
@@ -233,6 +292,8 @@ pub struct Extensions {
     registry: Registry,
     nodes: Vec<Arc<dyn Node>>,
     workers: Vec<Arc<Worker>>,
+    drivers: Drivers,
+    panels: BTreeMap<String, (String, Panel)>,
     /// The extensions whose code this start couldn't load: the version, and
     /// why.
     failed: BTreeMap<String, (Version, String)>,
@@ -301,6 +362,7 @@ impl Extensions {
         let (plans, mut registry) = plan(&installed);
         let (mut loaded, mut nodes, mut workers, mut failed) =
             (Vec::new(), Vec::new(), Vec::new(), BTreeMap::new());
+        let (mut drivers, mut panels) = (Drivers::default(), BTreeMap::new());
         for (id, plan) in &plans {
             let Installed { state, manifest } = &installed[*id];
             let Some(version) = &plan.version else {
@@ -311,10 +373,16 @@ impl Extensions {
             };
             let folder = root.join(id).join(version.to_string());
             match load(manifest, &folder, python.as_ref()) {
-                Ok((code, worker)) => {
+                Ok(code) => {
                     tracing::info!("extension {id} {version}: loaded");
-                    nodes.extend(code);
-                    workers.extend(worker);
+                    nodes.extend(code.nodes);
+                    workers.extend(code.worker);
+                    for (info, link) in code.drivers {
+                        drivers.add(&info.name, &info.kind, link);
+                    }
+                    for (name, panel) in code.panels {
+                        panels.insert(name, ((*id).to_owned(), panel));
+                    }
                     let sha256 = state.sha256.clone();
                     let manifest = manifest.clone();
                     loaded.push(Loaded {
@@ -340,6 +408,8 @@ impl Extensions {
             registry,
             nodes,
             workers,
+            drivers,
+            panels,
             failed,
             python,
             installed: Mutex::new(installed),
@@ -355,6 +425,8 @@ impl Extensions {
             registry: Registry::new(),
             nodes: Vec::new(),
             workers: Vec::new(),
+            drivers: Drivers::default(),
+            panels: BTreeMap::new(),
             failed: BTreeMap::new(),
             python: None,
             installed: Mutex::default(),
@@ -380,6 +452,18 @@ impl Extensions {
     /// registry.
     pub fn nodes(&self) -> &[Arc<dyn Node>] {
         &self.nodes
+    }
+
+    /// The drivers of the extensions this start loaded, by name, for the
+    /// configuration's `[devices]` to name (ADR-0036).
+    pub fn drivers(&self) -> &Drivers {
+        &self.drivers
+    }
+
+    /// The panels of the extensions this start loaded, by name: each with
+    /// its extension's ID (ADR-0036).
+    pub fn panels(&self) -> &BTreeMap<String, (String, Panel)> {
+        &self.panels
     }
 
     /// The workers of the Python extensions this start loaded.
@@ -466,6 +550,7 @@ impl Extensions {
                     .tempdir_in(&incoming);
                 let staging = staging.map_err(io(&incoming))?;
                 package.unpack(staging.path())?;
+                panels::read(&manifest, staging.path()).map_err(ExtError::Package)?;
                 // Left by an install that didn't finish: neither installed nor loaded.
                 let target = folder.join(version.to_string());
                 if target.exists() {
@@ -495,7 +580,9 @@ impl Extensions {
         };
         let described = prepare(folder, &manifest.id, entry, python)?;
         let worker = Worker::new(&manifest.id, folder, &entry.entry, python);
-        provided(manifest, &worker::nodes(&worker, &described)).map_err(ExtError::Python)?;
+        let drivers = described.drivers.clone();
+        let nodes = worker::nodes(&worker, &described.nodes);
+        provided(manifest, &nodes, &drivers).map_err(ExtError::Python)?;
         let path = folder.join(OSCOPE_FOLDER).join(NODES);
         let text = serde_json::to_vec_pretty(&described).map_err(|e| io(&path)(e.into()))?;
         fs::write(&path, text).map_err(io(&path))

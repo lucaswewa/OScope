@@ -10,11 +10,14 @@ An extension's module declares its nodes with :func:`node`::
         \"\"\"Turns each sample into ``level`` less it.\"\"\"
         return level - image
 
-OScope runs the module in a worker of its own (:mod:`oscope_ext.worker`),
+It may drive a camera, a stage or lights too, with :func:`driver`
+(ADR-0036). OScope runs the module in a worker of its own
+(:mod:`oscope_ext.worker`),
 in the extension's environment, and hands it frames through shared memory,
 as NumPy arrays shaped ``(height, width, channels)``.
 """
 
+from ._drivers import driver, drivers
 from ._nodes import Node, get, node, nodes, schema_of
 
-__all__ = ["Node", "get", "node", "nodes", "schema_of"]
+__all__ = ["Node", "driver", "drivers", "get", "node", "nodes", "schema_of"]

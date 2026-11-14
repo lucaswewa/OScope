@@ -799,8 +799,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P24 | `.omext` packages, registry, `extensions` Thing | P21 | M | 0018 | Done |
 | P25 | Rust extension ABI and SDK | P24 | L | 0019 | Done |
-| P26 | Python extension runtime and SDK | P24, P19 | L | 0020 | In review |
-| P27 | Driver and panel extensions | P25, P26 | L | — | Planned |
+| P26 | Python extension runtime and SDK | P24, P19 | L | 0020 | Done |
+| P27 | Driver and panel extensions | P25, P26 | L | — | In review |
 
 **Checkpoint B:** one recipe mixing stock, Rust and Python nodes runs live on the preview and as a batch job.
 
@@ -1084,3 +1084,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-14 | P24 was estimated at about 2,050 lines before it started (the manifest and its checks ~250; the zip reader and writer, guarded against traversal ~200; installing, enabling and the load order, with a registry for each kind ~300; the `extensions` Thing and its upload route ~250; `oscope-server ext pack` ~60; tests ~400; `ex-omext` with its page ~400; and a tenth on top): more than three times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P34 |
 | 2026-11-14 | P25 was estimated at about 2,300 lines before it started (the C ABI's tables and views, the safe `ProcessingNode` trait, the `export!` macro and its glue, with panics caught, ~450; the loader with its version check, the host's table and the nodes it gives the pipeline, loaded at each start and offered to live recipes, ~450; tests ~550; the sample `ext-rust-node` and `ex-rust-ext`, which builds, packs, installs, loads and runs it, ~450; and a fifth on top, after P24 came in 38 % over): more than twice L's 900. One pull request, with the overrun explained, as the owner decided for P24–P34 |
 | 2026-11-14 | P26 was estimated at about 3,000 lines before it started (the Python SDK, its node decorator, schemas from type hints, shared-memory views and message loop, with its pytest suite, ~650; finding uv and building each extension's environment at install, online or from a wheelhouse, ~250; the worker supervisor and the shared-memory transport, ~650; Rust tests ~450; the scikit-image sample and `ex-python-node` ~350; CI, scripts and the server's settings ~150; and a fifth on top): more than three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P34 |
+| 2026-11-14 | P27 was estimated at about 3,700 lines before it started (driver traits in both SDKs, with the Rust ABI's second version, ~650; the host's adapters that make extension drivers the HAL's, and the drivers' registry, ~650; panels described by extensions and served by the `extensions` Thing ~200; a batch job of a recipe over the camera's frames, for Checkpoint B, ~200; the fake-camera sample, the Python panel, `ex-ext-camera` and the Checkpoint B script ~450; tests ~600; and a fifth on top): more than four times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P34. ADR-0036 records the drivers' ABI and the panels, which no planned ADR covered |

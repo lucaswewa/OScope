@@ -1,6 +1,6 @@
 # ADR-0020: The Python extension runtime
 
-- Status: Accepted
+- Status: Accepted; extended by [ADR-0036](0036-extension-drivers-and-panels.md)
 - Date: 2026-11-14
 - Phase: P26
 

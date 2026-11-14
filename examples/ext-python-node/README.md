@@ -9,7 +9,7 @@ It isn't a crate, so the Cargo workspace leaves it out. [`ex-python-node`](../ex
 [`tv_denoise/__init__.py`](tv_denoise/__init__.py):
 
 ```python
-@node("example.denoise_tv", category="example")
+@node("example.denoise_tv", category="example", live=True)
 def denoise_tv(image: np.ndarray, *, weight: float = 0.1, iterations: int = 200) -> np.ndarray:
     """Removes noise but keeps edges: Chambolle's total-variation denoising."""
     return denoise_tv_chambolle(image, weight=weight, max_num_iter=iterations, channel_axis=-1)
@@ -17,6 +17,7 @@ def denoise_tv(image: np.ndarray, *, weight: float = 0.1, iterations: int = 200)
 
 - **Input** `image`, **output** `image`: NumPy arrays shaped `(height, width, channels)`, the input shared with OScope through shared memory.
 - **Parameters** from the type hints: `weight`, a number, 0.1 by default (more smooths more), and `iterations`, an integer, 200 by default.
+- **Live,** so that live recipes may use it at low rates: a live recipe is checked against its time budget before it runs.
 
 ## The manifest
 

@@ -193,13 +193,13 @@ async fn smoke(address: SocketAddr, source: &Path, package: Vec<u8>) -> anyhow::
     let manifest = std::fs::read_to_string(source.join("manifest.toml"))?;
     let newer = manifest.replace("oscope-api = \"^1.0\"", "oscope-api = \"^9.0\"");
     let module = std::fs::read(source.join("hello/__init__.py"))?;
-    let panel = std::fs::read(source.join("panels/greet.json"))?;
+    let panel = std::fs::read(source.join("panels/hello.greeting.json"))?;
     let refusals = [
         (
             zip_of(&[
                 ("manifest.toml", newer.as_bytes()),
                 ("hello/__init__.py", &module),
-                ("panels/greet.json", &panel),
+                ("panels/hello.greeting.json", &panel),
             ])?,
             "it needs the extension API ^9.0",
         ),

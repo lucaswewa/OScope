@@ -1,0 +1,18 @@
+[package]
+name = "ext-rust-camera"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A library that OScope loads (cdylib), and that ex-ext-camera links to as
+# well (rlib), so that Cargo builds it beside that example.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+oscope-ext-sdk.workspace = true
+
+[lints]
+workspace = true

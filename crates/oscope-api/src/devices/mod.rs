@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use oscope_acquire::{Acquisition, FrameBus};
 use oscope_core::{Clock, SystemClock};
+use oscope_ext::Drivers;
 use oscope_hal::fake::{FakeCamera, FakeIllumination, FakeObjectiveMount, FakeStage};
 use oscope_hal::{
     Camera, Error, Illumination, LightChannel, LightKind, ManualIllumination, ManualObjectiveMount,
@@ -139,6 +140,16 @@ impl Devices {
     /// the configuration's folder. The simulator, if any device is `sim`,
     /// starts its stage running.
     pub async fn from_config(config: &DevicesConfig, base: &Path) -> Result<Self, String> {
+        Self::from_config_with(config, base, &Drivers::default()).await
+    }
+
+    /// As [`from_config`](Self::from_config), where `config` may also name
+    /// the cameras, stages and lights of the extensions loaded (ADR-0036).
+    pub async fn from_config_with(
+        config: &DevicesConfig,
+        base: &Path,
+        drivers: &Drivers,
+    ) -> Result<Self, String> {
         let names = [
             &config.camera,
             &config.stage,
@@ -161,6 +172,14 @@ impl Devices {
         }
         let clock = Arc::new(SystemClock::new());
         let unknown = |device: &str, name: &str, known: &str| {
+            let mut known: Vec<String> = known.split(", ").map(str::to_owned).collect();
+            let extensions = drivers.names().filter(|(_, kind)| *kind == device);
+            known.extend(extensions.map(|(name, _)| name.to_owned()));
+            let last = known.pop().unwrap_or_default();
+            let known = match known.is_empty() {
+                true => last,
+                false => format!("{} and {last}", known.join(", ")),
+            };
             Err(format!(
                 "`{device} = \"{name}\"`: the {device} drivers are {known}"
             ))
@@ -170,12 +189,18 @@ impl Devices {
             match (config.camera.as_str(), sim) {
                 ("sim", Some(s)) => (s.camera.clone(), s.clock.clone()),
                 ("fake", _) => (Arc::new(FakeCamera::new(clock.clone())), clock.clone()),
-                (name, _) => return unknown("camera", name, "sim and fake"),
+                (name, _) => match drivers.camera(name, clock.clone()) {
+                    Some(camera) => (camera?, clock.clone()),
+                    None => return unknown("camera", name, "sim, fake"),
+                },
             };
         let stage: Arc<dyn Stage> = match (config.stage.as_str(), sim) {
             ("sim", Some(s)) => Arc::clone(&s.stage) as Arc<dyn Stage>,
             ("fake", _) => Arc::new(FakeStage::new(clock.clone())),
-            (name, _) => return unknown("stage", name, "sim and fake"),
+            (name, _) => match drivers.stage(name, clock.clone()) {
+                Some(stage) => stage?,
+                None => return unknown("stage", name, "sim, fake"),
+            },
         };
         let channels = || {
             vec![LightChannel {
@@ -188,13 +213,16 @@ impl Devices {
             ("sim", Some(s)) => Arc::clone(&s.lights) as Arc<dyn Illumination>,
             ("manual", _) => Arc::new(ManualIllumination::brightfield()),
             ("fake", _) => Arc::new(FakeIllumination::new(channels())),
-            (name, _) => return unknown("illumination", name, "sim, manual and fake"),
+            (name, _) => match drivers.illumination(name) {
+                Some(lights) => lights?,
+                None => return unknown("illumination", name, "sim, manual, fake"),
+            },
         };
         let objectives: Arc<dyn ObjectiveMount> = match (config.objective.as_str(), sim) {
             ("sim", Some(s)) => Arc::clone(&s.mount) as Arc<dyn ObjectiveMount>,
             ("manual", _) => Arc::new(ManualObjectiveMount::new(ObjectiveCatalogue::mitutoyo())),
             ("fake", _) => Arc::new(FakeObjectiveMount::new(ObjectiveCatalogue::mitutoyo())),
-            (name, _) => return unknown("objective", name, "sim, manual and fake"),
+            (name, _) => return unknown("objective", name, "sim, manual, fake"),
         };
         Ok(Self::new(
             camera,

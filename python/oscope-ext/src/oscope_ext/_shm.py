@@ -33,6 +33,10 @@ class Segment:
         count = height * width * channels
         return np.frombuffer(self._map, dtype=np.float32, count=count).reshape(height, width, channels)
 
+    def bytes(self, count: int) -> np.ndarray:
+        """Its first ``count`` bytes, as an array sharing its memory."""
+        return np.frombuffer(self._map, dtype=np.uint8, count=count)
+
     def close(self) -> None:
         """Unmaps it. An array still sharing it keeps it mapped until the
         array goes."""

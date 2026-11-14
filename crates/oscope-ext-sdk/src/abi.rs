@@ -1,5 +1,5 @@
-//! The C ABI between OScope and a Rust extension's library, version 1
-//! (ADR-0019).
+//! The C ABI between OScope and a Rust extension's library, version 2
+//! (ADR-0019; drivers, ADR-0036).
 //!
 //! The library exports [`ENTRY`], which gives its [`Extension`] table. The
 //! host calls the table's functions, lending each call its own [`Host`]
@@ -16,14 +16,14 @@
 //!   [`Host::fail`]. No panic crosses the boundary: each side catches its
 //!   own.
 //! - **Threads.** The host may call [`Extension::run`] from several
-//!   threads at once.
+//!   threads at once, and a driver's methods while it captures.
 //!
 //! The layouts here are the ABI: changing one is a new version.
 
 use std::ffi::c_void;
 
-/// The ABI's version.
-pub const ABI_VERSION: u32 = 1;
+/// The ABI's version: 2 added drivers (ADR-0036).
+pub const ABI_VERSION: u32 = 2;
 
 /// The name of the function every extension exports, ending with its NUL:
 /// an [`Entry`].
@@ -107,8 +107,9 @@ pub type Call = c_void;
 pub struct Host {
     /// The ABI version the host speaks.
     pub abi_version: u32,
-    /// Takes the extension's description: a JSON array of its nodes, as
-    /// [`crate::Descriptor`] serialises them.
+    /// Takes the extension's description, a JSON object: `nodes`, each as
+    /// [`crate::Descriptor`] serialises it, and `drivers`, each its name and
+    /// kind (`camera`, `stage` or `illumination`).
     pub describe: extern "C" fn(call: *mut Call, json: Str),
     /// Makes the image of output `port`, of zeros. Its `data` is null when
     /// the port doesn't exist, was made already, or the image is too large.
@@ -121,6 +122,8 @@ pub struct Host {
     ) -> ImageMut,
     /// Takes why the call failed.
     pub fail: extern "C" fn(call: *mut Call, message: Str),
+    /// Takes a driver call's answer, as JSON.
+    pub reply: extern "C" fn(call: *mut Call, json: Str),
 }
 
 /// What an extension gives the host.
@@ -143,5 +146,24 @@ pub struct Extension {
         params: Str,
         inputs: *const ImageRef,
         count: u32,
+    ) -> Status,
+    /// Calls driver `driver`'s method `method`, by its place in the
+    /// description, with `params` as JSON: it answers through
+    /// [`Host::reply`] (ADR-0036).
+    pub driver_call: extern "C" fn(
+        host: *const Host,
+        call: *mut Call,
+        driver: u32,
+        method: Str,
+        params: Str,
+    ) -> Status,
+    /// Captures camera `driver`'s next frame into the `len` bytes at
+    /// `pixels`, laid out as its settings say, and blocks until it is ready.
+    pub capture: extern "C" fn(
+        host: *const Host,
+        call: *mut Call,
+        driver: u32,
+        pixels: *mut u8,
+        len: usize,
     ) -> Status,
 }

@@ -4,8 +4,9 @@
 //! Unsafe code is allowed here, in the generated C ABI glue (plan §4.3).
 //!
 //! An extension is a `cdylib` crate. It implements [`ProcessingNode`] for
-//! each of its nodes, and lists them with [`export!`], which makes the C ABI
-//! of [`abi`] for them:
+//! each of its nodes, and [`CameraDriver`], [`StageDriver`] or
+//! [`IlluminationDriver`] for each of its drivers (ADR-0036), and lists them
+//! with [`export!`], which makes the C ABI of [`abi`] for them:
 //!
 //! ```
 //! use oscope_ext_sdk::{Descriptor, Image, Outputs, ProcessingNode, serde_json};
@@ -47,8 +48,12 @@ use std::any::Any;
 use std::panic::{self, AssertUnwindSafe};
 
 pub mod abi;
+mod drivers;
 
-pub use serde_json;
+pub use drivers::{
+    CameraDriver, Driver, IlluminationDriver, NamedDriver, StageDriver, camera, illumination, stage,
+};
+pub use {oscope_core, oscope_hal, serde_json};
 
 /// A node, as its extension describes it. It is OScope's pipeline's
 /// description (ADR-0017), with images for inputs and outputs, on the CPU.
@@ -305,35 +310,50 @@ pub fn run_in_memory(
         .collect()
 }
 
-/// Lists an extension's nodes, and makes the C ABI for them (ADR-0019): the
-/// exported function [`abi::ENTRY`] and the table it gives. Each argument
-/// is an expression giving a [`ProcessingNode`], evaluated once, when the
-/// host first asks. Use it once in an extension.
+/// Lists an extension's nodes and drivers, and makes the C ABI for them
+/// (ADR-0019, ADR-0036): the exported function [`abi::ENTRY`] and the table
+/// it gives. Each argument is an expression giving a [`ProcessingNode`], or
+/// for drivers a [`NamedDriver`] ([`camera`], [`stage`], [`illumination`]),
+/// evaluated once, when the host first asks. Use it once in an extension:
+///
+/// ```ignore
+/// oscope_ext_sdk::export!(Emboss);
+/// oscope_ext_sdk::export!(nodes: [Emboss], drivers: [oscope_ext_sdk::camera("example.cam", Cam)]);
+/// ```
 #[macro_export]
 macro_rules! export {
-    ($($node:expr),+ $(,)?) => {
+    (nodes: [$($node:expr),* $(,)?], drivers: [$($driver:expr),* $(,)?] $(,)?) => {
         #[doc(hidden)]
-        pub struct __OscopeExtensionNodes;
+        pub struct __OscopeExtension;
 
-        impl $crate::__private::Nodes for __OscopeExtensionNodes {
+        impl $crate::__private::Exported for __OscopeExtension {
             fn nodes() -> &'static [::std::boxed::Box<dyn $crate::ProcessingNode>] {
                 static NODES: ::std::sync::OnceLock<
                     ::std::vec::Vec<::std::boxed::Box<dyn $crate::ProcessingNode>>,
                 > = ::std::sync::OnceLock::new();
                 NODES.get_or_init(|| {
-                    ::std::vec![$(::std::boxed::Box::new($node) as ::std::boxed::Box<dyn $crate::ProcessingNode>),+]
+                    ::std::vec![$(::std::boxed::Box::new($node) as ::std::boxed::Box<dyn $crate::ProcessingNode>),*]
                 })
+            }
+
+            fn drivers() -> &'static [$crate::NamedDriver] {
+                static DRIVERS: ::std::sync::OnceLock<::std::vec::Vec<$crate::NamedDriver>> =
+                    ::std::sync::OnceLock::new();
+                DRIVERS.get_or_init(|| ::std::vec![$($driver),*])
             }
         }
 
         static __OSCOPE_EXTENSION: $crate::abi::Extension =
-            $crate::__private::table::<__OscopeExtensionNodes>();
+            $crate::__private::table::<__OscopeExtension>();
 
         /// The extension's entry (ADR-0019), made by `oscope_ext_sdk::export!`.
         #[unsafe(no_mangle)]
         pub extern "C" fn oscope_extension() -> *const $crate::abi::Extension {
             &__OSCOPE_EXTENSION
         }
+    };
+    ($($node:expr),+ $(,)?) => {
+        $crate::export!(nodes: [$($node),+], drivers: []);
     };
 }
 
@@ -342,31 +362,93 @@ macro_rules! export {
 pub mod __private {
     use super::*;
 
-    /// An extension's nodes, made once.
-    pub trait Nodes: 'static {
+    /// An extension's nodes and drivers, made once.
+    pub trait Exported: 'static {
         /// The nodes, in the order the host numbers them.
         fn nodes() -> &'static [Box<dyn ProcessingNode>];
+        /// The drivers, in the order the host numbers them.
+        fn drivers() -> &'static [NamedDriver];
     }
 
-    /// The table of the extension whose nodes `N` gives.
-    pub const fn table<N: Nodes>() -> abi::Extension {
+    /// The table of the extension that `N` exports.
+    pub const fn table<N: Exported>() -> abi::Extension {
         abi::Extension {
             abi_version: abi::ABI_VERSION,
             describe: describe::<N>,
             run: run::<N>,
+            driver_call: driver_call::<N>,
+            capture: capture::<N>,
         }
     }
 
-    extern "C" fn describe<N: Nodes>(host: *const abi::Host, call: *mut abi::Call) -> abi::Status {
+    extern "C" fn describe<N: Exported>(
+        host: *const abi::Host,
+        call: *mut abi::Call,
+    ) -> abi::Status {
         guard(host, call, |host| {
-            let nodes = N::nodes().iter().map(|node| node.descriptor().to_json());
-            let json = serde_json::Value::Array(nodes.collect()).to_string();
-            (host.describe)(call, abi::Str::new(&json));
+            let nodes: Vec<_> = N::nodes()
+                .iter()
+                .map(|node| node.descriptor().to_json())
+                .collect();
+            let drivers = N::drivers()
+                .iter()
+                .map(|d| serde_json::json!({ "name": d.name, "kind": d.driver.kind() }));
+            let json =
+                serde_json::json!({ "nodes": nodes, "drivers": drivers.collect::<Vec<_>>() });
+            (host.describe)(call, abi::Str::new(&json.to_string()));
             Ok(())
         })
     }
 
-    extern "C" fn run<N: Nodes>(
+    /// The driver `index`.
+    fn find<N: Exported>(index: u32) -> Result<&'static Driver, String> {
+        let found = N::drivers().get(index as usize).map(|named| &named.driver);
+        found.ok_or_else(|| "there is no such driver".to_owned())
+    }
+
+    extern "C" fn driver_call<N: Exported>(
+        host: *const abi::Host,
+        call: *mut abi::Call,
+        driver: u32,
+        method: abi::Str,
+        params: abi::Str,
+    ) -> abi::Status {
+        guard(host, call, |host| {
+            // SAFETY: the host lends the method's name and its parameters for
+            // the call (ADR-0019).
+            let (method, params) = unsafe { (text(method)?, text(params)?) };
+            let params = match params {
+                "" => serde_json::Value::Null,
+                params => {
+                    serde_json::from_str(params).map_err(|e| format!("the parameters: {e}"))?
+                }
+            };
+            let answer = find::<N>(driver)?.call(method, params)?;
+            (host.reply)(call, abi::Str::new(&answer.to_string()));
+            Ok(())
+        })
+    }
+
+    extern "C" fn capture<N: Exported>(
+        host: *const abi::Host,
+        call: *mut abi::Call,
+        driver: u32,
+        pixels: *mut u8,
+        len: usize,
+    ) -> abi::Status {
+        guard(host, call, |_| {
+            let pixels = match len {
+                0 => &mut [][..],
+                _ if pixels.is_null() => return Err("a frame without pixels".to_owned()),
+                // SAFETY: the host lends `len` bytes at `pixels` for the
+                // call, and touches them only after it (ADR-0036).
+                _ => unsafe { std::slice::from_raw_parts_mut(pixels, len) },
+            };
+            find::<N>(driver)?.capture(pixels)
+        })
+    }
+
+    extern "C" fn run<N: Exported>(
         host: *const abi::Host,
         call: *mut abi::Call,
         node: u32,
@@ -451,7 +533,7 @@ pub mod __private {
         }
         // SAFETY: the caller's promise.
         let bytes = unsafe { std::slice::from_raw_parts(text.data, text.len) };
-        std::str::from_utf8(bytes).map_err(|_| "the parameters aren't UTF-8".to_owned())
+        std::str::from_utf8(bytes).map_err(|_| "text that isn't UTF-8".to_owned())
     }
 
     /// The image `image` points to.
