@@ -1,5 +1,6 @@
-//! The stock nodes (P22): correction, display, geometry and measurement,
-//! the steps the live view and every acquisition need. Where P08–P08c
+//! The stock nodes: correction, display, geometry and measurement, the
+//! steps the live view and every acquisition need (P22); and filters,
+//! enhancement, thresholds and morphology (P23). Where P08–P08c
 //! made a function (`oscope_imaging::color`, `oscope_compute::cpu`), the
 //! node runs it, and its CUDA twin on the GPU.
 //!
@@ -20,6 +21,16 @@
 //! | `measure.histogram` | Each channel's histogram, and its statistics | CPU; live |
 //! | `convert.format` | Grey, RGB or one channel, and a bit depth | CPU; live; tiles |
 //! | `io.reference` | A reference image, such as a flat field, from the references folder | CPU; live |
+//! | `filter.gaussian` | A Gaussian blur | CPU, CUDA; live; tiles |
+//! | `filter.median` | The median of a square window | CPU, CUDA; live; tiles |
+//! | `filter.bilateral` | An edge-keeping blur | CPU, CUDA; live; tiles |
+//! | `enhance.unsharp` | The unsharp mask | CPU; live; tiles |
+//! | `enhance.clahe` | Contrast-limited adaptive histogram equalisation | CPU, CUDA; live |
+//! | `threshold.manual` | A mask of the pixels at or above a level | CPU; live; tiles |
+//! | `threshold.otsu` | A mask by Otsu's level, and the level | CPU; live |
+//! | `morphology.erode`, `dilate`, `open`, `close` | On a mask, with a square or a disk | CPU; live; tiles |
+//! | `morphology.distance` | The distance transform of a mask | CPU; live |
+//! | `morphology.label` | A mask's connected components, and a table of them | CPU; live |
 //!
 //! **References** cover the camera's whole frame. A dark frame or a flat
 //! field of another size than the image is sampled over the part of the
@@ -29,9 +40,12 @@
 
 mod correction;
 mod display;
+mod filters;
 mod geometry;
 mod measure;
+mod morphology;
 mod reference;
+mod threshold;
 
 use std::path::PathBuf;
 
@@ -70,8 +84,17 @@ pub fn registry(references: impl Into<PathBuf>) -> Registry {
         measure::histogram(),
         measure::format(),
         reference::reference(references.into()),
+        filters::gaussian(),
+        filters::median(),
+        filters::bilateral(),
+        filters::unsharp(),
+        filters::clahe(),
+        threshold::manual(),
+        threshold::otsu_node(),
+        morphology::distance(),
+        morphology::label(),
     ];
-    for node in nodes {
+    for node in nodes.into_iter().chain(morphology::operations()) {
         registry
             .register(node)
             .expect("the stock nodes are well formed");

@@ -28,6 +28,7 @@ pub mod cpu;
 #[cfg(feature = "cuda")]
 pub mod cuda;
 pub mod equivalence;
+pub mod filters;
 mod image;
 mod info;
 mod pools;
@@ -78,6 +79,9 @@ pub enum ComputeError {
         /// The image's.
         got: usize,
     },
+    /// A setting is out of its range.
+    #[error("{0}")]
+    Setting(String),
 }
 
 /// How to divide the processor between the pools.

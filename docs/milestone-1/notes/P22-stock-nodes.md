@@ -1,6 +1,6 @@
 # P22: Stock nodes I: correction and display; live recipes
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p22-stock-nodes` / [#35](https://github.com/lucaswewa/OScope/pull/35)
 - Size: M · estimated ~3,200 before it started (fifteen stock nodes over P08–P08c's functions, a reference reader and a resampler ~1,000; live recipes in the preview chain and the `preview` Thing, with references captured from the camera ~450; tests ~700; `ex-live-recipe` with its page ~650; glue ~50; and a tenth on top); one pull request, at the owner's standing choice for P12–P23 · measured **3,316** hand-written lines added (code 1,913; tests 801; examples 596; glue 6), and 25 removed. Docs, `Cargo.lock` and the generated snapshot aren't counted. **That is 2,716 over M's 600, and about 4% over the estimate.**
 

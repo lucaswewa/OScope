@@ -197,3 +197,75 @@ fn the_frame_pool_gets_pinned_memory_and_the_info_names_the_gpu() {
             >= 12
     );
 }
+
+/// The filters' twins (P23) against their CPU references, on 60 seeded
+/// images of 1 to 3 channels and up to 300 × 300, settings drawn too: the
+/// Gaussian, median and CLAHE to the bit, and the bilateral filter, whose
+/// exponentials may differ by an ulp or two, within 1e-5.
+#[test]
+fn the_filters_twins_match_the_cpu() {
+    use oscope_compute::filters::{self, Clahe};
+    let Some(compute) = gpu() else { return };
+    let cuda = compute.cuda().unwrap();
+    let lane = Lane::Batch;
+    let mut random = StdRng::seed_from_u64(23);
+    for case in 0..60 {
+        let channels = [1, 3, 2][case % 3];
+        let (width, height) = (random.random_range(1..=300), random.random_range(1..=300));
+        let shape = Shape::new(width, height, channels);
+        let data = (0..shape.len())
+            .map(|_| random.random_range(-0.1..1.1))
+            .collect();
+        let image = Image::from_vec(shape, data).unwrap();
+        let up = cuda.upload(lane, &image).unwrap();
+        let down = |result: Result<_, ComputeError>| cuda.download(lane, &result.unwrap()).unwrap();
+        let sigma = random.random_range(0.3..4.0);
+        assert_equivalent(
+            &filters::gaussian(&image, sigma).unwrap(),
+            &down(cuda.gaussian(lane, &up, sigma)),
+            Tolerance::EXACT,
+        );
+        let radius = random.random_range(0..=7);
+        assert_equivalent(
+            &filters::median(&image, radius).unwrap(),
+            &down(cuda.median(lane, &up, radius)),
+            Tolerance::EXACT,
+        );
+        let (space, range) = (
+            random.random_range(0.5..3.0),
+            random.random_range(0.05..0.5),
+        );
+        let tolerance = Tolerance {
+            abs: 1e-6,
+            rel: 1e-5,
+        };
+        let bilateral = cuda.bilateral(lane, &up, space, range);
+        assert_equivalent(
+            &filters::bilateral(&image, space, range).unwrap(),
+            &down(bilateral),
+            tolerance,
+        );
+        let clahe = Clahe {
+            tiles: (random.random_range(1..=8), random.random_range(1..=8)),
+            clip: random.random_range(1.0..4.0),
+            bins: [16, 64, 256][case % 3],
+        };
+        assert_equivalent(
+            &filters::clahe(&image, &clahe).unwrap(),
+            &down(cuda.clahe(lane, &up, &clahe)),
+            Tolerance::EXACT,
+        );
+    }
+    // Settings out of range are refused alike.
+    let image = cuda
+        .upload(lane, &Image::zeros(Shape::new(8, 8, 1)))
+        .unwrap();
+    assert!(matches!(
+        cuda.median(lane, &image, 8),
+        Err(ComputeError::Setting(_))
+    ));
+    assert!(matches!(
+        cuda.gaussian(lane, &image, 0.0),
+        Err(ComputeError::Setting(_))
+    ));
+}
