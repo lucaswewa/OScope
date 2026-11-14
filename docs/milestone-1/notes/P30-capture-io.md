@@ -1,6 +1,6 @@
 # P30: Capture, downloads, importers and exporters
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p30-capture-io` / [#44](https://github.com/lucaswewa/OScope/pull/44)
 - Size: M · estimated ~4,200 before it started (the `capture` Thing, its jobs and the rendition ~400; the data route ~200; importers ~300; exporters ~350; importer and exporter extension kinds, with the ABI's third version, ~800; tests ~1,000; `ex-capture` and the samples ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,783** hand-written lines added (code 2,246: `oscope-store` 894, `oscope-api` 572, `oscope-ext-sdk` 255, `oscope-ext` 255, `oscope-acquire` 204, the Python SDK 52, `oscope-shm` 14; tests 941; examples 564; glue 32), and 126 removed. **That is 3,183 over M's 600, and about 10 % under the estimate.**
 
