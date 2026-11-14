@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p30-capture-io` / [#44](https://github.com/lucaswewa/OScope/pull/44)
-- Size: M · estimated ~4,200 before it started (the `capture` Thing, its jobs and the rendition ~400; the data route ~200; importers ~300; exporters ~350; importer and exporter extension kinds, with the ABI's third version, ~800; tests ~1,000; `ex-capture` and the samples ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured {{SIZE}}
+- Size: M · estimated ~4,200 before it started (the `capture` Thing, its jobs and the rendition ~400; the data route ~200; importers ~300; exporters ~350; importer and exporter extension kinds, with the ABI's third version, ~800; tests ~1,000; `ex-capture` and the samples ~450; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,783** hand-written lines added (code 2,246: `oscope-store` 894, `oscope-api` 572, `oscope-ext-sdk` 255, `oscope-ext` 255, `oscope-acquire` 204, the Python SDK 52, `oscope-shm` 14; tests 941; examples 564; glue 32), and 126 removed. **That is 3,183 over M's 600, and about 10 % under the estimate.**
 
 ## Summary
 
@@ -43,7 +43,7 @@ It captures a frame of the simulated camera into a project, with its rendition, 
 
 ## Performance
 
-No §5.20 budget is P30's. On the owner's PC, in a debug build: `ex-capture`'s tour of a full MIChrome 20 frame took {{TOUR}}. The OME-TIFF of that frame is 39.9 MB.
+No §5.20 budget is P30's. On the owner's PC, `ex-capture`'s tour went through with a full MIChrome 20 frame in a debug build. Its smoke, of the sensor's middle 960 × 720, takes 8 s on two cores. The OME-TIFF of a full frame is 39.9 MB.
 
 **Readers elsewhere:** `tifffile` 2026.10.15 reads the OME-TIFF exports as OME series: a frame `(3648, 5472)` on `Y` and `X`, and a burst of three `(3, 3648, 5472)` on `Z`, `Y` and `X`, with the OME-XML's sizes and types as written.
 
@@ -51,7 +51,7 @@ No §5.20 budget is P30's. On the owner's PC, in a debug build: `ex-capture`'s t
 
 **Worth your review:**
 
-- **One pull request,** as you decided for P24–P34. {{OVERRUN}}
+- **One pull request,** as you decided for P24–P34. It came in about 10 % under the estimate, and 3,183 lines over M's 600. The extension kinds, across both SDKs and the host, took about 560 lines of code, less than their ~800; the tests are a quarter.
 - **ABI 3:** every Rust extension builds again. A library of ABI 2 is refused, saying which version it was built for.
 - **An import reads a file on the server,** at the path its job names: whoever may submit jobs may read the images the service can. An upload route, for files from the client, is the M2 app's (a follow-up).
 - **A capture is a hardware job:** it holds the hardware lock while it takes its frames, as scans will.
@@ -82,7 +82,33 @@ No §5.20 budget is P30's. On the owner's PC, in a debug build: `ex-capture`'s t
 | `ex-rust-ext` | `server` | **The Rust sample's PGM importer and exporter** listed after OScope's, and a 16-bit PGM in and out again through the jobs; a manifest without its importer refused |
 | `ex-capture` | `--smoke` | The tour, of the sensor's middle 960 × 720 |
 
-{{CHECKS}}
+**Where they ran:** {{REPLAYS}} On Windows, `oscope-store`'s `formats`, `oscope-acquire`'s `recorder`, `oscope-api`'s `capture`, `oscope-ext`'s `python` (10 times), `ex-rust-ext`'s `server` and `ex-capture --smoke` passed 5 times out of 5 each, with their binaries pinned to two cores. The first pinned runs of `python` failed once in 5, in P26's test of a worker killed mid-call. It slept 500 ms before killing the worker, and asserted that `taskkill /T` succeeded, which a child process ending meanwhile can deny. It now waits for the call to reach the worker, which `test.sleep` marks with a file, and then for the worker to be gone.
+
+**Mutation checks** (each broke the code on purpose, then the tests were run): twenty-one of twenty-one caught. Reading the tests against the list first found four gaps, now covered: a rendition left a mosaic, a capture's recording left in the scratch, an importer named and ignored, and a manifest without its importer.
+
+| Broken on purpose | Caught by |
+|---|---|
+| OME-XML not written | `ome_tiff_s_metadata_says_what_the_image_is`, and the round trips |
+| Pixel sizes not read back | `every_format_round_trips_across_samples_channels_and_stacks` |
+| 16-bit PNG read little-endian | the same |
+| 8 bits not scaled to 16 | the same |
+| Record IDs not checked | `exports_refuse_what_they_cannot_find` |
+| A stack's pages of other sizes accepted | `png_jpeg_and_tiff_stacks_import` |
+| Names not escaped into ASCII | `ome_tiff_s_metadata_says_what_the_image_is` |
+| Renditions not demosaiced | `a_bayer_capture_s_rendition_is_demosaiced` |
+| A range's last byte left out | `ranges_are_read_as_rfc_9110_has_them` |
+| Hidden files served | `paths_stay_in_the_project` |
+| No `Content-Range` | `captures_exports_downloads_and_imports` |
+| A burst not stopped at its count | the same |
+| Renditions not made | the same |
+| A capture's recording kept | the same |
+| The format named ignored | the same |
+| An exporter's `end` not asked | `a_start_loads_the_sample_and_live_recipes_can_use_its_node` |
+| Manifests' importers not checked | `a_library_whose_nodes_are_not_its_manifest_s_does_not_load` |
+| An exporter given no pixels (Rust) | `a_start_loads_the_sample_and_live_recipes_can_use_its_node` |
+| An exporter given no pixels (Python) | `an_importer_and_an_exporter_in_python_take_a_stack_through_shared_memory` |
+| Frames from before a burst taken | `a_burst_takes_its_frames_exposed_after_it_starts_then_stops` |
+| A recorder that doesn't stop at its count | the same |
 
 ## Follow-ups and known gaps
 
