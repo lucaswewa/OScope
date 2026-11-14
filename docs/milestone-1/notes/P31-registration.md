@@ -6,7 +6,15 @@
 
 ## Summary
 
-{{SUMMARY}}
+Registration: the shift between two images, to a fraction of a pixel, and how sure it is ([spec](../phases.md#p31); plan §5.20).
+
+- **Phase correlation** (Kuglin and Hines, 1975) with the Hann window, a Gaussian weight on the normalised cross-power spectrum, and the three-point Gaussian estimate of the peak (Willert and Gharib, 1991). Known shifts come back within 0.1 px on textures sharp and blurred as the 5× to the 20× blur, with noise, and within 0.05 px on the simulator's tissue, end to end.
+- **The overlap pass** registers the part two images share again, so that large shifts lose nothing to the window.
+- **The confidence,** the peak ratio, tells a good pair from a featureless or barely overlapping one.
+- **An expected shift and a radius** restrict the search, for calibration and scans.
+- **On the CPU** with `rustfft`, the reference; **on CUDA** with cuFFT's batched plans and three kernels, within 0.01 px of it. A 2048² pair takes about 11 ms on the GPU, within §5.20's 15 ms.
+- **The spec was revised twice,** before the tests and before the example, each time from a measurement (see the design notes).
+- **P30 is marked Done.**
 
 ## Behaviour spec
 
@@ -115,15 +123,37 @@ A registration reports **peak** = c₀ too. A caller decides on a threshold: the
 
 ## What was built
 
-{{BUILT}}
+| Where | What |
+|---|---|
+| `oscope-imaging`, `registration` | `register`, `register_batch`, `RegisterOptions`, `Registration`, `RegistrationError`: the CPU's steps; the search region, the peak and the overlap pass, which both backends share |
+| `oscope-imaging`, `registration::gpu` | `register` and `register_batch` on CUDA |
+| `oscope-compute`, `cuda::registration` and `kernels/registration.cu` | `Cuda::phase_correlation` and `Correlation`: the window, the weighted cross-power spectrum and the region's gathering as kernels, around cuFFT's batched transforms; each lane's latest plans kept |
+| `oscope-sim`'s tests | `rig_over`: the tests' rig over any world |
+| `examples/ex-register` | Registration on fields of the simulated slide, on the CPU and the GPU, and a 2048² pair timed |
 
 ## How to try it
 
-{{TRY}}
+[`ex-register`](../../../examples/ex-register/README.md):
+
+```sh
+cargo run --release -p ex-register --features cuda -- --bench
+```
+
+It renders pairs of fields of the simulated H&E slide at 10×, with known shifts, registers them on the CPU and the GPU, and prints what it found, the confidence and the times. `--bench` adds a 2048² pair. Without the CUDA toolkit, leave out `--features cuda`.
 
 ## Performance
 
-{{PERFORMANCE}}
+**§5.20, a 2048² pair on CUDA in at most 15 ms: met.** From the images in host memory to the registration, the overlap pass included, the median of 10 or 11 runs in release builds on the owner's PC (RTX A2000 12 GB) was 10.9 to 12.1 ms. `registration_gpu`'s test asserts it in release builds.
+
+- **The first pass, 9.4 ms:**
+  - on the GPU, 7.4 ms: the two images up, 2.7 ms; the whole surface down, as every shift is considered, 2.9 ms; the kernels and transforms, 1.8 ms;
+  - on the host, about 2 ms: the means, and the peak found in the surface.
+- **The overlap pass,** on parts of 512², about 1.5 ms.
+- **What made it fit:**
+  - finding the peak row by row in parallel: 6 ms to under 1;
+  - keeping cuFFT's plans: 1.7 ms;
+  - the overlap pass's cut at 512 px rather than 1,024: from a median of 13.9 ms.
+- **The CPU** takes 0.33 s for the same pair, with 24 threads. A 512² pair takes about 19 ms on the CPU, and 2.5 ms on the GPU.
 
 ## Design notes and deviations from the plan
 
@@ -167,7 +197,24 @@ The worst error over the ten shifts, in pixels:
 - **The cut's size,** 512 px, keeps a 2048² pair within §5.20's 15 ms on the GPU. With the whole overlap, up to 1024 px, the median was 13.9 ms, too close to the budget.
 - **The simulator's end-to-end test** had found its longer jog within 0.074 px; with the overlap pass, 0.018.
 
-{{DESIGN}}
+### Other choices
+
+- **Both backends compute from the same inputs.**
+  - `oscope-imaging` computes each image's mean (in `f64`, in a fixed order), the window and the weight once, and passes them to the kernels.
+  - The kernels compute each step in the CPU's order, with fused multiply-adds off. Only the transforms differ, `rustfft`'s and cuFFT's.
+  - The two agreed within 0.01 px and 0.01 of confidence wherever they were compared.
+- **The magnitude** of the cross power is |F_A| · |F_B|, taken apart. It equals |F_B · conj(F_A)|, but the product of two large spectra of raw counts can't overflow `f32`.
+- **cuFFT's real transforms** compute half the spectrum, `W/2 + 1` columns, so the GPU's weight is the CPU's first `W/2 + 1` values. The inverse assumes the cross power is Hermitian, as it is for real images.
+- **cuFFT's plans** are kept for each lane's four latest shapes: making a pair of plans took 1.7 ms of the 2048² pair's time. A call holds its lane's plans while it runs; the lane's stream runs its calls in turn anyway.
+- **Memory.**
+  - The CPU's batch runs as many pairs at once as fit in 256 MiB of working memory; the GPU's, 1 GiB.
+  - A batch on the GPU agrees with the same pairs registered alone to 10⁻⁶ px, not to the bit: cuFFT plans each batch size its own way.
+- **The peak** is the first of equal values in reading order, found row by row in parallel. Its refinement is held within a pixel of it, which matters only for a peak at the search window's edge.
+- **A flat pair** has no phase to compare: its surface is 0, and it registers with confidence 0 and peak 0.
+- **The simulator's end-to-end shift has the rolling shutter's term.**
+  - The spec's d = −L⁻¹(v · Δt) / p holds along the rows. Content moving down the sensor is read later, so dy = u_y Δt / (1 − u_y L) and dx = u_x (Δt + dy L), as P16's jog test derived it.
+  - The spec said the shift is uniform, which it is; its size has that term.
+- **The simulated camera leaves `FrameMeta.position` empty,** so the end-to-end test takes the stage's velocity from its jog.
 
 ## Tests
 
@@ -175,8 +222,23 @@ The worst error over the ten shifts, in pixels:
 
 ## Follow-ups and known gaps
 
-{{FOLLOWUPS}}
+- **Rotation and scale** aren't registered: translation only. Calibration (P32) finds the mounting's turn from several translations.
+- **σ_w for blurrier optics** is the caller's to set. P32 can set it from the objective's NA and the pixel size.
+- **The GPU's copies** are most of its time.
+  - An entry point for images already on the GPU, frames converted there, would save the 2.7 ms upload.
+  - Finding the peak on the GPU would save the 2.9 ms download, at the cost of the peak code that both backends share.
+- **A batch's overlap passes** run one pair at a time on the GPU.
+- **Colour** is the caller's to convert to grey.
+- **`FrameMeta.position` from the simulated camera,** if a caller wants the stage's position with each frame.
 
 ## Clean room
 
-Nothing was copied from `microscope` or any other codebase. Phase correlation follows Kuglin and Hines (1975); the sub-pixel estimate, Foroosh, Zerubia and Berthod (2002); the window, Harris (1978); each written from the papers' equations, as the spec above sets them out.
+Nothing was copied from `microscope` or any other codebase. Each step is written from the papers' equations, as the spec above sets them out:
+
+- phase correlation follows Kuglin and Hines (1975);
+- the window, Harris (1978);
+- the weighting of the cross-power spectrum, Knapp and Carter (1976), and Takita et al. (2003);
+- the three-point Gaussian estimate, Willert and Gharib (1991);
+- the blur's Gaussian, Zhang, Zerubia and Olivo-Marin (2007), as the simulator's optics already cite it.
+
+Foroosh, Zerubia and Berthod's estimate (2002) and Guizar-Sicairos, Thurman and Fienup's upsampling (2008) were measured against in a scratch program, and not kept.

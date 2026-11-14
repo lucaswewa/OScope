@@ -811,7 +811,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P28 | Projects, OME-Zarr store, SQLite index | P20 | L | 0021 | Done |
 | P29 | Scratch recorder and ingest | P28 | M | 0022 | Done |
 | P30 | Capture, downloads, importers and exporters | P29, P27 | M | 0037 | Done |
-| P31 | Registration: phase correlation on CPU and CUDA | P23 | M | — | Planned |
+| P31 | Registration: phase correlation on CPU and CUDA | P23 | M | — | In review |
 | P32 | Calibration I: pixel size, camera-to-stage affine, backlash, store | P30, P31 | L | 0023 | Planned |
 | P33 | Calibration II: dark, flat, colour; the wizard | P32 | L | — | Planned |
 | P34 | Autofocus, auto exposure, auto white balance | P33 | L | 0024 | Planned |

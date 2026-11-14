@@ -50,3 +50,4 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P28 | Projects, OME-Zarr store, SQLite index | Done | [P28-projects-store.md](P28-projects-store.md) |
 | P29 | Scratch recorder and ingest | Done | [P29-scratch-recorder.md](P29-scratch-recorder.md) |
 | P30 | Capture, downloads, importers and exporters | Done | [P30-capture-io.md](P30-capture-io.md) |
+| P31 | Registration: phase correlation on CPU and CUDA | In review | [P31-registration.md](P31-registration.md) |
