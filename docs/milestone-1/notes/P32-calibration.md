@@ -90,7 +90,7 @@ All three are saved as a new stage set, and made active unless asked not to be.
 
 After an objective is swapped, a quick check that the one fitted is the one in the light path:
 
-1. **The moves.** Moves of δ along x, and along y, from where the stage is, each reached by the one-way approach, with a frame at each end. δ is as for the matrix.
+1. **The moves.** Moves of δ′ along x, and along y, from where the stage is, each reached by the one-way approach, with a frame where they start and one at each end. δ′ is a 32nd of the used part's smaller side at the fitted objective's pixel size, rounded to a tenth of a µm. So the image moves by 6 to 640 px even if the objective in the light path is ten times stronger or weaker than the one fitted, as the catalogue's 5× and 50× are.
 2. **The measurement.** Each pair registered. A move of |s| µm shifts the image by |s| / p pixels, whatever the turn, so the measured pixel size is |s| / |d|; the mean of the two.
 3. **The verdict.** It is compared with the fitted objective's pixel size: the active geometry set's if there is one, the nominal otherwise. It is **plausible** within 20 % of it: objectives differ by twice and more. Otherwise it is **flagged**, naming the catalogue's objective whose nominal pixel size is nearest the measured one.
 
