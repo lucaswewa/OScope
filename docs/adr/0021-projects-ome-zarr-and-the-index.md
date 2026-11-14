@@ -64,7 +64,7 @@ The reader opens a store of one multiscale image of axes `c, z, y, x`: OScope's 
 
 The server opens the store at start-up; the printed documents use an index in memory, and make no folder.
 
-**6. The `zstd` crates.** `zarrs` 0.22 takes `zstd` 0.13, whose fixed releases, `zstd` 0.13.4 and `zstd-safe` 7.4.0, are taken once two weeks old.
+**6. The `zstd` crates.** `zarrs` 0.22 takes `zstd` 0.13. Its fixed releases, `zstd` 0.13.4 and `zstd-safe` 7.4.0, are taken at 13 days old, with the owner's permission, and verified once two weeks old, on 2026-11-15.
 
 ## Consequences
 
