@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p27-drivers-panels` / [#41](https://github.com/lucaswewa/OScope/pull/41)
-- Size: L · estimated ~3,700 before it started (driver traits in both SDKs, with the Rust ABI's second version, ~650; the host's adapters that make extension drivers the HAL's, and the drivers' registry, ~650; panels ~200; the batch job for Checkpoint B ~200; the samples and examples ~450; tests ~600; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured measured **3,167** hand-written lines added (Rust code 1,609; the Python SDK 117; tests 765, of which Python 74; examples 676), and 161 removed. **That is 2,267 over L's 900, and about a seventh under the estimate.**
+- Size: L · estimated ~3,700 before it started (driver traits in both SDKs, with the Rust ABI's second version, ~650; the host's adapters that make extension drivers the HAL's, and the drivers' registry, ~650; panels ~200; the batch job for Checkpoint B ~200; the samples and examples ~450; tests ~600; and a fifth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,188** hand-written lines added (Rust code 1,624; the Python SDK 117; tests 771, of which Python 74; examples 676), and 163 removed. **That is 2,288 over L's 900, and about a seventh under the estimate.**
 
 ## Summary
 
@@ -65,7 +65,7 @@ The calls' times are means of 2,000 or 5,000 calls, three times over, from a tes
 
 **Worth your review:**
 
-- **One pull request,** as you decided for P24–P34. It came in about a seventh under the estimate, and 2,267 lines over L's 900. The adapters that keep the HAL's promises for every extension driver are the largest part, about 600 lines, and the tests are a quarter.
+- **One pull request,** as you decided for P24–P34. It came in about a seventh under the estimate, and 2,288 lines over L's 900. The adapters that keep the HAL's promises for every extension driver are the largest part, about 600 lines, and the tests are a quarter.
 - **ABI 2 replaces ABI 1.** ADR-0019 makes any change to the ABI a new version, and a library of ABI 1 is now refused. None exists outside this repository, whose samples are built with the SDK. ADR-0019 and ADR-0020 are marked *extended by ADR-0036*.
 - **Python cameras too.** The spec gives Python stages and lights, "with camera frames delivered through shared memory". P27 reads that as Python cameras whose frames travel through shared memory, and a test passes one through the conformance suite. Each frame costs a message and a copy, so they suit slow or unusual cameras, not the MIChrome 20 at full rate.
 - **Checkpoint B is an example program,** `ex-checkpoint-b`, not a shell script. It does the same through the API, runs headless as a smoke check in the local replays on both platforms, and needs no `curl` or WebSocket tool.
@@ -101,7 +101,7 @@ The calls' times are means of 2,000 or 5,000 calls, three times over, from a tes
 | `python/oscope-ext` | pytest (3 more, 11 in all) | Drivers described and called with JSON, a missing method said; a camera's frame into the host's segment, and one of the wrong size refused; a driver of no known kind refused |
 | `ex-ext-camera`, `ex-checkpoint-b`, `ex-omext` | `--smoke` | The camera Thing is the extension's, and three previews come; Checkpoint B's live recipe, five previews through it, and a batch job of three frames saved as PNG files; the dummy's panel installs |
 
-**Where they ran:** {{WHERE}}
+**Where they ran:** on Windows, and on Linux under WSL, both with uv, in the local replays (`scripts/ci-local.sh` on Windows, and `scripts/ci-clone.sh` on a fresh clone under WSL: 37 of 37 steps each, 355 tests in 144 suites, the Python tests real). On Windows, the `native`, `python`, `panels`, `sdk`, `batch`, `extensions` and `conformance` suites, `ex-ext-camera --smoke` and `ex-checkpoint-b --smoke` passed 5 times out of 5 each with their binaries pinned to two cores. The first pinned runs of `ex-checkpoint-b --smoke` failed: its batch job took the simulated camera's whole 20-megapixel frames, and on two cores in a debug build three of them overran its five-minute wait. It now reads out the sensor's middle 960 × 720; its pinned runs took 38–40 s each, the live recipe checked at 495 ms against its budget of 2 s.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): twenty of twenty caught. Before they ran, reading the tests against the list found five gaps, and the tests now cover them: no test put a stage in alarm, checked that a camera's pixels cross the boundary, named an extension's driver in the devices' configuration, gave a library drivers its manifest doesn't provide, or printed the documents with an extension's driver named. The Python test stage also arrived at once, so a move that wasn't waited for would have passed; it now arrives on the second look at its status.
 
