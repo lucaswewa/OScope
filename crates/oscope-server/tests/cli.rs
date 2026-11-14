@@ -200,8 +200,14 @@ fn ext_pack_names_the_package_and_packs_the_same_bytes_each_time() {
     let named = folder.path().join("org.example.hello-0.1.0.omext");
     let sha256 = oscope_ext::sha256(&named).unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.starts_with("packed org.example.hello 0.1.0 into "), "{stdout}");
-    assert!(stdout.contains(&format!("bytes, SHA-256 {sha256}")), "{stdout}");
+    assert!(
+        stdout.starts_with("packed org.example.hello 0.1.0 into "),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!("bytes, SHA-256 {sha256}")),
+        "{stdout}"
+    );
 
     // Where --out says: the same bytes.
     let out = folder.path().join("again.omext");
@@ -216,6 +222,9 @@ fn ext_pack_names_the_package_and_packs_the_same_bytes_each_time() {
     let output = run(&["ext", "pack", source, "--out", out.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("oscope-server: extensions: the manifest: line 6"), "{stderr}");
+    assert!(
+        stderr.starts_with("oscope-server: extensions: the manifest: line 6"),
+        "{stderr}"
+    );
     assert!(!out.exists());
 }
