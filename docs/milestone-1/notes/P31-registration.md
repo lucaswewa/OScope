@@ -54,6 +54,16 @@ It is taken along x, then along y, each from the peak's row or column. If a neig
 - **So σ_w = 2 px** suits the 5× to the 20×. A caller registering a blurrier image sets σ_w to about its blur: 4.4 px for the 50×.
 - **σ_w is at least 1 px.** A narrower Gaussian is too narrow for its samples, and is refused.
 
+### The overlap pass
+
+The window weights the content that A and B share by w(x) · w(x + d), which falls as the shift grows, and the share itself shrinks with it. Both lean a broad peak toward smaller shifts: more for smaller images and larger shifts (as measured in the design notes). So, unless the integer peak is at (0, 0):
+
+1. **The cut.** A and B are cut to the part they share at the integer peak's shift: its middle, at most 512 px a side.
+2. **Again.** The two parts are registered by the steps above, about (0, 0) within 2 px, where the lean vanishes: the window and the share are the same on either side of no shift.
+3. **The shift** is the integer peak's plus the second registration's. The confidence and the peak are the first's.
+
+Where the part shared is under 8 × 8, or the second peak isn't positive, the first registration stands.
+
 ### Confidence: the peak ratio
 
 - **c₀** is the peak's value: near the fraction of the images that overlap, where they carry the shift's phase across the weight's band. Noise gives a surface of many small peaks.
@@ -64,7 +74,7 @@ A registration reports **peak** = c₀ too. A caller decides on a threshold: the
 
 ### The batch
 
-`register_batch` registers many pairs of the same size with the same options, in order, and gives each its registration as if alone. On the CPU, pairs run in parallel. On CUDA, the pairs' transforms are one batched plan.
+`register_batch` registers many pairs of the same size with the same options, in order, and gives each its registration as if alone. On the CPU, pairs run in parallel. On CUDA, the pairs' first transforms are one batched plan, and each pair's overlap pass follows alone.
 
 ### The backends
 
@@ -75,6 +85,7 @@ A registration reports **peak** = c₀ too. A caller decides on a threshold: the
 ### What the tests show
 
 - **Known shifts,** integer and sub-pixel, of a textured field with noise added to both images, sharp and blurred as the 5× to the 20× blur: each recovered within **0.1 px**.
+- **Large shifts,** of 35 % to 43 % of the field: within 0.05 px, which they miss without the overlap pass.
 - **Low confidence** for a featureless pair (noise alone), and for a pair that barely overlaps; high for a good pair.
 - **The expected shift** finds the true peak where a stronger false one lies outside the radius.
 - **CPU and CUDA agree,** as above, when `OSCOPE_CUDA=1`.
@@ -138,6 +149,23 @@ The worst error over the ten shifts, in pixels:
 - **The Gaussian weight fixes both.** It makes the peak a sampled Gaussian, which three samples fit exactly, and turns the noise-only frequencies down.
 - **The 50×** needs σ_w at its blur. On 512 × 512 windows at a blur of 4.4 px, σ_w = 4.4 px gave 0.028 / 0.026 / 0.037, where 2 px gave 0.062 / 0.145 / 0.199.
 - **The confidence** with the neighbourhood of ⌈3σ_w⌉ px was at least 0.94 for every pair above with a blur up to 2.5 px, at σ_w of 1.5 to 3 px. A 5 × 5 neighbourhood would have held the broader peak's own shoulders: about 0.5 at 2 px.
+
+### The overlap pass, added while writing the example
+
+`ex-register` registered a pair of the simulator's tissue 90 px apart on a 256 px field, and missed by 0.3 px: toward no shift. The tests' shifts had been at most 30 px, where the lean is small. So the spec gained the overlap pass. The error against the shift, on the tissue at 10×, each shift along x plus 0.3 px, found in a window of ±8 px around it:
+
+| Field | Overlap pass | 2 % | 5 % | 8 % | 12 % | 20 % | 30 % | 40 % |
+|---|---|---|---|---|---|---|---|---|
+| 256 px | without | 0.030 | 0.062 | 0.088 | 0.124 | 0.182 | 0.267 | 0.399 |
+| 256 px | with | 0.010 | 0.009 | 0.012 | 0.011 | 0.013 | 0.018 | 0.019 |
+| 512 px | without | 0.006 | 0.016 | 0.027 | 0.041 | 0.071 | 0.105 | 0.131 |
+| 512 px | with | 0.000 | 0.001 | 0.000 | 0.002 | 0.002 | 0.001 | 0.001 |
+| 1024 px | without | 0.003 | 0.007 | 0.012 | 0.019 | 0.033 | 0.048 | 0.057 |
+| 1024 px | with | 0.000 | 0.001 | 0.001 | 0.001 | 0.001 | 0.000 | 0.001 |
+
+- **The lean** grows with the shift and falls with the field's size, as the slope of the window's weight does. Without the window, the shrinking overlap alone leaned the random field's peak about as much.
+- **The cut's size,** 512 px, keeps a 2048² pair within §5.20's 15 ms on the GPU. With the whole overlap, up to 1024 px, the median was 13.9 ms, too close to the budget.
+- **The simulator's end-to-end test** had found its longer jog within 0.074 px; with the overlap pass, 0.018.
 
 {{DESIGN}}
 
