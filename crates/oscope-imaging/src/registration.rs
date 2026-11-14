@@ -621,6 +621,45 @@ mod tests {
     }
 
     #[test]
+    fn the_window_the_weight_and_the_neighbourhood_are_as_specified() {
+        let image = Image::zeros(Shape::new(9, 8, 1));
+        let options = RegisterOptions {
+            sigma: 1.5,
+            ..RegisterOptions::default()
+        };
+        let setup = Setup::new(&[(&image, &image)], &options).unwrap();
+        // ½ (1 − cos(2πn / (N − 1))): 0 at both ends, 1 in the middle of 9.
+        let across = &setup.window.0;
+        assert_eq!((across[0], across[8], across[4]), (0.0, 0.0, 1.0));
+        assert!((across[2] - 0.5).abs() < 1e-6 && (setup.window.1[1] - 0.188_255).abs() < 1e-6);
+        // exp(−2π² σ² f²), f = k / N, and k / N − 1 from N / 2.
+        let g = |f: f64| (-2.0 * PI * PI * 1.5 * 1.5 * f * f).exp() as f32;
+        assert_eq!(setup.weight.0[0], 1.0);
+        assert_eq!(
+            (setup.weight.0[2], setup.weight.0[7]),
+            (g(2.0 / 9.0), g(-2.0 / 9.0))
+        );
+        assert_eq!(setup.weight.1[4], g(-0.5));
+        let sum = |w: &[f32]| w.iter().map(|g| f64::from(*g)).sum::<f64>();
+        let total = sum(&setup.weight.0) * sum(&setup.weight.1);
+        assert!((f64::from(setup.scale) * total - 1.0).abs() < 1e-6);
+        assert_eq!(setup.reach, 5);
+        let plain = RegisterOptions {
+            window: false,
+            ..options
+        };
+        let setup = Setup::new(&[(&image, &image)], &plain).unwrap();
+        assert!(
+            setup
+                .window
+                .0
+                .iter()
+                .chain(&setup.window.1)
+                .all(|w| *w == 1.0)
+        );
+    }
+
+    #[test]
     fn regions_cover_every_shift_or_the_search_window_with_a_margin() {
         let every = RegisterOptions::default();
         assert_eq!(

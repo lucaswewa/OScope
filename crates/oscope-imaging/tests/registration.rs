@@ -115,6 +115,15 @@ fn a_featureless_pair_scores_low_and_a_good_pair_high() {
 }
 
 #[test]
+fn a_flat_pair_gives_no_confidence_and_no_nan() {
+    // Nothing but the mean: no frequency has a phase to compare.
+    let flat = Image::from_vec(Shape::new(64, 48, 1), vec![100.0; 64 * 48]).unwrap();
+    let found = register(&flat, &flat, &RegisterOptions::default()).unwrap();
+    assert_eq!((found.confidence, found.peak), (0.0, 0.0), "{found:?}");
+    assert!(found.dx.is_finite() && found.dy.is_finite(), "{found:?}");
+}
+
+#[test]
 fn a_barely_overlapping_pair_scores_low() {
     let mut random = StdRng::seed_from_u64(33);
     let field = Field::new(512, 1.7, 4);
