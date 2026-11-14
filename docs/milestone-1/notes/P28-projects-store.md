@@ -94,7 +94,7 @@ Writing level 0 alone runs at about P29's 580 MB/s, but not with the pyramid. P2
 
 The page's `app.js` ran under the Node harness against the example: no error, two cards, `1–2 of 2`. `open_store.py` read both stores with zarr and ome-zarr-py.
 
-**Where they ran:** {{REPLAYS}} On Windows, the `images`, `projects` (both) suites and `ex-projects --smoke` passed 5 times out of 5 each with their binaries pinned to two cores: 11.2–11.9 s for `images`, with the MIChrome 20's whole frame, and 5.3–6.1 s for the smoke.
+**Where they ran:** on Windows, and on Linux under WSL, both with uv, in the local replays (`scripts/ci-local.sh` on Windows, and `scripts/ci-clone.sh` on a fresh clone under WSL: 38 of 38 steps each, 368 tests in 148 suites, the Python tests real). Before the `zstd` fixes, both passed every step but `cargo deny`, which refused their three advisories. On Windows, the `images`, `projects` (both) suites and `ex-projects --smoke` passed 5 times out of 5 each with their binaries pinned to two cores, before the `zstd` fixes and again after: 11.0–11.9 s for `images`, with the MIChrome 20's whole frame, and 5.3–6.1 s for the smoke.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): eighteen of eighteen caught. Reading the tests against the list first found three gaps, now covered: no report in the rebuild's test, no check that a thumbnail is stretched, and no test of the page's limit.
 
