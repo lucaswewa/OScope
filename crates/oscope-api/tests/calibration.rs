@@ -14,6 +14,11 @@ use oscope_jobs::{JobService, JobsConfig};
 use oscope_sim::{HeTissue, Slide};
 use serde_json::{Value, json};
 use teta_wot::testing::TestClient;
+use tokio::sync::Mutex;
+
+/// One server at a time: on two cores, three simulators streaming at once
+/// starve each other's frames.
+static TURN: Mutex<()> = Mutex::const_new(());
 
 /// The simulator ten times as fast as real time, on the quarter sensor
 /// (9.6 µm pixels), with the truth calibration recovers.
@@ -45,6 +50,13 @@ async fn server_scaled(folder: &Path, scale: f64) -> TestClient {
     TestClient::start(api.into_thing_server()).await.unwrap()
 }
 
+/// Stops the camera, its last frame rendered, before the next test's turn:
+/// on two cores, a frame after homing takes the simulator tens of seconds.
+async fn stop_streaming(client: &TestClient) {
+    let stopped = invoke(client, "camera/stop_streaming", json!({})).await;
+    assert_eq!(stopped["status"], "completed", "{stopped}");
+}
+
 /// Invokes `action` with `input`, and waits for its invocation to end.
 async fn invoke(client: &TestClient, action: &str, input: Value) -> Value {
     let started = client
@@ -52,7 +64,9 @@ async fn invoke(client: &TestClient, action: &str, input: Value) -> Value {
         .await;
     assert_eq!(started.status, 201, "{action}: {}", started.text());
     let href = started.json()["href"].as_str().unwrap().to_owned();
-    let deadline = Instant::now() + Duration::from_secs(60);
+    // Up to 300 s: on two cores, stopping the camera after homing waits
+    // more than a minute for the simulator's last frame.
+    let deadline = Instant::now() + Duration::from_secs(300);
     loop {
         let invocation = client.get(&href).await.json();
         if !["pending", "running"].contains(&invocation["status"].as_str().unwrap_or("")) {
@@ -88,6 +102,7 @@ fn made(job: &Value) -> String {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_jobs_measure_and_the_sets_are_kept_listed_and_moved() {
+    let _turn = TURN.lock().await;
     let folder = tempfile::tempdir().unwrap();
     let client = server(folder.path()).await;
     // Homed, over the tissue's first island, its section's middle in focus,
@@ -236,6 +251,7 @@ async fn the_jobs_measure_and_the_sets_are_kept_listed_and_moved() {
     }
     let none = invoke(&client, "calibration/stage", json!({"cycles": 0})).await;
     assert!(none["error"].to_string().contains("no cycles"), "{none}");
+    stop_streaming(&client).await;
 }
 
 /// Waits up to 120 s for the wizard's step `index` to stop running: the
@@ -262,6 +278,7 @@ async fn step(client: &TestClient, index: usize) -> Value {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
+    let _turn = TURN.lock().await;
     let folder = tempfile::tempdir().unwrap();
     // A saved wizard that can't be read is set aside, and the server starts.
     let saved = folder.path().join("data").join("calibration");
@@ -300,7 +317,7 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
         .collect();
     assert_eq!(
         kinds,
-        ["objective", "geometry", "stage", "dark", "flat", "colour"]
+        ["objective", "geometry", "dark", "flat", "colour", "stage"]
     );
     assert_eq!(wizard["steps"][0]["state"]["state"], "prompting");
     assert!(
@@ -309,13 +326,13 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
             .unwrap()
             .contains("Fit the objective")
     );
-    // Over the tissue: the objective, the geometry, the stage, the dark.
-    for index in 0..4 {
+    // Over the tissue: the objective, the geometry, the dark frame.
+    for index in 0..3 {
         let state = step(&client, index).await;
         assert_eq!(state["state"], "done", "step {index}: {state}");
     }
     // The flat field over the tissue fails: it isn't blank.
-    let state = step(&client, 4).await;
+    let state = step(&client, 3).await;
     assert_eq!(state["state"], "failed", "{state}");
     assert!(
         state["error"].as_str().unwrap().contains("isn't blank"),
@@ -329,10 +346,10 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
     );
     let retried = invoke(&client, "calibration/wizard_retry", json!({})).await;
     assert_eq!(
-        retried["output"]["steps"][4]["state"]["state"], "prompting",
+        retried["output"]["steps"][3]["state"]["state"], "prompting",
         "{retried}"
     );
-    assert_eq!(step(&client, 4).await["state"], "done");
+    assert_eq!(step(&client, 3).await["state"], "done");
     // The colour target, loaded and centred.
     let loaded = invoke(&client, "simulation/load", json!({"name": "colour target"})).await;
     assert_eq!(loaded["status"], "completed", "{loaded}");
@@ -341,6 +358,15 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
         invoke(&client, "stage/move_to", target).await["status"],
         "completed"
     );
+    let state = step(&client, 4).await;
+    assert_eq!(state["state"], "done", "{state}");
+    // The stage, last, back over the tissue: moved there over the target's
+    // glass, whose frames are quick to render, then the slide loaded.
+    let over = json!({"x": island.x, "y": island.y, "z": 1_002.0});
+    let moved = invoke(&client, "stage/move_to", over).await;
+    assert_eq!(moved["status"], "completed", "{moved}");
+    let loaded = invoke(&client, "simulation/load", json!({"name": "H&E tissue"})).await;
+    assert_eq!(loaded["status"], "completed", "{loaded}");
     let state = step(&client, 5).await;
     assert_eq!(state["state"], "done", "{state}");
     let wizard = client.get("/api/v1/calibration/wizard").await.json();
@@ -368,10 +394,12 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
         confirmed["error"].to_string().contains("conflict (409)"),
         "{confirmed}"
     );
+    stop_streaming(&client).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_wizard_s_objective_step_fails_through_a_wrong_magnification() {
+    let _turn = TURN.lock().await;
     let folder = tempfile::tempdir().unwrap();
     // Half as much again as the 10×'s: nearer the 20×'s than its own.
     let client = server_scaled(folder.path(), 1.5).await;
@@ -417,6 +445,7 @@ async fn the_wizard_s_objective_step_fails_through_a_wrong_magnification() {
         "{cancelled}"
     );
     // Saved as it changed: the server started again finds it as it was.
+    stop_streaming(&client).await;
     client.stop().await;
     let again = server_scaled(folder.path(), 1.5).await;
     let resumed = again.get("/api/v1/calibration/wizard").await.json();

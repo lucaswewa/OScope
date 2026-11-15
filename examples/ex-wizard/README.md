@@ -10,7 +10,10 @@ P33's calibration wizard, walked from the command line on a simulated instrument
 All through the API, as a client would, it homes the stage, takes it over the simulated H&E tissue, starts the camera, and starts the wizard (the `calibration` Thing's `wizard_start`). Then, for each of the wizard's six steps, it:
 
 1. prints the step's title and its prompt, what a person is asked to do before confirming;
-2. does that on the simulator, where the step needs it: the flat field's step moves the stage to clear glass beside the coverslip, and the colour step loads the colour target (`simulation/load`) and centres it;
+2. does that on the simulator, where the step needs it:
+   - the flat field's step moves the stage to clear glass beside the coverslip;
+   - the colour step loads the colour target (`simulation/load`) and centres it;
+   - the stage's step, the last, takes the stage back to the tissue's place and loads the H&E slide again;
 3. confirms the step (`wizard_confirm`), which starts its job, and reads the wizard until the step has settled, done or failed;
 4. prints what the step made: the objective check's verdict, or the calibration set saved and put in use.
 
@@ -22,7 +25,7 @@ At the end it prints the sets in use, as the wizard left them.
 cargo run --release -p ex-wizard
 ```
 
-It serves at http://127.0.0.1:8236/, whose page links to the wizard, the sets in use, every calibration set, and the API's documentation. The walk takes about 130 s at real time, homing twice most of it; `--rate 10` runs the simulator ten times as fast. On the owner's PC it printed:
+It serves at http://127.0.0.1:8236/, whose page links to the wizard, the sets in use, every calibration set, and the API's documentation. The walk takes about 120 s at real time, homing twice most of it; `--rate 10` runs the simulator ten times as fast. On the owner's PC it printed:
 
 ```text
 1. Check the objective
@@ -31,35 +34,37 @@ It serves at http://127.0.0.1:8236/, whose page links to the wizard, the sets in
 
 2. Calibrate the geometry
    Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.
-   ✓ calibration/01a1dcbb-fe6a-72bc-813b-9ace0387e188
+   ✓ calibration/01a1dd75-baf5-703e-a5a9-52e6990e5ae7
 
-3. Calibrate the stage
-   Keep the textured part in view: the stage measures its backlash there, then homes, and comes back.
-   ✓ calibration/01a1dcbc-9ba7-7668-9d6a-be2086731336
-
-4. Take a dark frame
+3. Take a dark frame
    Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.
-   ✓ calibration/01a1dcbc-d27a-75e3-ba44-059f5964060a
+   ✓ calibration/01a1dd75-c5fe-758e-bbb2-e82323067608
 
-5. Take a flat field
+4. Take a flat field
    Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.
    → the stage moves to clear glass, beside the coverslip
-   ✓ calibration/01a1dcbc-ff4a-71f4-a706-60c2d8fd0b38
+   ✓ calibration/01a1dd75-ecf5-702a-b020-313982a97cde
 
-6. Calibrate colour
+5. Calibrate colour
    Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.
    → the colour target is loaded, and the stage centres it
-   ✓ calibration/01a1dcbd-24f7-710e-8864-e5f85976f110
+   ✓ calibration/01a1dd76-0e88-7759-9c28-694cabafa83f
+
+6. Calibrate the stage
+   Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.
+   → the stage goes back to the tissue's place, and the H&E slide is loaded again
+   ✓ calibration/01a1dd76-c4e3-75df-823f-c4b838590da0
 
 what the wizard made:
   geometry   0.23301 µm a pixel, turned 30.00°, mirrored
   stage      backlash 5.00 µm in x, 5.00 µm in y
   dark       mean 0.03052, spread 0.00004
   flat       9.9 % uneven before; white balance 0.909, 1.000, 1.250
-  colour     ΔE*ab 0.00 on average after the matrix (largest 0.01), from 15.28
+  colour     ΔE*ab 0.00 on average after the matrix (largest 0.01), from 15.29
 ```
 
 - **The prompts are the wizard's own**, as a page would show them. The objective's step is done only if the check finds the objective plausible.
+- **The stage's step comes last:** it homes, which takes the sample out of view and back, and no step after it waits for a frame.
 - **The dark frame** is taken with the lights off. The simulated lights can be switched, so the wizard switches them off and back on itself.
 - **The flat field** is refused where the slide isn't blank. Over the tissue, the step would fail; `wizard_retry` would ask again, and the step could be redone over clear glass. `oscope-api`'s `calibration` test walks that.
 - **The colour matrix** is fitted to the target's 24 patches, seen through the flat field and less the dark. ΔE\*ab is the CIE 1976 colour difference, in CIELAB, between each patch as corrected and as made: below about 2, the difference is hard to see. "From" is the white-balanced patches' before the matrix.

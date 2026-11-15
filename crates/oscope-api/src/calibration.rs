@@ -389,7 +389,7 @@ impl CalibrationThing {
     /// Starts the calibration wizard.
     ///
     /// Its `steps`, in order: every one if not given (`objective`,
-    /// `geometry`, `stage`, `dark`, `flat`, `colour`). Any wizard before is
+    /// `geometry`, `dark`, `flat`, `colour`, `stage`). Any wizard before is
     /// set aside.
     #[action]
     async fn wizard_start(

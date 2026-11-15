@@ -141,6 +141,15 @@ async fn walk(address: SocketAddr, focus: f64, check: bool) -> anyhow::Result<()
                 invoke(address, "simulation/load", json!({"name": "colour target"})).await?;
                 go(address, 47_000.0, 12_500.0, focus + 0.05).await?;
             }
+            "stage" => {
+                // Moved first, over the target's glass, whose frames are quick
+                // to render; the tissue's are slow, and come once, there.
+                println!(
+                    "   → the stage goes back to the tissue's place, and the H&E slide is loaded again"
+                );
+                go(address, island.x, island.y, focus + 2.0).await?;
+                invoke(address, "simulation/load", json!({"name": "H&E tissue"})).await?;
+            }
             _ => {}
         }
         let state = confirm(address, index).await?;

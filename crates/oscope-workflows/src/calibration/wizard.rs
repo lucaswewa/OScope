@@ -7,6 +7,10 @@
 //! A step waits, then prompts; confirmed, its job runs; the job's end
 //! settles it, done or failed. A failed step may be retried or skipped, and
 //! a prompting one skipped. The last step settled, the wizard is finished.
+//!
+//! The stage's step comes last: it homes, which takes the sample out of
+//! view and back, and no step after it then waits for a frame (as P32's
+//! stage calibration homes last).
 
 use std::fs;
 use std::path::Path;
@@ -27,14 +31,14 @@ pub enum StepKind {
     Objective,
     /// The geometry: the pixel size and the camera-to-stage matrix.
     Geometry,
-    /// The stage: backlash, homing, soft limits.
-    Stage,
     /// A dark frame.
     Dark,
     /// A flat field, and the white balance.
     Flat,
     /// The colour matrix.
     Colour,
+    /// The stage: backlash, homing, soft limits.
+    Stage,
 }
 
 impl StepKind {
@@ -42,10 +46,10 @@ impl StepKind {
     pub const ALL: [StepKind; 6] = [
         StepKind::Objective,
         StepKind::Geometry,
-        StepKind::Stage,
         StepKind::Dark,
         StepKind::Flat,
         StepKind::Colour,
+        StepKind::Stage,
     ];
 
     /// Its title.
@@ -53,10 +57,10 @@ impl StepKind {
         match self {
             StepKind::Objective => "Check the objective",
             StepKind::Geometry => "Calibrate the geometry",
-            StepKind::Stage => "Calibrate the stage",
             StepKind::Dark => "Take a dark frame",
             StepKind::Flat => "Take a flat field",
             StepKind::Colour => "Calibrate colour",
+            StepKind::Stage => "Calibrate the stage",
         }
     }
 
@@ -71,10 +75,6 @@ impl StepKind {
                 "Keep a textured part of the sample in focus, with room around it for moves of \
                  a quarter of the field each way."
             }
-            StepKind::Stage => {
-                "Keep the textured part in view: the stage measures its backlash there, then \
-                 homes, and comes back."
-            }
             StepKind::Dark => {
                 "Lights that can be switched are turned off for the dark frame, and back on. \
                  Block any other light from reaching the camera."
@@ -87,6 +87,10 @@ impl StepKind {
                 "Load the colour target, and centre it in the field of the 5× or the 10×, in \
                  focus, with the light on as it will be used."
             }
+            StepKind::Stage => {
+                "Bring a textured part of the sample back into view, in focus: the stage \
+                 measures its backlash there, then homes, and comes back."
+            }
         }
     }
 
@@ -95,10 +99,10 @@ impl StepKind {
         match self {
             StepKind::Objective => CHECK,
             StepKind::Geometry => GEOMETRY,
-            StepKind::Stage => STAGE,
             StepKind::Dark => DARK,
             StepKind::Flat => FLAT,
             StepKind::Colour => COLOUR,
+            StepKind::Stage => STAGE,
         }
     }
 }

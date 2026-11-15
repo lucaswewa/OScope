@@ -1295,11 +1295,6 @@ expression: td
                         "type": "string"
                       },
                       {
-                        "description": "The stage: backlash, homing, soft limits.",
-                        "const": "stage",
-                        "type": "string"
-                      },
-                      {
                         "description": "A dark frame.",
                         "const": "dark",
                         "type": "string"
@@ -1312,6 +1307,11 @@ expression: td
                       {
                         "description": "The colour matrix.",
                         "const": "colour",
+                        "type": "string"
+                      },
+                      {
+                        "description": "The stage: backlash, homing, soft limits.",
+                        "const": "stage",
                         "type": "string"
                       }
                     ]
@@ -2821,11 +2821,6 @@ expression: td
                       "type": "string"
                     },
                     {
-                      "description": "The stage: backlash, homing, soft limits.",
-                      "const": "stage",
-                      "type": "string"
-                    },
-                    {
                       "description": "A dark frame.",
                       "const": "dark",
                       "type": "string"
@@ -2838,6 +2833,11 @@ expression: td
                     {
                       "description": "The colour matrix.",
                       "const": "colour",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
                       "type": "string"
                     }
                   ]
@@ -3059,11 +3059,6 @@ expression: td
                       "type": "string"
                     },
                     {
-                      "description": "The stage: backlash, homing, soft limits.",
-                      "const": "stage",
-                      "type": "string"
-                    },
-                    {
                       "description": "A dark frame.",
                       "const": "dark",
                       "type": "string"
@@ -3076,6 +3071,11 @@ expression: td
                     {
                       "description": "The colour matrix.",
                       "const": "colour",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
                       "type": "string"
                     }
                   ]
@@ -3297,11 +3297,6 @@ expression: td
                       "type": "string"
                     },
                     {
-                      "description": "The stage: backlash, homing, soft limits.",
-                      "const": "stage",
-                      "type": "string"
-                    },
-                    {
                       "description": "A dark frame.",
                       "const": "dark",
                       "type": "string"
@@ -3314,6 +3309,11 @@ expression: td
                     {
                       "description": "The colour matrix.",
                       "const": "colour",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
                       "type": "string"
                     }
                   ]
@@ -3535,11 +3535,6 @@ expression: td
                       "type": "string"
                     },
                     {
-                      "description": "The stage: backlash, homing, soft limits.",
-                      "const": "stage",
-                      "type": "string"
-                    },
-                    {
                       "description": "A dark frame.",
                       "const": "dark",
                       "type": "string"
@@ -3552,6 +3547,11 @@ expression: td
                     {
                       "description": "The colour matrix.",
                       "const": "colour",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
                       "type": "string"
                     }
                   ]
@@ -3698,7 +3698,7 @@ expression: td
       "synchronous": false
     },
     "wizard_start": {
-      "description": "Its `steps`, in order: every one if not given (`objective`,\n`geometry`, `stage`, `dark`, `flat`, `colour`). Any wizard before is\nset aside.",
+      "description": "Its `steps`, in order: every one if not given (`objective`,\n`geometry`, `dark`, `flat`, `colour`, `stage`). Any wizard before is\nset aside.",
       "title": "Starts the calibration wizard.",
       "forms": [
         {
@@ -3744,11 +3744,6 @@ expression: td
                       "type": "string"
                     },
                     {
-                      "description": "The stage: backlash, homing, soft limits.",
-                      "const": "stage",
-                      "type": "string"
-                    },
-                    {
                       "description": "A dark frame.",
                       "const": "dark",
                       "type": "string"
@@ -3761,6 +3756,11 @@ expression: td
                     {
                       "description": "The colour matrix.",
                       "const": "colour",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
                       "type": "string"
                     }
                   ]
@@ -3810,11 +3810,6 @@ expression: td
                       "type": "string"
                     },
                     {
-                      "description": "The stage: backlash, homing, soft limits.",
-                      "const": "stage",
-                      "type": "string"
-                    },
-                    {
                       "description": "A dark frame.",
                       "const": "dark",
                       "type": "string"
@@ -3827,6 +3822,11 @@ expression: td
                     {
                       "description": "The colour matrix.",
                       "const": "colour",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
                       "type": "string"
                     }
                   ]
