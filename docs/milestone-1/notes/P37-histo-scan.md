@@ -115,7 +115,9 @@ The tests hold coverage to the simulated tissue's own truth, `HeTissue::is_tissu
 
 ### The tests' turns, and two cores
 
-{{TWOCORE}}
+- **One simulator at a time.** The new suite's tests take turns, as the engine's do, and stop their cameras.
+- **Two cores, five times each.** Pinned to two cores, every suite this phase adds or changes passed 5 times in 5: `histo` in 92–94 s a run, the engine's suite in 270–279 s, the `scan` Thing's in 95–100 s, with `OSCOPE_PYTHON=1`, and `ex-histo-scan --smoke` in 264–295 s.
+- **The smoke's map is 2 × 2.** `ex-histo-scan --smoke` first took 500–533 s on two cores, 486 s of one run the tissue's scan: almost all of it the nine autofocus runs of a 3 × 3 map, each rendering a sweep of frames. `--smoke` now measures the map at 2 × 2 tiles; without it, the example keeps the pattern's 3 × 3.
 
 ### The size
 
@@ -137,7 +139,9 @@ M's budget is 600; P37 measured 1,565, 22 % under its estimate of ~2,000.
 
 **Where they ran:**
 
-{{RAN}}
+- **On Windows,** `scripts/ci-local.sh`, run alone on `ab86720`: 48 of 48 steps, 482 tests in 179 suites. The Python tests ran for real, and every example's `--smoke`, `ex-histo-scan`'s new among them. The CUDA tests weren't run, as P37 touches no CUDA path.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of `ab86720`, run alone: 48 of 48 steps, 482 tests in 179 suites, the Python tests real; 660 files, none with a CR.
+- **On two cores,** pinned, 5 times out of 5 each: `oscope-workflows`' unit tests, `histo` and `scan_engine`; `oscope-api`'s `scan` with `OSCOPE_PYTHON=1`; and `ex-histo-scan --smoke`.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): fourteen of fourteen caught.
 
