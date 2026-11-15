@@ -153,7 +153,11 @@ async fn a_scan_is_planned_previewed_and_run_into_a_project() {
     let estimate = &preview["estimate"];
     assert_eq!(estimate["frames"], 9);
     assert_eq!(estimate["bytes"], 9 * 252 * 192 * 2);
-    assert!(estimate["seconds"].as_f64().unwrap() > 0.0);
+    // Each frame takes its settling, 50 ms, and at least the camera's
+    // interval: the MIChrome 20's 7.24 frames a second at full resolution in
+    // 16 bits, which the simulated camera keeps, its exposure shorter.
+    let seconds = estimate["seconds"].as_f64().unwrap();
+    assert!(seconds > 9.0 * (0.05 + 1.0 / 7.24), "{seconds}");
     // At the stage's z now, as no z was asked.
     let here = client.get("/api/v1/stage/position").await.json()["position"]["z"]
         .as_f64()

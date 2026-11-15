@@ -823,7 +823,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
 | P35 | Scan planners and focus maps | P34 | M | — | Done |
-| P36 | Scan engine, the `scan` Thing, workflow extensions | P35 | L | 0025 | Planned |
+| P36 | Scan engine, the `scan` Thing, workflow extensions | P35 | L | 0025 | In review |
 | P37 | Histo scan: overview and tissue detection | P36 | M | — | Planned |
 | P38 | Live stitching: in scans and free-roam | P36 | L | 0026 | Planned |
 | P39 | Post-acquisition stitching | P38 | L | 0027 | Planned |
