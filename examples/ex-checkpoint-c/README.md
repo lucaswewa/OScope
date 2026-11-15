@@ -19,18 +19,18 @@ It serves at http://127.0.0.1:8238/, whose page links to the calibration, the au
 
 ```text
 1. Calibrate the 10×'s geometry
-   the objective check: plausible; the pixel size 0.24000 µm, turned 0.00°
+   the objective check: plausible; the pixel size 0.24001 µm, turned 0.00°
 2. Autofocus
-   z = 5001.890 µm, -0.110 µm from the truth (a quarter of the depth of field is 1.97 µm), in 9.3 s
+   z = 5001.973 µm, -0.027 µm from the truth (a quarter of the depth of field is 1.97 µm), in 9.5 s
 3. Set the exposure, and the white balance over clear glass
-   the exposure 17.776779403899873 ms; the white balance's gains [0.9999772560286464,1.0,0.9999580622024395], given to the preview
+   the exposure 17.769708398183212 ms; the white balance's gains [0.9999911888240585,1.0,1.0003575057040004], given to the preview
 4. Capture into a project
-   stored at .oscope\ex-checkpoint-c\data\projects\01a1ddec-6c2f-7434-9129-2cebe68e53a7\acquisitions\01a1ddec-6e7c-75c0-9215-9543b72306d9\raw.ome.zarr
+   stored at .oscope\ex-checkpoint-c\data\projects\01a1de97-b5cf-75e5-99ff-161c8994d797\acquisitions\01a1de97-b7df-7180-bd5f-f18622c7c8e9\raw.ome.zarr
 
 To open it in napari, with uv:
 
 uv run --no-project --python 3.13 --with "napari[all]" --with napari-ome-zarr \
-    napari --plugin napari-ome-zarr ".oscope\ex-checkpoint-c\data\projects\01a1ddec-6c2f-7434-9129-2cebe68e53a7\acquisitions\01a1ddec-6e7c-75c0-9215-9543b72306d9\raw.ome.zarr"
+    napari --plugin napari-ome-zarr ".oscope\ex-checkpoint-c\data\projects\01a1de97-b5cf-75e5-99ff-161c8994d797\acquisitions\01a1de97-b7df-7180-bd5f-f18622c7c8e9\raw.ome.zarr"
 ```
 
 ## Opening the capture in napari

@@ -21,14 +21,14 @@ It serves at http://127.0.0.1:8237/. Its page plots the latest run's focus curve
 
 ```text
 sample             sweep         truth µm   found µm    error   ÷ d/4  frames     time
-H&E tissue         stepped       5002.000   5001.657   -0.343   -0.17 22   11.4 s
-H&E tissue         continuous    5002.000   5001.648   -0.352   -0.18 19    8.3 s
-reflective chip    stepped       5002.761   5003.615   +0.854    0.43 22   15.7 s
-fluorescent cells  stepped       5001.747   5000.581   -1.166   -0.62 22   14.8 s
+H&E tissue         stepped       5002.000   5002.131   +0.131    0.07 22   11.8 s
+H&E tissue         continuous    5002.000   5001.836   -0.164   -0.08 33   16.0 s
+reflective chip    stepped       5002.761   5003.660   +0.899    0.46 22   15.6 s
+fluorescent cells  stepped       5001.747   5000.529   -1.218   -0.65 22   15.5 s
 
 clear glass: the field is empty: its sharpest frame measures under 1.2 times the median. Move to the sample
 auto exposure: 15.0 ms, the 99.5th percentile at 0.755 of full scale, in 1 steps
-white balance: gains [0.9997367822523392,1.0,1.0001301448501478], given to the preview
+white balance: gains [1.0001708380997485,1.0,1.0000551490710217], given to the preview
 ```
 
 - **A region of the sensor.** The simulator renders each new depth of a frame afresh, on the CPU. Over the whole 20 MP, a stepped sweep took 212 s, and the fluorescent cells' frames took longer than the 30 s each frame is waited for. A camera gives its frames at its own rate, wherever the stage is.
