@@ -69,6 +69,14 @@ impl JobCtx {
         self.id
     }
 
+    /// Who submitted it, if an account did: what it makes is theirs (P32).
+    pub fn account(&self) -> Option<String> {
+        let entries = lock(&self.shared.entries);
+        entries
+            .get(&self.id)
+            .and_then(|e| e.info.spec.account.clone())
+    }
+
     fn update(&self, change: impl FnOnce(&mut crate::JobInfo)) {
         if let Some(entry) = lock(&self.shared.entries).get_mut(&self.id) {
             change(&mut entry.info);
