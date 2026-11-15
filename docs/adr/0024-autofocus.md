@@ -18,11 +18,13 @@
 
 **3. Every position is approached moving up,** from 10 µm below the sweep's first, so that z's backlash shifts every position alike.
 
-**4. The continuous sweep** moves the stage at a constant speed, d / 4 per frame interval, and puts each frame at the z the stage's position track gives for its exposure midpoint, its rolling shutter's middle row included. The peak is a parabola's vertex through the log of the measures around the best frame. Stepped and continuous sweeps agree within d / 4.
+**4. The continuous sweep** moves the stage at a constant speed, d / 4 per frame interval, and puts each frame at the z the stage's position track gives for its exposure midpoint, its rolling shutter's middle row included. The peak is a parabola's vertex through the log of the measures around the best frame. A camera slower while the stage moves (the simulator renders each depth afresh) leaves its frames sparse: then the stepped sweep's fine pass about the best frame finds the peak. Stepped and continuous sweeps agree within d / 4.
+
+**4a. A sweep's z is where the stage says it is.** The final move commands the peak plus the lag the sweep showed between the z commanded and the z reported: a stage that reports its true position lags, approached from below, by half its backlash.
 
 **5. Refusals leave the stage where it started:** an empty field (the best measure under 1.2 times the median), or a peak at the coarse sweep's end (the focus beyond the range). Each says why.
 
-**6. Auto exposure and auto white balance are jobs too.** Auto exposure scales the exposure by the target over the region's 99.5th percentile, the sensor being linear, within the camera's limits, until within 5 % of the target. Auto white balance takes the region's lightest pixels as the light's white, and gives their gains to the preview.
+**6. Auto exposure and auto white balance are jobs too.** Auto exposure scales the exposure by the target over the region's 99.5th percentile, the sensor being linear, within the camera's limits, until within 5 % of the target. Auto white balance takes the region's lightest pixels as the light's white, and reports their gains, which a client gives the preview's look: a job doesn't reach into another Thing.
 
 **7. Two Things:** `autofocus` (the current measures, the defaults, the last report, and the job `run`) and `exposure` (the last report, and the jobs `auto` and `white_balance`).
 

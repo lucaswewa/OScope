@@ -42,7 +42,7 @@ They are computed on the CPU, and with CUDA when the server has a GPU. The two a
 
 ### The depth of field
 
-d = λ n / NA² + n e / (M NA), with λ 0.55 µm (green light; a fluorescent light's emission instead), n the medium's index (1 for the dry objectives), e the sensor's pixel times the camera's binning, M and NA the fitted objective's (Inoué and Spring, 1997). With the MIChrome 20's 2.4 µm pixels: 31 µm at 5×, 7.9 µm at 10×, 1.9 µm at 50×, as plan §5.14 says.
+d = λ n / NA² + n e / (M NA), with λ 0.55 µm (green light; 0.52 µm, a green emission, in fluorescence, as the HAL's channels carry no wavelength), n the medium's index (1 for the dry objectives), e the sensor's pixel times the camera's binning, M and NA the fitted objective's (Inoué and Spring, 1997). With the MIChrome 20's 2.4 µm pixels: 31 µm at 5×, 7.9 µm at 10×, 1.9 µm at 50×, as plan §5.14 says.
 
 ### The stepped sweep
 
@@ -52,6 +52,11 @@ d = λ n / NA² + n e / (M NA), with λ 0.55 µm (green light; a fluorescent lig
 4. **The end:** the stage moves to the peak.
 
 **One way in.** Every position is reached moving up, from an approach point 10 µm below the sweep's first (ISO 230-2's unidirectional approach, as P32's calibrations). The stage's backlash in z then shifts every position the same, and the peak with them.
+
+**Revised, from measurements: where the stage says it is.**
+- **The curve's z** is where the stage reports each position.
+- **The final move** commands the peak plus the lag the sweep showed between the z commanded and the z reported.
+- **Why.** The simulator's stage reports its true position, as a stage with encoders does. The first runs left it 1 µm, half its backlash, below the z they had found.
 
 **Refusals:**
 - **An empty field:** the coarse sweep's best measure is less than 1.2 times its median. The stage goes back to z₀. The bound is checked on the simulator's blank glass and sparse fields.
@@ -67,6 +72,11 @@ A fast mode that tests the clock model early (plan §5.14):
 4. The stage moves to the peak, from below.
 
 Frames whose midpoint lies outside the track are dropped. The empty-field refusal is the same.
+
+**Revised, from measurements: a camera slower while the stage moves.**
+- **What happened.** The simulator renders each new depth afresh, so its frames come more slowly while the stage moves through z than at rest. Its first continuous runs caught 0 or 1 frames.
+- **Sparse frames:** fewer than 9 within 2 d of the best frame, and the stepped sweep's fine pass about it finds the peak. Fewer than 3 in all, and the run sweeps stepped.
+- **Each frame's z is looked up as it comes.** A slow sweep outlasted the track's 41 s of history, and its early frames were lost.
 
 ### Auto exposure
 
@@ -87,7 +97,9 @@ The camera's gain is left as it is.
 
 1. **The white:** the region's pixels whose grey level is between its 95th percentile and 0.98 of full scale (Land and McCann's white patch, 1971). In brightfield, the background is the lightest: the light itself.
 2. **The gains:** each colour's mean over them, m_R, m_G and m_B, as gains (m_G / m_R, 1, m_G / m_B).
-3. **Given to the preview:** its look's gains are set to them, if the server's preview runs.
+3. **For the preview:** a client gives them to the preview's look.
+
+**Revised:** the job doesn't set the preview's look itself. A job holding the server, or the preview's Thing, might keep the server alive after it stops: in tests, its simulated camera would render on.
 
 Refused if the white is under 0.05 of full scale (too dark), or the frame isn't colour.
 
@@ -107,6 +119,8 @@ Reports give the result, the measure used, the curve (z and measure for each fra
 ### The simulator's truth
 
 Each sample says where it is in focus: the slide's top surface plus the height of its layers' middle, or, for the reflective chip, its surface's height at the field's centre.
+
+**Revised, from measurements: the fluorescent cells.** Their truth is their dye's height, weighted by how much each slice holds about the point. They lie thicker near the glass: their slab's middle, 3.25 µm, was 1.5 µm above where they are sharpest.
 
 ### What the tests show
 
