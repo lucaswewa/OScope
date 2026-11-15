@@ -252,16 +252,15 @@ impl LiveMosaic {
             let roamer = Arc::downgrade(&mosaic);
             tokio::spawn(async move {
                 loop {
+                    // A halt first: one asked while a frame was drawn waits.
                     let frame = tokio::select! {
-                        frame = frames.recv() => frame,
+                        biased;
                         () = halt.notified() => None,
+                        frame = frames.recv() => frame,
                     };
                     let (Some(frame), Some(mosaic)) = (frame, roamer.upgrade()) else {
                         break;
                     };
-                    if mosaic.stopped() {
-                        break;
-                    }
                     let track = Arc::clone(&track);
                     let drawn = tokio::task::spawn_blocking(move || {
                         mosaic.roam(&frame, &track);

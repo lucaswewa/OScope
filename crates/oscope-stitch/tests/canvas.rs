@@ -279,6 +279,11 @@ fn viewers_learn_what_changed() {
         .draw(rgb, &map(0.0, 1.0, (5000.0, 10.0)), Blend::Newest)
         .unwrap();
     assert!(off.is_empty() && canvas.generation() == changes.generation);
+    // Its corners' bounds on the canvas, but none of its pixels: none.
+    let edge = canvas
+        .draw(rgb, &map(0.0, 1.0, (-59.6, 10.0)), Blend::Newest)
+        .unwrap();
+    assert!(edge.is_empty() && canvas.generation() == changes.generation);
     // A generation it hasn't had, or a clearing since: all.
     assert!(canvas.changes_since(changes.generation + 1).all);
     canvas.clear().unwrap();
