@@ -193,7 +193,7 @@ async fn walk(address: SocketAddr, focus: f64, check: bool) -> anyhow::Result<()
         number(&c["delta_e_before"])
     );
     if check {
-        ensure!(number(&c["delta_e_mean"]) < 2.0, "colour: {c}");
+        ensure!(number(&c["delta_e_mean"]) < 0.5, "colour: {c}");
         ensure!(number(&f["uneven"]) > 0.05, "the flat field: {f}");
         let turn = (number(&g["rotation_deg"]) - 30.0 + 540.0).rem_euclid(360.0) - 180.0;
         ensure!(

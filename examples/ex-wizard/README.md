@@ -75,7 +75,7 @@ cargo run -p ex-wizard -- --smoke
 It runs the same on the quarter sensor at ten times real time, with a temporary data root. It holds the result to P33's tolerances:
 
 - every step done and the wizard finished;
-- the colour matrix's mean ΔE\*ab below 2;
+- the colour matrix's mean ΔE\*ab below 0.5, as the simulator's crosstalk is linear;
 - the flat field finding the field uneven;
 - the rotation within 0.1° of 30°, mirrored;
 - the backlash within 0.2 µm of 5 µm.

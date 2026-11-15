@@ -362,7 +362,7 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
     // The crosstalk showed, and the matrix took it away.
     let colour = &active["colour"]["values"];
     assert!(colour["delta_e_before"].as_f64().unwrap() > 5.0, "{colour}");
-    assert!(colour["delta_e_mean"].as_f64().unwrap() < 2.0, "{colour}");
+    assert!(colour["delta_e_mean"].as_f64().unwrap() < 0.5, "{colour}");
     let confirmed = invoke(&client, "calibration/wizard_confirm", json!({})).await;
     assert!(
         confirmed["error"].to_string().contains("conflict (409)"),
@@ -410,10 +410,15 @@ async fn the_wizard_s_objective_step_fails_through_a_wrong_magnification() {
         "{skipped}"
     );
     let cancelled = invoke(&client, "calibration/wizard_cancel", json!({})).await;
-    let wizard = &cancelled["output"];
+    let wizard = cancelled["output"].clone();
     assert_eq!(
         (wizard["finished"].as_bool(), wizard["cancelled"].as_bool()),
         (Some(true), Some(true)),
         "{cancelled}"
     );
+    // Saved as it changed: the server started again finds it as it was.
+    client.stop().await;
+    let again = server_scaled(folder.path(), 1.5).await;
+    let resumed = again.get("/api/v1/calibration/wizard").await.json();
+    assert_eq!(resumed, wizard);
 }

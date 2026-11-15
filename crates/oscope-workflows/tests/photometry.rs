@@ -1,16 +1,21 @@
 //! The photometric calibrations on the simulator (P33): dark subtraction
-//! removes the offset; the flat field evens out the optics' vignetting,
-//! and refuses a field that isn't blank; the colour matrix recovers the
-//! colour target's colours through a sensor's crosstalk, and is refused
-//! where they aren't the target's.
+//! removes the offset, and waits for a lamp that dims slowly; the flat
+//! field evens out the optics' vignetting, and refuses a field that isn't
+//! blank; the colour matrix recovers the colour target's colours through a
+//! sensor's crosstalk, and is refused where they aren't the target's.
 
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use oscope_acquire::{Acquisition, FrameBus};
 use oscope_compute::cpu;
-use oscope_core::{FramePool, HeapAllocator, Point2, Um, Xyz};
-use oscope_hal::{Camera, Illumination, ObjectiveCatalogue, ObjectiveMount, Stage};
+use oscope_core::{
+    BayerColour, FramePool, HeapAllocator, LightState, PixelFormat, Point2, Um, Xyz,
+};
+use oscope_hal::{
+    Camera, HalFuture, Illumination, IlluminationCapabilities, ObjectiveCatalogue, ObjectiveMount,
+    Stage,
+};
 use oscope_imaging::color::ColourTarget;
 use oscope_sim::{
     ColourTargetSample, HeTissue, Optics, Rate, SimCamera, SimCameraConfig, SimClock, SimLights,
@@ -31,6 +36,7 @@ const CROSSED: [[f64; 3]; 3] = [[0.85, 0.2, 0.05], [0.1, 0.8, 0.1], [0.02, 0.18,
 
 struct Bench {
     camera: Arc<SimCamera>,
+    clock: Arc<SimClock>,
     lights: Arc<SimLights>,
     rig: Rig,
     _acquisition: Acquisition,
@@ -104,6 +110,7 @@ async fn bench(slide: Slide_, at: Point2, vignetting: f64, response: [[f64; 3]; 
     };
     Bench {
         camera,
+        clock,
         lights,
         rig,
         _acquisition: acquisition,
@@ -111,8 +118,9 @@ async fn bench(slide: Slide_, at: Point2, vignetting: f64, response: [[f64; 3]; 
     }
 }
 
-/// The next frame as linear values, and its black level in them.
-async fn frame(bench: &Bench) -> (Vec<f32>, f32, u32) {
+/// The next frame as linear values, its black level in them, its width,
+/// and its format.
+async fn frame(bench: &Bench) -> (Vec<f32>, f32, u32, PixelFormat) {
     let frame = bench
         .rig
         .bus
@@ -122,7 +130,19 @@ async fn frame(bench: &Bench) -> (Vec<f32>, f32, u32) {
     let meta = frame.meta().clone();
     let image = cpu::to_f32(&frame.view()).unwrap();
     let black = (meta.black_level / 65_535.0) as f32;
-    (image.data().to_vec(), black, meta.width)
+    (image.data().to_vec(), black, meta.width, meta.format)
+}
+
+/// The colour of a mosaic's site `(x, y)`: 0 red, 1 green, 2 blue.
+fn colour_at(format: PixelFormat, x: u32, y: u32) -> usize {
+    let PixelFormat::Bayer16 { pattern, .. } = format else {
+        panic!("a mosaic, not {format:?}");
+    };
+    match pattern.colour_at(x % 2, y % 2) {
+        BayerColour::Red => 0,
+        BayerColour::Green => 1,
+        BayerColour::Blue => 2,
+    }
 }
 
 fn spread(values: &[f64]) -> f64 {
@@ -190,8 +210,18 @@ async fn the_flat_field_evens_out_vignetting_and_gives_the_white_balance() {
         !flat.dark,
         "no dark frame was taken: the black level instead"
     );
+    // Each colour's sites average 1: it evens out shading, not colour.
+    let (raw, black, width, format) = frame(&bench).await;
+    let mut sums = [(0.0, 0.0); 3];
+    for (i, f) in image.data().iter().enumerate() {
+        let sum = &mut sums[colour_at(format, i as u32 % width, i as u32 / width)];
+        *sum = (sum.0 + f64::from(*f), sum.1 + 1.0);
+    }
+    assert!(
+        sums.iter().all(|(s, n)| (s / n - 1.0).abs() < 1e-4),
+        "{sums:?}"
+    );
     // A blank frame's greens, before and after the flat field.
-    let (raw, black, width) = frame(&bench).await;
     let (mut before, mut after) = (Vec::new(), Vec::new());
     for (i, (v, f)) in raw.iter().zip(image.data()).enumerate() {
         let (x, y) = (i as u32 % width, i as u32 / width);
@@ -291,10 +321,17 @@ async fn the_colour_matrix_recovers_the_target_s_colours() {
         colour.delta_e_before > 5.0,
         "the crosstalk shows: {colour:?}"
     );
+    // The crosstalk is linear, so the matrix undoes it almost exactly: a
+    // mean of 0.04. Without the flat field, vignetting leaves 1.
     assert!(
-        colour.delta_e_mean < 2.0 && colour.delta_e_max < 4.0,
+        colour.delta_e_mean < 0.5 && colour.delta_e_max < 1.0,
         "{colour:?}"
     );
+    // The white balance: the light's white through the response, each
+    // colour as its row sums, 1.1, 1 and 0.8.
+    let white = [1.0 / 1.1, 1.0, 1.0 / 0.8];
+    let off = colour.gains.iter().zip(white).map(|(g, w)| (g - w).abs());
+    assert!(off.fold(0.0, f64::max) < 0.01, "{colour:?}");
     let _ = &bench.camera;
 }
 
@@ -312,4 +349,61 @@ async fn a_colour_matrix_that_fits_poorly_is_refused() {
     let refused = measure_colour(&bench.rig, &options, &Quiet).await;
     let why = refused.unwrap_err().to_string();
     assert!(why.contains("fit to a mean ΔE*ab"), "{why}");
+}
+
+/// Lights whose lamp goes dark `dims` after it is switched off, on the
+/// instrument's clock, as a filament cools; they report the switch at once.
+struct SlowLamp {
+    lights: Arc<SimLights>,
+    clock: Arc<SimClock>,
+    dims: Duration,
+}
+
+impl Illumination for SlowLamp {
+    fn capabilities(&self) -> &IlluminationCapabilities {
+        self.lights.capabilities()
+    }
+
+    fn state(&self) -> HalFuture<'_, Vec<LightState>> {
+        self.lights.state()
+    }
+
+    fn set(&self, light: LightState) -> HalFuture<'_, LightState> {
+        Box::pin(async move {
+            if light.on {
+                return self.lights.set(light).await;
+            }
+            let (lights, clock, dims) =
+                (Arc::clone(&self.lights), Arc::clone(&self.clock), self.dims);
+            let off = light.clone();
+            tokio::spawn(async move {
+                clock.sleep(dims).await;
+                lights.set(off).await
+            });
+            Ok(light)
+        })
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_dark_frame_waits_for_a_lamp_that_dims_slowly() {
+    let _turn = TURN.lock().await;
+    let bench = bench(Slide_::Empty, Point2::new(40_000.0, 10_000.0), 0.0, IDEAL).await;
+    // Dark 300 ms after it is switched off; the frames start 500 ms after.
+    let lamp = SlowLamp {
+        lights: Arc::clone(&bench.lights),
+        clock: Arc::clone(&bench.clock),
+        dims: Duration::from_millis(300),
+    };
+    let rig = Rig {
+        lights: Arc::new(lamp),
+        ..bench.rig.clone()
+    };
+    let options = Frames {
+        frames: 4,
+        settle_ms: 500.0,
+    };
+    let (dark, _, _) = measure_dark(&rig, &options, &Quiet).await.unwrap();
+    let black = 125.0 * 16.0 / 65_535.0;
+    assert!((dark.mean - black).abs() < 0.0005, "{dark:?}");
 }
