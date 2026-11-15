@@ -219,6 +219,12 @@ mod tests {
             (m.brenner - 4.0 / (25.0 * mean * mean)).abs() < 1e-9,
             "{m:?}"
         );
+        // Tenengrad: Sobel's gradient squared is 2 at the middle's four
+        // diagonal neighbours and 4 at its four others, 0 elsewhere inside.
+        assert!(
+            (m.tenengrad - 24.0 / (25.0 * mean * mean)).abs() < 1e-9,
+            "{m:?}"
+        );
         // Laplacian: −4 at the middle, 1 at its four neighbours, 0 at the
         // other four inside: mean 0, variance (16 + 4) / 9.
         assert!(

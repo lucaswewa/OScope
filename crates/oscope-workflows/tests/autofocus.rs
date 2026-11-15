@@ -1,9 +1,11 @@
 //! Autofocus, auto exposure and auto white balance on the simulator (P34):
 //! the focus found within a quarter of the depth of field of the truth on
 //! the H&E tissue, the reflective chip and a sparse field of fluorescent
-//! cells; an empty field refused; continuous and stepped sweeps agreeing;
-//! auto exposure converging, and holding at a limit it can't pass; white
-//! balance recovering a tinted light's gains.
+//! cells, each in its light's measure, and through a stage's backlash; an
+//! empty field refused; continuous and stepped sweeps agreeing; auto
+//! exposure converging,
+//! and holding at a limit it can't pass; white balance recovering a tinted
+//! light, beside a colourful sample too.
 
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -12,20 +14,50 @@ use oscope_acquire::{Acquisition, FrameBus};
 use oscope_core::{FramePool, HeapAllocator, LightState, Ms, PixelRect, Point2, Um, Xyz};
 use oscope_hal::{Camera, Illumination, ObjectiveCatalogue, ObjectiveMount, Stage};
 use oscope_sim::{
-    CellCulture, HeTissue, Optics, Rate, Sample, SimCamera, SimCameraConfig, SimClock, SimLights,
-    SimMount, SimStage, SimStageConfig, Slide, Surface, World,
+    CellCulture, ColourTargetSample, HeTissue, Optics, Rate, Sample, SimCamera, SimCameraConfig,
+    SimClock, SimLights, SimMount, SimStage, SimStageConfig, Slide, Surface, World,
 };
 use oscope_workflows::autofocus::{
-    ExposureOptions, FocusOptions, FocusRig, Sweep, WhiteBalanceOptions, auto_exposure, autofocus,
-    white_balance,
+    ExposureOptions, FocusOptions, FocusRig, Measure, Sweep, WhiteBalanceOptions, auto_exposure,
+    autofocus, white_balance,
 };
-use oscope_workflows::calibration::Quiet;
+use oscope_workflows::calibration::{Quiet, Region};
 use tokio::sync::Mutex;
 
 /// One simulator at a time.
 static TURN: Mutex<()> = Mutex::const_new(());
 
 const IDEAL: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+
+/// A 256 × 192 region of the quarter sensor's middle: quick to render.
+const SMALL: Option<PixelRect> = Some(PixelRect::new(556, 360, 256, 192));
+
+/// What a bench is set up with.
+struct Setup {
+    sample: Option<Arc<dyn Sample>>,
+    at: Point2,
+    light: &'static str,
+    /// How far above where the sample is sharpest the stage starts, in µm.
+    off: f64,
+    response: [[f64; 3]; 3],
+    backlash: f64,
+    region: Option<PixelRect>,
+}
+
+impl Setup {
+    /// Over `sample` at `at` in `light`, at focus, through a small region.
+    fn new(sample: Option<Arc<dyn Sample>>, at: Point2, light: &'static str) -> Self {
+        Self {
+            sample,
+            at,
+            light,
+            off: 0.0,
+            response: IDEAL,
+            backlash: 2.0,
+            region: SMALL,
+        }
+    }
+}
 
 struct Bench {
     rig: FocusRig,
@@ -37,26 +69,20 @@ struct Bench {
 }
 
 /// The quarter sensor through the 10×, ten times as fast as real time,
-/// streaming a 256 × 192 region of its middle; over `sample` at `at`, `off`
-/// µm above where it is sharpest, in the light `light`, with the sensor's
-/// colour `response`.
-async fn bench(
-    sample: Option<Arc<dyn Sample>>,
-    at: Point2,
-    light: &str,
-    off: f64,
-    response: [[f64; 3]; 3],
-) -> Bench {
+/// streaming, as `setup` says.
+async fn bench(setup: Setup) -> Bench {
     let clock = Arc::new(SimClock::new(Rate::Scaled(10.0)));
-    let world = match sample {
+    let world = match setup.sample {
         Some(sample) => World::with_slide(Slide::new(sample, Point2::new(0.0, 0.0)), Um(1_000.0)),
         None => World::empty(),
     };
+    let at = setup.at;
     let truth = world.in_focus(at).map_or(1_000.0, |z| z.0);
     let stage = Arc::new(SimStage::new(
         SimStageConfig {
             require_homing: false,
-            start: Xyz::new(Um(at.x), Um(at.y), Um(truth + off)),
+            start: Xyz::new(Um(at.x), Um(at.y), Um(truth + setup.off)),
+            backlash: Um(setup.backlash),
             ..SimStageConfig::default()
         },
         Arc::clone(&clock),
@@ -66,7 +92,7 @@ async fn bench(
     let catalogue = ObjectiveCatalogue::mitutoyo();
     let optics = Optics::new(&catalogue, catalogue.get("10x").unwrap(), Um(9.6));
     let config = SimCameraConfig {
-        response,
+        response: setup.response,
         ..SimCameraConfig::quarter()
     };
     let camera = Arc::new(SimCamera::new(
@@ -80,13 +106,13 @@ async fn bench(
     mount.fit("10x".to_owned()).await.unwrap();
     let lights = Arc::new(SimLights::new(Arc::clone(&camera)));
     for state in lights.state().await.unwrap() {
-        let on = state.channel == light;
+        let on = state.channel == setup.light;
         lights.set(LightState { on, ..state }).await.unwrap();
     }
     let bus = Arc::new(FrameBus::new());
     let acquisition = Acquisition::new(Arc::clone(&bus), Duration::from_millis(50));
     let mut settings = camera.settings().await.unwrap();
-    settings.roi = Some(PixelRect::new(556, 360, 256, 192));
+    settings.roi = setup.region;
     let settings = camera.configure(settings).await.unwrap();
     let (_, w, h) = camera.capabilities().frame_shape(&settings).unwrap();
     let pool = FramePool::new(settings.format.frame_bytes(w, h), 8, &HeapAllocator);
@@ -122,6 +148,9 @@ fn middle() -> Point2 {
     )
 }
 
+/// Clear glass beside the coverslip.
+const GLASS: Point2 = Point2::new(10_000.0, 12_500.0);
+
 async fn z(bench: &Bench) -> f64 {
     bench.rig.stage.position().await.unwrap().position.z.0
 }
@@ -135,16 +164,57 @@ async fn autofocus_comes_within_a_quarter_of_the_depth_of_field_on_each_sample()
     let cells: Arc<dyn Sample> = Arc::new(CellCulture::new(1, Slide::COVERSLIP));
     let (tissue, island) = tissue();
     let cases = [
-        ("the H&E tissue", tissue, island, "transmitted", 12.0),
-        ("the reflective chip", Some(chip), m, "reflected", -12.0),
-        ("a sparse field of cells", Some(cells), m, "blue 488", 12.0),
+        (
+            "the H&E tissue",
+            tissue.clone(),
+            island,
+            "transmitted",
+            12.0,
+            2.0,
+            Measure::Brenner,
+        ),
+        (
+            "the reflective chip",
+            Some(chip),
+            m,
+            "reflected",
+            -12.0,
+            2.0,
+            Measure::Tenengrad,
+        ),
+        (
+            "a sparse field of cells",
+            Some(cells),
+            m,
+            "blue 488",
+            12.0,
+            2.0,
+            Measure::Laplacian,
+        ),
+        // A stage with 6 µm of backlash: approached from below, and the lag
+        // taken up, it still lands within a quarter.
+        (
+            "the tissue, through 6 µm of backlash",
+            tissue,
+            island,
+            "transmitted",
+            -12.0,
+            6.0,
+            Measure::Brenner,
+        ),
     ];
-    for (name, sample, at, light, off) in cases {
-        let bench = bench(sample, at, light, off, IDEAL).await;
+    for (name, sample, at, light, off, backlash, measure) in cases {
+        let setup = Setup {
+            off,
+            backlash,
+            ..Setup::new(sample, at, light)
+        };
+        let bench = bench(setup).await;
         let report = autofocus(&bench.rig, &FocusOptions::default(), &Quiet)
             .await
             .unwrap();
         assert!(report.found, "{name}: {report:?}");
+        assert_eq!(report.measure, measure, "{name}: the light's measure");
         let (error, quarter) = (
             z(&bench).await - bench.truth,
             report.depth_of_field_um / 4.0,
@@ -154,7 +224,10 @@ async fn autofocus_comes_within_a_quarter_of_the_depth_of_field_on_each_sample()
             "{name}: {error:+.3} µm, beyond {quarter:.3}: {report:?}"
         );
         assert_eq!(report.frames, 22, "{name}: 13 coarse and 9 fine");
-        let _ = bench.at;
+        assert!(
+            (report.z_um - z(&bench).await).abs() < 1e-9,
+            "{name}: where it says"
+        );
     }
 }
 
@@ -162,15 +235,11 @@ async fn autofocus_comes_within_a_quarter_of_the_depth_of_field_on_each_sample()
 async fn an_empty_field_is_refused_and_the_stage_goes_back() {
     let _turn = TURN.lock().await;
     let (tissue, _) = tissue();
-    // Clear glass beside the coverslip.
-    let bench = bench(
-        tissue,
-        Point2::new(10_000.0, 12_500.0),
-        "transmitted",
-        5.0,
-        IDEAL,
-    )
-    .await;
+    let setup = Setup {
+        off: 5.0,
+        ..Setup::new(tissue, GLASS, "transmitted")
+    };
+    let bench = bench(setup).await;
     let start = z(&bench).await;
     for sweep in [Sweep::Stepped, Sweep::Continuous] {
         let options = FocusOptions {
@@ -183,10 +252,10 @@ async fn an_empty_field_is_refused_and_the_stage_goes_back() {
             report.refused.as_deref().unwrap().contains("empty"),
             "{report:?}"
         );
-        assert!(
-            (z(&bench).await - start).abs() < 0.5,
-            "{sweep:?}: back where it started"
-        );
+        let now = z(&bench).await;
+        let back =
+            format!("{sweep:?}: back where it started, {start:.3}, not {now:.3}: {report:?}");
+        assert!((now - start).abs() < 0.5, "{back}");
     }
 }
 
@@ -194,7 +263,11 @@ async fn an_empty_field_is_refused_and_the_stage_goes_back() {
 async fn continuous_and_stepped_sweeps_agree() {
     let _turn = TURN.lock().await;
     let (tissue, island) = tissue();
-    let bench = bench(tissue, island, "transmitted", 12.0, IDEAL).await;
+    let setup = Setup {
+        off: 12.0,
+        ..Setup::new(tissue, island, "transmitted")
+    };
+    let bench = bench(setup).await;
     let start = z(&bench).await;
     let stepped = autofocus(&bench.rig, &FocusOptions::default(), &Quiet)
         .await
@@ -228,24 +301,14 @@ async fn continuous_and_stepped_sweeps_agree() {
         (at_continuous - bench.truth).abs() < quarter,
         "{continuous:?}"
     );
-    assert!(
-        continuous.speed_um_s.is_some() && continuous.coarse.len() >= 3,
-        "{continuous:?}"
-    );
+    assert!(continuous.speed_um_s.is_some(), "{continuous:?}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn auto_exposure_converges_and_holds_at_a_limit() {
     let _turn = TURN.lock().await;
     let (tissue, _) = tissue();
-    let bench = bench(
-        tissue,
-        Point2::new(10_000.0, 12_500.0),
-        "transmitted",
-        0.0,
-        IDEAL,
-    )
-    .await;
+    let bench = bench(Setup::new(tissue, GLASS, "transmitted")).await;
     let options = ExposureOptions::default();
     // From too dark, and from saturated.
     for start in [0.05, 400.0] {
@@ -285,14 +348,11 @@ async fn white_balance_recovers_a_tinted_light_s_gains() {
     let (tissue, _) = tissue();
     // A warm light through the sensor: red 1, green 0.85, blue 0.6.
     let tint = [[0.9, 0.1, 0.0], [0.05, 0.75, 0.05], [0.0, 0.1, 0.5]];
-    let bench = bench(
-        tissue,
-        Point2::new(10_000.0, 12_500.0),
-        "transmitted",
-        0.0,
-        tint,
-    )
-    .await;
+    let setup = Setup {
+        response: tint,
+        ..Setup::new(tissue, GLASS, "transmitted")
+    };
+    let bench = bench(setup).await;
     let report = white_balance(&bench.rig, &WhiteBalanceOptions::default(), &Quiet)
         .await
         .unwrap();
@@ -308,4 +368,35 @@ async fn white_balance_recovers_a_tinted_light_s_gains() {
     bench.lights.set(off).await.unwrap();
     let refused = white_balance(&bench.rig, &WhiteBalanceOptions::default(), &Quiet).await;
     assert!(refused.unwrap_err().to_string().contains("too dark"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn white_balance_finds_the_light_beside_a_colourful_sample() {
+    let _turn = TURN.lock().await;
+    // The colour target, its coloured patches filling the middle, clear
+    // glass around it: the lightest part is the glass, the light itself.
+    let centre = middle();
+    let target: Arc<dyn Sample> = Arc::new(ColourTargetSample::new(centre));
+    let setup = Setup {
+        off: 0.05,
+        region: None,
+        ..Setup::new(Some(target), centre, "transmitted")
+    };
+    let bench = bench(setup).await;
+    let whole = Region {
+        x: 0,
+        y: 0,
+        width: 1368,
+        height: 912,
+    };
+    let options = WhiteBalanceOptions {
+        region: Some(whole),
+        ..WhiteBalanceOptions::default()
+    };
+    let report = white_balance(&bench.rig, &options, &Quiet).await.unwrap();
+    let [r, _, b] = report.gains;
+    assert!(
+        (r - 1.0).abs() < 0.01 && (b - 1.0).abs() < 0.01,
+        "{report:?}"
+    );
 }

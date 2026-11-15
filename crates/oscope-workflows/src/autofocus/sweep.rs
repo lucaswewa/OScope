@@ -580,32 +580,67 @@ async fn continuous_run(
     let (curve, _came) = pass(rig, xy, (z0 - range, z0 + range, speed), how, report, swept).await?;
     out.frames = curve.len() as u32;
     out.coarse.clone_from(&curve);
-    // Too few frames to judge at all: sweep stepped instead.
-    if curve.len() < 3 {
-        out.fine.clear();
-        return stepped_run(rig, (xy, z0, range, 4.0 * fine), how, report, (out, swept)).await;
+    match next(&curve, fine, range) {
+        Next::Refused(why) => {
+            out.refused = Some(why);
+            Ok(None)
+        }
+        Next::Peak(z) => Ok(Some(z)),
+        Next::FinePass(centre) => {
+            let around = swept.command(centre);
+            let fine_positions = positions(around - 4.0 * fine, around + 4.0 * fine, fine);
+            let curve = stepped(rig, xy, &fine_positions, how, report, (0.6, 0.35), swept).await?;
+            out.frames += curve.len() as u32;
+            out.fine.clone_from(&curve);
+            Ok(Some(gaussian_peak(&curve)))
+        }
+        Next::Stepped => {
+            out.coarse.clear();
+            out.frames = 0;
+            stepped_run(rig, (xy, z0, range, 4.0 * fine), how, report, (out, swept)).await
+        }
     }
-    if let Some(why) = refusal(&curve, range) {
-        out.refused = Some(why);
-        return Ok(None);
+}
+
+/// What a continuous sweep's frames allow.
+#[derive(Debug, PartialEq)]
+enum Next {
+    /// No focus, for this reason.
+    Refused(String),
+    /// The peak, at this z.
+    Peak(f64),
+    /// The stepped sweep's fine pass about the best frame, at this z.
+    FinePass(f64),
+    /// A stepped sweep instead.
+    Stepped,
+}
+
+/// What a continuous sweep's `curve` allows, its fine step `fine`:
+/// - sparser than the stepped coarse sweep (fewer than 13 frames): a
+///   stepped sweep instead, as its peak and its ends can't be trusted;
+/// - a refusal: an empty field, or the peak at an end;
+/// - fewer than 9 frames within 2 depths of field of the best: the stepped
+///   sweep's fine pass about it;
+/// - otherwise the peak, a parabola's vertex through the best frame and two
+///   on each side.
+fn next(curve: &[CurvePoint], fine: f64, range: f64) -> Next {
+    if curve.len() < 13 {
+        return Next::Stepped;
     }
-    let k = best(&curve);
+    if let Some(why) = refusal(curve, range) {
+        return Next::Refused(why);
+    }
+    let k = best(curve);
     let centre = curve[k].z_um;
     let near = curve
         .iter()
         .filter(|p| (p.z_um - centre).abs() <= 8.0 * fine)
         .count();
-    if near >= 9 {
-        let around = &curve[k.saturating_sub(2)..(k + 3).min(curve.len())];
-        return Ok(Some(parabola_peak(around).unwrap_or(centre)));
+    if near < 9 {
+        return Next::FinePass(centre);
     }
-    // Sparse about the best frame: the stepped sweep's fine pass about it.
-    let around = swept.command(centre);
-    let fine_positions = positions(around - 4.0 * fine, around + 4.0 * fine, fine);
-    let curve = stepped(rig, xy, &fine_positions, how, report, (0.6, 0.35), swept).await?;
-    out.frames += curve.len() as u32;
-    out.fine.clone_from(&curve);
-    Ok(Some(gaussian_peak(&curve)))
+    let around = &curve[k.saturating_sub(2)..(k + 3).min(curve.len())];
+    Next::Peak(parabola_peak(around).unwrap_or(centre))
 }
 
 /// Autofocuses where the stage is: sweeps, finds the sharpest z, and leaves
@@ -723,6 +758,35 @@ mod tests {
                 value: 0.0
             }; 3]
         ));
+    }
+
+    #[test]
+    fn a_continuous_sweep_s_frames_decide_what_follows() {
+        let fine = 0.25;
+        let at =
+            |zs: &[f64]| -> Vec<CurvePoint> { zs.iter().map(|z| gaussian(*z, 6.0, 1.0)).collect() };
+        // Sparser than a stepped coarse sweep: stepped instead.
+        let few: Vec<f64> = (0..12).map(f64::from).collect();
+        assert_eq!(next(&at(&few), fine, 6.0), Next::Stepped);
+        // Dense about the peak: its vertex.
+        let dense: Vec<f64> = (0..49).map(|i| f64::from(i) * 0.25).collect();
+        match next(&at(&dense), fine, 6.0) {
+            Next::Peak(z) => assert!((z - 6.0).abs() < 0.05, "{z}"),
+            other => panic!("{other:?}"),
+        }
+        // Thirteen frames, a depth of field apart: the fine pass about the
+        // best.
+        let wide: Vec<f64> = (0..13).map(f64::from).collect();
+        assert_eq!(next(&at(&wide), fine, 6.0), Next::FinePass(6.0));
+        // Flat: empty.
+        let flat: Vec<CurvePoint> = dense
+            .iter()
+            .map(|z| CurvePoint {
+                z_um: *z,
+                value: 1.0,
+            })
+            .collect();
+        assert!(matches!(next(&flat, fine, 6.0), Next::Refused(why) if why.contains("empty")));
     }
 
     #[test]
