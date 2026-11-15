@@ -219,6 +219,17 @@ mod tests {
             (m.brenner - 4.0 / (25.0 * mean * mean)).abs() < 1e-9,
             "{m:?}"
         );
+        // A ramp along x, I = x + 1: Sobel's x gradient is 8 at each of the
+        // 4 × 3 pixels inside, its y gradient 0; the Laplacian 0.
+        let data = (0..30).map(|i| (i % 6) as f32 + 1.0).collect();
+        let ramp = measures(&Image::from_vec(Shape::new(6, 5, 1), data).unwrap()).unwrap();
+        let level = 30.0 * 3.5 * 3.5;
+        assert!(
+            (ramp.tenengrad - 64.0 * 12.0 / level).abs() < 1e-9,
+            "{ramp:?}"
+        );
+        assert!((ramp.brenner - 4.0 * 20.0 / level).abs() < 1e-9, "{ramp:?}");
+        assert!(ramp.laplacian.abs() < 1e-12, "{ramp:?}");
         // Tenengrad: Sobel's gradient squared is 2 at the middle's four
         // diagonal neighbours and 4 at its four others, 0 elsewhere inside.
         assert!(
