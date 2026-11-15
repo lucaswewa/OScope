@@ -318,11 +318,12 @@ async fn each_tile_a_scan_takes_is_drawn() {
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     let state = until(address, "each tile drawn", |s| {
-        s["counts"]["drawn"].as_u64() >= Some(tiles)
+        s["counts"]["scans"].as_u64() >= Some(tiles)
     })
     .await;
     let counts = &state["counts"];
-    assert_eq!(counts["drawn"], json!(tiles), "{state}");
+    let drawn = (&counts["drawn"], &counts["scans"]);
+    assert_eq!(drawn, (&json!(tiles), &json!(tiles)), "{state}");
     assert_eq!(
         (&counts["dropped"], &counts["failed"]),
         (&json!(0), &json!(0)),

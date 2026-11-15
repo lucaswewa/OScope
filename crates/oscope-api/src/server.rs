@@ -87,7 +87,7 @@ pub enum ApiError {
 #[derive(Debug)]
 pub struct ApiBuilder {
     things: ThingServerBuilder,
-    pages: Option<PathBuf>,
+    pages: Vec<(String, PathBuf)>,
     logs: LogStore,
     restart: Arc<Restart>,
     store: Option<Arc<oscope_store::Store>>,
@@ -144,8 +144,15 @@ impl ApiBuilder {
     /// `/index.html` give its `index.html`, `/js/app.js` its `js/app.js`.
     /// Each file is read when it is asked for, so an edit shows without a
     /// restart. The examples' pages use it.
-    pub fn pages(mut self, folder: impl Into<PathBuf>) -> Self {
-        self.pages = Some(folder.into());
+    pub fn pages(self, folder: impl Into<PathBuf>) -> Self {
+        self.pages_under("", folder)
+    }
+
+    /// Serves the files in `folder` under `/{prefix}/` as [`pages`](Self::pages)
+    /// does, such as the examples' vendored scripts under `/vendor/`.
+    pub fn pages_under(mut self, prefix: &str, folder: impl Into<PathBuf>) -> Self {
+        self.pages
+            .push((prefix.trim_matches('/').to_owned(), folder.into()));
         self
     }
 
@@ -255,8 +262,8 @@ impl ApiBuilder {
         if let Some(mosaics) = &self.mosaics {
             routes = routes.merge(mosaic::router(Arc::clone(mosaics)));
         }
-        if let Some(folder) = &self.pages {
-            routes = routes.merge(pages::router(folder)?);
+        for (prefix, folder) in &self.pages {
+            routes = routes.merge(pages::router(prefix, folder)?);
         }
         let things = self
             .things
@@ -290,7 +297,7 @@ impl Api {
             .thing("system", System::from_config(roots.clone()));
         ApiBuilder {
             things,
-            pages: None,
+            pages: Vec::new(),
             logs: LogStore::default(),
             restart,
             store: None,

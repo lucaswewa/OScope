@@ -1,8 +1,12 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "examples/*", "xtask"]
-# A Python extension, not a crate (P26).
-exclude = ["examples/ext-python-node", "examples/ext-python-workflow"]
+# Python extensions (P26, P36) and the vendored scripts (P38): not crates.
+exclude = [
+    "examples/ext-python-node",
+    "examples/ext-python-workflow",
+    "examples/vendor",
+]
 
 [workspace.package]
 version = "0.1.0"

@@ -93,9 +93,11 @@ async fn roaming_draws_new_places_and_sharper_views_unblurred() {
         track.push(sample);
     }
     let roam = |at, exposure, contrast| mosaic.roam(&frame(at, exposure, contrast, 1), &track);
-    // A new place; the same place, no sharper and then sharper; another.
+    // A new place; the same place, no sharper, then, with nothing moved,
+    // the same unmeasured, and moved, sharper; another.
     assert_eq!(roam(Some((500.0, 500.0)), (10, 1.0), 0.8), Verdict::Drawn);
     assert_eq!(roam(Some((510.0, 500.0)), (20, 1.0), 0.5), Verdict::Same);
+    assert_eq!(roam(Some((510.0, 500.0)), (25, 1.0), 1.0), Verdict::Same);
     assert_eq!(roam(Some((505.0, 505.0)), (30, 1.0), 1.0), Verdict::Drawn);
     assert_eq!(roam(Some((800.0, 500.0)), (40, 1.0), 0.5), Verdict::Drawn);
     // Moving: 5 µm in a 5 ms exposure, then 0.4 µm in 0.4 ms.
@@ -126,8 +128,9 @@ async fn roaming_draws_new_places_and_sharper_views_unblurred() {
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     let counts = mosaic.counts();
-    let tally = [counts.drawn, counts.same, counts.blurred, counts.unplaced];
-    assert_eq!(tally, [6, 1, 1, 2], "{counts:?}");
+    let tally = [counts.drawn, counts.scans, counts.same, counts.blurred];
+    assert_eq!(tally, [6, 2, 2, 1], "{counts:?}");
+    assert_eq!(counts.unplaced, 2);
     assert_eq!([counts.other, counts.outside, counts.failed], [1, 1, 0]);
     // Stopped, it takes no more.
     mosaic.stop();

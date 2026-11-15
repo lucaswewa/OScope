@@ -129,6 +129,11 @@ expression: td
               "type": "integer",
               "minimum": 0
             },
+            "scans": {
+              "description": "Of those drawn, a scan's.",
+              "type": "integer",
+              "minimum": 0
+            },
             "blurred": {
               "description": "Blurred by the stage's moving.",
               "type": "integer",
@@ -167,6 +172,7 @@ expression: td
           },
           "required": [
             "drawn",
+            "scans",
             "blurred",
             "same",
             "unplaced",
@@ -530,6 +536,11 @@ expression: td
                 "type": "integer",
                 "minimum": 0
               },
+              "scans": {
+                "description": "Of those drawn, a scan's.",
+                "type": "integer",
+                "minimum": 0
+              },
               "blurred": {
                 "description": "Blurred by the stage's moving.",
                 "type": "integer",
@@ -568,6 +579,7 @@ expression: td
             },
             "required": [
               "drawn",
+              "scans",
               "blurred",
               "same",
               "unplaced",
@@ -763,6 +775,11 @@ expression: td
                 "type": "integer",
                 "minimum": 0
               },
+              "scans": {
+                "description": "Of those drawn, a scan's.",
+                "type": "integer",
+                "minimum": 0
+              },
               "blurred": {
                 "description": "Blurred by the stage's moving.",
                 "type": "integer",
@@ -801,6 +818,7 @@ expression: td
             },
             "required": [
               "drawn",
+              "scans",
               "blurred",
               "same",
               "unplaced",
@@ -996,6 +1014,11 @@ expression: td
                 "type": "integer",
                 "minimum": 0
               },
+              "scans": {
+                "description": "Of those drawn, a scan's.",
+                "type": "integer",
+                "minimum": 0
+              },
               "blurred": {
                 "description": "Blurred by the stage's moving.",
                 "type": "integer",
@@ -1034,6 +1057,7 @@ expression: td
             },
             "required": [
               "drawn",
+              "scans",
               "blurred",
               "same",
               "unplaced",

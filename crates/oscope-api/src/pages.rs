@@ -16,9 +16,9 @@ const RESERVED: &[&str] = &["health", "openapi.json", "docs", "redoc"];
 /// The folders the API answers in.
 const RESERVED_FOLDERS: &[&str] = &["api/", "docs/", ".well-known/"];
 
-/// A route for each file under `folder`, by its relative path, and `/` for
-/// its `index.html`.
-pub(crate) fn router(folder: &Path) -> Result<Router, ApiError> {
+/// A route for each file under `folder`, by its relative path under
+/// `prefix`, and `/` for its `index.html` when there is no prefix.
+pub(crate) fn router(prefix: &str, folder: &Path) -> Result<Router, ApiError> {
     let refuse = |reason: String| ApiError::Pages {
         folder: folder.to_owned(),
         reason,
@@ -33,6 +33,10 @@ pub(crate) fn router(folder: &Path) -> Result<Router, ApiError> {
             .map(|part| part.as_os_str().to_string_lossy())
             .collect::<Vec<_>>()
             .join("/");
+        let path = match prefix {
+            "" => path,
+            prefix => format!("{prefix}/{path}"),
+        };
         if RESERVED.contains(&path.as_str()) || RESERVED_FOLDERS.iter().any(|f| path.starts_with(f))
         {
             return Err(refuse(format!("`{path}` would hide the API's `/{path}`")));

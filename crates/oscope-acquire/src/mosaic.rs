@@ -153,6 +153,8 @@ pub enum Verdict {
 pub struct MosaicCounts {
     /// Drawn.
     pub drawn: u64,
+    /// Of those drawn, a scan's.
+    pub scans: u64,
     /// Blurred by the stage's moving.
     pub blurred: u64,
     /// Showing a place drawn, and no sharper.
@@ -185,6 +187,8 @@ pub struct LiveMosaic {
     canvas: Mutex<Canvas>,
     drawn: Mutex<VecDeque<Drawn>>,
     counts: Mutex<MosaicCounts>,
+    /// Where the last frame roaming judged was, and what became of it.
+    last: Mutex<Option<(Xyz, Verdict)>>,
     preview: Preview,
     look: LookSource,
     roaming: bool,
@@ -222,6 +226,7 @@ impl LiveMosaic {
             canvas: Mutex::new(canvas),
             drawn: Mutex::new(VecDeque::new()),
             counts: Mutex::new(MosaicCounts::default()),
+            last: Mutex::new(None),
             preview,
             look,
             roaming: roam.is_some(),
@@ -315,6 +320,7 @@ impl LiveMosaic {
     /// Empties the canvas.
     pub fn clear(&self) -> Result<(), MosaicError> {
         lock(&self.drawn).clear();
+        *lock(&self.last) = None;
         Ok(lock(&self.canvas).clear()?)
     }
 
@@ -368,12 +374,29 @@ impl LiveMosaic {
     /// Offers a scan's frame, taken at `at` if it has no position of its
     /// own: drawn ungated.
     pub fn offer(&self, frame: &Frame, at: Option<Xyz>) -> Verdict {
-        self.count(self.draw(frame, at, None))
+        let verdict = self.count(self.draw(frame, at, None));
+        if verdict == Verdict::Drawn {
+            lock(&self.counts).scans += 1;
+        }
+        verdict
     }
 
     /// Offers a frame of the live stream, gated by the stage's `track`.
+    /// While the stage stays where a frame was judged to show a place
+    /// drawn, within a quarter of a canvas pixel, each frame is judged the
+    /// same, undrawn and unmeasured.
     pub fn roam(&self, frame: &Frame, track: &PositionTrack) -> Verdict {
-        self.count(self.draw(frame, None, Some(track)))
+        let at = frame.meta().position;
+        let still = self.setup.geometry.pixel_um / 4.0;
+        if let (Some(at), Some((was, Verdict::Same))) = (at, *lock(&self.last)) {
+            let (dx, dy, dz) = (at.x.0 - was.x.0, at.y.0 - was.y.0, at.z.0 - was.z.0);
+            if dx.hypot(dy).hypot(dz) < still {
+                return self.count(Ok(Verdict::Same));
+            }
+        }
+        let verdict = self.count(self.draw(frame, None, Some(track)));
+        *lock(&self.last) = at.map(|at| (at, verdict));
+        verdict
     }
 
     fn count(&self, verdict: Result<Verdict, MosaicError>) -> Verdict {
