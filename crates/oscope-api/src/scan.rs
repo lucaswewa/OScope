@@ -103,19 +103,20 @@ pub struct ScanThing {
     state: OnceLock<State>,
 }
 
+/// A request that can't be (ADR-0034).
 fn refused(why: impl std::fmt::Display) -> ActionError {
-    ActionError::handled(why.to_string())
+    ActionError::handled(format!("refused (400): {why}"))
 }
 
 fn device(error: oscope_hal::Error) -> ActionError {
-    refused(error)
+    crate::devices::action_error(error)
 }
 
 impl ScanThing {
     fn state(&self) -> Result<&State, ActionError> {
         self.state
             .get()
-            .ok_or_else(|| refused("unavailable (503): the server has no devices"))
+            .ok_or_else(|| ActionError::handled("unavailable (503): the server has no devices"))
     }
 
     /// The field of the camera's frames through the fitted objective, by its
@@ -284,8 +285,10 @@ impl ScanThing {
         Ok(())
     }
 
-    /// The patterns a scan may follow: the built-in planners, and the
-    /// extensions' workflows, each with its parameters' JSON Schema.
+    /// The patterns a scan may follow.
+    ///
+    /// The built-in planners, and the extensions' workflows, each with its
+    /// parameters' JSON Schema.
     #[property]
     async fn patterns(&self) -> Result<Vec<PatternInfo>, PropertyError> {
         let mut patterns: Vec<PatternInfo> = PATTERNS
@@ -318,8 +321,10 @@ impl ScanThing {
         Ok(patterns)
     }
 
-    /// The latest scan's progress: its plan, the tiles done, each where it
-    /// was taken, and how it stands. None before the first.
+    /// The latest scan's progress.
+    ///
+    /// Its plan, the tiles done, each where it was taken, and how it stands.
+    /// None before the first.
     #[property]
     async fn progress(&self) -> Result<Option<ScanProgress>, PropertyError> {
         let Some(state) = self.state.get() else {
@@ -332,8 +337,9 @@ impl ScanThing {
             .clone())
     }
 
-    /// A scan's plan and what it would take, as `request` asks: nothing
-    /// moves.
+    /// Plans a scan.
+    ///
+    /// Its plan and what it would take, as `request` asks: nothing moves.
     #[action]
     async fn plan(&self, request: ScanRequest) -> Result<Preview, ActionError> {
         let plan = self.plan_of(&request).await?;
@@ -341,12 +347,13 @@ impl ScanThing {
         Ok(Preview { plan, estimate })
     }
 
-    /// Scans as `request` asks, into a new acquisition of `project`, named
-    /// `name`, as `options` say (settling, approach, autofocus).
+    /// Runs a scan.
     ///
-    /// A job: answered at once with where to follow it. Each scan ends
-    /// where it started. (`start` is every Thing's own starting, in
-    /// `teta-wot`, as `stop` is: ADR-0034.)
+    /// As `request` asks, into a new acquisition of `project`, named `name`,
+    /// as `options` say (settling, approach, autofocus). A job: answered at
+    /// once with where to follow it. Each scan ends where it started.
+    /// (`start` is every Thing's own starting, in `teta-wot`, as `stop` is:
+    /// ADR-0034.)
     #[action]
     async fn run(
         &self,
@@ -357,7 +364,8 @@ impl ScanThing {
         #[param(default)] options: Option<ScanOptions>,
     ) -> Result<JobRef, ActionError> {
         let jobs = self.state()?.jobs.clone();
-        let jobs = jobs.ok_or_else(|| refused("unavailable (503): the server runs no jobs"))?;
+        let unavailable = || ActionError::handled("unavailable (503): the server runs no jobs");
+        let jobs = jobs.ok_or_else(unavailable)?;
         let plan = self.plan_of(&request).await?;
         let params = json!({
             "plan": plan,

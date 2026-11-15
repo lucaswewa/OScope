@@ -417,6 +417,7 @@ async fn the_things_describe_themselves() {
         "calibration",
         "autofocus",
         "exposure",
+        "scan",
     ] {
         // The ID differs from computer to computer: its form, then the rest.
         let mut td = tds[name].clone();
@@ -434,6 +435,7 @@ async fn the_things_describe_themselves() {
         "/api/v1/objective/fit",
         "/api/v1/simulation/import",
         "/api/v1/preview/defaults",
+        "/api/v1/scan/run",
     ] {
         assert!(
             paths.contains_key(path),

@@ -1,0 +1,2411 @@
+---
+source: crates/oscope-api/tests/devices.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Scan",
+  "properties": {
+    "patterns": {
+      "description": "The built-in planners, and the extensions' workflows, each with its\nparameters' JSON Schema.",
+      "title": "The patterns a scan may follow.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "description": "A pattern a scan may follow.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Its name, as a request gives it.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "`planner`, built in, or `workflow`, an extension's.",
+            "type": "string"
+          },
+          "schema": {
+            "description": "A workflow's parameters' JSON Schema."
+          }
+        },
+        "required": [
+          "name",
+          "kind"
+        ]
+      },
+      "forms": [
+        {
+          "href": "/api/v1/scan/patterns",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "progress": {
+      "description": "Its plan, the tiles done, each where it was taken, and how it stands.\nNone before the first.",
+      "title": "The latest scan's progress.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "A scan's progress: its plan, the tiles done, and how it stands.",
+          "type": "object",
+          "properties": {
+            "job": {
+              "description": "The scan's job.",
+              "format": "uuid",
+              "type": "string"
+            },
+            "plan": {
+              "description": "Its plan.",
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "description": "The pattern.",
+                  "oneOf": [
+                    {
+                      "description": "Rows from the least y, each from its least x.",
+                      "const": "raster",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Rows from the least y, each the other way from the last.",
+                      "const": "snake",
+                      "type": "string"
+                    },
+                    {
+                      "description": "One position, a stack through it.",
+                      "const": "z_scan",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A snake, a stack at each tile.",
+                      "const": "tiled_stack",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Positions, in the order given.",
+                      "const": "positions",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Positions an extension's workflow planned (ADR-0025).",
+                      "const": "workflow",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "motion": {
+                  "description": "How the stage moves through it.",
+                  "oneOf": [
+                    {
+                      "description": "It stops at each tile, settles, and takes its frames: M1's.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "stop_and_go",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "Reserved for M3 (D14): each row swept at a constant speed, frames\ntriggered at the tiles' positions. The engine refuses it until then.",
+                      "type": "object",
+                      "properties": {
+                        "speed_um_s": {
+                          "description": "The sweep's speed, in µm/s.",
+                          "type": "number"
+                        },
+                        "kind": {
+                          "const": "continuous",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "speed_um_s"
+                      ]
+                    }
+                  ],
+                  "default": {
+                    "kind": "stop_and_go"
+                  }
+                },
+                "field": {
+                  "description": "The field that spaced the tiles.",
+                  "type": "object",
+                  "properties": {
+                    "corners_um": {
+                      "description": "The frame's corners about its centre, on the stage, in µm: from the\nimage's top left, round by its top right.",
+                      "type": "array",
+                      "items": {
+                        "description": "A point, or a vector, in a plane.",
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "description": "Across.",
+                            "type": "number"
+                          },
+                          "y": {
+                            "description": "Down, in an image.",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ]
+                      },
+                      "maxItems": 4,
+                      "minItems": 4
+                    },
+                    "cell_um": {
+                      "description": "The cell: the largest rectangle, square with the stage and of the\nframe's proportions (or, the camera turned near a right angle, the\nturned frame's), that the frame holds about its centre. A grid tiles\ncells, so a region its cells cover, its frames cover.",
+                      "type": "object",
+                      "properties": {
+                        "width": {
+                          "description": "Along x.",
+                          "type": "number"
+                        },
+                        "height": {
+                          "description": "Along y.",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "overlap": {
+                      "description": "The share of a cell's width, and of its height, that its neighbours\nalong x, and along y, overlap.",
+                      "type": "number"
+                    },
+                    "step_um": {
+                      "description": "The grid's steps along x and y, in µm: the cell, less the overlap.",
+                      "type": "object",
+                      "properties": {
+                        "width": {
+                          "description": "Along x.",
+                          "type": "number"
+                        },
+                        "height": {
+                          "description": "Along y.",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "width",
+                        "height"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "corners_um",
+                    "cell_um",
+                    "overlap",
+                    "step_um"
+                  ]
+                },
+                "rows": {
+                  "description": "The grid's rows; 1 for positions.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "columns": {
+                  "description": "The grid's columns; the count of positions.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "z": {
+                  "description": "How each tile's z is found.",
+                  "oneOf": [
+                    {
+                      "description": "Every tile at one z.",
+                      "type": "object",
+                      "properties": {
+                        "z_um": {
+                          "description": "The z, in µm.",
+                          "type": "number"
+                        },
+                        "kind": {
+                          "const": "fixed",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "z_um"
+                      ]
+                    },
+                    {
+                      "description": "Each tile at a focus map's z at its centre.",
+                      "type": "object",
+                      "properties": {
+                        "map": {
+                          "description": "The map.",
+                          "type": "object",
+                          "properties": {
+                            "surface": {
+                              "description": "The surface.",
+                              "oneOf": [
+                                {
+                                  "description": "A plane: a slide lying flat, tilted.",
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "plane",
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ]
+                                },
+                                {
+                                  "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                                  "type": "object",
+                                  "properties": {
+                                    "smoothing": {
+                                      "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                      "type": "number"
+                                    },
+                                    "kind": {
+                                      "const": "thin_plate",
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "smoothing"
+                                  ]
+                                }
+                              ]
+                            },
+                            "used": {
+                              "description": "The points fitted.",
+                              "type": "array",
+                              "items": {
+                                "description": "Focus measured at a point: where the stage was sharpest there.",
+                                "type": "object",
+                                "properties": {
+                                  "x_um": {
+                                    "description": "Its x, in µm.",
+                                    "type": "number"
+                                  },
+                                  "y_um": {
+                                    "description": "Its y.",
+                                    "type": "number"
+                                  },
+                                  "z_um": {
+                                    "description": "The z found there.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x_um",
+                                  "y_um",
+                                  "z_um"
+                                ]
+                              }
+                            },
+                            "rejected": {
+                              "description": "The points rejected as outliers, in the order they were.",
+                              "type": "array",
+                              "items": {
+                                "description": "Focus measured at a point: where the stage was sharpest there.",
+                                "type": "object",
+                                "properties": {
+                                  "x_um": {
+                                    "description": "Its x, in µm.",
+                                    "type": "number"
+                                  },
+                                  "y_um": {
+                                    "description": "Its y.",
+                                    "type": "number"
+                                  },
+                                  "z_um": {
+                                    "description": "The z found there.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x_um",
+                                  "y_um",
+                                  "z_um"
+                                ]
+                              }
+                            },
+                            "rms_um": {
+                              "description": "The root mean square of how far the surface fitted to the others\nmisses each used point, in µm: how well the map foretells focus where\nit wasn't measured. `None` with only three points.",
+                              "oneOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "centre": {
+                              "description": "Where coordinates are taken from, in µm: the used points' middle.\nThey are taken in mm.",
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "description": "Across.",
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "description": "Down, in an image.",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ]
+                            },
+                            "coefficients": {
+                              "description": "What [`FocusMap::z_at`] evaluates: a plane's z at the centre, then its\nslopes along x and y in µm a mm; or a spline's weight for each used\npoint, then its plane's three.",
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "required": [
+                            "surface",
+                            "used",
+                            "rejected",
+                            "centre",
+                            "coefficients"
+                          ]
+                        },
+                        "kind": {
+                          "const": "map",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "map"
+                      ]
+                    },
+                    {
+                      "description": "By autofocus, as the scan reaches every `every`-th tile from the\nfirst; the tiles between at the last z found (P36).",
+                      "type": "object",
+                      "properties": {
+                        "every": {
+                          "description": "How many tiles each autofocus serves, at least 1.",
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "kind": {
+                          "const": "autofocus",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "every"
+                      ]
+                    }
+                  ]
+                },
+                "stack": {
+                  "description": "The stack taken at each tile, or `None` for one plane.",
+                  "oneOf": [
+                    {
+                      "description": "A stack of planes through each tile's z.",
+                      "type": "object",
+                      "properties": {
+                        "below_um": {
+                          "description": "How far below the tile's z it starts, in µm.",
+                          "type": "number"
+                        },
+                        "above_um": {
+                          "description": "How far above the tile's z it may end.",
+                          "type": "number"
+                        },
+                        "step_um": {
+                          "description": "The step between planes.",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "below_um",
+                        "above_um",
+                        "step_um"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tiles": {
+                  "description": "The tiles, in order.",
+                  "type": "array",
+                  "items": {
+                    "description": "One tile: where one frame, or one stack, is taken.",
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "description": "Its place in the order, from 0.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "row": {
+                        "description": "Its row in the grid, from the least y; 0 for a position.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "column": {
+                        "description": "Its column in the grid, from the least x; a position's place in its\nlist.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "x_um": {
+                        "description": "The stage's x at its centre, in µm.",
+                        "type": "number"
+                      },
+                      "y_um": {
+                        "description": "The stage's y at its centre.",
+                        "type": "number"
+                      },
+                      "z_um": {
+                        "description": "The stage's z, if it is known before the scan: fixed, from the map,\nor the position's own.",
+                        "oneOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "name": {
+                        "description": "A position's name.",
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "row",
+                      "column",
+                      "x_um",
+                      "y_um"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "pattern",
+                "field",
+                "rows",
+                "columns",
+                "z",
+                "tiles"
+              ]
+            },
+            "done": {
+              "description": "The tiles done, in order.",
+              "type": "array",
+              "items": {
+                "description": "A tile done.",
+                "type": "object",
+                "properties": {
+                  "index": {
+                    "description": "Its place in the plan.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "x_um": {
+                    "description": "Where the stage was at its first frame, in µm.",
+                    "type": "number"
+                  },
+                  "y_um": {
+                    "description": "Its y.",
+                    "type": "number"
+                  },
+                  "z_um": {
+                    "description": "The z it was focused at, its stack's planes about it.",
+                    "type": "number"
+                  },
+                  "frames": {
+                    "description": "Its frames.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "index",
+                  "x_um",
+                  "y_um",
+                  "z_um",
+                  "frames"
+                ]
+              }
+            },
+            "refused": {
+              "description": "Autofocus runs refused, the last z found kept for their tiles.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "state": {
+              "description": "`running`, `completed`, `cancelled` or `failed`.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "job",
+            "plan",
+            "done",
+            "refused",
+            "state"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/scan/progress",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "plan": {
+      "description": "Its plan and what it would take, as `request` asks: nothing moves.",
+      "title": "Plans a scan.",
+      "forms": [
+        {
+          "href": "/api/v1/scan/plan",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "plan_input",
+        "type": "object",
+        "properties": {
+          "request": {
+            "description": "A scan, as a client asks for it.",
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "description": "`raster`, `snake`, `tiled_stack`, `z_scan` or `positions`, or an\nextension's workflow by name.",
+                "type": "string"
+              },
+              "region": {
+                "description": "Where a raster, a snake or a tiled z-stack goes.",
+                "oneOf": [
+                  {
+                    "description": "Where a scan goes, in stage µm. In JSON, an object of one key, its kind:\n`{\"rect\": {\"origin\", \"size\"}}`, `{\"polygon\": {\"corners\"}}` or\n`{\"mask\": {…}}`.",
+                    "oneOf": [
+                      {
+                        "description": "A rectangle, square with the stage, its edges inside.",
+                        "type": "object",
+                        "properties": {
+                          "rect": {
+                            "description": "An axis-aligned rectangle: its corner of least x and y, and its size.",
+                            "type": "object",
+                            "properties": {
+                              "origin": {
+                                "description": "The corner of least x and y: the top left, in an image.",
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "description": "Across.",
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "description": "Down, in an image.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ]
+                              },
+                              "size": {
+                                "description": "Its size.",
+                                "type": "object",
+                                "properties": {
+                                  "width": {
+                                    "description": "Along x.",
+                                    "type": "number"
+                                  },
+                                  "height": {
+                                    "description": "Along y.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "width",
+                                  "height"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "origin",
+                              "size"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "rect"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "description": "A polygon, by its corners in order: it closes itself. Its edges are\ninside, and its inside is by the even-odd rule, so a polygon that\ncrosses itself leaves out what it goes round twice.",
+                        "type": "object",
+                        "properties": {
+                          "polygon": {
+                            "type": "object",
+                            "properties": {
+                              "corners": {
+                                "description": "Its corners.",
+                                "type": "array",
+                                "items": {
+                                  "description": "A point, or a vector, in a plane.",
+                                  "type": "object",
+                                  "properties": {
+                                    "x": {
+                                      "description": "Across.",
+                                      "type": "number"
+                                    },
+                                    "y": {
+                                      "description": "Down, in an image.",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "x",
+                                    "y"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "corners"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "polygon"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "description": "A mask's cells that are in.",
+                        "type": "object",
+                        "properties": {
+                          "mask": {
+                            "description": "A grid of cells over the stage, each in or out: where tissue is, as an\noverview finds it (P37), or any other shape.",
+                            "type": "object",
+                            "properties": {
+                              "origin": {
+                                "description": "The corner of its first cell, of least x and y, in µm.",
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "description": "Across.",
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "description": "Down, in an image.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ]
+                              },
+                              "cell_um": {
+                                "description": "A cell's side, in µm.",
+                                "type": "number"
+                              },
+                              "width": {
+                                "description": "Its width, in cells.",
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "height": {
+                                "description": "Its height, in cells.",
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "cells": {
+                                "description": "Whether each cell is in, by rows from the first.",
+                                "type": "array",
+                                "items": {
+                                  "type": "boolean"
+                                }
+                              }
+                            },
+                            "required": [
+                              "origin",
+                              "cell_um",
+                              "width",
+                              "height",
+                              "cells"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "mask"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "at": {
+                "description": "Where a z-scan is taken, in µm.",
+                "oneOf": [
+                  {
+                    "description": "A point, or a vector, in a plane.",
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "description": "Across.",
+                        "type": "number"
+                      },
+                      "y": {
+                        "description": "Down, in an image.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "positions": {
+                "description": "The positions to visit, in order.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "description": "A position to visit, as a multi-position plan is given it.",
+                  "type": "object",
+                  "properties": {
+                    "x_um": {
+                      "description": "Its x, in µm.",
+                      "type": "number"
+                    },
+                    "y_um": {
+                      "description": "Its y.",
+                      "type": "number"
+                    },
+                    "z_um": {
+                      "description": "Its own z, if it has one: where its focus was set by hand.",
+                      "oneOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "description": "Its name, if it has one.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "x_um",
+                    "y_um"
+                  ]
+                }
+              },
+              "stack": {
+                "description": "The stack at each tile: a z-scan's and a tiled z-stack's.",
+                "oneOf": [
+                  {
+                    "description": "A stack of planes through each tile's z.",
+                    "type": "object",
+                    "properties": {
+                      "below_um": {
+                        "description": "How far below the tile's z it starts, in µm.",
+                        "type": "number"
+                      },
+                      "above_um": {
+                        "description": "How far above the tile's z it may end.",
+                        "type": "number"
+                      },
+                      "step_um": {
+                        "description": "The step between planes.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "below_um",
+                      "above_um",
+                      "step_um"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "z": {
+                "description": "How each tile's z is found: the stage's z now, if not given.",
+                "oneOf": [
+                  {
+                    "description": "How each tile's z is found.",
+                    "oneOf": [
+                      {
+                        "description": "Every tile at one z.",
+                        "type": "object",
+                        "properties": {
+                          "z_um": {
+                            "description": "The z, in µm.",
+                            "type": "number"
+                          },
+                          "kind": {
+                            "const": "fixed",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "z_um"
+                        ]
+                      },
+                      {
+                        "description": "Each tile at a focus map's z at its centre.",
+                        "type": "object",
+                        "properties": {
+                          "map": {
+                            "description": "The map.",
+                            "type": "object",
+                            "properties": {
+                              "surface": {
+                                "description": "The surface.",
+                                "oneOf": [
+                                  {
+                                    "description": "A plane: a slide lying flat, tilted.",
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "const": "plane",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ]
+                                  },
+                                  {
+                                    "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                                    "type": "object",
+                                    "properties": {
+                                      "smoothing": {
+                                        "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                        "type": "number"
+                                      },
+                                      "kind": {
+                                        "const": "thin_plate",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "smoothing"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "used": {
+                                "description": "The points fitted.",
+                                "type": "array",
+                                "items": {
+                                  "description": "Focus measured at a point: where the stage was sharpest there.",
+                                  "type": "object",
+                                  "properties": {
+                                    "x_um": {
+                                      "description": "Its x, in µm.",
+                                      "type": "number"
+                                    },
+                                    "y_um": {
+                                      "description": "Its y.",
+                                      "type": "number"
+                                    },
+                                    "z_um": {
+                                      "description": "The z found there.",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "x_um",
+                                    "y_um",
+                                    "z_um"
+                                  ]
+                                }
+                              },
+                              "rejected": {
+                                "description": "The points rejected as outliers, in the order they were.",
+                                "type": "array",
+                                "items": {
+                                  "description": "Focus measured at a point: where the stage was sharpest there.",
+                                  "type": "object",
+                                  "properties": {
+                                    "x_um": {
+                                      "description": "Its x, in µm.",
+                                      "type": "number"
+                                    },
+                                    "y_um": {
+                                      "description": "Its y.",
+                                      "type": "number"
+                                    },
+                                    "z_um": {
+                                      "description": "The z found there.",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "x_um",
+                                    "y_um",
+                                    "z_um"
+                                  ]
+                                }
+                              },
+                              "rms_um": {
+                                "description": "The root mean square of how far the surface fitted to the others\nmisses each used point, in µm: how well the map foretells focus where\nit wasn't measured. `None` with only three points.",
+                                "oneOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "centre": {
+                                "description": "Where coordinates are taken from, in µm: the used points' middle.\nThey are taken in mm.",
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "description": "Across.",
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "description": "Down, in an image.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ]
+                              },
+                              "coefficients": {
+                                "description": "What [`FocusMap::z_at`] evaluates: a plane's z at the centre, then its\nslopes along x and y in µm a mm; or a spline's weight for each used\npoint, then its plane's three.",
+                                "type": "array",
+                                "items": {
+                                  "type": "number"
+                                }
+                              }
+                            },
+                            "required": [
+                              "surface",
+                              "used",
+                              "rejected",
+                              "centre",
+                              "coefficients"
+                            ]
+                          },
+                          "kind": {
+                            "const": "map",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "map"
+                        ]
+                      },
+                      {
+                        "description": "By autofocus, as the scan reaches every `every`-th tile from the\nfirst; the tiles between at the last z found (P36).",
+                        "type": "object",
+                        "properties": {
+                          "every": {
+                            "description": "How many tiles each autofocus serves, at least 1.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "kind": {
+                            "const": "autofocus",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "every"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "overlap": {
+                "description": "The share of a frame its neighbours overlap: a tenth if not given.",
+                "oneOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "params": {
+                "description": "A workflow's parameters, as its schema describes them."
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "request"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "A scan's plan, and what it would take.",
+        "title": "plan_output",
+        "type": "object",
+        "properties": {
+          "plan": {
+            "description": "The plan.",
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "description": "The pattern.",
+                "oneOf": [
+                  {
+                    "description": "Rows from the least y, each from its least x.",
+                    "const": "raster",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Rows from the least y, each the other way from the last.",
+                    "const": "snake",
+                    "type": "string"
+                  },
+                  {
+                    "description": "One position, a stack through it.",
+                    "const": "z_scan",
+                    "type": "string"
+                  },
+                  {
+                    "description": "A snake, a stack at each tile.",
+                    "const": "tiled_stack",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Positions, in the order given.",
+                    "const": "positions",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Positions an extension's workflow planned (ADR-0025).",
+                    "const": "workflow",
+                    "type": "string"
+                  }
+                ]
+              },
+              "motion": {
+                "description": "How the stage moves through it.",
+                "oneOf": [
+                  {
+                    "description": "It stops at each tile, settles, and takes its frames: M1's.",
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "stop_and_go",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ]
+                  },
+                  {
+                    "description": "Reserved for M3 (D14): each row swept at a constant speed, frames\ntriggered at the tiles' positions. The engine refuses it until then.",
+                    "type": "object",
+                    "properties": {
+                      "speed_um_s": {
+                        "description": "The sweep's speed, in µm/s.",
+                        "type": "number"
+                      },
+                      "kind": {
+                        "const": "continuous",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "speed_um_s"
+                    ]
+                  }
+                ],
+                "default": {
+                  "kind": "stop_and_go"
+                }
+              },
+              "field": {
+                "description": "The field that spaced the tiles.",
+                "type": "object",
+                "properties": {
+                  "corners_um": {
+                    "description": "The frame's corners about its centre, on the stage, in µm: from the\nimage's top left, round by its top right.",
+                    "type": "array",
+                    "items": {
+                      "description": "A point, or a vector, in a plane.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "description": "Across.",
+                          "type": "number"
+                        },
+                        "y": {
+                          "description": "Down, in an image.",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ]
+                    },
+                    "maxItems": 4,
+                    "minItems": 4
+                  },
+                  "cell_um": {
+                    "description": "The cell: the largest rectangle, square with the stage and of the\nframe's proportions (or, the camera turned near a right angle, the\nturned frame's), that the frame holds about its centre. A grid tiles\ncells, so a region its cells cover, its frames cover.",
+                    "type": "object",
+                    "properties": {
+                      "width": {
+                        "description": "Along x.",
+                        "type": "number"
+                      },
+                      "height": {
+                        "description": "Along y.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "overlap": {
+                    "description": "The share of a cell's width, and of its height, that its neighbours\nalong x, and along y, overlap.",
+                    "type": "number"
+                  },
+                  "step_um": {
+                    "description": "The grid's steps along x and y, in µm: the cell, less the overlap.",
+                    "type": "object",
+                    "properties": {
+                      "width": {
+                        "description": "Along x.",
+                        "type": "number"
+                      },
+                      "height": {
+                        "description": "Along y.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "height"
+                    ]
+                  }
+                },
+                "required": [
+                  "corners_um",
+                  "cell_um",
+                  "overlap",
+                  "step_um"
+                ]
+              },
+              "rows": {
+                "description": "The grid's rows; 1 for positions.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "columns": {
+                "description": "The grid's columns; the count of positions.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "z": {
+                "description": "How each tile's z is found.",
+                "oneOf": [
+                  {
+                    "description": "Every tile at one z.",
+                    "type": "object",
+                    "properties": {
+                      "z_um": {
+                        "description": "The z, in µm.",
+                        "type": "number"
+                      },
+                      "kind": {
+                        "const": "fixed",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "z_um"
+                    ]
+                  },
+                  {
+                    "description": "Each tile at a focus map's z at its centre.",
+                    "type": "object",
+                    "properties": {
+                      "map": {
+                        "description": "The map.",
+                        "type": "object",
+                        "properties": {
+                          "surface": {
+                            "description": "The surface.",
+                            "oneOf": [
+                              {
+                                "description": "A plane: a slide lying flat, tilted.",
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "plane",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                                "type": "object",
+                                "properties": {
+                                  "smoothing": {
+                                    "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                    "type": "number"
+                                  },
+                                  "kind": {
+                                    "const": "thin_plate",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "smoothing"
+                                ]
+                              }
+                            ]
+                          },
+                          "used": {
+                            "description": "The points fitted.",
+                            "type": "array",
+                            "items": {
+                              "description": "Focus measured at a point: where the stage was sharpest there.",
+                              "type": "object",
+                              "properties": {
+                                "x_um": {
+                                  "description": "Its x, in µm.",
+                                  "type": "number"
+                                },
+                                "y_um": {
+                                  "description": "Its y.",
+                                  "type": "number"
+                                },
+                                "z_um": {
+                                  "description": "The z found there.",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x_um",
+                                "y_um",
+                                "z_um"
+                              ]
+                            }
+                          },
+                          "rejected": {
+                            "description": "The points rejected as outliers, in the order they were.",
+                            "type": "array",
+                            "items": {
+                              "description": "Focus measured at a point: where the stage was sharpest there.",
+                              "type": "object",
+                              "properties": {
+                                "x_um": {
+                                  "description": "Its x, in µm.",
+                                  "type": "number"
+                                },
+                                "y_um": {
+                                  "description": "Its y.",
+                                  "type": "number"
+                                },
+                                "z_um": {
+                                  "description": "The z found there.",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x_um",
+                                "y_um",
+                                "z_um"
+                              ]
+                            }
+                          },
+                          "rms_um": {
+                            "description": "The root mean square of how far the surface fitted to the others\nmisses each used point, in µm: how well the map foretells focus where\nit wasn't measured. `None` with only three points.",
+                            "oneOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "centre": {
+                            "description": "Where coordinates are taken from, in µm: the used points' middle.\nThey are taken in mm.",
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "description": "Across.",
+                                "type": "number"
+                              },
+                              "y": {
+                                "description": "Down, in an image.",
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ]
+                          },
+                          "coefficients": {
+                            "description": "What [`FocusMap::z_at`] evaluates: a plane's z at the centre, then its\nslopes along x and y in µm a mm; or a spline's weight for each used\npoint, then its plane's three.",
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "required": [
+                          "surface",
+                          "used",
+                          "rejected",
+                          "centre",
+                          "coefficients"
+                        ]
+                      },
+                      "kind": {
+                        "const": "map",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "map"
+                    ]
+                  },
+                  {
+                    "description": "By autofocus, as the scan reaches every `every`-th tile from the\nfirst; the tiles between at the last z found (P36).",
+                    "type": "object",
+                    "properties": {
+                      "every": {
+                        "description": "How many tiles each autofocus serves, at least 1.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "kind": {
+                        "const": "autofocus",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "every"
+                    ]
+                  }
+                ]
+              },
+              "stack": {
+                "description": "The stack taken at each tile, or `None` for one plane.",
+                "oneOf": [
+                  {
+                    "description": "A stack of planes through each tile's z.",
+                    "type": "object",
+                    "properties": {
+                      "below_um": {
+                        "description": "How far below the tile's z it starts, in µm.",
+                        "type": "number"
+                      },
+                      "above_um": {
+                        "description": "How far above the tile's z it may end.",
+                        "type": "number"
+                      },
+                      "step_um": {
+                        "description": "The step between planes.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "below_um",
+                      "above_um",
+                      "step_um"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tiles": {
+                "description": "The tiles, in order.",
+                "type": "array",
+                "items": {
+                  "description": "One tile: where one frame, or one stack, is taken.",
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "description": "Its place in the order, from 0.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "row": {
+                      "description": "Its row in the grid, from the least y; 0 for a position.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "column": {
+                      "description": "Its column in the grid, from the least x; a position's place in its\nlist.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "x_um": {
+                      "description": "The stage's x at its centre, in µm.",
+                      "type": "number"
+                    },
+                    "y_um": {
+                      "description": "The stage's y at its centre.",
+                      "type": "number"
+                    },
+                    "z_um": {
+                      "description": "The stage's z, if it is known before the scan: fixed, from the map,\nor the position's own.",
+                      "oneOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "description": "A position's name.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "row",
+                    "column",
+                    "x_um",
+                    "y_um"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "pattern",
+              "field",
+              "rows",
+              "columns",
+              "z",
+              "tiles"
+            ]
+          },
+          "estimate": {
+            "description": "Its estimate, at the stage's default speed, the camera's frame rate,\n50 ms of settling and 10 s an autofocus.",
+            "type": "object",
+            "properties": {
+              "tiles": {
+                "description": "Its tiles.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "frames": {
+                "description": "Its frames: each plane at each tile.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "bytes": {
+                "description": "The bytes recorded, before compression.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "travel_um": {
+                "description": "How far the stage goes from the first tile to the last, in µm, in\nstraight lines, as G-code moves it.",
+                "type": "number"
+              },
+              "autofocus_runs": {
+                "description": "How many times it autofocuses.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "seconds": {
+                "description": "How long it takes, in s: the travel at speed; each frame, after its\nsettling; and each autofocus.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "tiles",
+              "frames",
+              "bytes",
+              "travel_um",
+              "autofocus_runs",
+              "seconds"
+            ]
+          }
+        },
+        "required": [
+          "plan",
+          "estimate"
+        ]
+      },
+      "synchronous": false
+    },
+    "run": {
+      "description": "As `request` asks, into a new acquisition of `project`, named `name`,\nas `options` say (settling, approach, autofocus). A job: answered at\nonce with where to follow it. Each scan ends where it started.\n(`start` is every Thing's own starting, in `teta-wot`, as `stop` is:\nADR-0034.)",
+      "title": "Runs a scan.",
+      "forms": [
+        {
+          "href": "/api/v1/scan/run",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "run_input",
+        "type": "object",
+        "properties": {
+          "request": {
+            "description": "A scan, as a client asks for it.",
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "description": "`raster`, `snake`, `tiled_stack`, `z_scan` or `positions`, or an\nextension's workflow by name.",
+                "type": "string"
+              },
+              "region": {
+                "description": "Where a raster, a snake or a tiled z-stack goes.",
+                "oneOf": [
+                  {
+                    "description": "Where a scan goes, in stage µm. In JSON, an object of one key, its kind:\n`{\"rect\": {\"origin\", \"size\"}}`, `{\"polygon\": {\"corners\"}}` or\n`{\"mask\": {…}}`.",
+                    "oneOf": [
+                      {
+                        "description": "A rectangle, square with the stage, its edges inside.",
+                        "type": "object",
+                        "properties": {
+                          "rect": {
+                            "description": "An axis-aligned rectangle: its corner of least x and y, and its size.",
+                            "type": "object",
+                            "properties": {
+                              "origin": {
+                                "description": "The corner of least x and y: the top left, in an image.",
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "description": "Across.",
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "description": "Down, in an image.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ]
+                              },
+                              "size": {
+                                "description": "Its size.",
+                                "type": "object",
+                                "properties": {
+                                  "width": {
+                                    "description": "Along x.",
+                                    "type": "number"
+                                  },
+                                  "height": {
+                                    "description": "Along y.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "width",
+                                  "height"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "origin",
+                              "size"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "rect"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "description": "A polygon, by its corners in order: it closes itself. Its edges are\ninside, and its inside is by the even-odd rule, so a polygon that\ncrosses itself leaves out what it goes round twice.",
+                        "type": "object",
+                        "properties": {
+                          "polygon": {
+                            "type": "object",
+                            "properties": {
+                              "corners": {
+                                "description": "Its corners.",
+                                "type": "array",
+                                "items": {
+                                  "description": "A point, or a vector, in a plane.",
+                                  "type": "object",
+                                  "properties": {
+                                    "x": {
+                                      "description": "Across.",
+                                      "type": "number"
+                                    },
+                                    "y": {
+                                      "description": "Down, in an image.",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "x",
+                                    "y"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "corners"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "polygon"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "description": "A mask's cells that are in.",
+                        "type": "object",
+                        "properties": {
+                          "mask": {
+                            "description": "A grid of cells over the stage, each in or out: where tissue is, as an\noverview finds it (P37), or any other shape.",
+                            "type": "object",
+                            "properties": {
+                              "origin": {
+                                "description": "The corner of its first cell, of least x and y, in µm.",
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "description": "Across.",
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "description": "Down, in an image.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ]
+                              },
+                              "cell_um": {
+                                "description": "A cell's side, in µm.",
+                                "type": "number"
+                              },
+                              "width": {
+                                "description": "Its width, in cells.",
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "height": {
+                                "description": "Its height, in cells.",
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "cells": {
+                                "description": "Whether each cell is in, by rows from the first.",
+                                "type": "array",
+                                "items": {
+                                  "type": "boolean"
+                                }
+                              }
+                            },
+                            "required": [
+                              "origin",
+                              "cell_um",
+                              "width",
+                              "height",
+                              "cells"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "mask"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "at": {
+                "description": "Where a z-scan is taken, in µm.",
+                "oneOf": [
+                  {
+                    "description": "A point, or a vector, in a plane.",
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "description": "Across.",
+                        "type": "number"
+                      },
+                      "y": {
+                        "description": "Down, in an image.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "positions": {
+                "description": "The positions to visit, in order.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "description": "A position to visit, as a multi-position plan is given it.",
+                  "type": "object",
+                  "properties": {
+                    "x_um": {
+                      "description": "Its x, in µm.",
+                      "type": "number"
+                    },
+                    "y_um": {
+                      "description": "Its y.",
+                      "type": "number"
+                    },
+                    "z_um": {
+                      "description": "Its own z, if it has one: where its focus was set by hand.",
+                      "oneOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "description": "Its name, if it has one.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "x_um",
+                    "y_um"
+                  ]
+                }
+              },
+              "stack": {
+                "description": "The stack at each tile: a z-scan's and a tiled z-stack's.",
+                "oneOf": [
+                  {
+                    "description": "A stack of planes through each tile's z.",
+                    "type": "object",
+                    "properties": {
+                      "below_um": {
+                        "description": "How far below the tile's z it starts, in µm.",
+                        "type": "number"
+                      },
+                      "above_um": {
+                        "description": "How far above the tile's z it may end.",
+                        "type": "number"
+                      },
+                      "step_um": {
+                        "description": "The step between planes.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "below_um",
+                      "above_um",
+                      "step_um"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "z": {
+                "description": "How each tile's z is found: the stage's z now, if not given.",
+                "oneOf": [
+                  {
+                    "description": "How each tile's z is found.",
+                    "oneOf": [
+                      {
+                        "description": "Every tile at one z.",
+                        "type": "object",
+                        "properties": {
+                          "z_um": {
+                            "description": "The z, in µm.",
+                            "type": "number"
+                          },
+                          "kind": {
+                            "const": "fixed",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "z_um"
+                        ]
+                      },
+                      {
+                        "description": "Each tile at a focus map's z at its centre.",
+                        "type": "object",
+                        "properties": {
+                          "map": {
+                            "description": "The map.",
+                            "type": "object",
+                            "properties": {
+                              "surface": {
+                                "description": "The surface.",
+                                "oneOf": [
+                                  {
+                                    "description": "A plane: a slide lying flat, tilted.",
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "const": "plane",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ]
+                                  },
+                                  {
+                                    "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                                    "type": "object",
+                                    "properties": {
+                                      "smoothing": {
+                                        "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                        "type": "number"
+                                      },
+                                      "kind": {
+                                        "const": "thin_plate",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "smoothing"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "used": {
+                                "description": "The points fitted.",
+                                "type": "array",
+                                "items": {
+                                  "description": "Focus measured at a point: where the stage was sharpest there.",
+                                  "type": "object",
+                                  "properties": {
+                                    "x_um": {
+                                      "description": "Its x, in µm.",
+                                      "type": "number"
+                                    },
+                                    "y_um": {
+                                      "description": "Its y.",
+                                      "type": "number"
+                                    },
+                                    "z_um": {
+                                      "description": "The z found there.",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "x_um",
+                                    "y_um",
+                                    "z_um"
+                                  ]
+                                }
+                              },
+                              "rejected": {
+                                "description": "The points rejected as outliers, in the order they were.",
+                                "type": "array",
+                                "items": {
+                                  "description": "Focus measured at a point: where the stage was sharpest there.",
+                                  "type": "object",
+                                  "properties": {
+                                    "x_um": {
+                                      "description": "Its x, in µm.",
+                                      "type": "number"
+                                    },
+                                    "y_um": {
+                                      "description": "Its y.",
+                                      "type": "number"
+                                    },
+                                    "z_um": {
+                                      "description": "The z found there.",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "x_um",
+                                    "y_um",
+                                    "z_um"
+                                  ]
+                                }
+                              },
+                              "rms_um": {
+                                "description": "The root mean square of how far the surface fitted to the others\nmisses each used point, in µm: how well the map foretells focus where\nit wasn't measured. `None` with only three points.",
+                                "oneOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "centre": {
+                                "description": "Where coordinates are taken from, in µm: the used points' middle.\nThey are taken in mm.",
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "description": "Across.",
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "description": "Down, in an image.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ]
+                              },
+                              "coefficients": {
+                                "description": "What [`FocusMap::z_at`] evaluates: a plane's z at the centre, then its\nslopes along x and y in µm a mm; or a spline's weight for each used\npoint, then its plane's three.",
+                                "type": "array",
+                                "items": {
+                                  "type": "number"
+                                }
+                              }
+                            },
+                            "required": [
+                              "surface",
+                              "used",
+                              "rejected",
+                              "centre",
+                              "coefficients"
+                            ]
+                          },
+                          "kind": {
+                            "const": "map",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "map"
+                        ]
+                      },
+                      {
+                        "description": "By autofocus, as the scan reaches every `every`-th tile from the\nfirst; the tiles between at the last z found (P36).",
+                        "type": "object",
+                        "properties": {
+                          "every": {
+                            "description": "How many tiles each autofocus serves, at least 1.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "kind": {
+                            "const": "autofocus",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "every"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "overlap": {
+                "description": "The share of a frame its neighbours overlap: a tenth if not given.",
+                "oneOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "params": {
+                "description": "A workflow's parameters, as its schema describes them."
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "additionalProperties": false
+          },
+          "project": {
+            "description": "A project: a folder of data on disk (P28).",
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "options": {
+            "oneOf": [
+              {
+                "description": "How a scan runs, each with a default.",
+                "type": "object",
+                "properties": {
+                  "settle_ms": {
+                    "description": "How long the stage settles after a move before its frame, in ms.",
+                    "default": 50.0,
+                    "type": "number"
+                  },
+                  "approach_um": {
+                    "description": "How far below a z the stage starts, to move up to it, in µm.",
+                    "default": 10.0,
+                    "type": "number"
+                  },
+                  "focus": {
+                    "description": "How each autofocus runs.",
+                    "default": {
+                      "measure": null,
+                      "sweep": "stepped",
+                      "range_um": null,
+                      "step_um": null,
+                      "region": null,
+                      "approach_um": 10.0,
+                      "settle_ms": 50.0
+                    },
+                    "type": "object",
+                    "properties": {
+                      "measure": {
+                        "description": "The measure: the light's by default.",
+                        "oneOf": [
+                          {
+                            "description": "A focus measure.",
+                            "oneOf": [
+                              {
+                                "description": "Brenner's gradient: transmitted light's default.",
+                                "const": "brenner",
+                                "type": "string"
+                              },
+                              {
+                                "description": "Tenengrad: reflected light's.",
+                                "const": "tenengrad",
+                                "type": "string"
+                              },
+                              {
+                                "description": "The variance of the Laplacian: fluorescence's.",
+                                "const": "laplacian",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "sweep": {
+                        "description": "Stepped, or continuous.",
+                        "oneOf": [
+                          {
+                            "description": "Position by position: a coarse sweep, then a fine one.",
+                            "const": "stepped",
+                            "type": "string"
+                          },
+                          {
+                            "description": "One pass at a constant speed, frames matched to z by their times.",
+                            "const": "continuous",
+                            "type": "string"
+                          }
+                        ],
+                        "default": "stepped"
+                      },
+                      "range_um": {
+                        "description": "How far to look either side of where the stage is, in µm: 6 depths\nof field by default.",
+                        "oneOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "step_um": {
+                        "description": "The coarse step, in µm: the depth of field by default. The fine step\nis a quarter of it.",
+                        "oneOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "region": {
+                        "description": "The frame's region looked at: its middle half each way by default.",
+                        "oneOf": [
+                          {
+                            "description": "A frame's region of the sensor, in its pixels.",
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "description": "Its left.",
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "y": {
+                                "description": "Its top.",
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "width": {
+                                "description": "Its width, in the frame's pixels.",
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "height": {
+                                "description": "Its height.",
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "width",
+                              "height"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "approach_um": {
+                        "description": "How far below a sweep's first position it is approached from, in µm.",
+                        "default": 10.0,
+                        "type": "number"
+                      },
+                      "settle_ms": {
+                        "description": "How long after the stage arrives a frame may start, in ms.",
+                        "default": 50.0,
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "request",
+          "project"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
+        "title": "run_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "The job.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "description": "Where it is, as it is now.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "href"
+        ]
+      },
+      "synchronous": false
+    }
+  },
+  "description": "Scans: planned and previewed with nothing moving, and run as hardware\njobs that make an acquisition of a project.",
+  "forms": [
+    {
+      "href": "/api/v1/scan/properties",
+      "op": [
+        "readallproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/scan/actions",
+      "op": [
+        "queryallactions"
+      ]
+    }
+  ],
+  "base": "http://127.0.0.1:8220/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Function"
+}

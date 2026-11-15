@@ -170,7 +170,8 @@ async fn bench() -> Bench {
         project,
         last,
         island,
-        field: Field::nominal(pixel, 256, 192, 0.1).unwrap(),
+        // The region's width is kept a multiple of 12, for the mosaic.
+        field: Field::nominal(pixel, 252, 192, 0.1).unwrap(),
         _acquisition: acquisition,
         _folder: folder,
     }
