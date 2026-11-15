@@ -233,11 +233,15 @@ L's budget is 900; P33 measured 3,156, about 24 % under its estimate of ~4,150.
 | `oscope-api` | `calibration` (2 more) | **The wizard's walk** over HTTP: every step done, the stage last, back over the tissue; the flat field over the tissue failed, and retried over clear glass; the dark frame, flat field and colour in use; a saved wizard that can't be read set aside. **A wrong magnification** fails the objective's step, naming the 20×; then skipped, and the wizard cancelled. **Resumed:** the server started again finds the wizard as it was |
 | `oscope-api` | `devices`, `jobs` | The Thing's TD (a snapshot); the job kinds listed; the samples counted |
 | `ex-wizard` | `--smoke` | The walk on the quarter sensor at ten times real time, held to P33's tolerances |
+| `ex-sim-samples`, `ex-http-walkthrough` | `--smoke` | The simulator's samples, the colour target among them |
 
 **Where they ran:**
 
-- **On Windows,** {{WINDOWS}}
-- **On Linux,** {{LINUX}}
+- **On Windows,** `scripts/ci-local.sh --cuda`, run alone on `766b596`: 44 of 44 steps, 436 tests in 167 suites.
+  - They included the Python tests, real, and the CUDA tests (`OSCOPE_CUDA=1` and the `cuda` feature), the simulator's vignetted GPU exposure among them.
+  - Every example's `--smoke` ran, `ex-wizard`'s new among them.
+  - Its first run, on `d2101d9`, failed one step: `ex-http-walkthrough --smoke` still counted the simulator's five samples, where there are now six.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of `766b596`, run alone: 43 of 43 steps, 436 tests in 167 suites, the Python tests real; 598 files, none with a CR.
 - **On two cores,** pinned, 5 times out of 5 each:
   - `oscope-sim`'s `truth`;
   - `oscope-workflows`' `store`, unit tests, `photometry` and `procedures`;
