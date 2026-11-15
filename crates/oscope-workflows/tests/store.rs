@@ -1,12 +1,13 @@
 //! The calibration store (P32; ADR-0023): versions per key, one active set
 //! per key, export and import, refusals, and the store read back from its
-//! files.
+//! files; dark and flat sets with their frames (P33).
 
+use oscope_compute::{Image, Shape};
 use oscope_core::{Um, Xyz};
 use oscope_hal::Travel;
 use oscope_workflows::calibration::{
-    CalibrationStore, Geometry, Instrument, PerAxis, STAGE_KEY, SoftLimits, StageValues,
-    StoreError, Values, geometry_key,
+    CalibrationStore, Dark, Geometry, Instrument, PerAxis, Region, STAGE_KEY, SoftLimits,
+    StageValues, StoreError, Values, dark_key, exposure_octave, geometry_key,
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -196,4 +197,63 @@ fn a_set_exports_and_imports_as_the_next_version_not_active() {
     limits["values"]["soft_limits"]["x"] = json!({"min": 5.0, "max": 1.0});
     assert!(refused(limits).contains("soft limits"));
     assert_eq!(to.list().len(), 2, "nothing refused was kept");
+}
+
+/// A dark frame taken at `taken_ms`, gain 1, in the mode `full`.
+fn dark(taken_ms: f64) -> Values {
+    Values::Dark(Dark {
+        mode: "full".to_owned(),
+        gain: 1.0,
+        exposure_ms: exposure_octave(taken_ms),
+        taken_ms,
+        region: Region {
+            x: 0,
+            y: 0,
+            width: 4,
+            height: 2,
+        },
+        frames: 16,
+        mean: 0.03,
+        spread: 0.001,
+    })
+}
+
+#[test]
+fn a_dark_frame_keeps_its_image_and_stays_on_its_instrument() {
+    let folder = tempfile::tempdir().unwrap();
+    let store = CalibrationStore::open(folder.path()).unwrap();
+    let data = (0..8).map(|i| i as f32 / 100.0).collect();
+    let image = Image::from_vec(Shape::new(4, 2, 1), data).unwrap();
+    // Saved with its image, and only so.
+    let without = store.save(dark(30.0), instrument(), None, true);
+    assert!(
+        matches!(without, Err(StoreError::Invalid(_))),
+        "{without:?}"
+    );
+    let with = store.save_with_image(stage(2.0), instrument(), None, true, &image);
+    assert!(matches!(with, Err(StoreError::Invalid(_))), "{with:?}");
+    let saved = store
+        .save_with_image(dark(30.0), instrument(), None, true, &image)
+        .unwrap();
+    assert_eq!(store.image(saved.id).unwrap(), image);
+    // One dark for an octave of exposure: 30 ms's serves 20 ms, not 40.
+    assert_eq!(saved.values.key(), dark_key("full", 1.0, 20.0));
+    assert_ne!(saved.values.key(), dark_key("full", 1.0, 40.0));
+    // Read back, active, with its image.
+    let again = CalibrationStore::open(folder.path()).unwrap();
+    let active = again.active(&dark_key("full", 1.0, 30.0));
+    assert_eq!(active.map(|s| s.id), Some(saved.id));
+    assert_eq!(again.image(saved.id).unwrap(), image);
+    // Its frame is this instrument's: neither exported nor imported.
+    let exported = again.export(saved.id);
+    assert!(
+        matches!(exported, Err(StoreError::Invalid(_))),
+        "{exported:?}"
+    );
+    let imported = again.import(serde_json::to_value(&saved).unwrap());
+    assert!(
+        matches!(imported, Err(StoreError::Invalid(_))),
+        "{imported:?}"
+    );
+    assert_eq!(again.list().len(), 1);
 }

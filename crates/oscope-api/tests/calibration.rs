@@ -1,7 +1,8 @@
 //! The `calibration` Thing over HTTP (P32): its jobs on the simulator, with
 //! a turned camera, objectives magnifying 2 % less than the catalogue says,
 //! and 3 µm of backlash; the sets listed, active, exported, imported and
-//! activated; the objective check; and what is refused.
+//! activated; the objective check; and what is refused. The wizard (P33),
+//! through every step, and through a wrong magnification.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -17,10 +18,15 @@ use teta_wot::testing::TestClient;
 /// The simulator ten times as fast as real time, on the quarter sensor
 /// (9.6 µm pixels), with the truth calibration recovers.
 async fn server(folder: &Path) -> TestClient {
+    server_scaled(folder, 0.98).await
+}
+
+/// `server`, its objectives magnifying `scale` times the catalogue's.
+async fn server_scaled(folder: &Path, scale: f64) -> TestClient {
     let mut config = DevicesConfig::default();
     let sim = &mut config.simulator;
     (sim.sensor, sim.focus, sim.rate) = ("quarter".to_owned(), 1_000.0, 10.0);
-    (sim.rotation, sim.scale, sim.backlash) = (-20.0, 0.98, 3.0);
+    (sim.rotation, sim.scale, sim.backlash) = (-20.0, scale, 3.0);
     // Vignetting, and a sensor whose colours cross, for photometry (P33).
     sim.vignetting = 0.2;
     sim.response = [[0.85, 0.2, 0.05], [0.1, 0.8, 0.1], [0.02, 0.18, 0.6]];
@@ -344,14 +350,70 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
     );
     // Every set the wizard made is in use.
     let active = client.get("/api/v1/calibration/active").await.json();
-    for kind in ["geometry", "stage", "flat", "colour"] {
+    for kind in ["geometry", "stage", "dark", "flat", "colour"] {
         assert!(active[kind].is_object(), "{kind}: {active}");
     }
+    // The flat field took the dark away, and found the vignetting.
+    let flat = &active["flat"]["values"];
+    assert!(
+        flat["dark"] == true && flat["uneven"].as_f64().unwrap() > 0.05,
+        "{flat}"
+    );
+    // The crosstalk showed, and the matrix took it away.
     let colour = &active["colour"]["values"];
+    assert!(colour["delta_e_before"].as_f64().unwrap() > 5.0, "{colour}");
     assert!(colour["delta_e_mean"].as_f64().unwrap() < 2.0, "{colour}");
     let confirmed = invoke(&client, "calibration/wizard_confirm", json!({})).await;
     assert!(
         confirmed["error"].to_string().contains("conflict (409)"),
         "{confirmed}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_wizard_s_objective_step_fails_through_a_wrong_magnification() {
+    let folder = tempfile::tempdir().unwrap();
+    // Half as much again as the 10×'s: nearer the 20×'s than its own.
+    let client = server_scaled(folder.path(), 1.5).await;
+    assert_eq!(
+        invoke(&client, "stage/home", json!({})).await["status"],
+        "completed"
+    );
+    let island = HeTissue::new(1, Slide::COVERSLIP).islands()[0];
+    let over = json!({"x": island.x, "y": island.y, "z": 1_002.0});
+    assert_eq!(
+        invoke(&client, "stage/move_to", over).await["status"],
+        "completed"
+    );
+    let streaming = invoke(&client, "camera/start_streaming", json!({})).await;
+    assert_eq!(streaming["status"], "completed", "{streaming}");
+    let steps = json!({"steps": ["objective", "dark"]});
+    let started = invoke(&client, "calibration/wizard_start", steps).await;
+    assert_eq!(
+        started["output"]["steps"].as_array().unwrap().len(),
+        2,
+        "{started}"
+    );
+    let state = step(&client, 0).await;
+    assert_eq!(state["state"], "failed", "{state}");
+    let error = state["error"].as_str().unwrap();
+    assert!(error.contains("as through the 20x"), "{error}");
+    // Skipped, the next step prompts; cancelled, the wizard is finished.
+    let skipped = invoke(&client, "calibration/wizard_skip", json!({})).await;
+    let steps = &skipped["output"]["steps"];
+    assert_eq!(
+        (
+            steps[0]["state"]["state"].as_str(),
+            steps[1]["state"]["state"].as_str()
+        ),
+        (Some("skipped"), Some("prompting")),
+        "{skipped}"
+    );
+    let cancelled = invoke(&client, "calibration/wizard_cancel", json!({})).await;
+    let wizard = &cancelled["output"];
+    assert_eq!(
+        (wizard["finished"].as_bool(), wizard["cancelled"].as_bool()),
+        (Some(true), Some(true)),
+        "{cancelled}"
     );
 }

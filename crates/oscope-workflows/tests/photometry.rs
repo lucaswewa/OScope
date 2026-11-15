@@ -1,7 +1,8 @@
 //! The photometric calibrations on the simulator (P33): dark subtraction
 //! removes the offset; the flat field evens out the optics' vignetting,
 //! and refuses a field that isn't blank; the colour matrix recovers the
-//! colour target's colours through a sensor's crosstalk.
+//! colour target's colours through a sensor's crosstalk, and is refused
+//! where they aren't the target's.
 
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -213,20 +214,19 @@ async fn a_flat_field_is_refused_where_the_slide_isnt_blank() {
     assert!(why.contains("isn't blank"), "{why}");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_colour_matrix_recovers_the_target_s_colours() {
-    let _turn = TURN.lock().await;
-    let centre = Point2::new(47_000.0, 12_500.0);
-    let bench = bench(Slide_::Target(centre), centre, 0.2, CROSSED).await;
-    let instrument = Instrument {
+fn instrument() -> Instrument {
+    Instrument {
         camera: "simulated".to_owned(),
         sensor_pixel_um: 9.6,
         binning: 1,
         stage: "simulated".to_owned(),
         objective: None,
         tube_lens_um: 200_000.0,
-    };
-    // The camera's true geometry: unturned, 0.96 µm a pixel.
+    }
+}
+
+/// The bench's true geometry, active: unturned, 0.96 µm a pixel.
+fn true_geometry(bench: &Bench) {
     let geometry = Geometry {
         objective: "10x".to_owned(),
         binning: 1,
@@ -241,10 +241,21 @@ async fn the_colour_matrix_recovers_the_target_s_colours() {
         step_um: 0.0,
         moves: 0,
     };
-    let store = &bench.rig.store;
-    store
-        .save(Values::Geometry(geometry), instrument.clone(), None, true)
+    let values = Values::Geometry(geometry);
+    bench
+        .rig
+        .store
+        .save(values, instrument(), None, true)
         .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_colour_matrix_recovers_the_target_s_colours() {
+    let _turn = TURN.lock().await;
+    let centre = Point2::new(47_000.0, 12_500.0);
+    let bench = bench(Slide_::Target(centre), centre, 0.2, CROSSED).await;
+    true_geometry(&bench);
+    let store = &bench.rig.store;
     // The flat field, from clear glass beside the target.
     bench
         .rig
@@ -285,4 +296,20 @@ async fn the_colour_matrix_recovers_the_target_s_colours() {
         "{colour:?}"
     );
     let _ = &bench.camera;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_colour_matrix_that_fits_poorly_is_refused() {
+    let _turn = TURN.lock().await;
+    // Over the tissue, the patches' places hold its colours, not the target's.
+    let island = HeTissue::new(1, Slide::COVERSLIP).islands()[0];
+    let bench = bench(Slide_::Tissue, island, 0.0, IDEAL).await;
+    true_geometry(&bench);
+    let options = Frames {
+        frames: 2,
+        ..Frames::default()
+    };
+    let refused = measure_colour(&bench.rig, &options, &Quiet).await;
+    let why = refused.unwrap_err().to_string();
+    assert!(why.contains("fit to a mean ΔE*ab"), "{why}");
 }

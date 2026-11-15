@@ -187,6 +187,15 @@ mod tests {
         assert!((white[0] - 100.0).abs() < 1e-9 && white[1].abs() < 1e-9 && white[2].abs() < 1e-9);
         let grey = lab([0.2; 3]);
         assert!(grey[1].abs() < 1e-9 && grey[2].abs() < 1e-9 && grey[0] > 50.0);
+        // sRGB's red is L* 53.24, a* 80.09, b* 67.20 under D65.
+        let red = lab([1.0, 0.0, 0.0]);
+        let off = [53.24, 80.09, 67.20]
+            .iter()
+            .zip(red)
+            .map(|(a, b)| (a - b).abs());
+        assert!(off.fold(0.0, f64::max) < 0.05, "{red:?}");
+        // Below (6/29)³, lightness is linear: L* = (29/3)³ Y.
+        assert!((lab([0.001; 3])[0] - 0.001 * (29.0f64 / 3.0).powi(3)).abs() < 1e-9);
         assert_eq!(delta_e76([0.3, 0.2, 0.1], [0.3, 0.2, 0.1]), 0.0);
         assert!(delta_e76([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]) > 100.0);
     }
