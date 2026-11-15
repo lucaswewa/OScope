@@ -123,7 +123,12 @@ M's budget is 600; P35 measured 2,595, about 4 % over its estimate of ~2,500.
 
 **Where they ran:**
 
-{{RAN}}
+- **On Windows,** `scripts/ci-local.sh`, run alone on `f4bb910`: 46 of 46 steps, 465 tests in 173 suites. The Python tests ran for real, and every example's `--smoke`, `ex-plan`'s new among them. The CUDA tests weren't run, as P35 touches no CUDA path.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of `f4bb910`, run alone: 46 of 46 steps, 465 tests in 173 suites, the Python tests real; 636 files, none with a CR.
+- **On two cores,** pinned, 5 times out of 5 each:
+  - `oscope-sim`'s `truth` and `tiles`;
+  - `oscope-workflows`' unit tests and `scan`;
+  - `ex-plan --smoke`.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): thirty-two of thirty-three caught.
 
