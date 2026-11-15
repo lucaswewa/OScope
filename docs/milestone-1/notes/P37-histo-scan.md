@@ -6,7 +6,14 @@
 
 ## Summary
 
-{{SUMMARY}}
+Scan only where there's tissue ([spec](../phases.md#p37); plan §5.14), as the behaviour spec below sets out, written before the code.
+
+- **The overview,** a hardware job: frames a field apart over a region, in the camera's mode (binned, ideally), reduced to colour in pixels of 50 µm.
+- **Tissue detection:** saturation over Otsu's threshold, never under 0.05; a closing and an opening; pieces under 0.05 mm² dropped; a margin of 100 µm.
+- **The `tissue` pattern:** a snake over the tissue found, its z by a focus map the engine measures before the first tile (the new `measure` policy).
+- **On the simulator,** 99.89 % of the tissue in 16 × 12 mm about the first island, by its own truth, is covered by 176 tiles where a raster takes 224; across the island's edge, 99.86 % by 38 where a raster takes 56. An empty slide finds no tissue.
+- **`ex-histo-scan`** walks it through the API, and its page shows the overview, the tissue and the tiles as they arrive.
+- **P36 is marked Done.**
 
 ## Behaviour spec
 
@@ -55,27 +62,89 @@ An empty overview has no tissue, and its scan is refused, saying so.
 
 ## What was built
 
-{{BUILT}}
+- **`oscope_workflows::scan`:**
+  - **`overview`** and its job, `scan.overview` (`overview_jobs`, `LastOverview`): an `Overview` of a region's colour, from frames a field apart.
+  - **`detect`,** with `TissueOptions`: the `Tissue` in an overview, a `Mask` of it, its threshold, area and pieces. **`otsu`:** the threshold.
+  - **`ZPolicy::Measure`** (`columns`, `rows`, `surface`), which the engine turns into a measured map before its first tile.
+  - `autofocus`'s helper for a frame's colours, `colour_cells`, shared with white balance.
+- **`oscope-sim`:** `HeTissue::is_tissue`, the truth the tests hold coverage to.
+- **The `scan` Thing:** the `overview` action (a job), the `last_overview` property (the image in base64, the tissue as runs of pixels), and the `tissue` pattern.
+- **`examples/ex-histo-scan`** (port 8241).
 
 ## How to try it
 
-{{TRY}}
+`cargo run --release -p ex-histo-scan`, then open http://127.0.0.1:8241/. The [README](../../../examples/ex-histo-scan/README.md) shows what it prints: on the owner's PC, an overview of 49 frames in 16.1 s, 25.5 mm² of tissue in 3 pieces, 38 tiles where a raster takes 56, 99.86 % of the truth covered, and the scan in 123.6 s.
 
 ## Performance
 
-{{PERF}}
+No budget in §5.20 applies. On the simulator at real time, the overview of 8 × 6 mm, 49 frames binned 3 × 3, took 16.1 s, and detection a few milliseconds.
 
 ## Design notes and deviations from the plan
 
-{{DESIGN}}
+### The spec's revision, from the tests' first run
+
+**The exposure must suit the mode.** The first coverage test found no tissue: every pixel of the overview was white. Binned 3 × 3, a pixel gathers nine times the light, and the exposure set for full resolution saturated it. The overview takes the camera as it is given, so its caller sets the exposure for the binned mode, as P34's auto exposure does: the tests and `ex-histo-scan` run it after each change of mode. The spec's first step says the mode is the caller's; the exposure is too.
+
+### The overview
+
+- **Frames a field apart** are a snake with no overlap, from P35's planner, at the stage's z. Their cells tile the region, so every overview pixel gets samples.
+- **Each cell is placed** through the matrix the field's corners give, so a turned camera's cells land where they are on the stage.
+- **The camera's mode is the caller's.** Changing it means stopping and starting the stream, which the `camera` Thing does. So an overview takes the mode it finds, and the scan after it its own.
+
+### Tissue detection
+
+- **Saturation** is (max − min) / max, so the light's level doesn't change it: the tests find the same tissue in light a tenth as bright.
+- **Otsu's threshold** splits a 256-bin histogram where the variance between the classes is greatest. On glass alone, it would split the noise, so it is never under 0.05.
+- **The closing and the opening** use a 3 × 3 square, eroding only by neighbours within the image, so that tissue at the region's edge isn't eaten away.
+- **The margin,** 100 µm, two pixels, grows the tissue square by square. It also fills holes smaller than it, which a scan would cross anyway.
+
+### The `measure` policy
+
+- **The engine measures the map first,** before it starts its recording: autofocus at the tiles nearest the middles of a grid over them, a tile counted once if two middles are nearest it. The fit's floor is a quarter of the depth of field.
+- **The plan then becomes a plan by the map:** each tile at the map's z, and its policy `map`. So the recording, the acquisition and the progress keep the measured map, not the request to measure one.
+- **A cancel or failure while measuring** returns the stage to the start, with nothing recorded.
+
+### The `scan` Thing
+
+- **`overview`** runs the job with the camera's field now, with no overlap. **`last_overview`** gives the image in base64 and the tissue as runs of pixels, so a page draws them without a mask of 1 and 0 for every pixel.
+- **The `tissue` pattern** is a snake over the last overview's tissue, its z by a 3 × 3 measured map unless asked otherwise. Without an overview, or with no tissue in it, it is refused, saying which.
+
+### Coverage, against the truth
+
+The tests hold coverage to the simulated tissue's own truth, `HeTissue::is_tissue`, every 50 µm, not to the detection. A point counts if it is in some tile's frame. Holes in the tissue are glass, and don't count.
+
+### The tests' turns, and two cores
+
+{{TWOCORE}}
+
+### The size
+
+{{SIZEDETAIL}}
 
 ## Tests
 
-{{TESTS}}
+| Crate | Test | What it checks |
+|---|---|---|
+| `oscope-workflows` | `scan::histo` (4, unit) | **Otsu** splits two classes between them, and gives 0 for values all alike. **Tissue is found, cleaned, kept by area and grown:** a hole filled, a lone pixel removed, a speck of 0.04 mm² dropped, the margin of two pixels. **The same tissue in dim light.** **Grey glass alone,** with noise, is no tissue, at the floor |
+| `oscope-workflows` | `histo` (2) | **Coverage:** an overview binned 3 × 3 of 16 × 12 mm about the first island, its tissue covered by 176 tiles where a raster takes 224, 99.89 % of the truth's points of tissue in a tile. **An empty slide** has no tissue, so a snake over it is refused |
+| `oscope-workflows` | `scan_engine` (1 more) | **A map measured before the first tile** puts each tile at its z, the plan's policy then `map`, every tile within a quarter of the depth of field of the truth on the tilted slide |
+| `oscope-api` | `scan` (1 more), and a unit test | **Over HTTP:** the `tissue` pattern refused before an overview; an overview in `bin3`, 140 frames, its image and tissue; the tissue's tiles fewer than a raster's, their z a measured map. **Base64** as RFC 4648's examples |
+| `oscope-api` | `devices` (1 changed) | The `scan` Thing's TD (a snapshot) |
+| `ex-histo-scan` | `--smoke` | 99 % of the truth covered, fewer tiles than a raster, a frame for each tile |
+
+**Where they ran:**
+
+{{RAN}}
+
+**Mutation checks** (each broke the code on purpose, then the tests were run): {{MUTANTS}}
 
 ## Follow-ups and known gaps
 
-{{FOLLOW}}
+- **The whole coverslip's overview** takes some 1,000 frames binned at the 10×. A lower objective would take it in tens, but the objectives are swapped by hand (plan §2), so the overview takes the scan's.
+- **Islands one by one:** the snake crosses the gaps between pieces of tissue. An order by piece may save travel (P35's follow-up).
+- **Learned segmentation,** as Bándi et al. (2017) compare, for tissue that a threshold of colour misses, such as unstained or faint tissue.
+- **Tissue at the overview's region's edge** is cut there. A region with a margin of its own takes it in.
+- **The focus map's points** are the tiles nearest a grid, which on a sparse mask may cluster.
 
 ## Clean room
 

@@ -87,7 +87,27 @@ async fn the_tissue_found_is_covered_by_fewer_tiles_than_a_raster() {
         .unwrap();
     assert_eq!((taken.width, taken.height), (320, 240));
     let found = detect(&taken, &options.tissue);
-    assert!(found.kept >= 1 && found.area_mm2 > 10.0, "{found:?}");
+    let summary = (found.kept, found.area_mm2, found.threshold);
+    assert!(found.kept >= 1 && found.area_mm2 > 10.0, "{summary:?}");
+    // The mask itself, against the truth at each pixel's middle: it holds
+    // 99 % of the tissue, where the overview put each frame's cells.
+    let (mut pixels, mut held) = (0_u32, 0_u32);
+    for (k, &on) in found.mask.cells.iter().enumerate() {
+        let (i, j) = ((k % 320) as f64, (k / 320) as f64);
+        let at = Point2::new(
+            taken.origin.x + 25.0 + 50.0 * i,
+            taken.origin.y + 25.0 + 50.0 * j,
+        );
+        if tissue.is_tissue(at) {
+            pixels += 1;
+            held += u32::from(on);
+        }
+    }
+    let share = f64::from(held) / f64::from(pixels);
+    assert!(
+        share >= 0.99,
+        "the mask holds {held} of {pixels} pixels of tissue"
+    );
 
     let tiles = snake(
         &Region::Mask(found.mask.clone()),

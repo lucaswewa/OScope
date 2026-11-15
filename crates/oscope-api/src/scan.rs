@@ -139,25 +139,6 @@ fn base64(bytes: &[u8]) -> String {
     out
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn base64_is_rfc_4648_s() {
-        // RFC 4648, section 10.
-        let cases = [
-            ("", ""),
-            ("f", "Zg=="),
-            ("fo", "Zm8="),
-            ("foo", "Zm9v"),
-            ("foobar", "Zm9vYmFy"),
-        ];
-        for (bytes, text) in cases {
-            assert_eq!(super::base64(bytes.as_bytes()), text);
-        }
-        assert_eq!(super::base64(&[0xfb, 0xff, 0xbf]), "+/+/");
-    }
-}
-
 struct State {
     devices: Arc<Devices>,
     roots: Arc<Roots>,
@@ -559,5 +540,24 @@ impl ScanThing {
             .submit_kind(SCAN, params, account)
             .map_err(action_error)?;
         Ok(JobRef::new(id))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn base64_is_rfc_4648_s() {
+        // RFC 4648, section 10.
+        let cases = [
+            ("", ""),
+            ("f", "Zg=="),
+            ("fo", "Zm8="),
+            ("foo", "Zm9v"),
+            ("foobar", "Zm9vYmFy"),
+        ];
+        for (bytes, text) in cases {
+            assert_eq!(super::base64(bytes.as_bytes()), text);
+        }
+        assert_eq!(super::base64(&[0xfb, 0xff, 0xbf]), "+/+/");
     }
 }
