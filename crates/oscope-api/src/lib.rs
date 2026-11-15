@@ -23,6 +23,7 @@ mod data;
 pub mod devices;
 pub mod extensions;
 mod files;
+pub mod focus;
 pub mod jobs;
 pub mod logs;
 mod media;

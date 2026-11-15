@@ -415,6 +415,8 @@ async fn the_things_describe_themselves() {
         "preview",
         "capture",
         "calibration",
+        "autofocus",
+        "exposure",
     ] {
         // The ID differs from computer to computer: its form, then the rest.
         let mut td = tds[name].clone();

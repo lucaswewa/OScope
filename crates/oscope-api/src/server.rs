@@ -24,6 +24,7 @@ use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
 };
 use crate::extensions::ExtensionsThing;
+use crate::focus::{AutofocusThing, ExposureThing};
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::preview::PreviewThing;
@@ -175,7 +176,9 @@ impl ApiBuilder {
             .thing("objective", ObjectiveThing::default())
             .thing("preview", PreviewThing::default())
             .thing("capture", CaptureThing::default())
-            .thing("calibration", CalibrationThing::default());
+            .thing("calibration", CalibrationThing::default())
+            .thing("autofocus", AutofocusThing::default())
+            .thing("exposure", ExposureThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }
