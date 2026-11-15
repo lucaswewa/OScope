@@ -11,6 +11,116 @@ expression: td
   ],
   "title": "Scan",
   "properties": {
+    "last_overview": {
+      "description": "Its colours, and the tissue found in it, which the `tissue` pattern\nscans. None before the first.",
+      "title": "The latest overview.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "The latest overview, for a page: its colours and the tissue found.",
+          "type": "object",
+          "properties": {
+            "origin": {
+              "description": "Its first pixel's corner, in µm.",
+              "type": "object",
+              "properties": {
+                "x": {
+                  "description": "Across.",
+                  "type": "number"
+                },
+                "y": {
+                  "description": "Down, in an image.",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "x",
+                "y"
+              ]
+            },
+            "pixel_um": {
+              "description": "A pixel's side, in µm.",
+              "type": "number"
+            },
+            "width": {
+              "description": "Its width, in pixels.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "height": {
+              "description": "Its height.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "frames": {
+              "description": "The frames it took.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "image": {
+              "description": "Its colours, a byte each of red, green and blue, by rows, in base64.",
+              "type": "string"
+            },
+            "threshold": {
+              "description": "The saturation dividing tissue from glass.",
+              "type": "number"
+            },
+            "kept": {
+              "description": "The pieces of tissue kept.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "description": "Those dropped as too small.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "area_mm2": {
+              "description": "The tissue's area, before its margin, in mm².",
+              "type": "number"
+            },
+            "tissue": {
+              "description": "Where the tissue is, grown by its margin: in each row, runs of its\npixels, `[row, from, to)`.",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "maxItems": 3,
+                "minItems": 3
+              }
+            }
+          },
+          "required": [
+            "origin",
+            "pixel_um",
+            "width",
+            "height",
+            "frames",
+            "image",
+            "threshold",
+            "kept",
+            "dropped",
+            "area_mm2",
+            "tissue"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/scan/last_overview",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
     "patterns": {
       "description": "The built-in planners, and the extensions' workflows, each with its\nparameters' JSON Schema.",
       "title": "The patterns a scan may follow.",
@@ -418,6 +528,68 @@ expression: td
                         "kind",
                         "every"
                       ]
+                    },
+                    {
+                      "description": "By a focus map the scan measures before its first tile: autofocus\nat the tiles nearest the middles of a grid over them, then `surface`\nfitted (P37). Each tile then takes the map's z.",
+                      "type": "object",
+                      "properties": {
+                        "columns": {
+                          "description": "The grid's columns, from 1 to 10.",
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "rows": {
+                          "description": "Its rows, from 1 to 10.",
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "surface": {
+                          "description": "The surface fitted.",
+                          "oneOf": [
+                            {
+                              "description": "A plane: a slide lying flat, tilted.",
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "plane",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ]
+                            },
+                            {
+                              "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                              "type": "object",
+                              "properties": {
+                                "smoothing": {
+                                  "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                  "type": "number"
+                                },
+                                "kind": {
+                                  "const": "thin_plate",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "smoothing"
+                              ]
+                            }
+                          ]
+                        },
+                        "kind": {
+                          "const": "measure",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "columns",
+                        "rows",
+                        "surface"
+                      ]
                     }
                   ]
                 },
@@ -596,6 +768,275 @@ expression: td
     }
   },
   "actions": {
+    "overview": {
+      "description": "Frames one field apart over `region`, in the camera's mode now\n(binned, ideally), reduced to colour, then the tissue in it found\n(P37), as `options` say. A job: answered at once with where to follow\nit. The `tissue` pattern then scans what it found.",
+      "title": "Takes an overview.",
+      "forms": [
+        {
+          "href": "/api/v1/scan/overview",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "overview_input",
+        "type": "object",
+        "properties": {
+          "region": {
+            "description": "Where a scan goes, in stage µm. In JSON, an object of one key, its kind:\n`{\"rect\": {\"origin\", \"size\"}}`, `{\"polygon\": {\"corners\"}}` or\n`{\"mask\": {…}}`.",
+            "oneOf": [
+              {
+                "description": "A rectangle, square with the stage, its edges inside.",
+                "type": "object",
+                "properties": {
+                  "rect": {
+                    "description": "An axis-aligned rectangle: its corner of least x and y, and its size.",
+                    "type": "object",
+                    "properties": {
+                      "origin": {
+                        "description": "The corner of least x and y: the top left, in an image.",
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "description": "Across.",
+                            "type": "number"
+                          },
+                          "y": {
+                            "description": "Down, in an image.",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ]
+                      },
+                      "size": {
+                        "description": "Its size.",
+                        "type": "object",
+                        "properties": {
+                          "width": {
+                            "description": "Along x.",
+                            "type": "number"
+                          },
+                          "height": {
+                            "description": "Along y.",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "width",
+                          "height"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "origin",
+                      "size"
+                    ]
+                  }
+                },
+                "required": [
+                  "rect"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "description": "A polygon, by its corners in order: it closes itself. Its edges are\ninside, and its inside is by the even-odd rule, so a polygon that\ncrosses itself leaves out what it goes round twice.",
+                "type": "object",
+                "properties": {
+                  "polygon": {
+                    "type": "object",
+                    "properties": {
+                      "corners": {
+                        "description": "Its corners.",
+                        "type": "array",
+                        "items": {
+                          "description": "A point, or a vector, in a plane.",
+                          "type": "object",
+                          "properties": {
+                            "x": {
+                              "description": "Across.",
+                              "type": "number"
+                            },
+                            "y": {
+                              "description": "Down, in an image.",
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "x",
+                            "y"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "corners"
+                    ]
+                  }
+                },
+                "required": [
+                  "polygon"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "description": "A mask's cells that are in.",
+                "type": "object",
+                "properties": {
+                  "mask": {
+                    "description": "A grid of cells over the stage, each in or out: where tissue is, as an\noverview finds it (P37), or any other shape.",
+                    "type": "object",
+                    "properties": {
+                      "origin": {
+                        "description": "The corner of its first cell, of least x and y, in µm.",
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "description": "Across.",
+                            "type": "number"
+                          },
+                          "y": {
+                            "description": "Down, in an image.",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ]
+                      },
+                      "cell_um": {
+                        "description": "A cell's side, in µm.",
+                        "type": "number"
+                      },
+                      "width": {
+                        "description": "Its width, in cells.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "height": {
+                        "description": "Its height, in cells.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "cells": {
+                        "description": "Whether each cell is in, by rows from the first.",
+                        "type": "array",
+                        "items": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "required": [
+                      "origin",
+                      "cell_um",
+                      "width",
+                      "height",
+                      "cells"
+                    ]
+                  }
+                },
+                "required": [
+                  "mask"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "options": {
+            "oneOf": [
+              {
+                "description": "How an overview is taken, and its tissue found, each with a default.",
+                "type": "object",
+                "properties": {
+                  "pixel_um": {
+                    "description": "The overview's pixel, in µm.",
+                    "default": 50.0,
+                    "type": "number"
+                  },
+                  "settle_ms": {
+                    "description": "How long the stage settles after a move before its frame, in ms.",
+                    "default": 50.0,
+                    "type": "number"
+                  },
+                  "tissue": {
+                    "description": "How its tissue is found.",
+                    "default": {
+                      "floor": 0.05,
+                      "min_area_mm2": 0.05,
+                      "margin_um": 100.0
+                    },
+                    "type": "object",
+                    "properties": {
+                      "floor": {
+                        "description": "The least saturation taken as tissue, whatever Otsu's threshold.",
+                        "default": 0.05,
+                        "type": "number"
+                      },
+                      "min_area_mm2": {
+                        "description": "The least area a piece of tissue keeps, in mm²: dust is less.",
+                        "default": 0.05,
+                        "type": "number"
+                      },
+                      "margin_um": {
+                        "description": "How far the tissue found is grown, in µm, so that its edges are in.",
+                        "default": 100.0,
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "region"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
+        "title": "overview_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "The job.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "description": "Where it is, as it is now.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "href"
+        ]
+      },
+      "synchronous": false
+    },
     "plan": {
       "description": "Its plan and what it would take, as `request` asks: nothing moves.",
       "title": "Plans a scan.",
@@ -907,7 +1348,7 @@ expression: td
                 ]
               },
               "z": {
-                "description": "How each tile's z is found: the stage's z now, if not given.",
+                "description": "How each tile's z is found: the stage's z now, if not given; for\n`tissue`, a focus map measured at 3 × 3 tiles over it.",
                 "oneOf": [
                   {
                     "description": "How each tile's z is found.",
@@ -1100,6 +1541,68 @@ expression: td
                         "required": [
                           "kind",
                           "every"
+                        ]
+                      },
+                      {
+                        "description": "By a focus map the scan measures before its first tile: autofocus\nat the tiles nearest the middles of a grid over them, then `surface`\nfitted (P37). Each tile then takes the map's z.",
+                        "type": "object",
+                        "properties": {
+                          "columns": {
+                            "description": "The grid's columns, from 1 to 10.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "rows": {
+                            "description": "Its rows, from 1 to 10.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "surface": {
+                            "description": "The surface fitted.",
+                            "oneOf": [
+                              {
+                                "description": "A plane: a slide lying flat, tilted.",
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "plane",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                                "type": "object",
+                                "properties": {
+                                  "smoothing": {
+                                    "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                    "type": "number"
+                                  },
+                                  "kind": {
+                                    "const": "thin_plate",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "smoothing"
+                                ]
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "const": "measure",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "columns",
+                          "rows",
+                          "surface"
                         ]
                       }
                     ]
@@ -1495,6 +1998,68 @@ expression: td
                     "required": [
                       "kind",
                       "every"
+                    ]
+                  },
+                  {
+                    "description": "By a focus map the scan measures before its first tile: autofocus\nat the tiles nearest the middles of a grid over them, then `surface`\nfitted (P37). Each tile then takes the map's z.",
+                    "type": "object",
+                    "properties": {
+                      "columns": {
+                        "description": "The grid's columns, from 1 to 10.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "rows": {
+                        "description": "Its rows, from 1 to 10.",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "surface": {
+                        "description": "The surface fitted.",
+                        "oneOf": [
+                          {
+                            "description": "A plane: a slide lying flat, tilted.",
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "const": "plane",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind"
+                            ]
+                          },
+                          {
+                            "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                            "type": "object",
+                            "properties": {
+                              "smoothing": {
+                                "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                "type": "number"
+                              },
+                              "kind": {
+                                "const": "thin_plate",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "smoothing"
+                            ]
+                          }
+                        ]
+                      },
+                      "kind": {
+                        "const": "measure",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "columns",
+                      "rows",
+                      "surface"
                     ]
                   }
                 ]
@@ -1963,7 +2528,7 @@ expression: td
                 ]
               },
               "z": {
-                "description": "How each tile's z is found: the stage's z now, if not given.",
+                "description": "How each tile's z is found: the stage's z now, if not given; for\n`tissue`, a focus map measured at 3 × 3 tiles over it.",
                 "oneOf": [
                   {
                     "description": "How each tile's z is found.",
@@ -2156,6 +2721,68 @@ expression: td
                         "required": [
                           "kind",
                           "every"
+                        ]
+                      },
+                      {
+                        "description": "By a focus map the scan measures before its first tile: autofocus\nat the tiles nearest the middles of a grid over them, then `surface`\nfitted (P37). Each tile then takes the map's z.",
+                        "type": "object",
+                        "properties": {
+                          "columns": {
+                            "description": "The grid's columns, from 1 to 10.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "rows": {
+                            "description": "Its rows, from 1 to 10.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "surface": {
+                            "description": "The surface fitted.",
+                            "oneOf": [
+                              {
+                                "description": "A plane: a slide lying flat, tilted.",
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "plane",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "description": "A thin-plate spline (Duchon, 1977; Bookstein, 1989): the surface of\nleast bending through the points, or near them.",
+                                "type": "object",
+                                "properties": {
+                                  "smoothing": {
+                                    "description": "λ, what bending costs against missing the points: 0 passes\nthrough each (Wahba, 1990).",
+                                    "type": "number"
+                                  },
+                                  "kind": {
+                                    "const": "thin_plate",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "smoothing"
+                                ]
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "const": "measure",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "columns",
+                          "rows",
+                          "surface"
                         ]
                       }
                     ]
