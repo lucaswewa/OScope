@@ -165,6 +165,45 @@ expression: td
                       "required": [
                         "kind"
                       ]
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "dark",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A flat field.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "flat",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A colour calibration.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "colour",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
                     }
                   ]
                 },
@@ -336,6 +375,693 @@ expression: td
                       "properties": {
                         "kind": {
                           "const": "stage",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "dark",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A flat field.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "flat",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A colour calibration.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "colour",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    }
+                  ]
+                },
+                "imported_from": {
+                  "description": "The ID it had where it came from, if it was imported.",
+                  "oneOf": [
+                    {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "format",
+                "id",
+                "version",
+                "created",
+                "instrument",
+                "values"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dark": {
+          "description": "The dark frame for the camera's mode, gain and exposure (P33).",
+          "oneOf": [
+            {
+              "description": "A calibration set (ADR-0023). It is never changed: a new calibration of\nthe same key is its next version.",
+              "type": "object",
+              "properties": {
+                "format": {
+                  "description": "The version of its JSON: 1.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "id": {
+                  "description": "Its ID.",
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "Its version among the sets of its key, from 1.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "created": {
+                  "description": "When it was made.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "account": {
+                  "description": "Who made it.",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "instrument": {
+                  "description": "The instrument as it was.",
+                  "type": "object",
+                  "properties": {
+                    "camera": {
+                      "description": "The camera's maker and model.",
+                      "type": "string"
+                    },
+                    "sensor_pixel_um": {
+                      "description": "The sensor's pixel, in µm.",
+                      "type": "number"
+                    },
+                    "binning": {
+                      "description": "The camera's binning.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "stage": {
+                      "description": "The stage's maker and model.",
+                      "type": "string"
+                    },
+                    "objective": {
+                      "description": "The objective fitted, if one was.",
+                      "oneOf": [
+                        {
+                          "description": "One objective.",
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "description": "Its name, unique in the catalogue, such as `20x`. Frames record it.",
+                              "type": "string"
+                            },
+                            "model": {
+                              "description": "Its maker and model.",
+                              "default": "",
+                              "type": "string"
+                            },
+                            "magnification": {
+                              "description": "Its magnification, with the tube lens it was designed for.",
+                              "type": "number"
+                            },
+                            "na": {
+                              "description": "Its numerical aperture.",
+                              "type": "number"
+                            },
+                            "working_distance": {
+                              "description": "The distance from its front to the sample in focus.",
+                              "type": "number"
+                            },
+                            "design_tube_lens": {
+                              "description": "The tube lens it was designed for: 200 mm, Mitutoyo's, unless the\ncatalogue says otherwise.",
+                              "default": 200000.0,
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "magnification",
+                            "na",
+                            "working_distance"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tube_lens_um": {
+                      "description": "The instrument's tube lens, in µm.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "camera",
+                    "sensor_pixel_um",
+                    "binning",
+                    "stage",
+                    "tube_lens_um"
+                  ]
+                },
+                "values": {
+                  "description": "What it measured.",
+                  "oneOf": [
+                    {
+                      "description": "An objective's geometry at a binning.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "geometry",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "The stage's.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "stage",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "dark",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A flat field.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "flat",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A colour calibration.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "colour",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    }
+                  ]
+                },
+                "imported_from": {
+                  "description": "The ID it had where it came from, if it was imported.",
+                  "oneOf": [
+                    {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "format",
+                "id",
+                "version",
+                "created",
+                "instrument",
+                "values"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "flat": {
+          "description": "The flat field for the fitted objective, the lights on and the\ncamera's binning.",
+          "oneOf": [
+            {
+              "description": "A calibration set (ADR-0023). It is never changed: a new calibration of\nthe same key is its next version.",
+              "type": "object",
+              "properties": {
+                "format": {
+                  "description": "The version of its JSON: 1.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "id": {
+                  "description": "Its ID.",
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "Its version among the sets of its key, from 1.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "created": {
+                  "description": "When it was made.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "account": {
+                  "description": "Who made it.",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "instrument": {
+                  "description": "The instrument as it was.",
+                  "type": "object",
+                  "properties": {
+                    "camera": {
+                      "description": "The camera's maker and model.",
+                      "type": "string"
+                    },
+                    "sensor_pixel_um": {
+                      "description": "The sensor's pixel, in µm.",
+                      "type": "number"
+                    },
+                    "binning": {
+                      "description": "The camera's binning.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "stage": {
+                      "description": "The stage's maker and model.",
+                      "type": "string"
+                    },
+                    "objective": {
+                      "description": "The objective fitted, if one was.",
+                      "oneOf": [
+                        {
+                          "description": "One objective.",
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "description": "Its name, unique in the catalogue, such as `20x`. Frames record it.",
+                              "type": "string"
+                            },
+                            "model": {
+                              "description": "Its maker and model.",
+                              "default": "",
+                              "type": "string"
+                            },
+                            "magnification": {
+                              "description": "Its magnification, with the tube lens it was designed for.",
+                              "type": "number"
+                            },
+                            "na": {
+                              "description": "Its numerical aperture.",
+                              "type": "number"
+                            },
+                            "working_distance": {
+                              "description": "The distance from its front to the sample in focus.",
+                              "type": "number"
+                            },
+                            "design_tube_lens": {
+                              "description": "The tube lens it was designed for: 200 mm, Mitutoyo's, unless the\ncatalogue says otherwise.",
+                              "default": 200000.0,
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "magnification",
+                            "na",
+                            "working_distance"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tube_lens_um": {
+                      "description": "The instrument's tube lens, in µm.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "camera",
+                    "sensor_pixel_um",
+                    "binning",
+                    "stage",
+                    "tube_lens_um"
+                  ]
+                },
+                "values": {
+                  "description": "What it measured.",
+                  "oneOf": [
+                    {
+                      "description": "An objective's geometry at a binning.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "geometry",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "The stage's.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "stage",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "dark",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A flat field.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "flat",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A colour calibration.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "colour",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    }
+                  ]
+                },
+                "imported_from": {
+                  "description": "The ID it had where it came from, if it was imported.",
+                  "oneOf": [
+                    {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "format",
+                "id",
+                "version",
+                "created",
+                "instrument",
+                "values"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "colour": {
+          "description": "The colour calibration for the lights on.",
+          "oneOf": [
+            {
+              "description": "A calibration set (ADR-0023). It is never changed: a new calibration of\nthe same key is its next version.",
+              "type": "object",
+              "properties": {
+                "format": {
+                  "description": "The version of its JSON: 1.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "id": {
+                  "description": "Its ID.",
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "Its version among the sets of its key, from 1.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "created": {
+                  "description": "When it was made.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "account": {
+                  "description": "Who made it.",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "instrument": {
+                  "description": "The instrument as it was.",
+                  "type": "object",
+                  "properties": {
+                    "camera": {
+                      "description": "The camera's maker and model.",
+                      "type": "string"
+                    },
+                    "sensor_pixel_um": {
+                      "description": "The sensor's pixel, in µm.",
+                      "type": "number"
+                    },
+                    "binning": {
+                      "description": "The camera's binning.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "stage": {
+                      "description": "The stage's maker and model.",
+                      "type": "string"
+                    },
+                    "objective": {
+                      "description": "The objective fitted, if one was.",
+                      "oneOf": [
+                        {
+                          "description": "One objective.",
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "description": "Its name, unique in the catalogue, such as `20x`. Frames record it.",
+                              "type": "string"
+                            },
+                            "model": {
+                              "description": "Its maker and model.",
+                              "default": "",
+                              "type": "string"
+                            },
+                            "magnification": {
+                              "description": "Its magnification, with the tube lens it was designed for.",
+                              "type": "number"
+                            },
+                            "na": {
+                              "description": "Its numerical aperture.",
+                              "type": "number"
+                            },
+                            "working_distance": {
+                              "description": "The distance from its front to the sample in focus.",
+                              "type": "number"
+                            },
+                            "design_tube_lens": {
+                              "description": "The tube lens it was designed for: 200 mm, Mitutoyo's, unless the\ncatalogue says otherwise.",
+                              "default": 200000.0,
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "magnification",
+                            "na",
+                            "working_distance"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tube_lens_um": {
+                      "description": "The instrument's tube lens, in µm.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "camera",
+                    "sensor_pixel_um",
+                    "binning",
+                    "stage",
+                    "tube_lens_um"
+                  ]
+                },
+                "values": {
+                  "description": "What it measured.",
+                  "oneOf": [
+                    {
+                      "description": "An objective's geometry at a binning.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "geometry",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "The stage's.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "stage",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "dark",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A flat field.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "flat",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    },
+                    {
+                      "description": "A colour calibration.",
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "colour",
                           "type": "string"
                         }
                       },
@@ -522,6 +1248,220 @@ expression: td
       "forms": [
         {
           "href": "/api/v1/calibration/sets",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "wizard": {
+      "description": "Its steps, each with what to do before confirming it, and where each\nstands: the step in hand settled first if its job has ended.",
+      "title": "The calibration wizard.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "The calibration wizard.",
+          "type": "object",
+          "properties": {
+            "id": {
+              "description": "Its ID.",
+              "format": "uuid",
+              "type": "string"
+            },
+            "started": {
+              "description": "When it started.",
+              "format": "date-time",
+              "type": "string"
+            },
+            "steps": {
+              "description": "Its steps.",
+              "type": "array",
+              "items": {
+                "description": "A step: what it is, and where it stands.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "What it is.",
+                    "oneOf": [
+                      {
+                        "description": "The objective check.",
+                        "const": "objective",
+                        "type": "string"
+                      },
+                      {
+                        "description": "The geometry: the pixel size and the camera-to-stage matrix.",
+                        "const": "geometry",
+                        "type": "string"
+                      },
+                      {
+                        "description": "The stage: backlash, homing, soft limits.",
+                        "const": "stage",
+                        "type": "string"
+                      },
+                      {
+                        "description": "A dark frame.",
+                        "const": "dark",
+                        "type": "string"
+                      },
+                      {
+                        "description": "A flat field, and the white balance.",
+                        "const": "flat",
+                        "type": "string"
+                      },
+                      {
+                        "description": "The colour matrix.",
+                        "const": "colour",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "title": {
+                    "description": "Its title.",
+                    "type": "string"
+                  },
+                  "prompt": {
+                    "description": "What to do before confirming it.",
+                    "type": "string"
+                  },
+                  "state": {
+                    "description": "Where it stands.",
+                    "oneOf": [
+                      {
+                        "description": "Not reached yet.",
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "const": "waiting",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state"
+                        ]
+                      },
+                      {
+                        "description": "Its prompt is shown: do what it asks, then confirm.",
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "const": "prompting",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state"
+                        ]
+                      },
+                      {
+                        "description": "Its job runs.",
+                        "type": "object",
+                        "properties": {
+                          "job": {
+                            "description": "The job.",
+                            "format": "uuid",
+                            "type": "string"
+                          },
+                          "state": {
+                            "const": "running",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "job"
+                        ]
+                      },
+                      {
+                        "description": "Done.",
+                        "type": "object",
+                        "properties": {
+                          "result": {
+                            "description": "What it made: a set, `calibration/<id>`, or a check's verdict.",
+                            "type": "string"
+                          },
+                          "state": {
+                            "const": "done",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "result"
+                        ]
+                      },
+                      {
+                        "description": "Skipped.",
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "const": "skipped",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state"
+                        ]
+                      },
+                      {
+                        "description": "Failed: it may be retried, or skipped.",
+                        "type": "object",
+                        "properties": {
+                          "error": {
+                            "description": "Why.",
+                            "type": "string"
+                          },
+                          "state": {
+                            "const": "failed",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "error"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "title",
+                  "prompt",
+                  "state"
+                ]
+              }
+            },
+            "current": {
+              "description": "The step in hand, by index; the steps' count once finished.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "finished": {
+              "description": "Whether every step is settled, or it was cancelled.",
+              "type": "boolean"
+            },
+            "cancelled": {
+              "description": "Whether it was cancelled.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "started",
+            "steps",
+            "current",
+            "finished",
+            "cancelled"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/calibration/wizard",
           "op": [
             "readproperty"
           ]
@@ -714,6 +1654,45 @@ expression: td
                 "required": [
                   "kind"
                 ]
+              },
+              {
+                "description": "A dark frame.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "dark",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "A flat field.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "flat",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "A colour calibration.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "colour",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
               }
             ]
           },
@@ -796,6 +1775,176 @@ expression: td
       "output": {
         "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
         "title": "check_objective_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "The job.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "description": "Where it is, as it is now.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "href"
+        ]
+      },
+      "synchronous": false
+    },
+    "colour": {
+      "description": "From OScope's colour target, centred in the field of the 5× or the\n10×: its 24 patches measured through the active geometry, the dark\nand the flat field taken out, white-balanced on its lightest grey,\nand the colour matrix fitted. Refused if the colours fit poorly.\n\nA job on the instrument: its result is the set, `calibration/<id>`.",
+      "title": "Calibrates colour.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/colour",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "colour_input",
+        "type": "object",
+        "properties": {
+          "frames": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settle_ms": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activate": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
+        "title": "colour_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "The job.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "description": "Where it is, as it is now.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "href"
+        ]
+      },
+      "synchronous": false
+    },
+    "dark": {
+      "description": "The lights are turned off, `frames` frames averaged (16) from\n`settle_ms` on (50), and the lights turned back on: for the camera's\nmode, gain and octave of exposure. The set is made active unless\n`activate` is false.\n\nA job on the instrument: its result is the set, `calibration/<id>`.",
+      "title": "Takes a dark frame.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/dark",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "dark_input",
+        "type": "object",
+        "properties": {
+          "frames": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settle_ms": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activate": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
+        "title": "dark_output",
         "type": "object",
         "properties": {
           "id": {
@@ -999,6 +2148,45 @@ expression: td
                 "required": [
                   "kind"
                 ]
+              },
+              {
+                "description": "A dark frame.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "dark",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "A flat field.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "flat",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "A colour calibration.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "colour",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
               }
             ]
           },
@@ -1022,6 +2210,91 @@ expression: td
           "created",
           "instrument",
           "values"
+        ]
+      },
+      "synchronous": false
+    },
+    "flat": {
+      "description": "At a blank part of the slide, through the fitted objective, in the\nlights that are on: `frames` frames averaged (16), the dark taken\naway, each colour scaled to a mean of 1; with the white balance the\nblank field gives. Refused if the field isn't blank.\n\nA job on the instrument: its result is the set, `calibration/<id>`.",
+      "title": "Takes a flat field.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/flat",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "flat_input",
+        "type": "object",
+        "properties": {
+          "frames": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settle_ms": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activate": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
+        "title": "flat_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "The job.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "description": "Where it is, as it is now.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "href"
         ]
       },
       "synchronous": false
@@ -1301,6 +2574,45 @@ expression: td
                 "required": [
                   "kind"
                 ]
+              },
+              {
+                "description": "A dark frame.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "dark",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "A flat field.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "flat",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "A colour calibration.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "colour",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
               }
             ]
           },
@@ -1429,6 +2741,1233 @@ expression: td
         "required": [
           "id",
           "href"
+        ]
+      },
+      "synchronous": false
+    },
+    "wizard_cancel": {
+      "description": "Cancels the wizard where it is.",
+      "title": "Cancels the wizard where it is.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/wizard_cancel",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "wizard_cancel_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "description": "The calibration wizard.",
+        "title": "wizard_cancel_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Its ID.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "started": {
+            "description": "When it started.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Its steps.",
+            "type": "array",
+            "items": {
+              "description": "A step: what it is, and where it stands.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "description": "What it is.",
+                  "oneOf": [
+                    {
+                      "description": "The objective check.",
+                      "const": "objective",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The geometry: the pixel size and the camera-to-stage matrix.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "const": "dark",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A flat field, and the white balance.",
+                      "const": "flat",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The colour matrix.",
+                      "const": "colour",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "title": {
+                  "description": "Its title.",
+                  "type": "string"
+                },
+                "prompt": {
+                  "description": "What to do before confirming it.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "Where it stands.",
+                  "oneOf": [
+                    {
+                      "description": "Not reached yet.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "waiting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its prompt is shown: do what it asks, then confirm.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "prompting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its job runs.",
+                      "type": "object",
+                      "properties": {
+                        "job": {
+                          "description": "The job.",
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "running",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "job"
+                      ]
+                    },
+                    {
+                      "description": "Done.",
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "description": "What it made: a set, `calibration/<id>`, or a check's verdict.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "done",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "result"
+                      ]
+                    },
+                    {
+                      "description": "Skipped.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "skipped",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Failed: it may be retried, or skipped.",
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "description": "Why.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "failed",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "prompt",
+                "state"
+              ]
+            }
+          },
+          "current": {
+            "description": "The step in hand, by index; the steps' count once finished.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "finished": {
+            "description": "Whether every step is settled, or it was cancelled.",
+            "type": "boolean"
+          },
+          "cancelled": {
+            "description": "Whether it was cancelled.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "started",
+          "steps",
+          "current",
+          "finished",
+          "cancelled"
+        ]
+      },
+      "synchronous": false
+    },
+    "wizard_confirm": {
+      "description": "Confirms the wizard's step: its prompt is done, so its job starts.",
+      "title": "Confirms the wizard's step: its prompt is done, so its job starts.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/wizard_confirm",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "wizard_confirm_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "description": "The calibration wizard.",
+        "title": "wizard_confirm_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Its ID.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "started": {
+            "description": "When it started.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Its steps.",
+            "type": "array",
+            "items": {
+              "description": "A step: what it is, and where it stands.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "description": "What it is.",
+                  "oneOf": [
+                    {
+                      "description": "The objective check.",
+                      "const": "objective",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The geometry: the pixel size and the camera-to-stage matrix.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "const": "dark",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A flat field, and the white balance.",
+                      "const": "flat",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The colour matrix.",
+                      "const": "colour",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "title": {
+                  "description": "Its title.",
+                  "type": "string"
+                },
+                "prompt": {
+                  "description": "What to do before confirming it.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "Where it stands.",
+                  "oneOf": [
+                    {
+                      "description": "Not reached yet.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "waiting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its prompt is shown: do what it asks, then confirm.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "prompting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its job runs.",
+                      "type": "object",
+                      "properties": {
+                        "job": {
+                          "description": "The job.",
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "running",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "job"
+                      ]
+                    },
+                    {
+                      "description": "Done.",
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "description": "What it made: a set, `calibration/<id>`, or a check's verdict.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "done",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "result"
+                      ]
+                    },
+                    {
+                      "description": "Skipped.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "skipped",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Failed: it may be retried, or skipped.",
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "description": "Why.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "failed",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "prompt",
+                "state"
+              ]
+            }
+          },
+          "current": {
+            "description": "The step in hand, by index; the steps' count once finished.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "finished": {
+            "description": "Whether every step is settled, or it was cancelled.",
+            "type": "boolean"
+          },
+          "cancelled": {
+            "description": "Whether it was cancelled.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "started",
+          "steps",
+          "current",
+          "finished",
+          "cancelled"
+        ]
+      },
+      "synchronous": false
+    },
+    "wizard_retry": {
+      "description": "Retries the wizard's failed step: it prompts again.",
+      "title": "Retries the wizard's failed step: it prompts again.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/wizard_retry",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "wizard_retry_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "description": "The calibration wizard.",
+        "title": "wizard_retry_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Its ID.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "started": {
+            "description": "When it started.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Its steps.",
+            "type": "array",
+            "items": {
+              "description": "A step: what it is, and where it stands.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "description": "What it is.",
+                  "oneOf": [
+                    {
+                      "description": "The objective check.",
+                      "const": "objective",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The geometry: the pixel size and the camera-to-stage matrix.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "const": "dark",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A flat field, and the white balance.",
+                      "const": "flat",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The colour matrix.",
+                      "const": "colour",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "title": {
+                  "description": "Its title.",
+                  "type": "string"
+                },
+                "prompt": {
+                  "description": "What to do before confirming it.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "Where it stands.",
+                  "oneOf": [
+                    {
+                      "description": "Not reached yet.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "waiting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its prompt is shown: do what it asks, then confirm.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "prompting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its job runs.",
+                      "type": "object",
+                      "properties": {
+                        "job": {
+                          "description": "The job.",
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "running",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "job"
+                      ]
+                    },
+                    {
+                      "description": "Done.",
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "description": "What it made: a set, `calibration/<id>`, or a check's verdict.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "done",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "result"
+                      ]
+                    },
+                    {
+                      "description": "Skipped.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "skipped",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Failed: it may be retried, or skipped.",
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "description": "Why.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "failed",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "prompt",
+                "state"
+              ]
+            }
+          },
+          "current": {
+            "description": "The step in hand, by index; the steps' count once finished.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "finished": {
+            "description": "Whether every step is settled, or it was cancelled.",
+            "type": "boolean"
+          },
+          "cancelled": {
+            "description": "Whether it was cancelled.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "started",
+          "steps",
+          "current",
+          "finished",
+          "cancelled"
+        ]
+      },
+      "synchronous": false
+    },
+    "wizard_skip": {
+      "description": "Skips the wizard's step, prompting or failed.",
+      "title": "Skips the wizard's step, prompting or failed.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/wizard_skip",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "wizard_skip_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "description": "The calibration wizard.",
+        "title": "wizard_skip_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Its ID.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "started": {
+            "description": "When it started.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Its steps.",
+            "type": "array",
+            "items": {
+              "description": "A step: what it is, and where it stands.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "description": "What it is.",
+                  "oneOf": [
+                    {
+                      "description": "The objective check.",
+                      "const": "objective",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The geometry: the pixel size and the camera-to-stage matrix.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "const": "dark",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A flat field, and the white balance.",
+                      "const": "flat",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The colour matrix.",
+                      "const": "colour",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "title": {
+                  "description": "Its title.",
+                  "type": "string"
+                },
+                "prompt": {
+                  "description": "What to do before confirming it.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "Where it stands.",
+                  "oneOf": [
+                    {
+                      "description": "Not reached yet.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "waiting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its prompt is shown: do what it asks, then confirm.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "prompting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its job runs.",
+                      "type": "object",
+                      "properties": {
+                        "job": {
+                          "description": "The job.",
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "running",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "job"
+                      ]
+                    },
+                    {
+                      "description": "Done.",
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "description": "What it made: a set, `calibration/<id>`, or a check's verdict.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "done",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "result"
+                      ]
+                    },
+                    {
+                      "description": "Skipped.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "skipped",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Failed: it may be retried, or skipped.",
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "description": "Why.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "failed",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "prompt",
+                "state"
+              ]
+            }
+          },
+          "current": {
+            "description": "The step in hand, by index; the steps' count once finished.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "finished": {
+            "description": "Whether every step is settled, or it was cancelled.",
+            "type": "boolean"
+          },
+          "cancelled": {
+            "description": "Whether it was cancelled.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "started",
+          "steps",
+          "current",
+          "finished",
+          "cancelled"
+        ]
+      },
+      "synchronous": false
+    },
+    "wizard_start": {
+      "description": "Its `steps`, in order: every one if not given (`objective`,\n`geometry`, `stage`, `dark`, `flat`, `colour`). Any wizard before is\nset aside.",
+      "title": "Starts the calibration wizard.",
+      "forms": [
+        {
+          "href": "/api/v1/calibration/wizard_start",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "wizard_start_input",
+        "type": "object",
+        "properties": {
+          "steps": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "description": "The wizard's steps, in their order.",
+                  "oneOf": [
+                    {
+                      "description": "The objective check.",
+                      "const": "objective",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The geometry: the pixel size and the camera-to-stage matrix.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "const": "dark",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A flat field, and the white balance.",
+                      "const": "flat",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The colour matrix.",
+                      "const": "colour",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "The calibration wizard.",
+        "title": "wizard_start_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Its ID.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "started": {
+            "description": "When it started.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Its steps.",
+            "type": "array",
+            "items": {
+              "description": "A step: what it is, and where it stands.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "description": "What it is.",
+                  "oneOf": [
+                    {
+                      "description": "The objective check.",
+                      "const": "objective",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The geometry: the pixel size and the camera-to-stage matrix.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The stage: backlash, homing, soft limits.",
+                      "const": "stage",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A dark frame.",
+                      "const": "dark",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A flat field, and the white balance.",
+                      "const": "flat",
+                      "type": "string"
+                    },
+                    {
+                      "description": "The colour matrix.",
+                      "const": "colour",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "title": {
+                  "description": "Its title.",
+                  "type": "string"
+                },
+                "prompt": {
+                  "description": "What to do before confirming it.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "Where it stands.",
+                  "oneOf": [
+                    {
+                      "description": "Not reached yet.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "waiting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its prompt is shown: do what it asks, then confirm.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "prompting",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Its job runs.",
+                      "type": "object",
+                      "properties": {
+                        "job": {
+                          "description": "The job.",
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "running",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "job"
+                      ]
+                    },
+                    {
+                      "description": "Done.",
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "description": "What it made: a set, `calibration/<id>`, or a check's verdict.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "done",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "result"
+                      ]
+                    },
+                    {
+                      "description": "Skipped.",
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "skipped",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "description": "Failed: it may be retried, or skipped.",
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "description": "Why.",
+                          "type": "string"
+                        },
+                        "state": {
+                          "const": "failed",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "prompt",
+                "state"
+              ]
+            }
+          },
+          "current": {
+            "description": "The step in hand, by index; the steps' count once finished.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "finished": {
+            "description": "Whether every step is settled, or it was cancelled.",
+            "type": "boolean"
+          },
+          "cancelled": {
+            "description": "Whether it was cancelled.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "started",
+          "steps",
+          "current",
+          "finished",
+          "cancelled"
         ]
       },
       "synchronous": false

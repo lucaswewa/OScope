@@ -18,6 +18,7 @@ mod photometry;
 mod procedures;
 mod set;
 mod store;
+mod wizard;
 
 pub use fit::{Decomposition, Matrix, apply, decompose, fit_matrix, inverse};
 pub use jobs::{CHECK, COLOUR, DARK, FLAT, GEOMETRY, LastCheck, STAGE, calibration_jobs};
@@ -34,3 +35,4 @@ pub use set::{
     geometry_key,
 };
 pub use store::{CalibrationStore, StoreError};
+pub use wizard::{Step, StepKind, StepState, Wizard, WizardError};

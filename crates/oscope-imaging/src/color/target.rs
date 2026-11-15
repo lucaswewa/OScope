@@ -56,10 +56,10 @@ fn hsv(h: f64, s: f64, v: f64) -> [f64; 3] {
 }
 
 impl ColourTarget {
-    /// OScope's: 6 × 4 patches of 150 µm on a 200 µm pitch, 1.2 × 0.8 mm,
-    /// which the 5× and the 10× see whole. Six greys, transmitting 90 % to
-    /// 5 %; then eighteen colours at hues 20° apart, alternately strong and
-    /// pale.
+    /// OScope's: 6 × 4 patches of 100 µm on a 140 µm pitch, 0.84 × 0.56 mm,
+    /// which the 5× sees whole, and the 10× too, however the camera is
+    /// turned up to about 50°. Six greys, transmitting 90 % to 5 %; then
+    /// eighteen colours at hues 20° apart, alternately strong and pale.
     pub fn oscope() -> Self {
         let greys = [0.9, 0.6, 0.36, 0.2, 0.1, 0.05].map(|g| [g; 3]);
         let colours = (0..18).map(|i| match i % 2 {
@@ -69,8 +69,8 @@ impl ColourTarget {
         Self {
             columns: 6,
             rows: 4,
-            pitch_um: 200.0,
-            side_um: 150.0,
+            pitch_um: 140.0,
+            side_um: 100.0,
             border_od: 2.0,
             colours: greys.into_iter().chain(colours).collect(),
         }
@@ -215,9 +215,9 @@ mod tests {
         let target = ColourTarget::oscope();
         let patches = target.patches();
         let (w, h) = target.size_um();
-        assert_eq!((patches.len(), w, h), (24, 1200.0, 800.0));
-        assert_eq!((patches[0].x_um, patches[0].y_um), (-500.0, -300.0));
-        assert_eq!((patches[23].x_um, patches[23].y_um), (500.0, 300.0));
+        assert_eq!((patches.len(), w, h), (24, 840.0, 560.0));
+        assert_eq!((patches[0].x_um, patches[0].y_um), (-350.0, -210.0));
+        assert_eq!((patches[23].x_um, patches[23].y_um), (350.0, 210.0));
         for p in &patches {
             assert!(p.rgb.iter().all(|c| *c > 0.0 && *c <= 1.0), "{p:?}");
         }

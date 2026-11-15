@@ -127,6 +127,9 @@ async fn a_job_is_submitted_followed_and_listed() {
         client.get("/api/v1/jobs/kinds").await.json(),
         json!([
             "calibration.check_objective",
+            "calibration.colour",
+            "calibration.dark",
+            "calibration.flat",
             "calibration.geometry",
             "calibration.stage",
             "pipeline.batch",
