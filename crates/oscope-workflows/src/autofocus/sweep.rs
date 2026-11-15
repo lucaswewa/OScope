@@ -499,7 +499,11 @@ async fn pass(
     let end = Xyz::new(Um(xy.0), Um(xy.1), Um(to));
     let moving = tokio::spawn(async move { stage.move_to(end, Some(UmPerS(speed))).await });
     let mut after = rig.stage.position().await.map_err(device)?.time;
-    let mut samples = Vec::new();
+    // Each frame's z from the track as it comes: a long sweep outlasts the
+    // track's memory. One whose midpoint the track hasn't reached yet waits
+    // for the move's end.
+    let track = rig.stage.track();
+    let (mut curve, mut later, mut starts) = (Vec::new(), Vec::new(), Vec::new());
     while !moving.is_finished() && !report.cancelled() {
         let frame = frame_after(&rig.bus, after).await?;
         let meta = frame.meta().clone();
@@ -512,13 +516,14 @@ async fn pass(
         let middle = meta.exposure_start + exposure / 2 + line * middle_row(&meta, how.region);
         let image = prepare(&frame, how.region)?;
         drop(frame);
-        samples.push((
-            meta.exposure_start,
-            middle,
-            measure(rig, &image, how.measure)?,
-        ));
+        let value = measure(rig, &image, how.measure)?;
+        match track.at(middle) {
+            Some(p) => curve.push(CurvePoint { z_um: p.z.0, value }),
+            None => later.push((middle, value)),
+        }
+        starts.push(meta.exposure_start);
         report.progress(
-            0.1 + 0.8 * (samples.len() as f64 / 64.0).min(1.0),
+            0.1 + 0.8 * (starts.len() as f64 / 64.0).min(1.0),
             "sweeping through focus",
         );
     }
@@ -527,21 +532,16 @@ async fn pass(
         .map_err(|e| failed(format!("the sweep's move: {e}")))?
         .map_err(device)?;
     check(report)?;
-    let track = rig.stage.track();
-    let mut curve: Vec<CurvePoint> = samples
-        .iter()
-        .filter_map(|(_, middle, value)| {
-            track.at(*middle).map(|p| CurvePoint {
-                z_um: p.z.0,
-                value: *value,
-            })
-        })
-        .collect();
+    for (middle, value) in later {
+        if let Some(p) = track.at(middle) {
+            curve.push(CurvePoint { z_um: p.z.0, value });
+        }
+    }
     curve.sort_by(|a, b| a.z_um.total_cmp(&b.z_um));
-    let interval = match samples.as_slice() {
+    let interval = match starts.as_slice() {
         [first, .., last] => {
-            let span = last.0.0.saturating_sub(first.0.0) as f64 / 1e9;
-            Some(span / (samples.len() - 1) as f64)
+            let span = last.0.saturating_sub(first.0) as f64 / 1e9;
+            Some(span / (starts.len() - 1) as f64)
         }
         _ => None,
     };
