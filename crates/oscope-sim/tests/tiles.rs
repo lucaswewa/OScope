@@ -156,9 +156,10 @@ async fn frames_reuse_tiles_and_a_jog_renders_only_new_ones() {
 }
 
 #[tokio::test]
-async fn a_new_slide_is_never_seen_through_old_tiles() {
-    // Two frames of the tissue, then the slide unloaded: the next frame
-    // shows the empty stage, uniformly bright, not the cached tissue.
+async fn a_new_slide_or_tilt_is_never_seen_through_old_tiles() {
+    // Two frames of the tissue; then the slide tilted, 177 µm out of focus
+    // here, so blurred; then the slide unloaded: the next frame shows the
+    // empty stage, uniformly bright, not the cached tissue.
     let (world, island) = tissue_world();
     let mut config = SimCameraConfig::small(384, 288);
     config.sensor.noise = false;
@@ -178,12 +179,11 @@ async fn a_new_slide_is_never_seen_through_old_tiles() {
     };
     let tissue = frame(0);
     assert_eq!(frame(1), tissue);
-    rig.camera
-        .world()
-        .write()
-        .unwrap_or_else(PoisonError::into_inner)
-        .slide = None;
-    let empty = frame(2);
+    let world = rig.camera.world();
+    world.write().unwrap_or_else(PoisonError::into_inner).tilt = [5.0, 0.0];
+    assert_ne!(frame(2), tissue);
+    world.write().unwrap_or_else(PoisonError::into_inner).slide = None;
+    let empty = frame(3);
     rig.camera.stop().await.unwrap();
     assert!(empty.iter().all(|c| *c == empty[0]), "not uniform");
     assert!(tissue.iter().any(|c| *c < empty[0] - 100));

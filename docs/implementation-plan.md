@@ -814,7 +814,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P31 | Registration: phase correlation on CPU and CUDA | P23 | M | — | Done |
 | P32 | Calibration I: pixel size, camera-to-stage affine, backlash, store | P30, P31 | L | 0023 | Done |
 | P33 | Calibration II: dark, flat, colour; the wizard | P32 | L | — | Done |
-| P34 | Autofocus, auto exposure, auto white balance | P33 | L | 0024 | In review |
+| P34 | Autofocus, auto exposure, auto white balance | P33 | L | 0024 | Done |
 
 **Checkpoint C:** calibrate a simulated objective, autofocus, auto-expose, and capture a raw frame into a project; reopen it in napari.
 
@@ -822,7 +822,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P35 | Scan planners and focus maps | P34 | M | — | Planned |
+| P35 | Scan planners and focus maps | P34 | M | — | In review |
 | P36 | Scan engine, the `scan` Thing, workflow extensions | P35 | L | 0025 | Planned |
 | P37 | Histo scan: overview and tissue detection | P36 | M | — | Planned |
 | P38 | Live stitching: in scans and free-roam | P36 | L | 0026 | Planned |
@@ -1092,3 +1092,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-14 | P32 was estimated at about 3,000 lines before it started (the calibration sets, versioned per kind and key, and their store of JSON files with the active ones, export and import, ~400; the least-squares fit of the camera-to-stage matrix and its decomposition into turn, mirror, scales and skew ~150; the procedures: frames to grey, moves reached one way, registration, the 3 × 3 pattern, backlash from both sides, the soft limits and homing, and the objective check, ~450; the `calibration` Thing and its jobs ~350; the simulator's truth (mounting, scale, backlash) ~60; tests ~920; `ex-calibrate` ~280; glue ~60; and about a tenth on top): three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P34. ADR-0023 records the calibration model. The behaviour spec opens the notes, before the code |
 | 2026-11-15 | P33 was estimated at about 4,150 lines before it started (the simulator's vignetting, in the CPU's exposure and the CUDA kernel's, its sensor's colour response and a colour target, ~300; the colour target's layout and the colour science, the matrix's fit, CIELAB and ΔE, ~250; dark, flat and colour sets, with their images beside them, ~300; the procedures ~450; their jobs ~120; the wizard, a state machine of steps, prompts, required actions, validation and resume, ~400; the `calibration` Thing's additions ~300; tests ~1,300; `ex-wizard` ~300; glue ~60; and about a tenth on top): more than four times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P34 |
 | 2026-11-15 | P34 was estimated at about 4,200 lines before it started (the focus measures, Brenner, Tenengrad and the variance of the Laplacian, on the CPU ~150 and with CUDA ~200; the autofocus procedure, stepped and continuous sweeps, ~600; auto exposure ~200; auto white balance ~120; their jobs ~150; the `autofocus` and `exposure` Things ~350; the simulator's truth ~50; tests ~1,300; `ex-autofocus` ~400; Checkpoint C's `ex-checkpoint-c` ~250; glue ~60; and about a tenth on top): more than four times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P34 (and, on 2026-11-15, extended to P43) |
+| 2026-11-15 | P35 was estimated at about 2,500 lines before it started (regions, rectangles, polygons and masks, and which tiles each touches, ~220; the plan model, tiles, the z policy and stacks, and the field and its overlaps from the calibrated geometry, ~220; the planners, raster, snake, z-scan, tiled z-stack and multi-position, ~200; the focus map, its sample points, a plane and a thin-plate spline with outliers rejected, and a small linear solver, ~330; estimates of time and data size ~130; measuring a map by autofocus ~80; the simulator's tilted slide ~40; tests ~600; `ex-plan` and its page ~550; glue ~30; and a little on top): about four times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P43 |

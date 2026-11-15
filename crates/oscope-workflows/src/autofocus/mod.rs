@@ -71,11 +71,11 @@ fn failed(why: impl Into<String>) -> AutofocusError {
     AutofocusError::Failed(why.into())
 }
 
-fn device(error: oscope_hal::Error) -> AutofocusError {
+pub(crate) fn device(error: oscope_hal::Error) -> AutofocusError {
     failed(error.to_string())
 }
 
-fn check(report: &dyn Report) -> Result<(), AutofocusError> {
+pub(crate) fn check(report: &dyn Report) -> Result<(), AutofocusError> {
     match report.cancelled() {
         true => Err(AutofocusError::Cancelled),
         false => Ok(()),

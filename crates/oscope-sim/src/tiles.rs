@@ -108,12 +108,13 @@ pub struct CacheStats {
 }
 
 /// What the cached tiles were rendered from. When the world changes (a
-/// slide loaded or unloaded, its place, the focus), every tile goes. The
+/// slide loaded or unloaded, its place, the focus or the tilt), every tile
+/// goes. The
 /// sample is kept, so that a new one can't take its place at its address.
 #[derive(Clone)]
 struct WorldMark {
     sample: Option<Arc<dyn Sample>>,
-    numbers: [u64; 7],
+    numbers: [u64; 9],
 }
 
 impl WorldMark {
@@ -131,6 +132,8 @@ impl WorldMark {
                 c.map_or(0, |c| c.size.width.to_bits()),
                 c.map_or(0, |c| c.size.height.to_bits()),
                 world.focus.0.to_bits(),
+                world.tilt[0].to_bits(),
+                world.tilt[1].to_bits(),
             ],
         }
     }

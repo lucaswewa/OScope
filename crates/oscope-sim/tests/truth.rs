@@ -190,3 +190,46 @@ fn each_sample_says_where_it_is_sharpest() {
     assert_eq!(world.in_focus(at), Some(Um(FOCUS + 2.0)));
     assert_eq!(World::empty().in_focus(at), None);
 }
+
+#[test]
+fn a_tilted_slide_is_sharpest_higher_along_its_tilt() {
+    let tissue = oscope_sim::HeTissue::new(1, Slide::COVERSLIP);
+    let origin = Point2::new(1_000.0, 2_000.0);
+    let at = tissue.islands()[0] + origin;
+    let slide = Slide::new(Arc::new(tissue), origin);
+    let world = World::with_slide(slide, Um(FOCUS)).tilted([1.5, -0.5]);
+    // The tilt, a mm at a time from the slide's corner, then the section's
+    // middle, 2 µm up.
+    let (dx, dy) = ((at.x - origin.x) / 1e3, (at.y - origin.y) / 1e3);
+    let truth = FOCUS + 1.5 * dx - 0.5 * dy + 2.0;
+    assert!((world.in_focus(at).unwrap().0 - truth).abs() < 1e-9);
+    assert!(truth - FOCUS > 20.0, "{truth}");
+
+    // And the fields render sharpest there: Brenner's sum over green.
+    let catalogue = ObjectiveCatalogue::mitutoyo();
+    let optics = Optics::new(&catalogue, catalogue.get("10x").unwrap(), Um(9.6));
+    let sharpness = |z: f64| {
+        let field = Field {
+            centre: at,
+            z: Um(z),
+            width: 128,
+            height: 128,
+        };
+        let image = world.render(&field, &optics, Light::Transmitted);
+        let green: Vec<f64> = image
+            .data()
+            .iter()
+            .skip(1)
+            .step_by(3)
+            .map(|&v| f64::from(v))
+            .collect();
+        (0..128)
+            .flat_map(|y| (0..126).map(move |x| (x, y)))
+            .map(|(x, y)| (green[y * 128 + x + 2] - green[y * 128 + x]).powi(2))
+            .sum::<f64>()
+    };
+    let best = sharpness(truth);
+    for off in [-4.0, 4.0, FOCUS + 2.0 - truth] {
+        assert!(sharpness(truth + off) < 0.8 * best, "{off} µm off");
+    }
+}

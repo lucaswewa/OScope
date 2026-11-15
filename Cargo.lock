@@ -948,6 +948,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-plan"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-acquire",
+ "oscope-api",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-sim",
+ "oscope-workflows",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-projects"
 version = "0.1.0"
 dependencies = [

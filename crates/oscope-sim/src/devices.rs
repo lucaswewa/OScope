@@ -214,7 +214,8 @@ impl ObjectiveMount for SimMount {
 /// objective = "10x"       # fitted at start
 /// sample = "H&E tissue"   # loaded at start; "" for none
 /// focus = 5000.0          # the stage z, in µm, at which the slide is sharp
-/// rotation = 0.0          # the camera's turn on the stage, in degrees
+/// tilt = [0.0, 0.0]       # how much higher it is sharp, in µm, a mm along x and y
+/// rotation = 0.0         # the camera's turn on the stage, in degrees
 /// mirrored = false        # whether its image is mirrored
 /// scale = 1.0             # the true magnification over the catalogue's
 /// backlash = 2.0          # the stage's play when an axis reverses, in µm
@@ -238,8 +239,11 @@ pub struct SimulatorConfig {
     pub objective: String,
     /// The sample loaded at start, or `""` for none.
     pub sample: String,
-    /// The stage z at which the slide's surface is in focus.
+    /// The stage z at which the slide's surface is in focus, at its corner.
     pub focus: f64,
+    /// The slide's tilt (P35): how much higher its surface is in focus, in
+    /// µm, a mm further along x, and along y.
+    pub tilt: [f64; 2],
     /// The camera's turn on the stage, in degrees: what calibration
     /// recovers (P32), as are the three below.
     pub rotation: f64,
@@ -267,6 +271,7 @@ impl Default for SimulatorConfig {
             objective: "10x".to_owned(),
             sample: "H&E tissue".to_owned(),
             focus: 5_000.0,
+            tilt: [0.0; 2],
             rotation: 0.0,
             mirrored: false,
             scale: 1.0,
@@ -313,6 +318,8 @@ impl Simulator {
             config.scale,
             config.backlash,
             config.vignetting,
+            config.tilt[0],
+            config.tilt[1],
         ];
         let finite = truth.iter().chain(response).all(|v| v.is_finite());
         if !finite || config.scale <= 0.0 || config.backlash < 0.0 || config.vignetting < 0.0 {
@@ -324,9 +331,9 @@ impl Simulator {
             );
             return Err(format!(
                 "a rotation of {r}°, a scale of {s}, a backlash of {b} µm and a vignetting of \
-                 {v}, with a response of {:?}: all finite, a scale more than 0, and a backlash \
-                 and a vignetting of at least 0, are needed",
-                config.response
+                 {v}, with a response of {:?} and a tilt of {:?}: all finite, a scale more than \
+                 0, and a backlash and a vignetting of at least 0, are needed",
+                config.response, config.tilt
             ));
         }
         let clock = Arc::new(SimClock::new(rate));
@@ -335,8 +342,11 @@ impl Simulator {
             ..SimStageConfig::default()
         };
         let stage = Arc::new(SimStage::new(stage_config, Arc::clone(&clock)));
-        let world = Arc::new(RwLock::new(World::empty()));
-        world.write().unwrap_or_else(PoisonError::into_inner).focus = Um(config.focus);
+        let world = Arc::new(RwLock::new(World {
+            focus: Um(config.focus),
+            tilt: config.tilt,
+            ..World::empty()
+        }));
         let mut camera_config = match config.sensor.as_str() {
             "full" => SimCameraConfig::default(),
             "quarter" => SimCameraConfig::quarter(),
