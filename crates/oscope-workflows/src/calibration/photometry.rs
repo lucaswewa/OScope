@@ -292,17 +292,22 @@ fn plane(image: &Image, format: PixelFormat, c: usize) -> Image {
     Image::from_vec(Shape::new(pw, ph, 1), data).expect("a plane")
 }
 
-/// `plane` blurred by a box of `radius`, one axis then the other, the edges
-/// repeated.
+/// `plane` blurred by a box of `radius`, one axis then the other, each
+/// window's mean over the part of it in the plane. Each row's running sums
+/// give a window's sum in two lookups.
 fn smooth(plane: &Image, radius: usize) -> Vec<f64> {
     let (w, h) = (plane.width() as usize, plane.height() as usize);
     let pass = |data: &[f64], w: usize, h: usize| -> Vec<f64> {
         let mut out = vec![0.0; data.len()];
+        let mut sums = vec![0.0; w + 1];
         for y in 0..h {
             let row = &data[y * w..(y + 1) * w];
+            for (x, v) in row.iter().enumerate() {
+                sums[x + 1] = sums[x] + v;
+            }
             for x in 0..w {
                 let (lo, hi) = (x.saturating_sub(radius), (x + radius).min(w - 1));
-                out[y * w + x] = row[lo..=hi].iter().sum::<f64>() / (hi - lo + 1) as f64;
+                out[y * w + x] = (sums[hi + 1] - sums[lo]) / (hi - lo + 1) as f64;
             }
         }
         out
