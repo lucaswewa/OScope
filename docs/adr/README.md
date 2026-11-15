@@ -19,7 +19,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0011](0011-building-loading-and-redistributing-cuda-kernels.md) | Building, loading and redistributing CUDA kernels | Accepted | P07 |
 | [0012](0012-the-hardware-abstraction-layer.md) | The hardware abstraction layer | Accepted | P09 |
 | [0013](0013-the-simulator-clock-camera-mounting-and-3d-samples.md) | The simulator: its clock, camera mounting and 3D samples | Accepted | P10 |
-| [0014](0014-the-preview-protocol-jpeg-over-a-binary-websocket.md) | The preview protocol: JPEG over a binary WebSocket | Accepted; extended by 0035 | P17 |
+| [0014](0014-the-preview-protocol-jpeg-over-a-binary-websocket.md) | The preview protocol: JPEG over a binary WebSocket | Accepted; extended by 0035, 0026 | P17 |
 | [0015](0015-the-sidecar-contract-service-mode-and-the-desktop-fast-path.md) | The sidecar contract, service mode and the desktop fast path | Accepted | P19 |
 | [0016](0016-the-job-service.md) | The job service | Accepted | P20 |
 | [0017](0017-the-pipeline-model.md) | The pipeline model | Accepted | P21 |
@@ -30,9 +30,10 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0022](0022-scratch-recording-and-ingest.md) | Scratch recording and ingest | Accepted | P29 |
 | [0023](0023-the-calibration-model.md) | The calibration model | Accepted | P32 |
 | [0024](0024-autofocus.md) | Autofocus | Accepted | P34 |
-| [0025](0025-scan-planning-and-the-scan-engine.md) | Scan planning and the scan engine | Accepted | P36 |
+| [0025](0025-scan-planning-and-the-scan-engine.md) | Scan planning and the scan engine | Accepted; extended by 0026 | P36 |
+| [0026](0026-live-stitching.md) | Live stitching | Accepted | P38 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
-| [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted | P18 |
+| [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |
 | [0037](0037-importers-exporters-and-the-abi-s-third-version.md) | Importers, exporters, and the ABI's third version | Accepted | P30 |
 

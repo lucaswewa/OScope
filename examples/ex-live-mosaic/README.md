@@ -16,8 +16,8 @@ It serves at http://127.0.0.1:8242/. Its page shows the live view beside the mos
 
 ```text
 ex-live-mosaic: a mosaic of 3125 × 2084 pixels of 1.92 µm over 6 × 4 mm, in 5 levels
-  roamed to 4 places: 5 frames drawn, 1 blurred on the way, 9 showing a place drawn
-  scanned 6 tiles beside them, each drawn as it was taken: 19 frames drawn in all, in 82 tiles at every level
+  roamed to 4 places: 5 frames drawn, 8 blurred on the way, 0 showing a place drawn
+  scanned 6 tiles beside them, each drawn as it was taken: 17 frames drawn in all, in 82 tiles at every level
   open http://127.0.0.1:8242/ to see the live view beside the mosaic; the arrow keys move the stage
 ```
 

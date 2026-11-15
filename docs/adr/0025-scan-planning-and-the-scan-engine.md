@@ -1,6 +1,6 @@
 # ADR-0025: Scan planning and the scan engine
 
-- Status: Accepted
+- Status: Accepted; extended by [ADR-0026](0026-live-stitching.md)
 - Date: 2026-11-15
 - Phase: P36
 
