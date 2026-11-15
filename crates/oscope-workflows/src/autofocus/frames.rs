@@ -171,13 +171,16 @@ pub(super) fn percentile(
     Ok(f64::from(*value) / linear.full())
 }
 
+/// A region's cells' colours, by rows, and how many cells there are across
+/// and down.
+pub(crate) type Cells = (Vec<[f64; 3]>, u32, u32);
+
 /// The colours of the region's cells, a mosaic's 2 × 2 or a colour pixel,
-/// as shares of full scale, by rows; and how many cells there are across
-/// and down. `None` for a grey frame.
+/// as shares of full scale. `None` for a grey frame.
 pub(crate) fn colour_cells(
     frame: &Frame,
     region: Option<Region>,
-) -> Result<Option<(Vec<[f64; 3]>, u32, u32)>, AutofocusError> {
+) -> Result<Option<Cells>, AutofocusError> {
     let linear = linear(frame, region)?;
     let (x0, y0, rw, rh) = linear.region;
     let full = linear.full();
