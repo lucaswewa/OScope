@@ -8,6 +8,7 @@ use oscope_core::{Point2, Um};
 use serde::Deserialize;
 
 use crate::cells::CellCulture;
+use crate::colour_target::ColourTargetSample;
 use crate::fluorescence::Dye;
 use crate::import::{ImportLight, Imported};
 use crate::sample::Sample;
@@ -31,6 +32,8 @@ pub enum SampleKind {
     Cells,
     /// The sub-diffraction [`Structures`] under the coverslip.
     Structures,
+    /// The [`ColourTargetSample`], at the coverslip's middle (P33).
+    ColourTarget,
     /// An image file, at the coverslip's middle.
     Image,
     /// A stack in a multi-page TIFF, at the coverslip's middle.
@@ -46,6 +49,7 @@ impl SampleKind {
             Self::Surface => "surface",
             Self::Cells => "cells",
             Self::Structures => "structures",
+            Self::ColourTarget => "colour-target",
             Self::Image => "image",
             Self::Stack => "stack",
         }
@@ -166,6 +170,7 @@ impl SampleEntry {
             }
             SampleKind::Cells => Arc::new(CellCulture::new(seed, cover)),
             SampleKind::Structures => Arc::new(Structures::new(seed, cover)),
+            SampleKind::ColourTarget => Arc::new(ColourTargetSample::new(middle)),
             SampleKind::Image | SampleKind::Stack => {
                 let what = |field: &str| format!("{}: an import needs `{field}`", self.name);
                 let path = base.join(self.path.as_ref().ok_or_else(|| what("path"))?);
@@ -207,6 +212,7 @@ impl SampleCatalogue {
                 entry("reflective surface", SampleKind::Surface),
                 entry("fluorescent cells", SampleKind::Cells),
                 entry("sub-diffraction structures", SampleKind::Structures),
+                entry("colour target", SampleKind::ColourTarget),
             ],
         }
     }

@@ -48,6 +48,7 @@ pub mod camera;
 pub mod catalogue;
 pub mod cells;
 pub mod clock;
+pub mod colour_target;
 pub mod devices;
 pub mod fluorescence;
 #[cfg(feature = "cuda")]
@@ -70,6 +71,7 @@ pub use camera::{Mounting, SimCamera, SimCameraConfig};
 pub use catalogue::{SampleCatalogue, SampleEntry, SampleKind, SlideLoader};
 pub use cells::{Cell, CellCulture};
 pub use clock::{Rate, SimClock};
+pub use colour_target::ColourTargetSample;
 pub use devices::{SimLights, SimMount, Simulator, SimulatorConfig};
 pub use fluorescence::{Dye, Excitation};
 pub use import::{ImportLight, Imported};

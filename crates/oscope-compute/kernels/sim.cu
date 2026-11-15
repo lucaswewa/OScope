@@ -78,7 +78,8 @@ extern "C" __global__ void expose(const float* atlas, const int* grid, unsigned 
                                   float f, unsigned int width, unsigned int height, float scale,
                                   float dark, float read, float black, float cpe,
                                   unsigned int noise, unsigned long long seed,
-                                  unsigned long long frame, unsigned short* out) {
+                                  unsigned long long frame, float vx0, float vy0, float vk,
+                                  float vr2, float vs, unsigned short* out) {
     unsigned int u = blockIdx.x * blockDim.x + threadIdx.x;
     if (u >= width) return;
     for (unsigned int v = blockIdx.y; v < height; v += gridDim.y) {
@@ -92,7 +93,10 @@ extern "C" __global__ void expose(const float* atlas, const int* grid, unsigned 
             light += sample(atlas, grid, columns, rows, tile, pixel, place[0] + hx,
                             place[1] + hy, channel);
         }
-        float mean = light / (float)n * scale + dark;
+        // The vignetting, cos^4's law: 1 / (1 + s r^2)^2.
+        float dx = vx0 + vk * u, dy = vy0 + vk * v;
+        float fall = 1.0f + vs * (dx * dx + dy * dy) / vr2;
+        float mean = light / (float)n * scale * (1.0f / (fall * fall)) + dark;
         float electrons = mean;
         if (noise) {
             Draws draws = {mix(seed ^ mix(frame ^ mix((unsigned long long)v * width + u)))};

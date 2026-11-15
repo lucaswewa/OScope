@@ -218,6 +218,8 @@ impl ObjectiveMount for SimMount {
 /// mirrored = false        # whether its image is mirrored
 /// scale = 1.0             # the true magnification over the catalogue's
 /// backlash = 2.0          # the stage's play when an axis reverses, in µm
+/// vignetting = 0.0        # the optics' falloff, 1 / (1 + s r²)²: s
+/// response = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]   # the sensor's colour
 ///
 /// [[devices.simulator.samples]]   # beyond the built-in ones
 /// name = "my section"
@@ -247,6 +249,12 @@ pub struct SimulatorConfig {
     pub scale: f64,
     /// The stage's play when an axis reverses, in µm.
     pub backlash: f64,
+    /// The optics' vignetting, s: the light falls off as 1 / (1 + s r²)²
+    /// towards the sensor's corners (P33).
+    pub vignetting: f64,
+    /// The sensor's colour response, with the light's tint, by rows: what
+    /// colour calibration corrects (P33).
+    pub response: [[f64; 3]; 3],
     /// Samples beyond the built-in ones.
     pub samples: Vec<SampleEntry>,
 }
@@ -263,6 +271,8 @@ impl Default for SimulatorConfig {
             mirrored: false,
             scale: 1.0,
             backlash: 2.0,
+            vignetting: 0.0,
+            response: crate::camera::IDEAL,
             samples: Vec::new(),
         }
     }
@@ -297,12 +307,26 @@ impl Simulator {
         } else {
             return Err(format!("a clock rate of {}", config.rate));
         };
-        let truth = [config.rotation, config.scale, config.backlash];
-        if !truth.iter().all(|v| v.is_finite()) || config.scale <= 0.0 || config.backlash < 0.0 {
-            let (r, s, b) = (config.rotation, config.scale, config.backlash);
+        let response = config.response.iter().flatten();
+        let truth = [
+            config.rotation,
+            config.scale,
+            config.backlash,
+            config.vignetting,
+        ];
+        let finite = truth.iter().chain(response).all(|v| v.is_finite());
+        if !finite || config.scale <= 0.0 || config.backlash < 0.0 || config.vignetting < 0.0 {
+            let (r, s, b, v) = (
+                config.rotation,
+                config.scale,
+                config.backlash,
+                config.vignetting,
+            );
             return Err(format!(
-                "a rotation of {r}°, a scale of {s} and a backlash of {b} µm: \
-                 a scale more than 0 and a backlash of at least 0 are needed"
+                "a rotation of {r}°, a scale of {s}, a backlash of {b} µm and a vignetting of \
+                 {v}, with a response of {:?}: all finite, a scale more than 0, and a backlash \
+                 and a vignetting of at least 0, are needed",
+                config.response
             ));
         }
         let clock = Arc::new(SimClock::new(rate));
@@ -320,6 +344,8 @@ impl Simulator {
         };
         camera_config.mounting.rotation = config.rotation.to_radians();
         camera_config.mounting.mirrored = config.mirrored;
+        camera_config.vignetting = config.vignetting;
+        camera_config.response = config.response;
         let catalogue = ObjectiveCatalogue::mitutoyo();
         let first = catalogue
             .get(&config.objective)
