@@ -67,7 +67,7 @@ pub enum AutofocusError {
     Failed(String),
 }
 
-fn failed(why: impl Into<String>) -> AutofocusError {
+pub(crate) fn failed(why: impl Into<String>) -> AutofocusError {
     AutofocusError::Failed(why.into())
 }
 

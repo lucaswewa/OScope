@@ -144,6 +144,12 @@ impl HeTissue {
         self.islands.iter().map(|i| i.centre).collect()
     }
 
+    /// Whether there is tissue at `at`, in slide coordinates: inside an
+    /// island and not in a hole (P37's truth).
+    pub fn is_tissue(&self, at: Point2) -> bool {
+        self.tissue(at.x, at.y, 1.0).0 > 0.5
+    }
+
     /// The signed distance of `(x, y)` from the nearest island's rough edge,
     /// in µm, negative inside.
     fn island_distance(&self, x: f64, y: f64, pixel: f64) -> f64 {

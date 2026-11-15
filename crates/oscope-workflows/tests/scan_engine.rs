@@ -489,3 +489,48 @@ async fn plans_that_cant_be_run_are_refused_at_submission() {
     assert!(refused(&good, settle).contains("settling"));
     bench.stop().await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_map_measured_before_the_first_tile_puts_each_at_its_focus() {
+    let _turn = TURN.lock().await;
+    let bench = bench().await;
+    let quarter = focus_defaults(&bench.rig).await.unwrap().depth_of_field_um / 4.0;
+    // A snake over 600 µm of the tilted slide, its z unknown till the map,
+    // measured by autofocus at the tiles nearest a 2 × 2 grid over them:
+    // three of its 3 × 4 tiles, as two middles are nearest the same.
+    let measure = ZPolicy::Measure {
+        columns: 2,
+        rows: 2,
+        surface: Surface::Plane,
+    };
+    let plan = snake(&bench.square(600.0), &bench.field, measure).unwrap();
+    assert!(plan.tiles.iter().all(|t| t.z_um.is_none()));
+    let id = bench.submit(&plan);
+    assert_eq!(
+        bench.ended(id).await,
+        JobState::Completed,
+        "{:?}",
+        bench.jobs.get(id).unwrap().error
+    );
+    let info = bench.jobs.get(id).unwrap();
+    assert!(
+        info.results
+            .iter()
+            .any(|r| r.starts_with("a focus map of 3 points, 0 rejected, none to spare")),
+        "{:?}",
+        info.results
+    );
+    let progress = bench.last.lock().unwrap().clone().unwrap();
+    assert!(matches!(progress.plan.z, ZPolicy::Map { .. }));
+    assert_eq!(progress.done.len(), plan.tiles.len());
+    for done in &progress.done {
+        let truth = bench.truth(Point2::new(done.x_um, done.y_um));
+        assert!(
+            (done.z_um - truth).abs() < quarter,
+            "{done:?}: the truth {truth}"
+        );
+    }
+    let contents = bench.store.contents(bench.project).unwrap();
+    assert_eq!(contents.acquisitions[0].plan["z"]["kind"], "map");
+    bench.stop().await;
+}
