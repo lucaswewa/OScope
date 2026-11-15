@@ -154,6 +154,15 @@ impl World {
         }
     }
 
+    /// The stage's z at which the slide is sharpest at stage point `at`: its
+    /// focus, plus its sample's height in focus there (P34's truth). `None`
+    /// with no slide.
+    pub fn in_focus(&self, at: Point2) -> Option<Um> {
+        let slide = self.slide.as_ref()?;
+        let local = Point2::new(at.x - slide.origin.x, at.y - slide.origin.y);
+        Some(Um(self.focus.0 + slide.sample.in_focus(local).0))
+    }
+
     /// What the camera sees of `field` through `optics` in `light`: linear
     /// RGB, 1 where the light passes or is reflected unhindered.
     ///

@@ -144,6 +144,19 @@ impl SimulationThing {
             .map_err(ActionError::handled)
     }
 
+    /// Where the simulated slide is sharpest.
+    ///
+    /// The stage's z, in µm, at which the slide is in focus at stage point
+    /// (`x`, `y`): the truth autofocus is held to (P34). None with no slide.
+    #[action]
+    async fn in_focus(&self, x: f64, y: f64) -> Result<Option<f64>, ActionError> {
+        let world = self.simulator()?.camera.world();
+        let world = world
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        Ok(world.in_focus(oscope_core::Point2::new(x, y)).map(|z| z.0))
+    }
+
     /// Takes the slide off the stage, and says which sample it was.
     #[action]
     async fn unload(&self) -> Result<Option<String>, ActionError> {

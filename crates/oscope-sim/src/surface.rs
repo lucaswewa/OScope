@@ -253,6 +253,11 @@ impl Sample for Surface {
         "reflective surface"
     }
 
+    /// The chip's surface at `at`, or the slide's beside it.
+    fn in_focus(&self, at: Point2) -> Um {
+        self.height(at).unwrap_or(Um(0.0))
+    }
+
     fn layers(&self) -> &[Layer] {
         &self.layers
     }
