@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use oscope_acquire::FrameBus;
 use oscope_compute::{Image, Shape, cpu};
 use oscope_core::{Frame, PixelFormat, Um, Xyz};
-use oscope_hal::{Camera, Objective, ObjectiveMount, Stage};
+use oscope_hal::{Camera, Illumination, Objective, ObjectiveMount, Stage};
 use oscope_imaging::registration::{self, RegisterOptions};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ use super::store::CalibrationStore;
 /// How long each frame is waited for: a camera gives one within a frame's
 /// interval, but after a long move the simulator renders its 20 MP frames
 /// afresh, which takes it seconds.
-const FRAME_WAIT: Duration = Duration::from_secs(30);
+pub(super) const FRAME_WAIT: Duration = Duration::from_secs(30);
 /// The least confidence a registration may have.
 const CONFIDENCE: f64 = 0.5;
 /// The widest and tallest part of a frame used, in pixels.
@@ -47,11 +47,11 @@ pub enum CalibrationError {
     Failed(String),
 }
 
-fn failed(why: impl Into<String>) -> CalibrationError {
+pub(super) fn failed(why: impl Into<String>) -> CalibrationError {
     CalibrationError::Failed(why.into())
 }
 
-fn device(error: oscope_hal::Error) -> CalibrationError {
+pub(super) fn device(error: oscope_hal::Error) -> CalibrationError {
     failed(error.to_string())
 }
 
@@ -69,6 +69,8 @@ pub struct Rig {
     pub bus: Arc<FrameBus>,
     /// The calibration sets.
     pub store: Arc<CalibrationStore>,
+    /// The lights, which a dark frame turns off and back on (P33).
+    pub lights: Arc<dyn Illumination>,
 }
 
 /// How a calibration moves: each position reached from `approach_um`
@@ -273,7 +275,7 @@ impl Rig {
     }
 }
 
-fn check(report: &dyn Report) -> Result<(), CalibrationError> {
+pub(super) fn check(report: &dyn Report) -> Result<(), CalibrationError> {
     match report.cancelled() {
         true => Err(CalibrationError::Cancelled),
         false => Ok(()),

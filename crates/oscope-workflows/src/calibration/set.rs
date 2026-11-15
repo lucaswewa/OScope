@@ -93,6 +93,90 @@ pub struct StageValues {
     pub homed_at: Option<Xyz>,
 }
 
+/// A frame's region of the sensor, in its pixels.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Region {
+    /// Its left.
+    pub x: u32,
+    /// Its top.
+    pub y: u32,
+    /// Its width, in the frame's pixels.
+    pub width: u32,
+    /// Its height.
+    pub height: u32,
+}
+
+/// A dark frame (P33): the mean of frames taken without light, for a mode,
+/// a gain, and an octave of exposure. Its image, the mosaic in linear
+/// units from 0 to 1, is kept beside the set.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Dark {
+    /// The camera's mode.
+    pub mode: String,
+    /// The camera's gain.
+    pub gain: f64,
+    /// The octave of exposure it serves, in ms: from the first up to the
+    /// second.
+    pub exposure_ms: [f64; 2],
+    /// The exposure it was taken at, in ms.
+    pub taken_ms: f64,
+    /// The frame's region.
+    pub region: Region,
+    /// How many frames were averaged.
+    pub frames: u32,
+    /// Its mean level, in linear units.
+    pub mean: f64,
+    /// Its spread over the frame, the fixed pattern's.
+    pub spread: f64,
+}
+
+/// A flat field (P33): a blank field's frames averaged, the dark taken
+/// away, each colour's sites scaled to a mean of 1, for an objective, a
+/// light and a binning; with the white balance the blank field gives. Its
+/// image is kept beside the set.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Flat {
+    /// The objective, by name.
+    pub objective: String,
+    /// The lights on, by channel.
+    pub light: String,
+    /// The camera's mode.
+    pub mode: String,
+    /// The camera's binning.
+    pub binning: u32,
+    /// The frame's region.
+    pub region: Region,
+    /// How many frames were averaged.
+    pub frames: u32,
+    /// Whether a dark frame was taken away, or else the black level.
+    pub dark: bool,
+    /// The white balance: red's, green's and blue's gains, green's 1.
+    pub gains: [f64; 3],
+    /// How uneven the field was: its green's spread over its mean.
+    pub uneven: f64,
+}
+
+/// A colour calibration (P33), for a light: the white balance, and the
+/// matrix that takes white-balanced colours to linear sRGB, from a colour
+/// target.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Colour {
+    /// The lights on, by channel.
+    pub light: String,
+    /// The white balance: red's, green's and blue's gains, green's 1.
+    pub gains: [f64; 3],
+    /// The matrix, by rows.
+    pub matrix: [[f64; 3]; 3],
+    /// The target's patches measured.
+    pub patches: u32,
+    /// ΔE*ab over them, white-balanced only: the mean.
+    pub delta_e_before: f64,
+    /// And corrected by the matrix: the mean.
+    pub delta_e_mean: f64,
+    /// And the largest.
+    pub delta_e_max: f64,
+}
+
 /// What a set holds, by its kind.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -101,6 +185,34 @@ pub enum Values {
     Geometry(Geometry),
     /// The stage's.
     Stage(StageValues),
+    /// A dark frame.
+    Dark(Dark),
+    /// A flat field.
+    Flat(Flat),
+    /// A colour calibration.
+    Colour(Colour),
+}
+
+/// The octave of exposure that `exposure_ms` lies in: from a power of 2 ms
+/// up to the next.
+pub fn exposure_octave(exposure_ms: f64) -> [f64; 2] {
+    let low = 2f64.powi(exposure_ms.max(1e-6).log2().floor() as i32);
+    [low, 2.0 * low]
+}
+
+/// The key of a dark frame for `mode`, `gain` and `exposure_ms`.
+pub fn dark_key(mode: &str, gain: f64, exposure_ms: f64) -> String {
+    format!("dark/{mode}/{gain}/{}", exposure_octave(exposure_ms)[0])
+}
+
+/// The key of a flat field for `objective`, `light` and `binning`.
+pub fn flat_key(objective: &str, light: &str, binning: u32) -> String {
+    format!("flat/{objective}/{light}/{binning}")
+}
+
+/// The key of a colour calibration for `light`.
+pub fn colour_key(light: &str) -> String {
+    format!("colour/{light}")
 }
 
 /// The key of an objective's geometry at a binning.
@@ -119,12 +231,20 @@ fn finite(what: &str, values: &[f64]) -> Result<(), String> {
 }
 
 impl Values {
-    /// Its kind: `geometry` or `stage`.
+    /// Its kind: `geometry`, `stage`, `dark`, `flat` or `colour`.
     pub fn kind(&self) -> &'static str {
         match self {
             Values::Geometry(_) => "geometry",
             Values::Stage(_) => "stage",
+            Values::Dark(_) => "dark",
+            Values::Flat(_) => "flat",
+            Values::Colour(_) => "colour",
         }
+    }
+
+    /// Whether an image is kept beside it: a dark frame's or a flat field's.
+    pub fn has_image(&self) -> bool {
+        matches!(self, Values::Dark(_) | Values::Flat(_))
     }
 
     /// Its key: one set of each key is active.
@@ -132,6 +252,9 @@ impl Values {
         match self {
             Values::Geometry(g) => geometry_key(&g.objective, g.binning),
             Values::Stage(_) => STAGE_KEY.to_owned(),
+            Values::Dark(d) => dark_key(&d.mode, d.gain, d.taken_ms),
+            Values::Flat(f) => flat_key(&f.objective, &f.light, f.binning),
+            Values::Colour(c) => colour_key(&c.light),
         }
     }
 
@@ -173,6 +296,29 @@ impl Values {
                 }
                 Ok(Values::Stage(s))
             }
+            Values::Dark(d) => {
+                finite("the dark frame", &[d.gain, d.taken_ms, d.mean, d.spread])?;
+                Ok(Values::Dark(d))
+            }
+            Values::Flat(f) => {
+                finite(
+                    "the flat field",
+                    &[f.gains[0], f.gains[1], f.gains[2], f.uneven],
+                )?;
+                match f.gains.iter().all(|g| *g > 0.0) {
+                    true => Ok(Values::Flat(f)),
+                    false => Err("a flat field's gains must be more than 0".to_owned()),
+                }
+            }
+            Values::Colour(c) => {
+                let numbers = c.gains.iter().chain(c.matrix.iter().flatten());
+                let all: Vec<f64> = numbers.copied().collect();
+                finite("the colour calibration", &all)?;
+                match c.gains.iter().all(|g| *g > 0.0) {
+                    true => Ok(Values::Colour(c)),
+                    false => Err("a colour calibration's gains must be more than 0".to_owned()),
+                }
+            }
         }
     }
 
@@ -188,6 +334,20 @@ impl Values {
             Values::Stage(s) => format!(
                 "backlash {:.2} µm in x, {:.2} µm in y",
                 s.backlash_um.x, s.backlash_um.y
+            ),
+            Values::Dark(d) => format!(
+                "dark at {} ms, gain {}: mean {:.5}",
+                d.taken_ms, d.gain, d.mean
+            ),
+            Values::Flat(f) => format!(
+                "flat for the {} in {}: {:.1} % uneven",
+                f.objective,
+                f.light,
+                100.0 * f.uneven
+            ),
+            Values::Colour(c) => format!(
+                "colour in {}: ΔE*ab {:.2} on average, from {:.2}",
+                c.light, c.delta_e_mean, c.delta_e_before
             ),
         }
     }

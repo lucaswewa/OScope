@@ -5,8 +5,9 @@ use std::sync::{Arc, OnceLock, PoisonError};
 
 use oscope_jobs::JobService;
 use oscope_workflows::calibration::{
-    CHECK, CalibrationSet, CalibrationStore, CheckReport, GEOMETRY, LastCheck, Rig, STAGE,
-    STAGE_KEY, SetSummary, calibration_jobs, geometry_key,
+    CHECK, COLOUR, CalibrationSet, CalibrationStore, CheckReport, DARK, FLAT, GEOMETRY, LastCheck,
+    Rig, STAGE, STAGE_KEY, SetSummary, calibration_jobs, colour_key, dark_key, flat_key,
+    geometry_key,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,13 @@ pub struct ActiveSets {
     pub geometry: Option<CalibrationSet>,
     /// The stage's, if one is active.
     pub stage: Option<CalibrationSet>,
+    /// The dark frame for the camera's mode, gain and exposure (P33).
+    pub dark: Option<CalibrationSet>,
+    /// The flat field for the fitted objective, the lights on and the
+    /// camera's binning.
+    pub flat: Option<CalibrationSet>,
+    /// The colour calibration for the lights on.
+    pub colour: Option<CalibrationSet>,
 }
 
 struct Calibration {
@@ -65,6 +73,15 @@ fn given(pairs: &[(&str, Option<Value>)]) -> Value {
     Value::Object(map)
 }
 
+/// A photometric job's parameters: those given.
+fn frames_params(frames: Option<u32>, settle_ms: Option<f64>, activate: Option<bool>) -> Value {
+    given(&[
+        ("frames", frames.map(|v| json!(v))),
+        ("settle_ms", settle_ms.map(|v| json!(v))),
+        ("activate", activate.map(|v| json!(v))),
+    ])
+}
+
 impl CalibrationThing {
     fn state(&self) -> Result<&Calibration, ActionError> {
         self.state.get().ok_or_else(unavailable)
@@ -102,6 +119,7 @@ impl CalibrationThing {
                 objectives: Arc::clone(&devices.objectives),
                 bus: Arc::clone(devices.acquisition.bus()),
                 store: Arc::clone(&store),
+                lights: Arc::clone(&devices.lights),
             };
             for (kind, factory) in calibration_jobs(rig, Arc::clone(&last)) {
                 jobs.register(kind, factory);
@@ -136,6 +154,9 @@ impl CalibrationThing {
             return Ok(ActiveSets {
                 geometry: None,
                 stage: None,
+                dark: None,
+                flat: None,
+                colour: None,
             });
         };
         let devices = &state.devices;
@@ -146,10 +167,31 @@ impl CalibrationThing {
             .iter()
             .find(|m| m.name == settings.mode)
             .map_or(1, |m| m.binning);
-        let geometry = fitted.and_then(|o| state.store.active(&geometry_key(&o.name, binning)));
+        let lights = devices.lights.state().await.map_err(property_error)?;
+        let on: Vec<String> = lights
+            .into_iter()
+            .filter(|l| l.on && l.intensity > 0.0)
+            .map(|l| l.channel)
+            .collect();
+        let light = on.join("+");
+        let store = &state.store;
+        let geometry = fitted
+            .as_ref()
+            .and_then(|o| store.active(&geometry_key(&o.name, binning)));
+        let flat = fitted
+            .as_ref()
+            .and_then(|o| store.active(&flat_key(&o.name, &light, binning)));
+        let dark = store.active(&dark_key(
+            &settings.mode,
+            settings.gain,
+            settings.exposure.0,
+        ));
         Ok(ActiveSets {
             geometry,
-            stage: state.store.active(STAGE_KEY),
+            stage: store.active(STAGE_KEY),
+            dark,
+            flat,
+            colour: store.active(&colour_key(&light)),
         })
     }
 
@@ -248,6 +290,63 @@ impl CalibrationThing {
             ("activate", activate.map(|v| json!(v))),
         ]);
         self.submit(&ctx, STAGE, params)
+    }
+
+    /// Takes a dark frame.
+    ///
+    /// The lights are turned off, `frames` frames averaged (16) from
+    /// `settle_ms` on (50), and the lights turned back on: for the camera's
+    /// mode, gain and octave of exposure. The set is made active unless
+    /// `activate` is false.
+    ///
+    /// A job on the instrument: its result is the set, `calibration/<id>`.
+    #[action]
+    async fn dark(
+        &self,
+        ctx: ActionCtx,
+        #[param(default)] frames: Option<u32>,
+        #[param(default)] settle_ms: Option<f64>,
+        #[param(default)] activate: Option<bool>,
+    ) -> Result<JobRef, ActionError> {
+        self.submit(&ctx, DARK, frames_params(frames, settle_ms, activate))
+    }
+
+    /// Takes a flat field.
+    ///
+    /// At a blank part of the slide, through the fitted objective, in the
+    /// lights that are on: `frames` frames averaged (16), the dark taken
+    /// away, each colour scaled to a mean of 1; with the white balance the
+    /// blank field gives. Refused if the field isn't blank.
+    ///
+    /// A job on the instrument: its result is the set, `calibration/<id>`.
+    #[action]
+    async fn flat(
+        &self,
+        ctx: ActionCtx,
+        #[param(default)] frames: Option<u32>,
+        #[param(default)] settle_ms: Option<f64>,
+        #[param(default)] activate: Option<bool>,
+    ) -> Result<JobRef, ActionError> {
+        self.submit(&ctx, FLAT, frames_params(frames, settle_ms, activate))
+    }
+
+    /// Calibrates colour.
+    ///
+    /// From OScope's colour target, centred in the field of the 5× or the
+    /// 10×: its 24 patches measured through the active geometry, the dark
+    /// and the flat field taken out, white-balanced on its lightest grey,
+    /// and the colour matrix fitted. Refused if the colours fit poorly.
+    ///
+    /// A job on the instrument: its result is the set, `calibration/<id>`.
+    #[action]
+    async fn colour(
+        &self,
+        ctx: ActionCtx,
+        #[param(default)] frames: Option<u32>,
+        #[param(default)] settle_ms: Option<f64>,
+        #[param(default)] activate: Option<bool>,
+    ) -> Result<JobRef, ActionError> {
+        self.submit(&ctx, COLOUR, frames_params(frames, settle_ms, activate))
     }
 
     /// Checks the objective.
