@@ -72,3 +72,25 @@ def test_a_camera_s_frame_goes_into_the_host_s_segment():
 def test_a_driver_of_no_known_kind_is_refused():
     with pytest.raises(ValueError, match="not 'printer'"):
         driver("test.printer", kind="printer")
+
+
+@driver("test.row", kind="workflow")
+class Row:
+    def schema(self):
+        return {"type": "object", "properties": {"tiles": {"type": "integer"}}}
+
+    def plan(self, request):
+        step = request["field"]["step_um"]["width"]
+        tiles = range(request["params"]["tiles"])
+        return [{"x_um": 1000.0 + k * step, "y_um": 500.0} for k in tiles]
+
+
+def test_a_workflow_plans_its_tiles_from_the_field():
+    assert {"name": "test.row", "kind": "workflow"} in drivers()
+    field = {"cell_um": {"width": 100.0, "height": 80.0}, "step_um": {"width": 90.0, "height": 72.0}}
+    outgoing = io.BytesIO()
+    sent = stream(call("test.row", "plan", {"params": {"tiles": 3}, "field": field}))
+    worker.serve(sent, outgoing)
+    (planned,) = replies(outgoing)
+    xs = [tile["x_um"] for tile in planned["result"]]
+    assert xs == [1000.0, 1090.0, 1180.0]

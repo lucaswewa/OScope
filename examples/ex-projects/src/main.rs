@@ -85,6 +85,7 @@ fn make(store: &Store, seed: u64, objective: &str, width: u32, result: bool) -> 
         index: 0,
         position: Some(position),
         timestamp: None,
+        trigger: None,
     }];
     let acquisition = draft.commit()?;
     println!(

@@ -17,7 +17,7 @@ use oscope_compute::Compute;
 use oscope_hal::{Camera, Illumination, ObjectiveMount, Stage};
 
 mod exposure;
-mod frames;
+pub(crate) mod frames;
 mod jobs;
 mod sweep;
 

@@ -21,7 +21,7 @@ use tempfile::NamedTempFile;
 
 use oscope_pipeline::Node;
 
-use crate::drivers::{Drivers, Formats, Link, NativeLink, PythonLink};
+use crate::drivers::{Drivers, Formats, Link, NativeLink, PythonLink, Workflows};
 use crate::manifest::is_id;
 use crate::native::{DriverInfo, check, registered};
 use crate::panels::{self, Panel};
@@ -263,6 +263,7 @@ fn provided(
         ),
         (Contribution::Importers, "importers", of(&["importer"])),
         (Contribution::Exporters, "exporters", of(&["exporter"])),
+        (Contribution::Workflows, "workflows", of(&["workflow"])),
     ];
     for (contribution, what, described) in names {
         let provided = manifest.provides.get(&contribution).into_iter().flatten();
@@ -301,6 +302,7 @@ pub struct Extensions {
     workers: Vec<Arc<Worker>>,
     drivers: Drivers,
     formats: Formats,
+    workflows: Workflows,
     panels: BTreeMap<String, (String, Panel)>,
     /// The extensions whose code this start couldn't load: the version, and
     /// why.
@@ -372,6 +374,7 @@ impl Extensions {
             (Vec::new(), Vec::new(), Vec::new(), BTreeMap::new());
         let (mut drivers, mut panels) = (Drivers::default(), BTreeMap::new());
         let mut formats = Formats::default();
+        let mut workflows = Workflows::default();
         for (id, plan) in &plans {
             let Installed { state, manifest } = &installed[*id];
             let Some(version) = &plan.version else {
@@ -389,6 +392,7 @@ impl Extensions {
                     for (info, link) in code.drivers {
                         match info.kind.as_str() {
                             "importer" | "exporter" => formats.add(&info.name, &info.kind, link),
+                            "workflow" => workflows.add(&info.name, link),
                             _ => drivers.add(&info.name, &info.kind, link),
                         }
                     }
@@ -422,6 +426,7 @@ impl Extensions {
             workers,
             drivers,
             formats,
+            workflows,
             panels,
             failed,
             python,
@@ -440,6 +445,7 @@ impl Extensions {
             workers: Vec::new(),
             drivers: Drivers::default(),
             formats: Formats::default(),
+            workflows: Workflows::default(),
             panels: BTreeMap::new(),
             failed: BTreeMap::new(),
             python: None,
@@ -478,6 +484,11 @@ impl Extensions {
     /// (ADR-0037).
     pub fn formats(&self) -> &Formats {
         &self.formats
+    }
+
+    /// The scan workflows of the extensions this start loaded (ADR-0025).
+    pub fn workflows(&self) -> &Workflows {
+        &self.workflows
     }
 
     /// The panels of the extensions this start loaded, by name: each with

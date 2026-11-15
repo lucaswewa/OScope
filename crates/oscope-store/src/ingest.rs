@@ -57,7 +57,8 @@ fn camera(meta: &FrameMeta) -> Value {
 /// Writes the frames of the recording in `folder` into a new acquisition of
 /// `project`, named `name`, or as the recording if none: a plane for each
 /// frame, compressed, with its pyramid, and each frame's position and time
-/// in its record. `progress` is told how many frames are written, of how
+/// in its record, and a scan's plan, from the recording's source's `plan`.
+/// `progress` is told how many frames are written, of how
 /// many, and stops the ingest by answering false. Once the acquisition is
 /// committed, the recording is deleted, unless `keep`.
 pub fn ingest(
@@ -111,6 +112,7 @@ pub fn ingest(
             index: f.index,
             position: f.meta.position,
             timestamp: Some(f.meta.exposure_midpoint()),
+            trigger: None,
         })
         .collect();
     record.camera = camera(&first.meta);
@@ -119,9 +121,14 @@ pub fn ingest(
         .objective
         .clone()
         .map_or(Value::Null, Value::String);
+    // A scan's plan, which its recording's source carries, is the
+    // acquisition's (ADR-0025).
+    let mut source = recording.source.clone();
+    let plan = source.as_object_mut().and_then(|s| s.remove("plan"));
+    record.plan = plan.unwrap_or(Value::Null);
     record.instrument = json!({
         "recording": recording.id,
-        "source": recording.source,
+        "source": source,
         "lights": first.meta.lights,
     });
     let Some(image) = draft.image() else {

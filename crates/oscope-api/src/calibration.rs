@@ -95,6 +95,28 @@ impl Calibration {
     }
 }
 
+/// The calibration store, which the `calibration` and `scan` Things share:
+/// opened once, by whichever starts first, so each sees what the other
+/// saves.
+#[derive(Default)]
+pub(crate) struct Calibrations(Mutex<Option<Arc<CalibrationStore>>>);
+
+impl Calibrations {
+    /// The store in the data root's `calibration` folder.
+    pub(crate) fn open(
+        &self,
+        roots: &Roots,
+    ) -> Result<Arc<CalibrationStore>, oscope_workflows::calibration::StoreError> {
+        let mut store = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(store) = store.as_ref() {
+            return Ok(Arc::clone(store));
+        }
+        let opened = Arc::new(CalibrationStore::open(roots.data.join("calibration"))?);
+        *store = Some(Arc::clone(&opened));
+        Ok(opened)
+    }
+}
+
 /// The calibration sets, kept and versioned (ADR-0023), and the jobs that
 /// measure them.
 #[derive(Thing)]
@@ -175,11 +197,15 @@ impl CalibrationThing {
     #[on_start]
     async fn connect(&self, ctx: ThingCtx) -> anyhow::Result<()> {
         let server = ctx.server();
-        let (Some(devices), Some(roots)) = (server.service::<Devices>(), server.service::<Roots>())
-        else {
+        let found = (
+            server.service::<Devices>(),
+            server.service::<Roots>(),
+            server.service::<Calibrations>(),
+        );
+        let (Some(devices), Some(roots), Some(calibrations)) = found else {
             return Ok(());
         };
-        let store = Arc::new(CalibrationStore::open(roots.data.join("calibration"))?);
+        let store = calibrations.open(&roots)?;
         let jobs = server.service::<JobService>();
         let last = LastCheck::default();
         if let Some(jobs) = &jobs {

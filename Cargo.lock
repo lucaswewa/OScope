@@ -2361,6 +2361,7 @@ dependencies = [
  "oscope-imaging",
  "oscope-jobs",
  "oscope-sim",
+ "oscope-store",
  "schemars",
  "serde",
  "serde_json",

@@ -109,7 +109,14 @@ impl Library {
             drivers,
         } = serde_json::from_str(&json).map_err(|e| format!("its description: {e}"))?;
         check(&descriptors, "in ABI 3")?;
-        let kinds = ["camera", "stage", "illumination", "importer", "exporter"];
+        let kinds = [
+            "camera",
+            "stage",
+            "illumination",
+            "importer",
+            "exporter",
+            "workflow",
+        ];
         if let Some(driver) = drivers.iter().find(|d| !kinds.contains(&d.kind.as_str())) {
             return Err(format!(
                 "driver `{}`: no driver is a {}",
