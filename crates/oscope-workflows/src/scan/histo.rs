@@ -460,6 +460,16 @@ mod tests {
     }
 
     #[test]
+    fn saturation_finds_the_same_tissue_in_dim_light() {
+        let pink = |x: u32, y: u32| (5..25).contains(&x) && (4..16).contains(&y);
+        let bright = overview(40, 30, pink);
+        let mut dim = bright.clone();
+        dim.rgb.iter_mut().flatten().for_each(|v| *v *= 0.1);
+        let options = TissueOptions::default();
+        assert_eq!(detect(&dim, &options).mask, detect(&bright, &options).mask);
+    }
+
+    #[test]
     fn grey_glass_alone_is_no_tissue() {
         let mut glass = overview(30, 20, |_, _| false);
         // Noise of a hundredth in each channel.

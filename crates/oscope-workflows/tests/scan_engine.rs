@@ -521,7 +521,13 @@ async fn a_map_measured_before_the_first_tile_puts_each_at_its_focus() {
         info.results
     );
     let progress = bench.last.lock().unwrap().clone().unwrap();
-    assert!(matches!(progress.plan.z, ZPolicy::Map { .. }));
+    let ZPolicy::Map { map } = &progress.plan.z else {
+        panic!("{:?}", progress.plan.z);
+    };
+    for tile in &progress.plan.tiles {
+        let z = map.z_at(Point2::new(tile.x_um, tile.y_um));
+        assert_eq!(tile.z_um, Some(z));
+    }
     assert_eq!(progress.done.len(), plan.tiles.len());
     for done in &progress.done {
         let truth = bench.truth(Point2::new(done.x_um, done.y_um));

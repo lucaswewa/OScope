@@ -348,6 +348,8 @@ async fn an_overview_finds_the_tissue_the_tissue_pattern_plans_over() {
     let job = ended(&client, job["href"].as_str().unwrap()).await;
     assert_eq!(job["state"], "completed", "{job}");
     let view = client.get("/api/v1/scan/last_overview").await.json();
+    // Frames of 1313 × 875 µm, a field apart, with no overlap: 10 × 14.
+    assert_eq!(view["frames"], 140, "{}", view["frames"]);
     assert_eq!(
         (view["width"].as_u64(), view["height"].as_u64()),
         (Some(240), Some(240))
