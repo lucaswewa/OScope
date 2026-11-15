@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p35-scan-planners` / [#49](https://github.com/lucaswewa/OScope/pull/49)
-- Size: M · estimated ~2,500 before it started (regions ~220; the plan model and the field ~220; the planners ~200; the focus map and its solver ~330; estimates ~130; measuring a map ~80; the simulator's tilt ~40; tests ~600; `ex-plan` ~550; glue ~30; and a little on top); one pull request, at the owner's standing choice · {{SIZE}}
+- Size: M · estimated ~2,500 before it started (regions ~220; the plan model and the field ~220; the planners ~200; the focus map and its solver ~330; estimates ~130; measuring a map ~80; the simulator's tilt ~40; tests ~600; `ex-plan` ~550; glue ~30; and a little on top); one pull request, at the owner's standing choice · measured **2,595** hand-written lines added (code 1,278: `oscope-workflows` 1,231, `oscope-sim` 47; tests 757; examples 535; glue 25), and 27 removed. **That is 1,995 over M's 600, and 4 % over the estimate.**
 
 ## Summary
 
@@ -38,7 +38,7 @@ Every scan pattern, planned and previewable before the stage moves ([spec](../ph
 
 `cargo run --release -p ex-plan`, then open http://127.0.0.1:8239/. The [README](../../../examples/ex-plan/README.md) says what it prints and what the page draws.
 
-{{RUN}}
+On the owner's PC, at real time through 1024 × 768 of the 20 MP sensor's middle, the map of 9 points found the plane rising 1.02 µm a mm along x and falling 0.55 along y, where the slide tilts 1 and 0.5. Between the points, the plane came within 0.12 µm of the truth and the thin-plate spline within 0.31, against a quarter of the depth of field of 1.97 µm. The snake over the coverslip took 1,333 tiles and the one over the tissue 370.
 
 ## Performance
 
@@ -101,18 +101,22 @@ A grid tiles **cells**: the largest rectangles, square with the stage, that each
 
 ### The tests' turns, and two cores
 
-{{TWOCORE}}
+- **One simulator in the scan suite:** the focus map on the tilted slide. The suite's other tests only plan, and it stops its camera at its end.
+- **Two cores, five times each.** Pinned to two cores, every suite this phase adds or changes passed 5 times in 5. The workflows' `scan` suite took 437–442 s a run there, nearly all of it the focus map's ten autofocus runs, and `ex-plan --smoke` 189–194 s.
 
 ### The size
 
-{{SIZEDETAIL}}
+M's budget is 600; P35 measured 2,595, about 4 % over its estimate of ~2,500.
+
+- **One pull request,** under the owner's standing choice, with the overrun explained. The regions, the field, the planners, the focus map and the estimates are one model, which P36's engine takes whole; the simulator's tilt is what the map is tested against.
+- **Against the estimate,** the code took 1,278 lines against ~1,220, the tests 757 against ~600, and the example 535 against ~550.
 
 ## Tests
 
 | Crate | Test | What it checks |
 |---|---|---|
 | `oscope-workflows` | `scan` (7, unit) | **A concave polygon** holds its inside and edges only, and touches a cell across an edge with no corner inside either. **A mask** is its cells that are in, with its bounds. **Regions that are none** are refused. **A tilted plane** recovered, and an outlier 12 µm off rejected. **A spline follows a bowl** a plane can't, through each point, rejecting an outlier. **Points that fit no surface** are refused. **Sample points** snake through the region |
-| `oscope-workflows` | `scan` (6) | **Every point of a region in a tile's frame,** every 100 µm, for the coverslip, a C 20 × 15 mm, and two islands of a mask, by raster and by snake, the camera turned 0.3°. **Neighbours overlap by the share asked,** exactly with the camera square, and each turned cell the largest the frame holds. **A snake runs each row the other way,** turning only at rows that have tiles, travelling under 0.6 of the raster's distance. **Stacks, z-scans, positions and maps** set each tile's z and planes; what can't be is refused. **Estimates** add the moves, straight, the frames and the autofocus. **A focus map measured by autofocus recovers a tilted slide:** 9 points over 4 × 4 mm of an island, clear glass refused among them; the plane's slopes within 0.25 µm a mm of the tilt; both surfaces within a quarter of the depth of field of the truth between the points |
+| `oscope-workflows` | `scan` (6) | **Every point of a region in a tile's frame,** every 100 µm, for the coverslip, a C 20 × 15 mm, and two islands of a mask, by raster and by snake, the camera turned 0.3°. **Neighbours overlap by the share asked,** exactly with the camera square; turned, each cell the largest its frame holds, for frames wider than high and higher than wide. **A snake runs each row the other way,** turning only at rows that have tiles, travelling under 0.6 of the raster's distance. **Stacks, z-scans, positions and maps** set each tile's z and planes; what can't be is refused. **Estimates** add the moves, straight, the frames and the autofocus. **A focus map measured by autofocus recovers a tilted slide:** 9 points over 4 × 4 mm of an island, clear glass refused among them; the plane's slopes within 0.25 µm a mm of the tilt; both surfaces within a quarter of the depth of field of the truth between the points |
 | `oscope-sim` | `truth` (1 more) | **A tilted slide** is sharpest higher along its tilt: the truth, and the rendering |
 | `oscope-sim` | `tiles` (1 changed) | **A new tilt** is never seen through old tiles |
 | `ex-plan` | `--smoke` | The map within a quarter of the depth of field between its points; every plan with tiles; the page and the plans served |
@@ -121,7 +125,41 @@ A grid tiles **cells**: the largest rectangles, square with the stage, that each
 
 {{RAN}}
 
-**Mutation checks** (each broke the code on purpose, then the tests were run): {{MUTANTS}}
+**Mutation checks** (each broke the code on purpose, then the tests were run): thirty-two of thirty-three caught.
+
+- **They covered:**
+  - the regions: the even-odd rule, a polygon touching across an edge, a mask's cells and bounds;
+  - the field: the cell's two constraints, the larger of its two shapes, the step, a frame's corners;
+  - the planners: a stack's planes, the snake's direction and its turns at empty rows, the grid's count and centring, a position's own z, the limit on tiles;
+  - the focus map: the robust scale, leave-one-out misses, the centre, pivoting, back substitution, the sample points' order and place;
+  - the estimates: straight moves, autofocus runs, settling, bytes;
+  - measuring: a refused point's z;
+  - the simulator: the tilt in rendering, in the truth, in the tile cache's mark, and in the configuration.
+- **Reading the tests against the list first** found three gaps, now covered: the snake's turn at an empty row (the mask's islands had none between them), a diagonal move in the estimates, and a refused point in a map.
+- **The first run missed three more.** Two are covered now:
+  - a polygon's inside on any crossing: no test point's ray crossed two edges;
+  - the cell's width constraint: a frame wider than high binds by its height, so a frame higher than wide is tested too.
+- **One is a known gap:** each point of a map started at the first point's z. Within autofocus's default range of ±6 depths of field, either start finds the focus on the simulator's tilt.
+
+| Mutant | Caught by |
+|---|---|
+| A polygon's inside on any crossing | `scan::region`'s concave polygon, once a point left of it was added |
+| A polygon touching a cell only by a corner | `scan::region`'s concave polygon |
+| A mask's cell touching only by its first corner's cell | every point of a region in a frame; the snake |
+| A mask's bounds a cell short; its cells by the nearest corner | `scan::region`'s mask |
+| The cell's width not shrunk by the turn | the overlaps, once a frame higher than wide was added |
+| The turned cell taken when smaller; the step not less the overlap | the overlaps |
+| A frame's corner misplaced; a grid a tile short; a grid off centre | every point of a region in a frame |
+| A stack a plane short; a position's own z ignored; no limit on tiles | stacks, positions and maps |
+| The snake's first row backwards; turning at empty rows | the snake |
+| The robust scale ten times too large; misses in the sample | `scan::focus_map`'s plane and spline |
+| A map about the stage's origin; pivoting on the smallest; back substitution adding | `scan::focus_map`'s plane and spline |
+| The sample points' order and place | `scan::focus_map`'s sample points |
+| Moves along the axes; autofocus rounded down; no settling; a byte a pixel | the estimates |
+| A refused point keeping a z; the configuration's tilt not set | the focus map on a tilted slide |
+| Each point started at the first's z | **not caught**: a known gap |
+| Fields rendered, or the truth, without the tilt | the tilted slide's truth |
+| Tiles kept when the tilt changes | a new slide or tilt never seen through old tiles |
 
 ## Follow-ups and known gaps
 
