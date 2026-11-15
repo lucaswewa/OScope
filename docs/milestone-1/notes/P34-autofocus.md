@@ -230,7 +230,7 @@ The tests and `--smoke` runs look through a 256 × 192 region of the quarter sen
 ### The tests' turns, and two cores
 
 - **One simulator at a time.** The workflows' tests take turns, as P33's do. The API's focus test is a single test, and stops its camera at its end, as P33 learned.
-- **{{TWOCORE}}**
+- **Two cores, five times each.** Pinned to two cores, every suite this phase adds or changes passed 5 times in 5, both before the settling fix and after it. They are slow there: a run of the workflows' `autofocus` suite took 9.3–9.6 minutes, and one of `ex-autofocus --smoke` 8.5–9.3.
 
 ### Other choices
 

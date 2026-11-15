@@ -5,7 +5,7 @@
 //!
 //! The CUDA twin (`cuda/focus.rs`, `kernels/focus.cu`) computes each
 //! pixel's terms with the same arithmetic, and both sum them in
-//! [`reduce`], so the two agree to the bit.
+//! `reduce`, so the two agree to the bit.
 
 use crate::{ComputeError, Image};
 
