@@ -239,8 +239,8 @@ L's budget is 900; P32 measured 2,785, about 7 % under its estimate of ~3,000. U
 
 **Where they ran:**
 
-- **On Windows,** `scripts/ci-local.sh`, run alone on `{{COMMIT}}`: {{WINDOWS}}.
-- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of the same commit, run alone: {{WSL}}.
+- **On Windows,** `scripts/ci-local.sh`, run alone on `718bb2d`: 42 of 42 steps, 418 tests in 164 suites, the Python tests real, and every example's `--smoke`, `ex-calibrate`'s new among them.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of the same commit, run alone: 42 of 42 steps, 418 tests in 164 suites, the Python tests real; 587 files, none with a CR. Its first run failed part-way when C: filled with build folders, mine on both sides; it passed again once they were cleared.
 - **On two cores,** pinned, 5 times out of 5 each: `oscope-workflows`' `store`, unit tests and `procedures`; `oscope-api`'s `calibration`; and `ex-calibrate --smoke`. The first pinned runs failed: see "Homing last, not first" above. The procedures' tests now start the simulator over the tissue, stream a 768 × 576 region, and take turns.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): twenty-two of twenty-two caught.
