@@ -2111,6 +2111,8 @@ dependencies = [
  "oscope-jobs",
  "oscope-pipeline",
  "oscope-shm",
+ "oscope-sim",
+ "oscope-stitch",
  "oscope-store",
  "rayon",
  "schemars",
