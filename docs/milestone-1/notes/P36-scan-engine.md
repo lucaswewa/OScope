@@ -89,7 +89,8 @@ The plan's `motion` is `stop_and_go` unless a plan says `continuous`, which the 
 
 ### The tests' turns, and two cores
 
-{{TWOCORE}}
+- **One simulator at a time.** The engine's tests take turns, as P34's do, and stop their cameras.
+- **Two cores, five times each.** Pinned to two cores, every suite this phase adds passed 5 times in 5, the Python workflow's with `OSCOPE_PYTHON=1`: the engine's suite in 155–173 s a run, the `scan` Thing's in 23–28 s, and `ex-scan --smoke` in 132–142 s.
 
 ### The size
 
@@ -111,7 +112,9 @@ L's budget is 900; P36 measured 2,309, 36 % under its estimate of ~3,600.
 
 **Where they ran:**
 
-{{RAN}}
+- **On Windows,** `scripts/ci-local.sh`, run alone on `a919b18`: 47 of 47 steps, 473 tests in 177 suites. The Python tests ran for real, the sample spiral's through a server among them, and every example's `--smoke`, `ex-scan`'s new among them. The CUDA tests weren't run, as P36 touches no CUDA path.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of `a919b18`, run alone: 47 of 47 steps, 473 tests in 177 suites, the Python tests real; 652 files, none with a CR.
+- **On two cores,** pinned, 5 times out of 5 each: `oscope-workflows`' `scan_engine`, `oscope-api`'s `scan` with `OSCOPE_PYTHON=1`, and `ex-scan --smoke`.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): nineteen of nineteen caught, the Python ones with `OSCOPE_PYTHON=1`.
 
