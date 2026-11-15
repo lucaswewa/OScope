@@ -56,4 +56,4 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P34 | Autofocus, auto exposure, auto white balance | Done | [P34-autofocus.md](P34-autofocus.md) |
 | P35 | Scan planners and focus maps | Done | [P35-scan-planners.md](P35-scan-planners.md) |
 | P36 | Scan engine, the `scan` Thing, workflow extensions | Done | [P36-scan-engine.md](P36-scan-engine.md) |
-| P37 | Histo scan: overview and tissue detection | In review | [P37-histo-scan.md](P37-histo-scan.md) |
+| P37 | Histo scan: overview and tissue detection | Done | [P37-histo-scan.md](P37-histo-scan.md) |
