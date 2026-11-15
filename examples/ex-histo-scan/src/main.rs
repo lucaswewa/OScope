@@ -236,12 +236,19 @@ async fn walk(address: SocketAddr, smoke: bool, check: bool) -> anyhow::Result<(
         100.0 * share
     );
 
-    // The tissue's scan: full resolution (still binned 3 × 3 for `--smoke`,
-    // quick to render), a focus map measured over it first.
+    // The tissue's scan: full resolution, a focus map measured over it
+    // first. `--smoke` keeps it quick to render: binned 3 × 3 still, and
+    // the map at 2 × 2 tiles, not 3 × 3, as each autofocus renders a sweep.
     mode(address, if smoke { "bin3" } else { "full" }).await?;
     let made = invoke(address, "projects/create", json!({"name": "ex-histo-scan"})).await?;
     let project = made["id"].as_str().context("the project's ID")?.to_owned();
-    let input = json!({"request": {"pattern": "tissue"}, "project": project, "name": "the tissue"});
+    let mut request = json!({"pattern": "tissue"});
+    if smoke {
+        request["z"] = json!({
+            "kind": "measure", "columns": 2, "rows": 2, "surface": {"kind": "plane"}
+        });
+    }
+    let input = json!({"request": request, "project": project, "name": "the tissue"});
     let started = Instant::now();
     let done = job(address, "scan/run", input).await?;
     let results: Vec<&str> = done["results"]

@@ -34,4 +34,4 @@ ex-histo-scan: an overview of 8 × 6 mm across the first island's edge: 49 frame
 cargo run -p ex-histo-scan -- --smoke
 ```
 
-It runs the same at ten times real time, and scans the tissue binned 3 × 3 too, quick to render in a debug build, with a temporary data root. It holds the tissue to 99 % of the truth covered, its tiles to fewer than a raster's, and the project to a frame for each tile. It ends with `smoke: ok`, or says what failed and exits with code 1.
+It runs the same at ten times real time, with a temporary data root, but quicker to render in a debug build: it scans the tissue binned 3 × 3 too, and measures the focus map at 2 × 2 tiles, not 3 × 3, as each autofocus renders a sweep of frames. It holds the tissue to 99 % of the truth covered, its tiles to fewer than a raster's, and the project to a frame for each tile. It ends with `smoke: ok`, or says what failed and exits with code 1.
