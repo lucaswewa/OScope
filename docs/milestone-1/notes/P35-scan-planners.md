@@ -1,6 +1,6 @@
 # P35: Scan planners and focus maps
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p35-scan-planners` / [#49](https://github.com/lucaswewa/OScope/pull/49)
 - Size: M · estimated ~2,500 before it started (regions ~220; the plan model and the field ~220; the planners ~200; the focus map and its solver ~330; estimates ~130; measuring a map ~80; the simulator's tilt ~40; tests ~600; `ex-plan` ~550; glue ~30; and a little on top); one pull request, at the owner's standing choice · measured **2,595** hand-written lines added (code 1,278: `oscope-workflows` 1,231, `oscope-sim` 47; tests 757; examples 535; glue 25), and 27 removed. **That is 1,995 over M's 600, and 4 % over the estimate.**
 
