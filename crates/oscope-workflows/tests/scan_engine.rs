@@ -289,6 +289,7 @@ async fn a_scan_records_each_frame_where_the_stage_was_and_ends_where_it_started
         ("a scan", 27)
     );
     assert_eq!(acquisition.plan["tiles"].as_array().unwrap().len(), 9);
+    let mut lags = Vec::new();
     for (k, frame) in acquisition.frames.iter().enumerate() {
         let (tile, plane) = (&plan.tiles[k / 3], (k % 3) as f64);
         let at = frame.position.unwrap();
@@ -302,7 +303,13 @@ async fn a_scan_records_each_frame_where_the_stage_was_and_ends_where_it_started
             "frame {k}: {at:?}, not {expected:?}"
         );
         assert!(frame.timestamp.is_some() && frame.trigger.is_none());
+        lags.push(expected.z.0 - at.z.0);
     }
+    // Every plane reached moving up: z's backlash shifts each alike.
+    let (low, high) = lags
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(l, h), v| (l.min(*v), h.max(*v)));
+    assert!(high - low < 0.5, "lags from {low} to {high} µm");
     let progress = bench.last.lock().unwrap().clone().unwrap();
     assert_eq!(
         (progress.state.as_str(), progress.done.len()),
@@ -325,7 +332,14 @@ async fn autofocus_at_every_second_tile_finds_the_tilted_slide() {
         z_um: None,
         name: None,
     };
-    let list = [at(-1_500.0), at(-500.0), at(500.0), at(1_500.0)];
+    // And clear glass at the coverslip's corner, fifth: refused as an
+    // empty field, the last z found kept.
+    let glass = Position {
+        x_um: 22_100.0,
+        y_um: 600.0,
+        ..at(0.0)
+    };
+    let list = [at(-1_500.0), at(-500.0), at(500.0), at(1_500.0), glass];
     let plan = positions(&list, &bench.field, ZPolicy::Autofocus { every: 2 }, None).unwrap();
     let id = bench.submit(&plan);
     assert_eq!(
@@ -335,16 +349,17 @@ async fn autofocus_at_every_second_tile_finds_the_tilted_slide() {
         bench.jobs.get(id).unwrap().error
     );
     let progress = bench.last.lock().unwrap().clone().unwrap();
-    for done in progress.done.iter().step_by(2) {
+    for done in progress.done.iter().take(4).step_by(2) {
         let truth = bench.truth(Point2::new(done.x_um, done.y_um));
         assert!(
             (done.z_um - truth).abs() < quarter,
             "{done:?}: the truth {truth}"
         );
     }
-    // The tiles between keep the last z found.
+    // The tiles between keep the last z found, and so does the glass.
     assert_eq!(progress.done[1].z_um, progress.done[0].z_um);
-    assert_eq!(progress.refused, 0);
+    assert_eq!(progress.done[4].z_um, progress.done[3].z_um);
+    assert_eq!(progress.refused, 1);
     bench.stop().await;
 }
 
