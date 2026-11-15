@@ -92,9 +92,9 @@ async fn smoke(address: SocketAddr) -> anyhow::Result<()> {
         refused.body
     );
     let samples = get(address, "/api/v1/simulation/samples").await?.json()?;
-    ensure!(samples.as_array().map(Vec::len) == Some(5), "{samples}");
+    ensure!(samples.as_array().map(Vec::len) == Some(6), "{samples}");
     println!(
-        "served: the page; homed, moved to x = {x:.1} µm; a gain of 999 refused with 400; five samples"
+        "served: the page; homed, moved to x = {x:.1} µm; a gain of 999 refused with 400; six samples"
     );
     Ok(())
 }
