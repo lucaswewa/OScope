@@ -173,9 +173,14 @@ fn neighbours_overlap_by_the_share_asked() {
         }
         // Turned, each frame holds its cell, the largest of its proportions
         // that it does, so neighbours' frames overlap at least as their
-        // cells do.
-        for degrees in [0.3, -2.0, 90.4] {
-            let turned_field = field(degrees, overlap);
+        // cells do: for a frame wider than high, whose height binds, and
+        // one higher than wide, whose width does.
+        let shapes = [SENSOR, (SENSOR.1, SENSOR.0)];
+        for ((width, height), degrees) in shapes
+            .into_iter()
+            .flat_map(|s| [0.3, -2.0, 90.4].map(|d| (s, d)))
+        {
+            let turned_field = Field::new(turned(degrees), width, height, overlap).unwrap();
             let cell = turned_field.cell_um;
             assert!((turned_field.step_um.width - (1.0 - overlap) * cell.width).abs() < 1e-9);
             assert!((turned_field.step_um.height - (1.0 - overlap) * cell.height).abs() < 1e-9);
@@ -185,7 +190,7 @@ fn neighbours_overlap_by_the_share_asked() {
                 [m[1][1] / det, -m[0][1] / det],
                 [-m[1][0] / det, m[0][0] / det],
             ];
-            let (fw, fh) = (f64::from(SENSOR.0) / 2.0, f64::from(SENSOR.1) / 2.0);
+            let (fw, fh) = (f64::from(width) / 2.0, f64::from(height) / 2.0);
             // Whether the cell, scaled, has its corners in the frame.
             let inside = |scale: f64| {
                 [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
@@ -199,7 +204,10 @@ fn neighbours_overlap_by_the_share_asked() {
                         u.abs() <= fw + 1e-6 && v.abs() <= fh + 1e-6
                     })
             };
-            assert!(inside(1.0) && !inside(1.001), "{degrees}°: {cell:?}");
+            assert!(
+                inside(1.0) && !inside(1.001),
+                "{width} × {height}, {degrees}°: {cell:?}"
+            );
             assert!(cell.width * cell.height < w * h);
         }
     }

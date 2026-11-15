@@ -275,6 +275,8 @@ mod tests {
             (4.0, 1.0, true),
             (2.0, 3.0, true),
             (5.0, 1.0, false),
+            (-1.0, 1.0, false),
+            (-1.0, 3.0, false),
         ] {
             assert_eq!(l.contains(Point2::new(x, y)), inside, "({x}, {y})");
         }
