@@ -5,7 +5,7 @@ use oscope_core::{Point2, Rect, Size2};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::focus_map::FocusMap;
+use super::focus_map::{FocusMap, Surface};
 use super::{ScanError, invalid};
 use crate::calibration::{Matrix, apply, inverse};
 
@@ -167,6 +167,17 @@ pub enum ZPolicy {
         /// How many tiles each autofocus serves, at least 1.
         every: u32,
     },
+    /// By a focus map the scan measures before its first tile: autofocus
+    /// at the tiles nearest the middles of a grid over them, then `surface`
+    /// fitted (P37). Each tile then takes the map's z.
+    Measure {
+        /// The grid's columns, from 1 to 10.
+        columns: u32,
+        /// Its rows, from 1 to 10.
+        rows: u32,
+        /// The surface fitted.
+        surface: Surface,
+    },
 }
 
 impl ZPolicy {
@@ -175,7 +186,7 @@ impl ZPolicy {
         match self {
             ZPolicy::Fixed { z_um } => Some(*z_um),
             ZPolicy::Map { map } => Some(map.z_at(at)),
-            ZPolicy::Autofocus { .. } => None,
+            ZPolicy::Autofocus { .. } | ZPolicy::Measure { .. } => None,
         }
     }
 
@@ -183,6 +194,13 @@ impl ZPolicy {
         match self {
             ZPolicy::Fixed { z_um } if !z_um.is_finite() => Err(invalid(format!("a z of {z_um}"))),
             ZPolicy::Autofocus { every: 0 } => Err(invalid("an autofocus every 0 tiles")),
+            ZPolicy::Measure { columns, rows, .. }
+                if !((1..=10).contains(columns) && (1..=10).contains(rows)) =>
+            {
+                Err(invalid(format!(
+                    "a map over a grid of {columns} × {rows}: from 1 to 10 each way"
+                )))
+            }
             _ => Ok(()),
         }
     }

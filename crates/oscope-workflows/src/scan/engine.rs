@@ -7,16 +7,18 @@ use std::future::Future;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
-use oscope_core::{Frame, JobId, ProjectId, Timestamp, Um, Xyz};
+use oscope_core::{Frame, JobId, Point2, ProjectId, Timestamp, Um, Xyz};
 use oscope_jobs::{Factory, Job, JobCtx, JobSpec, Resource, Stop};
 use oscope_store::{RecordingOptions, RecordingWriter, Scratch, Store, ingest};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use super::focus_map::{FitOptions, FocusMap, FocusPoint};
+use super::measure::{MapSample, measure_map};
 use super::plan::{Motion, Plan, ZPolicy, check_stack};
 use crate::autofocus::frames::frame_after;
-use crate::autofocus::{FocusOptions, FocusRig, autofocus};
+use crate::autofocus::{AutofocusError, FocusOptions, FocusRig, autofocus, focus_defaults};
 use crate::calibration::Report;
 
 /// The scan job's kind.
@@ -151,8 +153,9 @@ fn check(params: &Params) -> Result<(), String> {
     check_stack(plan.stack.as_ref()).map_err(|e| e.to_string())?;
     plan.z.check().map_err(|e| e.to_string())?;
     let unknown = plan.tiles.iter().any(|t| t.z_um.is_none());
-    if unknown && !matches!(plan.z, ZPolicy::Autofocus { .. }) {
-        return Err("a tile without a z needs the plan's z by autofocus".to_owned());
+    let found = matches!(plan.z, ZPolicy::Autofocus { .. } | ZPolicy::Measure { .. });
+    if unknown && !found {
+        return Err("a tile without a z needs the plan's z by autofocus or a map".to_owned());
     }
     let ScanOptions {
         settle_ms,
@@ -265,6 +268,14 @@ async fn run(rig: ScanRig, params: Params, ctx: JobCtx, last: LastScan) -> Resul
         request,
     } = params;
     let start = position(&rig.focus).await.map_err(Stop::failed)?;
+    let plan = match measured(&rig, plan, &options, &ctx).await {
+        Ok(plan) => plan,
+        Err(stop) => {
+            let below = Some(options.approach_um);
+            let _ = reach(&rig.focus, (start.x.0, start.y.0), start.z.0, below).await;
+            return Err(stop);
+        }
+    };
     let name = name.unwrap_or_else(|| format!("scan of {} tiles", plan.tiles.len()));
     let recording = RecordingOptions {
         name: name.clone(),
@@ -329,6 +340,100 @@ async fn run(rig: ScanRig, params: Params, ctx: JobCtx, last: LastScan) -> Resul
     update(&last, |p| p.state = "completed".to_owned());
     ctx.progress(Some(1.0), "scanned");
     Ok(())
+}
+
+/// `plan`, its tiles at a focus map's z if its policy is to measure one:
+/// by autofocus at the tiles nearest the middles of a grid over them, its
+/// surface fitted, outliers rejected with a floor of a quarter of the depth
+/// of field (P37).
+async fn measured(
+    rig: &ScanRig,
+    plan: Plan,
+    options: &ScanOptions,
+    ctx: &JobCtx,
+) -> Result<Plan, Stop> {
+    let (columns, rows, surface) = match &plan.z {
+        ZPolicy::Measure {
+            columns,
+            rows,
+            surface,
+        } => (*columns, *rows, *surface),
+        _ => return Ok(plan),
+    };
+    let span = |v: &dyn Fn(&super::Tile) -> f64| {
+        let values = plan.tiles.iter().map(v);
+        values.fold((f64::MAX, f64::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)))
+    };
+    let ((x0, x1), (y0, y1)) = (span(&|t| t.x_um), span(&|t| t.y_um));
+    let mut points: Vec<Point2> = Vec::new();
+    for j in 0..rows {
+        for i in 0..columns {
+            let fx = (f64::from(i) + 0.5) / f64::from(columns);
+            let fy = (f64::from(j) + 0.5) / f64::from(rows);
+            let target = Point2::new(x0 + fx * (x1 - x0), y0 + fy * (y1 - y0));
+            let distance = |t: &&super::Tile| Point2::new(t.x_um, t.y_um).distance(target);
+            let nearest = plan
+                .tiles
+                .iter()
+                .min_by(|a, b| distance(a).total_cmp(&distance(b)));
+            let at = nearest.map(|t| Point2::new(t.x_um, t.y_um));
+            if let Some(at) = at.filter(|at| !points.contains(at)) {
+                points.push(at);
+            }
+        }
+    }
+    ctx.progress(
+        Some(0.0),
+        format!("the focus map's {} points", points.len()),
+    );
+    let stop = |e: AutofocusError| match e {
+        AutofocusError::Cancelled => Stop::Cancelled,
+        e => Stop::failed(format!("the focus map: {e}")),
+    };
+    let samples = measure_map(&rig.focus, &points, &options.focus, &Cancels(ctx)).await;
+    let found: Vec<FocusPoint> = samples
+        .map_err(stop)?
+        .iter()
+        .filter_map(MapSample::point)
+        .collect();
+    let quarter = focus_defaults(&rig.focus)
+        .await
+        .map_err(stop)?
+        .depth_of_field_um
+        / 4.0;
+    let fit = FitOptions {
+        floor_um: quarter,
+        ..FitOptions::default()
+    };
+    let map = FocusMap::fit(&found, surface, &fit).map_err(|e| {
+        let n = (found.len(), points.len());
+        Stop::failed(format!(
+            "the focus map, {} of {} points focused: {e}",
+            n.0, n.1
+        ))
+    })?;
+    let misses = map.rms_um.map_or_else(
+        || "none to spare to say how well".to_owned(),
+        |rms| format!("missing {rms:.2} µm rms"),
+    );
+    ctx.add_result(format!(
+        "a focus map of {} points, {} rejected, {misses}",
+        map.used.len(),
+        map.rejected.len()
+    ));
+    let tiles = plan
+        .tiles
+        .into_iter()
+        .map(|t| super::Tile {
+            z_um: Some(map.z_at(Point2::new(t.x_um, t.y_um))),
+            ..t
+        })
+        .collect();
+    Ok(Plan {
+        tiles,
+        z: ZPolicy::Map { map },
+        ..plan
+    })
 }
 
 /// Takes each tile's frames, in order, recording them with `writer`, its

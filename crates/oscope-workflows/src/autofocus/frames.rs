@@ -171,17 +171,23 @@ pub(super) fn percentile(
     Ok(f64::from(*value) / linear.full())
 }
 
-/// The light's white in the region: the mean red, green and blue of its
-/// cells (a mosaic's 2 × 2, or a colour pixel) whose grey lies between the
-/// region's 95th percentile and saturation, as shares of full scale; their
-/// mean grey; and how many there are. `None` for a grey frame.
-pub(super) fn white(
+/// A region's cells' colours, by rows, and how many cells there are across
+/// and down.
+pub(crate) type Cells = (Vec<[f64; 3]>, u32, u32);
+
+/// The colours of the region's cells, a mosaic's 2 × 2 or a colour pixel,
+/// as shares of full scale. `None` for a grey frame.
+pub(crate) fn colour_cells(
     frame: &Frame,
     region: Option<Region>,
-) -> Result<Option<([f64; 3], f64, usize)>, AutofocusError> {
+) -> Result<Option<Cells>, AutofocusError> {
     let linear = linear(frame, region)?;
     let (x0, y0, rw, rh) = linear.region;
     let full = linear.full();
+    let across = match linear.mosaic {
+        true => (rw / 2, rh / 2),
+        false => (rw, rh),
+    };
     let cells: Vec<[f64; 3]> = match (linear.format, linear.image.channels()) {
         (PixelFormat::Bayer8 { pattern } | PixelFormat::Bayer16 { pattern, .. }, _) => {
             let mut cells = Vec::with_capacity((rw * rh / 4) as usize);
@@ -208,6 +214,20 @@ pub(super) fn white(
             .map(|(x, y)| [0, 1, 2].map(|c| f64::from(linear.at(x, y, c)) / full))
             .collect(),
         _ => return Ok(None),
+    };
+    Ok(Some((cells, across.0, across.1)))
+}
+
+/// The light's white in the region: the mean red, green and blue of its
+/// cells (a mosaic's 2 × 2, or a colour pixel) whose grey lies between the
+/// region's 95th percentile and saturation, as shares of full scale; their
+/// mean grey; and how many there are. `None` for a grey frame.
+pub(super) fn white(
+    frame: &Frame,
+    region: Option<Region>,
+) -> Result<Option<([f64; 3], f64, usize)>, AutofocusError> {
+    let Some((cells, _, _)) = colour_cells(frame, region)? else {
+        return Ok(None);
     };
     let grey = |c: &[f64; 3]| (c[0] + 2.0 * c[1] + c[2]) / 4.0;
     let mut greys: Vec<f64> = cells.iter().map(grey).collect();

@@ -19,6 +19,7 @@
 mod engine;
 mod estimate;
 mod focus_map;
+mod histo;
 mod measure;
 mod plan;
 mod planners;
@@ -27,6 +28,10 @@ mod region;
 pub use engine::{LastScan, SCAN, ScanOptions, ScanProgress, ScanRig, TileDone, scan_jobs};
 pub use estimate::{Estimate, FrameSize, Timing, estimate};
 pub use focus_map::{FitOptions, FocusMap, FocusPoint, Surface, sample_points};
+pub use histo::{
+    LastOverview, OVERVIEW, Overview, OverviewOptions, Tissue, TissueOptions, detect, otsu,
+    overview, overview_jobs,
+};
 pub use measure::{MapSample, measure_map};
 pub use plan::{
     Field, MOST_OVERLAP, MOST_PLANES, Motion, Pattern, Plan, Position, Stack, Tile, ZPolicy,

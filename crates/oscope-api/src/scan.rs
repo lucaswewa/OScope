@@ -10,9 +10,9 @@ use oscope_store::{Scratch, Store};
 use oscope_workflows::autofocus::FocusRig;
 use oscope_workflows::calibration::{Values, geometry_key};
 use oscope_workflows::scan::{
-    Estimate, Field, FrameSize, LastScan, Pattern, Plan, Position, Region, SCAN, ScanOptions,
-    ScanProgress, ScanRig, Stack, Timing, ZPolicy, estimate, positions, raster, scan_jobs, snake,
-    tiled_stack, z_scan,
+    Estimate, Field, FrameSize, LastOverview, LastScan, OVERVIEW, OverviewOptions, Pattern, Plan,
+    Position, Region, SCAN, ScanOptions, ScanProgress, ScanRig, Stack, Surface, Timing, ZPolicy,
+    estimate, overview_jobs, positions, raster, scan_jobs, snake, tiled_stack, z_scan,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -24,8 +24,16 @@ use crate::devices::Devices;
 use crate::jobs::{JobRef, action_error};
 use crate::server::Roots;
 
-/// The built-in patterns, by name.
-const PATTERNS: [&str; 5] = ["raster", "snake", "tiled_stack", "z_scan", "positions"];
+/// The built-in patterns, by name. `tissue` is a snake over the last
+/// overview's tissue (P37).
+const PATTERNS: [&str; 6] = [
+    "raster",
+    "snake",
+    "tiled_stack",
+    "z_scan",
+    "positions",
+    "tissue",
+];
 
 /// An autofocus's time in the estimates: about one at real time on the
 /// simulator, through a region of the sensor (P34).
@@ -50,7 +58,8 @@ pub struct ScanRequest {
     /// The stack at each tile: a z-scan's and a tiled z-stack's.
     #[serde(default)]
     pub stack: Option<Stack>,
-    /// How each tile's z is found: the stage's z now, if not given.
+    /// How each tile's z is found: the stage's z now, if not given; for
+    /// `tissue`, a focus map measured at 3 × 3 tiles over it.
     #[serde(default)]
     pub z: Option<ZPolicy>,
     /// The share of a frame its neighbours overlap: a tenth if not given.
@@ -82,6 +91,54 @@ pub struct PatternInfo {
     pub schema: Option<Value>,
 }
 
+/// The latest overview, for a page: its colours and the tissue found.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct OverviewView {
+    /// Its first pixel's corner, in µm.
+    pub origin: Point2,
+    /// A pixel's side, in µm.
+    pub pixel_um: f64,
+    /// Its width, in pixels.
+    pub width: u32,
+    /// Its height.
+    pub height: u32,
+    /// The frames it took.
+    pub frames: u32,
+    /// Its colours, a byte each of red, green and blue, by rows, in base64.
+    pub image: String,
+    /// The saturation dividing tissue from glass.
+    pub threshold: f64,
+    /// The pieces of tissue kept.
+    pub kept: u32,
+    /// Those dropped as too small.
+    pub dropped: u32,
+    /// The tissue's area, before its margin, in mm².
+    pub area_mm2: f64,
+    /// Where the tissue is, grown by its margin: in each row, runs of its
+    /// pixels, `[row, from, to)`.
+    pub tissue: Vec<[u32; 3]>,
+}
+
+/// `bytes` in base64 (RFC 4648), with padding.
+fn base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = chunk
+            .iter()
+            .enumerate()
+            .fold(0_u32, |n, (i, b)| n | u32::from(*b) << (16 - 8 * i));
+        for k in 0..4 {
+            let sextet = (n >> (18 - 6 * k)) & 63;
+            out.push(match k <= chunk.len() {
+                true => char::from(ALPHABET[sextet as usize]),
+                false => '=',
+            });
+        }
+    }
+    out
+}
+
 struct State {
     devices: Arc<Devices>,
     roots: Arc<Roots>,
@@ -89,6 +146,7 @@ struct State {
     extensions: Option<Arc<Extensions>>,
     jobs: Option<Arc<JobService>>,
     last: LastScan,
+    overview: LastOverview,
 }
 
 /// Scans: planned and previewed with nothing moving, and run as hardware
@@ -154,6 +212,11 @@ impl ScanThing {
         let field = self.field(request.overlap.unwrap_or(0.1)).await?;
         let z = match &request.z {
             Some(z) => z.clone(),
+            None if request.pattern == "tissue" => ZPolicy::Measure {
+                columns: 3,
+                rows: 3,
+                surface: Surface::Plane,
+            },
             None => {
                 let here = state.devices.stage.position().await.map_err(device)?;
                 ZPolicy::Fixed {
@@ -183,6 +246,24 @@ impl ScanThing {
                 z_scan(at, &field, z, stack()?)
             }
             "positions" => positions(&request.positions, &field, z, request.stack),
+            "tissue" => {
+                let mask = {
+                    let last = state
+                        .overview
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner);
+                    let Some((_, tissue)) = last.as_ref() else {
+                        return Err(refused("no overview yet: take one with `overview` first"));
+                    };
+                    tissue.mask.clone()
+                };
+                if !mask.cells.contains(&true) {
+                    return Err(refused(
+                        "the overview found no tissue: there is nothing to scan",
+                    ));
+                }
+                snake(&Region::Mask(mask), &field, z)
+            }
             name => {
                 let tiles = self.workflow(name, &request.params, &field).await?;
                 let plan = positions(&tiles, &field, z, request.stack).map_err(refused)?;
@@ -256,6 +337,7 @@ impl ScanThing {
         };
         let jobs = server.service::<JobService>();
         let last = LastScan::default();
+        let overview = LastOverview::default();
         let places = (server.service::<Store>(), server.service::<Scratch>());
         if let (Some(jobs), (Some(store), Some(scratch))) = (&jobs, places) {
             let focus = FocusRig {
@@ -266,6 +348,10 @@ impl ScanThing {
                 lights: Arc::clone(&devices.lights),
                 compute: None,
             };
+            jobs.register(
+                OVERVIEW,
+                overview_jobs(focus.clone(), Arc::clone(&overview)),
+            );
             let rig = ScanRig {
                 focus,
                 store,
@@ -280,6 +366,7 @@ impl ScanThing {
             extensions: server.service::<Extensions>(),
             jobs,
             last,
+            overview,
         };
         let _ = self.state.set(state);
         Ok(())
@@ -337,6 +424,80 @@ impl ScanThing {
             .clone())
     }
 
+    /// The latest overview.
+    ///
+    /// Its colours, and the tissue found in it, which the `tissue` pattern
+    /// scans. None before the first.
+    #[property]
+    async fn last_overview(&self) -> Result<Option<OverviewView>, PropertyError> {
+        let Some(state) = self.state.get() else {
+            return Ok(None);
+        };
+        let last = state
+            .overview
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        Ok(last.as_ref().map(|(overview, tissue)| {
+            let w = overview.width as usize;
+            let mut runs = Vec::new();
+            for (row, cells) in tissue.mask.cells.chunks(w).enumerate() {
+                let mut from = None;
+                for (i, &on) in cells.iter().chain([&false]).enumerate() {
+                    match (on, from) {
+                        (true, None) => from = Some(i),
+                        (false, Some(f)) => {
+                            runs.push([row as u32, f as u32, i as u32]);
+                            from = None;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            OverviewView {
+                origin: overview.origin,
+                pixel_um: overview.pixel_um,
+                width: overview.width,
+                height: overview.height,
+                frames: overview.frames,
+                image: base64(&overview.rgb8()),
+                threshold: tissue.threshold,
+                kept: tissue.kept,
+                dropped: tissue.dropped,
+                area_mm2: tissue.area_mm2,
+                tissue: runs,
+            }
+        }))
+    }
+
+    /// Takes an overview.
+    ///
+    /// Frames one field apart over `region`, in the camera's mode now
+    /// (binned, ideally), reduced to colour, then the tissue in it found
+    /// (P37), as `options` say. A job: answered at once with where to follow
+    /// it. The `tissue` pattern then scans what it found.
+    #[action]
+    async fn overview(
+        &self,
+        ctx: ActionCtx,
+        region: Region,
+        #[param(default)] options: Option<OverviewOptions>,
+    ) -> Result<JobRef, ActionError> {
+        let jobs = self.state()?.jobs.clone();
+        let unavailable = || ActionError::handled("unavailable (503): the server runs no jobs");
+        let jobs = jobs.ok_or_else(unavailable)?;
+        let field = self.field(0.0).await?;
+        let params = json!({
+            "region": region,
+            "field": field,
+            "options": options.unwrap_or_default(),
+        });
+        let account = ctx.principal().id().map(str::to_owned);
+        let id = jobs
+            .submit_kind(OVERVIEW, params, account)
+            .map_err(action_error)?;
+        Ok(JobRef::new(id))
+    }
+
     /// Plans a scan.
     ///
     /// Its plan and what it would take, as `request` asks: nothing moves.
@@ -379,5 +540,24 @@ impl ScanThing {
             .submit_kind(SCAN, params, account)
             .map_err(action_error)?;
         Ok(JobRef::new(id))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn base64_is_rfc_4648_s() {
+        // RFC 4648, section 10.
+        let cases = [
+            ("", ""),
+            ("f", "Zg=="),
+            ("fo", "Zm8="),
+            ("foo", "Zm9v"),
+            ("foobar", "Zm9vYmFy"),
+        ];
+        for (bytes, text) in cases {
+            assert_eq!(super::base64(bytes.as_bytes()), text);
+        }
+        assert_eq!(super::base64(&[0xfb, 0xff, 0xbf]), "+/+/");
     }
 }

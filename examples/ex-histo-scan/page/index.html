@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ex-histo-scan</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 52rem; padding: 0 1rem; }
+  canvas { width: 100%; height: auto; border: 1px solid #ccc; background: #222; }
+</style>
+</head>
+<body>
+<h1>ex-histo-scan</h1>
+<p>The latest overview, binned and a field apart, with the tissue found in it shaded green. Over
+it, the tissue scan's tiles: outlined as planned, filled as their frames are taken.</p>
+<p id="summary">No overview yet.</p>
+<canvas id="overview" width="800" height="640"></canvas>
+<ul>
+  <li><a href="/api/v1/scan/last_overview">The latest overview</a>, <a href="/api/v1/scan/progress">the scan's progress</a></li>
+  <li><a href="/docs">The API's documentation</a>: the <code>scan</code> Thing's <code>overview</code>, <code>plan</code> and <code>run</code></li>
+</ul>
+<script src="app.js"></script>
+</body>
+</html>

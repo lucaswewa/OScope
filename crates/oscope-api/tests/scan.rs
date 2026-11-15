@@ -1,8 +1,10 @@
 //! The `scan` Thing over HTTP (P36; ADR-0025): its patterns; a plan
 //! previewed with its estimate, nothing moving; a snake run as a job into a
 //! project, its frames with their positions, its progress; requests that
-//! can't be, refused; and, with `OSCOPE_PYTHON=1`, the sample Python
-//! workflow, `example.spiral`, listed with its schema, planned and run.
+//! can't be, refused; an overview, binned, finding the tissue that the
+//! `tissue` pattern then plans over (P37); and, with `OSCOPE_PYTHON=1`, the
+//! sample Python workflow, `example.spiral`, listed with its schema,
+//! planned and run.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -132,7 +134,14 @@ async fn a_scan_is_planned_previewed_and_run_into_a_project() {
         .collect();
     assert_eq!(
         names,
-        ["raster", "snake", "tiled_stack", "z_scan", "positions"]
+        [
+            "raster",
+            "snake",
+            "tiled_stack",
+            "z_scan",
+            "positions",
+            "tissue"
+        ]
     );
     assert_eq!(
         client.get("/api/v1/scan/progress").await.json(),
@@ -293,5 +302,74 @@ async fn a_python_workflow_plans_a_spiral_that_the_engine_runs() {
         refused["error"].to_string().contains("60 rings"),
         "{refused}"
     );
+    output(&client, "camera/stop_streaming", json!({})).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_overview_finds_the_tissue_the_tissue_pattern_plans_over() {
+    let folder = tempfile::tempdir().unwrap();
+    let client = server(folder.path(), None).await;
+    let request = json!({"request": {"pattern": "tissue"}});
+    let early = invoke(&client, "scan/plan", request.clone()).await;
+    let detail = early["error"]["detail"].as_str().unwrap_or("");
+    assert!(detail.contains("no overview yet"), "{early}");
+
+    // Binned 3 × 3, the whole quarter sensor, over the first island at its
+    // focus; the exposure set for the binned mode.
+    let format = client.get("/api/v1/camera/format").await.json();
+    output(
+        &client,
+        "camera/set_mode",
+        json!({"mode": "bin3", "format": format}),
+    )
+    .await;
+    output(&client, "stage/home", json!({})).await;
+    let island = HeTissue::new(1, Slide::COVERSLIP).islands()[0];
+    let at = json!({"x": island.x, "y": island.y});
+    let truth = output(&client, "simulation/in_focus", at)
+        .await
+        .as_f64()
+        .unwrap();
+    output(
+        &client,
+        "stage/move_to",
+        json!({"x": island.x, "y": island.y, "z": truth}),
+    )
+    .await;
+    output(&client, "camera/start_streaming", json!({})).await;
+    let exposed = output(&client, "exposure/auto", json!({})).await;
+    let exposed = ended(&client, exposed["href"].as_str().unwrap()).await;
+    assert_eq!(exposed["state"], "completed", "{exposed}");
+
+    // An overview of 12 × 12 mm about the island, glass about the tissue,
+    // in pixels of 50 µm.
+    let input = json!({"region": square(12_000.0)});
+    let job = output(&client, "scan/overview", input).await;
+    let job = ended(&client, job["href"].as_str().unwrap()).await;
+    assert_eq!(job["state"], "completed", "{job}");
+    let view = client.get("/api/v1/scan/last_overview").await.json();
+    // Frames of 1313 × 875 µm, a field apart, with no overlap: 10 × 14.
+    assert_eq!(view["frames"], 140, "{}", view["frames"]);
+    assert_eq!(
+        (view["width"].as_u64(), view["height"].as_u64()),
+        (Some(240), Some(240))
+    );
+    assert_eq!(view["image"].as_str().unwrap().len(), 240 * 240 * 4);
+    assert!(view["kept"].as_u64().unwrap() >= 1, "{}", view["kept"]);
+    assert!(!view["tissue"].as_array().unwrap().is_empty());
+
+    // The tissue's tiles: fewer than a raster over the region takes.
+    let tissue = output(&client, "scan/plan", request).await;
+    let raster = json!({"request": {"pattern": "raster", "region": square(12_000.0)}});
+    let raster = output(&client, "scan/plan", raster).await;
+    let count = |preview: &Value| preview["plan"]["tiles"].as_array().unwrap().len();
+    assert!(
+        count(&tissue) > 0 && count(&tissue) < count(&raster),
+        "{} and {}",
+        count(&tissue),
+        count(&raster)
+    );
+    // Its z: a map measured over it, before the first tile.
+    assert_eq!(tissue["plan"]["z"]["kind"], "measure");
     output(&client, "camera/stop_streaming", json!({})).await;
 }
