@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p38-live-stitching` / [#52](https://github.com/lucaswewa/OScope/pull/52)
-- Size: {{SIZE}}
+- Size: L · estimated ~2,100 before it started (the canvas ~340; the live mosaic ~280; the `live_mosaic` Thing, its tile route, the preview's block and the wiring ~260; the engine's hook ~25; the simulator's latency ~10; the vendored folder served ~25; tests ~550; `ex-live-mosaic` ~420; glue ~40; and about a tenth on top); one pull request, at the owner's standing choice · measured **3,184** hand-written lines added (code 1,721: `oscope-acquire` 619, `oscope-stitch` 609, `oscope-api` 466, `oscope-workflows` 14, `oscope-sim` 13; tests 973; examples 442; glue 48), and 35 removed; the TD snapshots are generated, and OpenSeadragon vendored. **That is 2,284 over L's 900, and 52 % over the estimate.**
 
 ## Summary
 
@@ -68,6 +68,7 @@ Sharpness is compared only between frames of the same place, within a quarter of
 - **Roaming carries on during a scan,** if asked. Where the stage stops for a tile, a frame may be drawn before the scan's own, which is drawn over it: 17 frames for 5 places and 6 tiles in the example. `scans` counts the scan's.
 - **The simulator's stage latency** is a setting now, `latency`, so the placement test runs with a USB link's 40 ms rather than the default 5.
 - **The example's first walk** went to four places and back, and waited for a fifth frame where the first was drawn, which roaming rightly judged the same. It now goes to four places.
+- **Each canvas names its files by its own number:** a mosaic begun while the one before still draws a frame never shares a file with it in `scratch/mosaic`.
 - **Pages under a prefix:** `ApiBuilder::pages_under` serves `examples/vendor` under `/vendor/`, beside an example's page. `examples/vendor` is out of the workspace, as the Python samples are.
 
 ### The tests' turns, and two cores
@@ -76,15 +77,20 @@ Sharpness is compared only between frames of the same place, within a quarter of
 
 ### The size
 
-{{SIZEDETAIL}}
+L's budget is 900; P38 measured 3,184, 52 % over its estimate of ~2,100.
+
+- **One pull request,** under the owner's standing choice: the canvas, the live mosaic and its Thing are one path, and the placement test needs the first two.
+- **Against the estimate,** the code took 1,721 lines against ~940, the tests 973 against ~550, and the example 442 against ~420.
+- **What the estimate didn't foresee:** the rolling shutter's correction, the stillness shortcut, the counts and the state; the placement test against the simulator's truth; and the tests the mutants' reading added. Doc comments are much of the rest.
 
 ## Tests
 
 | Crate | Test | What it checks |
 |---|---|---|
-| `oscope-stitch` | `canvas` (6) | **A frame lands where its map puts it:** turned 30°, scaled 1.5 and moved by fractions, every pixel checked within 1 of a plane's value, and nothing outside. **The newest wins, or its edges are feathered:** blue over red, the edge a quarter blue, alone whole. **Each level halves the one below:** the sizes, the tiles changed, a pixel the weighted mean of four, an edge half covered. **Memory stays within its budget** of six tiles, of over 40 drawn, and the tiles come back from disk as they were. **Viewers learn what changed,** and all after a clearing. **A flat map or a wrong image is refused** |
-| `oscope-acquire` | `mosaic` (2) | **Roaming's gates:** a new place drawn; the same place no sharper, refused, and then sharper, drawn; still, refused unmeasured; 5 µm of blur refused, 0.4 µm drawn; no position, no track, another binning, off the canvas. **A scan's frames** drawn ungated, and from the queue, with the scan's position. **Frames drawn as the stage moves,** 2.5 mm at 0.4 mm/s with its reports 40 ms late, registered against the simulator's own render of the slide: 0.15 µm off |
-| `oscope-api` | `live_mosaic` (2) | **Over HTTP:** a mosaic begun, drawn where the stage stops, its tile a JPEG, 404 where nothing is drawn or no level, an edge tile cut to 220 pixels; the changes on the preview stream, all at first, then the tiles a frame changed at every level; halted, drawing no more as frames go by; cleared, empty and all announced. **Each tile a scan takes,** through an ROI, drawn |
+| `oscope-stitch` | `canvas` (6) | **A frame lands where its map puts it:** turned 30°, scaled 1.5 and moved by fractions, every pixel checked within 1 of a plane's value, and nothing outside. **The newest wins, or its edges are feathered:** blue over red, its edge a quarter blue, whether drawn at its own scale or at twice, and alone whole. **Each level halves the one below:** the sizes and levels, a side of 256 in one; the tiles changed; a pixel the weighted mean of four, and one half bare the colour of what covers it. **Memory stays within its budget** of six tiles, of over 40 drawn, and the tiles come back from disk as they were. **Viewers learn what changed;** a drawing off the canvas, or touching it with no pixel, is no generation; all after a clearing. **A flat map or a wrong image is refused** |
+| `oscope-acquire` | `mosaic` (2) | **Roaming's gates,** on a canvas finer than the frames: a new place drawn; the same place, 18 µm off, no sharper, 5 % sharper, and still, refused, then sharper by half, drawn; 5 µm of blur refused, 0.4 µm drawn; no position, no track, another binning or objective, off the canvas; a place drawn again after a clearing. **A scan's frames** drawn ungated, and from the queue with the scan's position: 8 taken of 12 at once, 4 dropped, and none once stopped. Gates and a matrix that can't be, refused. **Frames drawn as the stage moves,** 2.5 mm at 0.4 mm/s with its reports 40 ms late, registered against the simulator's own render of the slide, in the frames' upper half: 0.15 µm off |
+| `oscope-api` | `live_mosaic` (2) | **Over HTTP:** a mosaic begun, drawn where the stage stops, its tile a JPEG, 404 where nothing is drawn or no level, an edge tile cut to 220 pixels; the changes on the preview stream, none for a client that doesn't ask, all at first, then the tiles a frame changed at every level; halted, drawing no more as frames go by; cleared, empty and all announced. **Each tile a scan takes,** through an ROI, drawn |
+| `oscope-workflows` | `scan_engine` (1 changed) | **The hook** is handed each tile's middle plane of a stack of three, where it was taken |
 | `oscope-api` | `devices` (1 changed) | The `live_mosaic` Thing's TD and the preview's (snapshots) |
 | `ex-live-mosaic` | `--smoke` | A frame at each place and each of the scan's tiles drawn, none dropped or failed; a tile, the page and OpenSeadragon served |
 
@@ -94,7 +100,30 @@ Sharpness is compared only between frames of the same place, within a quarter of
 
 {{RAN}}
 
-**Mutation checks** (each broke the code on purpose, then the tests were run): {{MUTANTS}}
+**Mutation checks** (each broke the code on purpose, then the tests were run): thirty-seven of thirty-seven caught.
+
+- **Reading the tests against the list first** found fourteen gaps, now covered:
+  - **in the canvas:** the feather measured in the image's pixels, which a frame drawn at the canvas's own scale hid; a level above taking the plain mean of four, which only a pixel half bare shows; and a level too many for a side of 256;
+  - **in roaming's gates:** the place measured in the frame's pixels, which a canvas as fine as the frames hid; any sharper frame drawn, not one sharper by the factor; another objective; a clearing that kept where it drew; drops not counted; and the gates' and the matrix's checks;
+  - **at the edges:** a stopped mosaic taking a scan's frame, which `scan_frame` now answers; changes sent to a client that didn't ask; and the engine handing on a stack's first plane, not its middle;
+  - **a tile composited on black,** which changes nothing at level 0 and darkened partly covered pixels above it: removed, so tiles show what covers them.
+- **The first run missed two more,** now covered:
+  - **A drawing that changes nothing made a generation:** the test's drew wholly off the canvas, which returns early, so a drawing whose corners lie on it but none of its pixels is checked too.
+  - **The roaming loop's own check of a halt, removed:** the halt's notice ended the loop anyway, but for a frame that came as it was asked. The loop now takes a halt before its next frame, and has no second check.
+
+| Mutant | Caught by |
+|---|---|
+| Bilinear sampling on one axis; pixels sampled at their corners | a frame lands where its map puts it |
+| The feather in the image's pixels; feathered over nothing | the newest wins, or its edges are feathered |
+| A level above, the mean of four bare or not; its quarter swapped; a level too many | each level halves the one below |
+| A tile evicted and forgotten; a tile over the budget | memory stays within its budget |
+| Changes with their own generation; a clearing unannounced; a generation for nothing | viewers learn what changed |
+| No rolling shutter's shear; blur over half the readout; placed where the stage last reported; no offset from the sensor's centre | frames drawn as the stage moves |
+| Near in the frame's pixels; any sharper; another objective; no stillness; a clearing remembered; a scan's frames gated; drops uncounted; a stopped mosaic taking frames; any gates; a flat matrix | roaming's gates |
+| Edge tiles whole; the first block not all; a block with every message; a halt, a clearing or roaming's halt that does nothing; a bare tile 200; blocks unasked | the mosaic over HTTP |
+| The scan's frames not handed on | each tile a scan takes |
+| A stack's first plane handed on | a scan records each frame where the stage was |
+| Pages under a prefix, at the root | `ex-live-mosaic --smoke` |
 
 ## Follow-ups and known gaps
 
