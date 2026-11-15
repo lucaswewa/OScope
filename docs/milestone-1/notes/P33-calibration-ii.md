@@ -1,6 +1,6 @@
 # P33: Calibration II: dark, flat, colour; the wizard
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p33-calibration-ii` / [#47](https://github.com/lucaswewa/OScope/pull/47)
 - Size: L · estimated ~4,150 before it started (the simulator's vignetting, colour response and colour target ~300; the colour target's layout and the colour science ~250; dark, flat and colour sets with their images ~300; the procedures ~450; their jobs ~120; the wizard ~400; the `calibration` Thing's additions ~300; tests ~1,300; `ex-wizard` ~300; glue ~60; and about a tenth on top); one pull request, at the owner's standing choice for P24–P34 · measured **3,156** hand-written lines added (code 1,864: `oscope-workflows` 1,224, `oscope-api` 270, `oscope-imaging` 181, `oscope-sim` 175, `oscope-compute` 14; tests 1,018; examples 253; glue 21), and 54 removed; the Thing Description's snapshot, 3,157 lines added and 618 removed, is generated. **That is 2,256 over L's 900, and 24 % under the estimate.**
 
