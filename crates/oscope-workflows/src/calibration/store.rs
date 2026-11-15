@@ -17,6 +17,8 @@ use super::set::{CalibrationSet, FORMAT, Instrument, SetSummary, Values};
 
 /// The file that says which set of each key is active.
 const ACTIVE: &str = "active.json";
+/// The calibration wizard's file, beside the sets (P33).
+const WIZARD: &str = "wizard.json";
 
 /// Why the store can't do something.
 #[derive(Debug, thiserror::Error)]
@@ -84,7 +86,7 @@ impl CalibrationStore {
         for entry in fs::read_dir(&folder).map_err(io(&folder))? {
             let path = entry.map_err(io(&folder))?.path();
             let named = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if !named.ends_with(".json") || named == ACTIVE {
+            if !named.ends_with(".json") || named == ACTIVE || named == WIZARD {
                 continue;
             }
             let read = fs::read(&path).map_err(io(&path))?;
@@ -202,6 +204,11 @@ impl CalibrationStore {
         fs::write(&part, bytes).map_err(io(&part))?;
         fs::rename(&part, &path).map_err(io(&path))?;
         self.add(set, activate)
+    }
+
+    /// Where the calibration wizard is saved, beside the sets.
+    pub fn wizard_file(&self) -> PathBuf {
+        self.folder.join(WIZARD)
     }
 
     /// The image of the set `id`: a dark frame's or a flat field's.

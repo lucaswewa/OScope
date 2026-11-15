@@ -195,8 +195,12 @@ impl CalibrationThing {
                 jobs.register(kind, factory);
             }
         }
-        let wizard_file = roots.data.join("calibration").join("wizard.json");
-        let wizard = Wizard::load(&wizard_file)?;
+        let wizard_file = store.wizard_file();
+        // A wizard that can't be read is set aside: the next one replaces it.
+        let wizard = Wizard::load(&wizard_file).unwrap_or_else(|error| {
+            tracing::warn!("the calibration wizard saved wasn't read, and is set aside: {error}");
+            None
+        });
         let state = Calibration {
             devices,
             store,

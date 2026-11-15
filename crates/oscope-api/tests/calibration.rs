@@ -257,6 +257,10 @@ async fn step(client: &TestClient, index: usize) -> Value {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
     let folder = tempfile::tempdir().unwrap();
+    // A saved wizard that can't be read is set aside, and the server starts.
+    let saved = folder.path().join("data").join("calibration");
+    std::fs::create_dir_all(&saved).unwrap();
+    std::fs::write(saved.join("wizard.json"), "not a wizard").unwrap();
     let client = server(folder.path()).await;
     assert_eq!(
         invoke(&client, "stage/home", json!({})).await["status"],

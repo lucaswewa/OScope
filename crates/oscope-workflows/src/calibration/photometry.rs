@@ -382,15 +382,15 @@ pub async fn measure_flat(
     let (w, h) = (image.width(), image.height());
     let whole = (0, 0, w, h);
     let means = [0, 1, 2].map(|c| colour_mean(&image, format, c, whole).unwrap_or(level));
+    if means.iter().any(|m| *m <= 0.0) {
+        return Err(failed("a colour of the field is dark: is the light on?"));
+    }
     let channels = image.channels();
     for (i, v) in image.data_mut().iter_mut().enumerate() {
         let (pixel, k) = (i / channels, i % channels);
         let (x, y) = ((pixel as u32) % w, (pixel as u32) / w);
         let c = site(format, x, y).unwrap_or(k.min(2));
         *v /= means[c] as f32;
-    }
-    if means.iter().any(|m| *m <= 0.0) {
-        return Err(failed("a colour of the field is dark: is the light on?"));
     }
     let flat = Flat {
         objective: objective.name,
