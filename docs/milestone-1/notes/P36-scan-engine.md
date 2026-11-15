@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p36-scan-engine` / [#50](https://github.com/lucaswewa/OScope/pull/50)
-- Size: L · estimated ~3,600 before it started (the engine ~550; the scan job, its retries, cancel and end position ~200; continuous-scan fields reserved ~40; the `scan` Thing ~350; the `workflow` extension kind ~460; the server's wiring ~40; tests ~850; `ex-scan` ~500 and two sample workflows ~200; glue ~60; and about a tenth on top); one pull request, at the owner's standing choice, the spec's split candidate kept in it · measured **2,305** hand-written lines added (code 1,022: `oscope-workflows` 449, `oscope-api` 417, `oscope-ext` 70, `oscope-ext-sdk` 66, `oscope-store` 13, the Python SDK 7; tests 875; examples 381; glue 27), and 23 removed; the `scan` Thing's Thing Description snapshot, 2,219 lines, is generated. **That is 1,405 over L's 900, and 36 % under the estimate.**
+- Size: L · estimated ~3,600 before it started (the engine ~550; the scan job, its retries, cancel and end position ~200; continuous-scan fields reserved ~40; the `scan` Thing ~350; the `workflow` extension kind ~460; the server's wiring ~40; tests ~850; `ex-scan` ~500 and two sample workflows ~200; glue ~60; and about a tenth on top); one pull request, at the owner's standing choice, the spec's split candidate kept in it · measured **2,309** hand-written lines added (code 1,022: `oscope-workflows` 449, `oscope-api` 417, `oscope-ext` 70, `oscope-ext-sdk` 66, `oscope-store` 13, the Python SDK 7; tests 879; examples 381; glue 27), and 23 removed; the `scan` Thing's Thing Description snapshot, 2,219 lines, is generated. **That is 1,409 over L's 900, and 36 % under the estimate.**
 
 ## Summary
 
@@ -93,7 +93,7 @@ The plan's `motion` is `stop_and_go` unless a plan says `continuous`, which the 
 
 ### The size
 
-L's budget is 900; P36 measured 2,305, 36 % under its estimate of ~3,600.
+L's budget is 900; P36 measured 2,309, 36 % under its estimate of ~3,600.
 
 - **One pull request,** under the owner's standing choice, the spec's split candidate kept in it: the engine, the Thing that runs it and the workflows it runs are one path, which `ex-scan` walks.
 - **Against the estimate,** the engine and its job took 449 lines against ~790, the `scan` Thing and its wiring 417 against ~390, the workflow kind 143 against ~460, as the driver call carried it, and the examples 381 against ~700, with one sample workflow, in Python, where two were planned.
