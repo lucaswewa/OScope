@@ -126,12 +126,15 @@ async fn a_job_is_submitted_followed_and_listed() {
     assert_eq!(
         client.get("/api/v1/jobs/kinds").await.json(),
         json!([
+            "autofocus.run",
             "calibration.check_objective",
             "calibration.colour",
             "calibration.dark",
             "calibration.flat",
             "calibration.geometry",
             "calibration.stage",
+            "exposure.auto",
+            "exposure.white_balance",
             "pipeline.batch",
             "test.count",
             "test.hold"

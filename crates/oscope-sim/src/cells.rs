@@ -347,6 +347,31 @@ impl Sample for CellCulture {
         "fluorescent cell culture"
     }
 
+    /// The height of the dye's middle near `at`: each slice's height,
+    /// weighted by how much dye it holds over the 200 µm square about `at`
+    /// (P34's truth: the cells lie thicker near the glass than at their
+    /// tops).
+    fn in_focus(&self, at: Point2) -> Um {
+        let (side, pixel) = (200.0, 2.0);
+        let origin = Point2::new(at.x - side / 2.0, at.y - side / 2.0);
+        let n = (side / pixel) as u32;
+        let (mut weighted, mut total) = (0.0, 0.0);
+        for (index, layer) in self.layers.iter().enumerate() {
+            let dye: f64 = self
+                .render(index, origin, Um(pixel), n, n)
+                .data()
+                .iter()
+                .map(|v| f64::from(*v))
+                .sum();
+            weighted += layer.z.0 * dye;
+            total += dye;
+        }
+        match total > 0.0 {
+            true => Um(weighted / total),
+            false => Um(Self::TOP.0 / 2.0),
+        }
+    }
+
     fn layers(&self) -> &[Layer] {
         &self.layers
     }

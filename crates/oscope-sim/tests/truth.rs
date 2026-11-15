@@ -165,3 +165,28 @@ fn the_colour_target_shows_its_patches_between_dark_borders() {
     let clear = at(-target.size_um().0, 0.0);
     assert!(clear.iter().all(|c| (c - glass).abs() < 1e-4), "{clear:?}");
 }
+
+#[test]
+fn each_sample_says_where_it_is_sharpest() {
+    let at = Point2::new(47_000.0, 12_500.0);
+    // The H&E section's middle: halves at 1 and 3 µm, each 2 µm thick.
+    let tissue = oscope_sim::HeTissue::new(1, Slide::COVERSLIP);
+    assert!((oscope_sim::Sample::in_focus(&tissue, at).0 - 2.0).abs() < 1e-9);
+    // The reflective chip: its surface's height where it's looked at.
+    let half = oscope_sim::Surface::SIDE.0 / 2.0;
+    let chip = oscope_sim::Surface::new(1, Point2::new(at.x - half, at.y - half));
+    let height = chip.height(at).unwrap().0;
+    assert_eq!(oscope_sim::Sample::in_focus(&chip, at).0, height);
+    // The cells: their dye's height, below their slab's middle, 3.25 µm, as
+    // they lie thicker near the glass.
+    let cells = oscope_sim::CellCulture::new(1, Slide::COVERSLIP);
+    let dye = oscope_sim::Sample::in_focus(&cells, at).0;
+    assert!(dye > 0.5 && dye < 2.75, "{dye}");
+    // The world adds the slide's focus.
+    let world = World::with_slide(
+        Slide::new(Arc::new(tissue), Point2::new(0.0, 0.0)),
+        Um(FOCUS),
+    );
+    assert_eq!(world.in_focus(at), Some(Um(FOCUS + 2.0)));
+    assert_eq!(World::empty().in_focus(at), None);
+}

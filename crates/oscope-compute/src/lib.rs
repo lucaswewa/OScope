@@ -29,6 +29,7 @@ pub mod cpu;
 pub mod cuda;
 pub mod equivalence;
 pub mod filters;
+pub mod focus;
 mod image;
 mod info;
 mod pools;
@@ -205,6 +206,21 @@ impl Compute {
     #[cfg(feature = "cuda")]
     pub fn cuda(&self) -> Option<&cuda::Cuda> {
         self.cuda.as_ref()
+    }
+
+    /// [`focus::measures`] of `image`, in `lane`: on the GPU when there is
+    /// one (P34).
+    pub fn focus_measures(
+        &self,
+        lane: Lane,
+        image: &Image,
+    ) -> Result<focus::FocusMeasures, ComputeError> {
+        #[cfg(feature = "cuda")]
+        if let Some(cuda) = self.cuda() {
+            let device = cuda.upload(lane, image)?;
+            return cuda.focus_measures(lane, &device);
+        }
+        self.pools.install(lane, || focus::measures(image))
     }
 
     /// [`cpu::to_f32`], in `lane`.

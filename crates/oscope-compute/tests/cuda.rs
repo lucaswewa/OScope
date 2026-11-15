@@ -269,3 +269,32 @@ fn the_filters_twins_match_the_cpu() {
         Err(ComputeError::Setting(_))
     ));
 }
+
+#[test]
+fn the_focus_measures_twin_matches_the_cpu() {
+    use oscope_compute::focus;
+    let Some(compute) = gpu() else { return };
+    let cuda = compute.cuda().unwrap();
+    let lane = Lane::Live;
+    let mut random = StdRng::seed_from_u64(34);
+    for case in 0..40 {
+        let (w, h) = (random.random_range(3..300), random.random_range(3..300));
+        let data = (0..w * h).map(|_| random.random_range(0.0..1.0)).collect();
+        let image = Image::from_vec(Shape::new(w, h, 1), data).unwrap();
+        let cpu = focus::measures(&image).unwrap();
+        let gpu = cuda
+            .focus_measures(lane, &cuda.upload(lane, &image).unwrap())
+            .unwrap();
+        assert_eq!(cpu, gpu, "case {case}: {w} × {h}");
+        // And through the compute layer, which takes the GPU.
+        assert_eq!(compute.focus_measures(lane, &image).unwrap(), cpu);
+    }
+    // A colour image is refused alike.
+    let colour = cuda
+        .upload(lane, &Image::zeros(Shape::new(8, 8, 3)))
+        .unwrap();
+    assert!(matches!(
+        cuda.focus_measures(lane, &colour),
+        Err(ComputeError::Channels { .. })
+    ));
+}

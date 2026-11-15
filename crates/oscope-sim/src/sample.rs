@@ -58,6 +58,21 @@ pub trait Sample: Send + Sync {
     /// two pixels averages away, and a coarse rendering matches a fine one
     /// averaged down: the levels of detail (ADR-0013).
     fn render(&self, index: usize, origin: Point2, pixel: Um, width: u32, height: u32) -> Image;
+
+    /// The height above the slide's top surface at which it is sharpest at
+    /// `at`, in slide coordinates: the truth autofocus is held to (P34). By
+    /// default, the middle of its layers, from the lowest's bottom to the
+    /// highest's top; 0 with none.
+    fn in_focus(&self, at: Point2) -> Um {
+        let _ = at;
+        let layers = self.layers();
+        let low = layers.iter().map(|l| l.z.0 - l.thickness.0 / 2.0);
+        let high = layers.iter().map(|l| l.z.0 + l.thickness.0 / 2.0);
+        match (low.reduce(f64::min), high.reduce(f64::max)) {
+            (Some(low), Some(high)) => Um((low + high) / 2.0),
+            _ => Um(0.0),
+        }
+    }
 }
 
 /// An RGB image of `width` × `height` pixels of side `pixel` from `origin`,

@@ -18,6 +18,7 @@ use crate::{ComputeError, GpuInfo, Image, Lane, Shape, cpu};
 
 mod color;
 mod filters;
+mod focus;
 mod registration;
 mod sim;
 
@@ -37,6 +38,9 @@ const FILTER_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/filters.
 /// Phase correlation's kernels, compiled from `kernels/registration.cu` (P31).
 const REGISTRATION_KERNELS: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/registration.fatbin"));
+
+/// The focus measures' kernel, compiled from `kernels/focus.cu` (P34).
+const FOCUS_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/focus.fatbin"));
 
 /// The simulated camera's kernel, compiled from `kernels/sim.cu`.
 const SIM_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sim.fatbin"));
@@ -85,6 +89,7 @@ struct Kernels {
     prepare: CudaFunction,
     cross_power: CudaFunction,
     gather: CudaFunction,
+    focus_terms: CudaFunction,
 }
 
 /// A GPU, ready for kernels.
@@ -123,6 +128,7 @@ impl Cuda {
         let sim = context.load_module(Ptx::from_binary(SIM_KERNELS.to_vec()))?;
         let filters = context.load_module(Ptx::from_binary(FILTER_KERNELS.to_vec()))?;
         let registration = context.load_module(Ptx::from_binary(REGISTRATION_KERNELS.to_vec()))?;
+        let focus = context.load_module(Ptx::from_binary(FOCUS_KERNELS.to_vec()))?;
         let kernels = Kernels {
             to_f32_u16: module.load_function("to_f32_u16")?,
             to_f32_u8: module.load_function("to_f32_u8")?,
@@ -142,6 +148,7 @@ impl Cuda {
             prepare: registration.load_function("prepare")?,
             cross_power: registration.load_function("cross_power")?,
             gather: registration.load_function("gather")?,
+            focus_terms: focus.load_function("focus_terms")?,
         };
         let memory_pool = keep_freed_memory(&context).is_ok();
         let mut version = 0;

@@ -217,6 +217,61 @@ expression: td
       },
       "synchronous": false
     },
+    "in_focus": {
+      "description": "The stage's z, in µm, at which the slide is in focus at stage point\n(`x`, `y`): the truth autofocus is held to (P34). None with no slide.",
+      "title": "Where the simulated slide is sharpest.",
+      "forms": [
+        {
+          "href": "/api/v1/simulation/in_focus",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "in_focus_input",
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "in_focus_output",
+        "oneOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "synchronous": false
+    },
     "load": {
       "description": "The one called `name`, in place of any other.",
       "title": "Loads a sample onto the stage.",
