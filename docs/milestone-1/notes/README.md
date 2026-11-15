@@ -53,4 +53,4 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P31 | Registration: phase correlation on CPU and CUDA | Done | [P31-registration.md](P31-registration.md) |
 | P32 | Calibration I: pixel size, camera-to-stage affine, backlash, store | Done | [P32-calibration.md](P32-calibration.md) |
 | P33 | Calibration II: dark, flat, colour; the wizard | Done | [P33-calibration-ii.md](P33-calibration-ii.md) |
-| P34 | Autofocus, auto exposure, auto white balance | In review | [P34-autofocus.md](P34-autofocus.md) |
+| P34 | Autofocus, auto exposure, auto white balance | Done | [P34-autofocus.md](P34-autofocus.md) |
