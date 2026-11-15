@@ -86,8 +86,13 @@ pub struct Field {
 pub struct World {
     /// The slide.
     pub slide: Option<Slide>,
-    /// The stage's z at which the slide's top surface is in focus.
+    /// The stage's z at which the slide's top surface is in focus, at the
+    /// slide's corner.
     pub focus: Um,
+    /// The slide's tilt (P35): how much higher its surface is in focus, in
+    /// µm, a mm further from its corner along x, and along y. A field
+    /// renders at the tilt of its centre.
+    pub tilt: [f64; 2],
 }
 
 /// The largest blur, in pixels, rendered at the field's own pixel: a layer
@@ -142,6 +147,7 @@ impl World {
         Self {
             slide: None,
             focus: Um(0.0),
+            tilt: [0.0; 2],
         }
     }
 
@@ -151,16 +157,30 @@ impl World {
         Self {
             slide: Some(slide),
             focus,
+            tilt: [0.0; 2],
         }
     }
 
+    /// This world, with its slide tilted by `tilt` (see [`World::tilt`]).
+    pub fn tilted(self, tilt: [f64; 2]) -> Self {
+        Self { tilt, ..self }
+    }
+
+    /// The stage's z at which the slide's surface is in focus at stage
+    /// point `at`: its focus, plus its tilt that far from its corner.
+    pub fn focus_at(&self, at: Point2) -> Um {
+        let origin = self.slide.as_ref().map_or(at, |s| s.origin);
+        let (dx, dy) = ((at.x - origin.x) / 1_000.0, (at.y - origin.y) / 1_000.0);
+        Um(self.focus.0 + self.tilt[0] * dx + self.tilt[1] * dy)
+    }
+
     /// The stage's z at which the slide is sharpest at stage point `at`: its
-    /// focus, plus its sample's height in focus there (P34's truth). `None`
-    /// with no slide.
+    /// focus there, tilt and all, plus its sample's height in focus there
+    /// (P34's truth). `None` with no slide.
     pub fn in_focus(&self, at: Point2) -> Option<Um> {
         let slide = self.slide.as_ref()?;
         let local = Point2::new(at.x - slide.origin.x, at.y - slide.origin.y);
-        Some(Um(self.focus.0 + slide.sample.in_focus(local).0))
+        Some(Um(self.focus_at(at).0 + slide.sample.in_focus(local).0))
     }
 
     /// What the camera sees of `field` through `optics` in `light`: linear
@@ -205,7 +225,7 @@ impl World {
             Light::Fluorescence { line, confocal } => Some((line, confocal)),
             _ => None,
         };
-        let focal = field.z.0 - self.focus.0;
+        let focal = field.z.0 - self.focus_at(field.centre).0;
         let layers = slide.sample.layers();
         let seen: Vec<bool> = layers
             .iter()
