@@ -264,7 +264,19 @@ L's budget is 900; P34 measured 3,622, about 14 % under its estimate of ~4,200.
 
 **Where they ran:**
 
-{{RAN}}
+- **On Windows,** `scripts/ci-local.sh --cuda`, run alone on `abecf3c`: 46 of 46 steps, 451 tests in 171 suites.
+  - They included the Python tests, real, and the CUDA tests (`OSCOPE_CUDA=1` and the `cuda` feature), the focus measures' CUDA twin among them.
+  - Every example's `--smoke` ran, `ex-autofocus`'s and `ex-checkpoint-c`'s new among them.
+  - Its first run, on `c914ce1`, failed one step: `cargo doc` refused the focus module's doc, which linked to a private function.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of `abecf3c`, run alone: 45 of 45 steps, 451 tests in 171 suites, the Python tests real; 622 files, none with a CR.
+- **On two cores,** pinned, 5 times out of 5 each:
+  - `oscope-compute`'s unit tests;
+  - `oscope-sim`'s `truth`;
+  - `oscope-workflows`' unit tests and `autofocus`;
+  - `oscope-api`'s `focus`;
+  - `ex-autofocus --smoke` and `ex-checkpoint-c --smoke`.
+
+  They passed 5 times in 5 before the settling fix too.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): twenty-seven of twenty-seven caught, run again after the fault below was fixed.
 
