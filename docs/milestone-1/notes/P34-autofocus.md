@@ -242,6 +242,14 @@ The tests and `--smoke` runs look through a 256 × 192 region of the quarter sen
 - **White balance needs some background in view.** Over tissue alone, its gains are the tissue's colour. Checkpoint C balances over clear glass, then returns to the tissue from below.
 - **The preview keeps its gains as `f32`s.** A client reading them back sees them rounded.
 
+### The `zstd` crates, at two weeks
+
+P28 took `zstd` 0.13.4 and `zstd-safe` 7.4.0 at 13 days old, for the fixes of three RustSec advisories, as the owner allowed. They turned two weeks old at 14:12 UTC on 2026-11-15, and were checked at 14:13:
+
+- **crates.io** shows neither yanked, and both BSD-3-Clause, which `cargo deny` allows.
+- **A fresh `cargo deny check` passes,** its advisory database updated that day.
+- **Newer patch releases** came out on 2026-11-12: `zstd` 0.13.5 and `zstd-safe` 7.4.1. No advisory concerns the versions in use, so these wait until they are two weeks old.
+
 ### The size
 
 L's budget is 900; P34 measured 3,622, about 14 % under its estimate of ~4,200.
