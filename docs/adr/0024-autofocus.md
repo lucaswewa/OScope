@@ -20,7 +20,7 @@
 
 **4. The continuous sweep** moves the stage at a constant speed, d / 4 per frame interval, and puts each frame at the z the stage's position track gives for its exposure midpoint, its rolling shutter's middle row included. The peak is a parabola's vertex through the log of the measures around the best frame. A camera slower while the stage moves (the simulator renders each depth afresh) leaves its frames sparse: then the stepped sweep's fine pass about the best frame finds the peak. Stepped and continuous sweeps agree within d / 4.
 
-**4a. A sweep's z is where the stage says it is.** The final move commands the peak plus the lag the sweep showed between the z commanded and the z reported: a stage that reports its true position lags, approached from below, by half its backlash.
+**4a. A sweep's z is where the stage says it is, once settled.** The final move commands the peak plus the lag the sweep showed between the z commanded and the z reported: a stage that reports its true position lags, approached from below, by half its backlash. Each z is read when a frame after the settling time has come, as a stage may still overshoot as it arrives.
 
 **5. Refusals leave the stage where it started:** an empty field (the best measure under 1.2 times the median), or a peak at the coarse sweep's end (the focus beyond the range). Each says why.
 

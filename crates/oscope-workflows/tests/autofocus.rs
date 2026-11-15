@@ -5,7 +5,7 @@
 //! empty field refused; continuous and stepped sweeps agreeing; auto
 //! exposure converging,
 //! and holding at a limit it can't pass; white balance recovering a tinted
-//! light, beside a colourful sample too.
+//! light, and beside pink tissue too.
 
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -14,7 +14,7 @@ use oscope_acquire::{Acquisition, FrameBus};
 use oscope_core::{FramePool, HeapAllocator, LightState, Ms, PixelRect, Point2, Um, Xyz};
 use oscope_hal::{Camera, Illumination, ObjectiveCatalogue, ObjectiveMount, Stage};
 use oscope_sim::{
-    CellCulture, ColourTargetSample, HeTissue, Optics, Rate, Sample, SimCamera, SimCameraConfig,
+    CellCulture, Field, HeTissue, Light, Optics, Rate, Sample, SimCamera, SimCameraConfig,
     SimClock, SimLights, SimMount, SimStage, SimStageConfig, Slide, Surface, World,
 };
 use oscope_workflows::autofocus::{
@@ -252,10 +252,12 @@ async fn an_empty_field_is_refused_and_the_stage_goes_back() {
             report.refused.as_deref().unwrap().contains("empty"),
             "{report:?}"
         );
+        // Back where it started, settled as it was then: the second sweep
+        // starts where the first left it, so their errors would add.
         let now = z(&bench).await;
         let back =
             format!("{sweep:?}: back where it started, {start:.3}, not {now:.3}: {report:?}");
-        assert!((now - start).abs() < 0.5, "{back}");
+        assert!((now - start).abs() < 0.1, "{back}");
     }
 }
 
@@ -373,14 +375,58 @@ async fn white_balance_recovers_a_tinted_light_s_gains() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn white_balance_finds_the_light_beside_a_colourful_sample() {
     let _turn = TURN.lock().await;
-    // The colour target, its coloured patches filling the middle, clear
-    // glass around it: the lightest part is the glass, the light itself.
-    let centre = middle();
-    let target: Arc<dyn Sample> = Arc::new(ColourTargetSample::new(centre));
+    // An edge of the tissue's first island: along x from its middle, the
+    // first field a quarter of which is clear glass. Pink tissue fills the
+    // rest; the lightest part is the glass, the light itself.
+    let tissue: Arc<dyn Sample> = Arc::new(HeTissue::new(1, Slide::COVERSLIP));
+    let island = HeTissue::new(1, Slide::COVERSLIP).islands()[0];
+    let world = World::with_slide(
+        Slide::new(Arc::clone(&tissue), Point2::new(0.0, 0.0)),
+        Um(1_000.0),
+    );
+    // A field, coarsely: in 9.6 µm pixels, 137 × 91 are the 1.31 × 0.88 mm
+    // the quarter sensor sees through the 10×.
+    let catalogue = ObjectiveCatalogue::mitutoyo();
+    let coarse = Optics::new(&catalogue, catalogue.get("10x").unwrap(), Um(96.0));
+    let render = |centre: Point2, width: u32, height: u32| {
+        let field = Field {
+            centre,
+            z: Um(1_002.0),
+            width,
+            height,
+        };
+        world.render(&field, &coarse, Light::Transmitted)
+    };
+    // What clear glass passes under the coverslip: at its corner, which no
+    // island reaches. A field's share of it, and its mean colour.
+    let corner = Slide::COVERSLIP.origin;
+    let clear = render(Point2::new(corner.x + 100.0, corner.y + 100.0), 1, 1).data()[1];
+    let look = |x: f64| {
+        let image = render(Point2::new(x, island.y), 137, 91);
+        let pixels: Vec<&[f32]> = image.data().chunks(3).collect();
+        let glass = pixels
+            .iter()
+            .filter(|p| p.iter().all(|v| *v >= 0.99 * clear))
+            .count();
+        let n = pixels.len() as f64;
+        let mean = [0, 1, 2].map(|c| pixels.iter().map(|p| f64::from(p[c])).sum::<f64>() / n);
+        (glass as f64 / n, mean)
+    };
+    let (edge, (share, mean)) = (0..200)
+        .map(|k| island.x + 100.0 * f64::from(k))
+        .map(|x| (x, look(x)))
+        .find(|(_, (share, _))| *share >= 0.25)
+        .expect("an edge");
+    // The field's mean isn't the light's colour: averaged over every cell,
+    // white balance would be off.
+    assert!(
+        share < 0.75 && mean[1] / mean[0] < 0.95,
+        "{share} glass, mean {mean:?}"
+    );
     let setup = Setup {
-        off: 0.05,
+        off: 0.0,
         region: None,
-        ..Setup::new(Some(target), centre, "transmitted")
+        ..Setup::new(Some(tissue), Point2::new(edge, island.y), "transmitted")
     };
     let bench = bench(setup).await;
     let whole = Region {

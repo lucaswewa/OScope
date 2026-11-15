@@ -275,21 +275,25 @@ fn measure(rig: &FocusRig, image: &Image, measure: Measure) -> Result<f64, Autof
     Ok(measures(rig, image)?.get(measure.kind()))
 }
 
-/// Moves to `z` moving up, from `approach` below it: where the stage says
-/// it arrived.
-async fn up_to(
-    rig: &FocusRig,
-    xy: (f64, f64),
-    z: f64,
-    approach: f64,
-) -> Result<f64, AutofocusError> {
+/// Moves to `z` moving up, from the approach below it: where the stage says
+/// it is once settled.
+async fn up_to(rig: &FocusRig, xy: (f64, f64), z: f64, how: &How) -> Result<f64, AutofocusError> {
     let to = |z: f64| Xyz::new(Um(xy.0), Um(xy.1), Um(z));
     rig.stage
-        .move_to(to(z - approach), None)
+        .move_to(to(z - how.approach), None)
         .await
         .map_err(device)?;
     let arrived = rig.stage.move_to(to(z), None).await.map_err(device)?;
-    Ok(arrived.position.z.0)
+    drop(frame_after(&rig.bus, arrived.time + how.settle).await?);
+    settled(rig).await
+}
+
+/// Where the stage says it is, in z, read once a frame after its settling
+/// time has come, as each caller waits for. As it arrives, a stage may
+/// still overshoot: the simulator's does by up to 0.3 µm, which a start
+/// returned to would be off by.
+async fn settled(rig: &FocusRig) -> Result<f64, AutofocusError> {
+    Ok(rig.stage.position().await.map_err(device)?.position.z.0)
 }
 
 /// From `from` to `to` in steps of about `step`, both ends included.
@@ -300,8 +304,8 @@ fn positions(from: f64, to: f64, step: f64) -> Vec<f64> {
         .collect()
 }
 
-/// How far each position commanded lay above where the stage said it
-/// arrived: a stage that reports its true position lags, approached from
+/// How far each position commanded lay above where the stage said it was,
+/// settled: a stage that reports its true position lags, approached from
 /// below, by half its backlash.
 #[derive(Default)]
 struct Swept {
@@ -320,7 +324,8 @@ impl Swept {
 }
 
 /// The frame at each of `positions`, each reached moving up, the first from
-/// the approach below it: their measures, at the z the stage reported.
+/// the approach below it: their measures, at the z the stage reported once
+/// settled, where the frame was taken.
 async fn stepped(
     rig: &FocusRig,
     xy: (f64, f64),
@@ -339,12 +344,13 @@ async fn stepped(
     for (i, &z) in positions.iter().enumerate() {
         check(report)?;
         let arrived = rig.stage.move_to(to(z), None).await.map_err(device)?;
-        swept.lags.push(z - arrived.position.z.0);
         let frame = frame_after(&rig.bus, arrived.time + how.settle).await?;
         let image = prepare(&frame, how.region)?;
         drop(frame);
+        let at = settled(rig).await?;
+        swept.lags.push(z - at);
         curve.push(CurvePoint {
-            z_um: arrived.position.z.0,
+            z_um: at,
             value: measure(rig, &image, how.measure)?,
         });
         let done = (i + 1) as f64 / positions.len() as f64;
@@ -493,7 +499,7 @@ async fn pass(
     report: &dyn Report,
     swept: &mut Swept,
 ) -> Result<(Vec<CurvePoint>, Option<f64>), AutofocusError> {
-    let arrived = up_to(rig, xy, from, how.approach).await?;
+    let arrived = up_to(rig, xy, from, how).await?;
     swept.lags.push(from - arrived);
     let stage = Arc::clone(&rig.stage);
     let end = Xyz::new(Um(xy.0), Um(xy.1), Um(to));
@@ -694,12 +700,7 @@ pub async fn autofocus(
     };
     // To the focus, or back to the start, approached from below.
     let target = swept.command(found.unwrap_or(z0));
-    let arrived = up_to(rig, xy, target, how.approach).await?;
-    // Where the stage is once it has settled: a frame after.
-    let at = rig.stage.position().await.map_err(device)?.time;
-    drop(frame_after(&rig.bus, at + how.settle).await?);
-    out.z_um = rig.stage.position().await.map_err(device)?.position.z.0;
-    let _ = arrived;
+    out.z_um = up_to(rig, xy, target, &how).await?;
     out.found = found.is_some();
     out.took_ms = started.elapsed().as_secs_f64() * 1e3;
     Ok(out)
