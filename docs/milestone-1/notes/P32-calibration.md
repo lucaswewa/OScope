@@ -1,6 +1,6 @@
 # P32: Calibration I: pixel size, camera-to-stage affine, backlash, store
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p32-calibration` / [#46](https://github.com/lucaswewa/OScope/pull/46)
 - Size: L · estimated ~3,000 before it started (the calibration sets and their store ~400; the fit and its decomposition ~150; the procedures: frames to grey, moves, registration, the pattern, backlash, the objective check, ~450; the `calibration` Thing and its jobs ~350; the simulator's truth ~60; tests ~920; `ex-calibrate` ~280; glue ~60; and about a tenth on top); one pull request, at the owner's standing choice for P24–P34 · measured **2,785** hand-written lines added (code 1,699: `oscope-workflows` 1,364, `oscope-api` 277, `oscope-sim` 50, `oscope-jobs` 8; tests 787; examples 251; glue 48), and 8 removed; the Thing Description's snapshot, 1,461 lines, is generated. **That is 1,885 over L's 900, and about 7 % under the estimate.**
 

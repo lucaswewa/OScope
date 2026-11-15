@@ -51,4 +51,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P29 | Scratch recorder and ingest | Done | [P29-scratch-recorder.md](P29-scratch-recorder.md) |
 | P30 | Capture, downloads, importers and exporters | Done | [P30-capture-io.md](P30-capture-io.md) |
 | P31 | Registration: phase correlation on CPU and CUDA | Done | [P31-registration.md](P31-registration.md) |
-| P32 | Calibration I: pixel size, camera-to-stage affine, backlash, store | In review | [P32-calibration.md](P32-calibration.md) |
+| P32 | Calibration I: pixel size, camera-to-stage affine, backlash, store | Done | [P32-calibration.md](P32-calibration.md) |
+| P33 | Calibration II: dark, flat, colour; the wizard | In review | [P33-calibration-ii.md](P33-calibration-ii.md) |
