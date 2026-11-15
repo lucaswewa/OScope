@@ -40,7 +40,7 @@ pub(crate) fn router(store: Arc<Store>) -> Router {
         .with_state(store)
 }
 
-fn problem(status: StatusCode, detail: impl std::fmt::Display) -> Response {
+pub(crate) fn problem(status: StatusCode, detail: impl std::fmt::Display) -> Response {
     let body = json!({
         "title": status.canonical_reason().unwrap_or("error"),
         "status": status.as_u16(),

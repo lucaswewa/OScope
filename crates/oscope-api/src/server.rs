@@ -27,11 +27,12 @@ use crate::extensions::ExtensionsThing;
 use crate::focus::{AutofocusThing, ExposureThing};
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
+use crate::mosaic::{LiveMosaicThing, Mosaics};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
 use crate::system::{System, VERSION};
-use crate::{data, media, pages};
+use crate::{data, media, mosaic, pages};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
 /// The OpenAPI document is at the root, `/openapi.json`, with its docs pages
@@ -90,6 +91,7 @@ pub struct ApiBuilder {
     logs: LogStore,
     restart: Arc<Restart>,
     store: Option<Arc<oscope_store::Store>>,
+    mosaics: Option<Arc<Mosaics>>,
 }
 
 /// A request to restart the server, which the `system` Thing's `restart`
@@ -165,13 +167,16 @@ impl ApiBuilder {
 
     /// Serves the instrument's `devices` as the Things `camera`, `stage`,
     /// `illumination` and `objective`, and `simulation` when a device is
-    /// simulated; and their frames' live `preview`.
+    /// simulated; and their frames' live `preview`, and `live_mosaic`.
     pub fn devices(mut self, devices: Arc<Devices>) -> Self {
         let simulated = devices.simulator.is_some();
+        let mosaics = Arc::new(Mosaics::default());
+        self.mosaics = Some(Arc::clone(&mosaics));
         self.things = self
             .things
             .service(devices)
             .service(Arc::new(Calibrations::default()))
+            .service(mosaics)
             .thing("camera", CameraThing::default())
             .thing("stage", StageThing::default())
             .thing("illumination", IlluminationThing::default())
@@ -181,7 +186,8 @@ impl ApiBuilder {
             .thing("calibration", CalibrationThing::default())
             .thing("autofocus", AutofocusThing::default())
             .thing("exposure", ExposureThing::default())
-            .thing("scan", ScanThing::default());
+            .thing("scan", ScanThing::default())
+            .thing("live_mosaic", LiveMosaicThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }
@@ -246,6 +252,9 @@ impl ApiBuilder {
         if let Some(store) = &self.store {
             routes = routes.merge(data::router(Arc::clone(store)));
         }
+        if let Some(mosaics) = &self.mosaics {
+            routes = routes.merge(mosaic::router(Arc::clone(mosaics)));
+        }
         if let Some(folder) = &self.pages {
             routes = routes.merge(pages::router(folder)?);
         }
@@ -285,6 +294,7 @@ impl Api {
             logs: LogStore::default(),
             restart,
             store: None,
+            mosaics: None,
         }
     }
 

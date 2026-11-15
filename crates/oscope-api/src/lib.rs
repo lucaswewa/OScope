@@ -27,6 +27,7 @@ pub mod focus;
 pub mod jobs;
 pub mod logs;
 mod media;
+pub mod mosaic;
 mod pages;
 pub mod preview;
 pub mod projects;

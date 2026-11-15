@@ -158,6 +158,7 @@ async fn bench() -> Bench {
         focus: focus.clone(),
         store: Arc::clone(&store),
         scratch: Arc::clone(&scratch),
+        tiles: None,
     };
     jobs.register(SCAN, scan_jobs(rig, Arc::clone(&last)));
     Bench {

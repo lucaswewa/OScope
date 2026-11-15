@@ -27,6 +27,10 @@ pub const SCAN: &str = "scan.run";
 /// How many more times a step that fails is tried.
 const RETRIES: u32 = 2;
 
+/// Where each tile's frame goes as it is taken, with the stage's position
+/// then, beside the recording: such as the live mosaic (P38).
+pub type TileHook = Arc<dyn Fn(&Frame, Xyz) + Send + Sync>;
+
 /// What a scan drives: autofocus's rig, and where its frames go.
 #[derive(Clone)]
 pub struct ScanRig {
@@ -36,6 +40,9 @@ pub struct ScanRig {
     pub store: Arc<Store>,
     /// The scratch space its frames are recorded to.
     pub scratch: Arc<Scratch>,
+    /// Where each tile's frame also goes, of a stack the plane nearest its
+    /// z: nowhere if none.
+    pub tiles: Option<TileHook>,
 }
 
 /// How a scan runs, each with a default.
@@ -454,6 +461,7 @@ async fn tiles(
         _ => 0,
     };
     let settle = Duration::from_secs_f64(options.settle_ms / 1e3);
+    let nearest = (0..planes.len()).min_by(|&a, &b| planes[a].abs().total_cmp(&planes[b].abs()));
     let mut z = position(focus).await.map_err(Stop::failed)?.z.0;
     let mut taken = 0_u64;
     for (k, tile) in plan.tiles.iter().enumerate() {
@@ -497,6 +505,9 @@ async fn tiles(
             let settled = tried(&format!("the position at {at}"), ctx, || position(focus)).await?;
             lags.push(target - settled.z.0);
             first.get_or_insert(settled);
+            if let Some(hook) = rig.tiles.as_ref().filter(|_| nearest == Some(p)) {
+                hook(&frame, settled);
+            }
             append(writer, frame, settled).await?;
             taken += 1;
             ctx.progress(Some(0.9 * taken as f64 / total), which.clone());
