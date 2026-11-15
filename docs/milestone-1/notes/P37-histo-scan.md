@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p37-histo-scan` / [#51](https://github.com/lucaswewa/OScope/pull/51)
-- Size: {{SIZE}}
+- Size: M · estimated ~2,000 before it started (the overview ~220; tissue detection ~300; the engine's measured map ~80; the `scan` Thing's `overview` and `tissue` pattern ~150; the simulator's truth ~20; tests ~500; `ex-histo-scan` ~450; glue ~30; and about a tenth on top); one pull request, at the owner's standing choice · measured **1,558** hand-written lines added (code 728: `oscope-workflows` 554, `oscope-api` 168, `oscope-sim` 6; tests 427; examples 382; glue 21), and 22 removed; the `scan` Thing's TD snapshot is generated. **That is 958 over M's 600, and 22 % under the estimate.**
 
 ## Summary
 
@@ -119,14 +119,17 @@ The tests hold coverage to the simulated tissue's own truth, `HeTissue::is_tissu
 
 ### The size
 
-{{SIZEDETAIL}}
+M's budget is 600; P37 measured 1,558, 22 % under its estimate of ~2,000.
+
+- **One pull request,** under the owner's standing choice: the overview, the detection and the tissue's scan are one path, and the coverage test needs all three.
+- **Against the estimate,** the code took 728 lines against ~770, the tests 427 against ~500, and the example 382 against ~450.
 
 ## Tests
 
 | Crate | Test | What it checks |
 |---|---|---|
 | `oscope-workflows` | `scan::histo` (4, unit) | **Otsu** splits two classes between them, and gives 0 for values all alike. **Tissue is found, cleaned, kept by area and grown:** a hole filled, a lone pixel removed, a speck of 0.04 mm² dropped, the margin of two pixels. **The same tissue in dim light.** **Grey glass alone,** with noise, is no tissue, at the floor |
-| `oscope-workflows` | `histo` (2) | **Coverage:** an overview binned 3 × 3 of 16 × 12 mm about the first island, its tissue covered by 176 tiles where a raster takes 224, 99.89 % of the truth's points of tissue in a tile. **An empty slide** has no tissue, so a snake over it is refused |
+| `oscope-workflows` | `histo` (2) | **Coverage:** an overview binned 3 × 3 of 16 × 12 mm about the first island; its mask holding 99 % of the truth's pixels of tissue; its tissue covered by 176 tiles where a raster takes 224, 99.89 % of the truth's points of tissue in a tile. **An empty slide** has no tissue, so a snake over it is refused |
 | `oscope-workflows` | `scan_engine` (1 more) | **A map measured before the first tile** puts each tile at its z, the plan's policy then `map`, every tile within a quarter of the depth of field of the truth on the tilted slide |
 | `oscope-api` | `scan` (1 more), and a unit test | **Over HTTP:** the `tissue` pattern refused before an overview; an overview in `bin3`, 140 frames, its image and tissue; the tissue's tiles fewer than a raster's, their z a measured map. **Base64** as RFC 4648's examples |
 | `oscope-api` | `devices` (1 changed) | The `scan` Thing's TD (a snapshot) |
@@ -136,13 +139,28 @@ The tests hold coverage to the simulated tissue's own truth, `HeTissue::is_tissu
 
 {{RAN}}
 
-**Mutation checks** (each broke the code on purpose, then the tests were run): {{MUTANTS}}
+**Mutation checks** (each broke the code on purpose, then the tests were run): fourteen of fourteen caught.
+
+- **They covered:** saturation's division, the floor under Otsu's threshold, Otsu's split, the closing, the opening, the least area, the margin, the overview's placing of its cells and its frames, the tiles at the map's z and the plan's policy then, the `tissue` pattern's measured map, the overview's frames a field apart, and base64's padding.
+- **Reading the tests against the list first** found four gaps, now covered: saturation not divided by the brightest channel, which dim light shows; the tiles left at the last z, which the slide's small tilt over 600 µm hid, so each tile is held to the map's z exactly; the overview's frames overlapping, so their count is checked; and base64, which no test read.
+- **The first run missed two more,** now covered: the overview's cells placed half a mm off, and every other frame skipped. The tiles still covered 99 % of the tissue, as a tile is far larger than either fault, so the mask itself is now held to the truth, pixel by pixel.
+
+| Mutant | Caught by |
+|---|---|
+| Saturation not divided by the brightest | the same tissue in dim light |
+| No floor under Otsu's threshold; Otsu's split moved | grey glass alone |
+| No closing; no opening; every piece kept; no margin | tissue found, cleaned, kept by area and grown |
+| The overview's cells half a mm off; every other frame skipped | coverage, once the mask was held to the truth |
+| Tiles not at the map's z; the plan's policy left to measure | a map measured before the first tile |
+| A tissue scan's z the stage's; the overview's frames overlapping | the overview over HTTP |
+| Base64 without its padding | base64 as RFC 4648's examples |
 
 ## Follow-ups and known gaps
 
-- **The whole coverslip's overview** takes some 1,000 frames binned at the 10×. A lower objective would take it in tens, but the objectives are swapped by hand (plan §2), so the overview takes the scan's.
+- **The whole coverslip's overview** takes some 1,000 frames binned at the 10×. A lower objective would take it in tens, but the objectives are swapped by hand, so the overview takes the scan's.
 - **Islands one by one:** the snake crosses the gaps between pieces of tissue. An order by piece may save travel (P35's follow-up).
 - **Learned segmentation,** as Bándi et al. (2017) compare, for tissue that a threshold of colour misses, such as unstained or faint tissue.
+- **The truth's coverage of the mask** is held at 99 %; a check that glass far from tissue stays out of it would catch a mask too generous.
 - **Tissue at the overview's region's edge** is cut there. A region with a margin of its own takes it in.
 - **The focus map's points** are the tiles nearest a grid, which on a sparse mask may cluster.
 
