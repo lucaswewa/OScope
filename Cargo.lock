@@ -638,6 +638,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-autofocus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-sim",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-calibrate"
 version = "0.1.0"
 dependencies = [
@@ -678,6 +691,20 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-tungstenite",
+]
+
+[[package]]
+name = "ex-checkpoint-c"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
