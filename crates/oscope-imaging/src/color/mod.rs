@@ -19,6 +19,7 @@ pub mod gpu;
 mod jpeg;
 mod read;
 mod region;
+mod target;
 mod tone;
 
 pub use chart::{chart, mosaic, psnr};
@@ -27,6 +28,7 @@ pub use files::{encode_png, encode_tiff16};
 pub use jpeg::encode_jpeg;
 pub use read::read_image;
 pub use region::{crop, demosaic_region};
+pub use target::{ColourTarget, Patch, apply3, delta_e76, fit_colour_matrix, lab};
 pub use tone::{ColourCorrection, Curve, Display, correct, subtract_black, to_display};
 
 use oscope_compute::{Compute, ComputeError, Image, Lane, Shape};

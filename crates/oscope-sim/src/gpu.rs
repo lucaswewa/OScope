@@ -29,6 +29,8 @@ pub(crate) struct GpuFrame<'a> {
     pub sensor: SensorModel,
     pub seed: u64,
     pub frame: u64,
+    /// The vignetting: x0, y0, the step, the half diagonal's square, s.
+    pub vignette: [f64; 5],
 }
 
 /// The GPU, its atlas, and which tile each slot holds. A tile is known by
@@ -124,6 +126,7 @@ impl GpuTiles {
             noise: s.noise,
             seed: job.seed,
             frame: job.frame,
+            vignette: job.vignette.map(|v| v as f32),
         };
         self.cuda.expose(Lane::Live, &self.atlas, &exposure)
     }

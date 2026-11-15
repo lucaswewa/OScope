@@ -14,8 +14,8 @@ use oscope_acquire::{Acquisition, FrameBus};
 use oscope_core::{FramePool, HeapAllocator, Ms, PixelRect, Point2, Um, Xyz};
 use oscope_hal::{Camera, ObjectiveCatalogue, ObjectiveMount, Stage};
 use oscope_sim::{
-    HeTissue, Mounting, Optics, Rate, Settling, SimCamera, SimCameraConfig, SimClock, SimMount,
-    SimStage, SimStageConfig, Slide, World,
+    HeTissue, Mounting, Optics, Rate, Settling, SimCamera, SimCameraConfig, SimClock, SimLights,
+    SimMount, SimStage, SimStageConfig, Slide, World,
 };
 use oscope_workflows::calibration::{
     CalibrationStore, Geometry, GeometryOptions, Instrument, Motion, Quiet, Rig, StageOptions,
@@ -121,6 +121,7 @@ async fn bench(truth: Truth) -> Bench {
         objectives: Arc::clone(&mount) as Arc<dyn ObjectiveMount>,
         bus,
         store: Arc::new(CalibrationStore::open(folder.path()).unwrap()),
+        lights: Arc::new(SimLights::new(Arc::clone(&camera))),
     };
     Bench {
         stage,

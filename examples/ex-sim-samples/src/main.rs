@@ -96,7 +96,7 @@ fn light_for(entry: &SampleEntry) -> (Vec<Light>, f64) {
     };
     match entry.kind {
         SampleKind::Tissue => (vec![Light::Transmitted], 2.0),
-        SampleKind::TestTarget => (vec![Light::Transmitted], 0.05),
+        SampleKind::TestTarget | SampleKind::ColourTarget => (vec![Light::Transmitted], 0.05),
         SampleKind::Surface => (vec![Light::Reflected], 2.5),
         SampleKind::Cells => (
             fluorescence(&[Excitation::Violet, Excitation::Blue, Excitation::Green]),
@@ -189,7 +189,7 @@ fn run() -> anyhow::Result<()> {
 
     println!("the samples in {}:", folder.join("samples.toml").display());
     println!(
-        "  {:<28} {:<12} {:<6} {:>9} {:>9} {:>8}",
+        "  {:<28} {:<13} {:<6} {:>9} {:>9} {:>8}",
         "name", "kind", "truth", "mean 5×", "mean 50×", "time"
     );
     let mut means = Vec::new();
@@ -236,7 +236,7 @@ fn run() -> anyhow::Result<()> {
         };
         let kind = entry.kind.as_str();
         println!(
-            "  {:<28} {:<12} {:<6} {:>9.4} {:>9.4} {:>5.0} ms",
+            "  {:<28} {:<13} {:<6} {:>9.4} {:>9.4} {:>5.0} ms",
             entry.name, kind, truth, row[0], row[1], ms
         );
         means.push((entry.clone(), row));
@@ -284,9 +284,9 @@ fn run() -> anyhow::Result<()> {
     println!("the images are in {}", folder.display());
 
     if smoke {
-        ensure!(means.len() == 7, "{} samples", means.len());
+        ensure!(means.len() == 8, "{} samples", means.len());
         ensure!(
-            means.iter().filter(|(e, _)| e.has_ground_truth()).count() == 5,
+            means.iter().filter(|(e, _)| e.has_ground_truth()).count() == 6,
             "the built-in samples carry ground truth, the imports don't"
         );
         for (entry, row) in &means {

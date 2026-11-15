@@ -7,6 +7,7 @@ use oscope_jobs::{Factory, Job, JobCtx, JobSpec, Resource, Stop};
 use serde::Deserialize;
 use serde_json::Value;
 
+use super::photometry::{Frames, measure_colour, measure_dark, measure_flat};
 use super::procedures::{
     CalibrationError, CheckReport, GeometryOptions, Motion, Report, Rig, StageOptions,
     check_objective, measure_geometry, measure_stage,
@@ -19,6 +20,12 @@ pub const GEOMETRY: &str = "calibration.geometry";
 pub const STAGE: &str = "calibration.stage";
 /// The objective check's.
 pub const CHECK: &str = "calibration.check_objective";
+/// The dark frame's (P33).
+pub const DARK: &str = "calibration.dark";
+/// The flat field's.
+pub const FLAT: &str = "calibration.flat";
+/// The colour calibration's.
+pub const COLOUR: &str = "calibration.colour";
 
 /// The latest objective check's report, which the check job sets.
 pub type LastCheck = Arc<Mutex<Option<CheckReport>>>;
@@ -73,7 +80,9 @@ fn yes() -> bool {
 /// - `calibration.stage`, with `home`, `cycles`, `approach_um`, `settle_ms`
 ///   and `activate`;
 /// - `calibration.check_objective`, with `approach_um` and `settle_ms`; its
-///   report goes to `last`.
+///   report goes to `last`;
+/// - `calibration.dark`, `calibration.flat` and `calibration.colour` (P33),
+///   with `frames`, `settle_ms` and `activate`.
 ///
 /// A measurement's result is the set it made, `calibration/<id>`.
 pub fn calibration_jobs(rig: Rig, last: LastCheck) -> Vec<(&'static str, Factory)> {
@@ -126,6 +135,84 @@ pub fn calibration_jobs(rig: Rig, last: LastCheck) -> Vec<(&'static str, Factory
             }),
         })
     });
+    let dark_rig = rig.clone();
+    let dark: Factory = Arc::new(move |value| {
+        let params: Params<Frames> = Params::deserialize(value).map_err(|e| e.to_string())?;
+        params.options.check()?;
+        let rig = dark_rig.clone();
+        Ok(Job {
+            spec: spec(DARK, "Take a dark frame", value),
+            run: Box::new(move |ctx| {
+                Box::pin(async move {
+                    let measured = measure_dark(&rig, &params.options, &ctx).await;
+                    let (dark, instrument, image) = measured.map_err(stop)?;
+                    let account = ctx.account();
+                    let set = rig
+                        .store
+                        .save_with_image(
+                            Values::Dark(dark),
+                            instrument,
+                            account,
+                            params.activate,
+                            &image,
+                        )
+                        .map_err(Stop::failed)?;
+                    ctx.add_result(format!("calibration/{}", set.id));
+                    Ok(())
+                })
+            }),
+        })
+    });
+    let flat_rig = rig.clone();
+    let flat: Factory = Arc::new(move |value| {
+        let params: Params<Frames> = Params::deserialize(value).map_err(|e| e.to_string())?;
+        params.options.check()?;
+        let rig = flat_rig.clone();
+        Ok(Job {
+            spec: spec(FLAT, "Take a flat field", value),
+            run: Box::new(move |ctx| {
+                Box::pin(async move {
+                    let measured = measure_flat(&rig, &params.options, &ctx).await;
+                    let (flat, instrument, image) = measured.map_err(stop)?;
+                    let account = ctx.account();
+                    let set = rig
+                        .store
+                        .save_with_image(
+                            Values::Flat(flat),
+                            instrument,
+                            account,
+                            params.activate,
+                            &image,
+                        )
+                        .map_err(Stop::failed)?;
+                    ctx.add_result(format!("calibration/{}", set.id));
+                    Ok(())
+                })
+            }),
+        })
+    });
+    let colour_rig = rig.clone();
+    let colour: Factory = Arc::new(move |value| {
+        let params: Params<Frames> = Params::deserialize(value).map_err(|e| e.to_string())?;
+        params.options.check()?;
+        let rig = colour_rig.clone();
+        Ok(Job {
+            spec: spec(COLOUR, "Calibrate colour", value),
+            run: Box::new(move |ctx| {
+                Box::pin(async move {
+                    let measured = measure_colour(&rig, &params.options, &ctx).await;
+                    let (colour, instrument) = measured.map_err(stop)?;
+                    let account = ctx.account();
+                    let set = rig
+                        .store
+                        .save(Values::Colour(colour), instrument, account, params.activate)
+                        .map_err(Stop::failed)?;
+                    ctx.add_result(format!("calibration/{}", set.id));
+                    Ok(())
+                })
+            }),
+        })
+    });
     let check: Factory = Arc::new(move |value| {
         let motion = Motion::deserialize(value).map_err(|e| e.to_string())?;
         motion.check()?;
@@ -146,5 +233,12 @@ pub fn calibration_jobs(rig: Rig, last: LastCheck) -> Vec<(&'static str, Factory
             }),
         })
     });
-    vec![(GEOMETRY, geometry), (STAGE, stage), (CHECK, check)]
+    vec![
+        (GEOMETRY, geometry),
+        (STAGE, stage),
+        (CHECK, check),
+        (DARK, dark),
+        (FLAT, flat),
+        (COLOUR, colour),
+    ]
 }

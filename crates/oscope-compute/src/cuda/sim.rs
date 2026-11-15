@@ -74,6 +74,10 @@ pub struct Exposure<'a> {
     pub seed: u64,
     /// The frame's number, for its noise.
     pub frame: u64,
+    /// The vignetting (P33): pixel (u, v) lies (x0 + k u, y0 + k v) sensor
+    /// pixels from the sensor's centre, over the half diagonal's square
+    /// `r2`, with s its strength: `[x0, y0, k, r2, s]`.
+    pub vignette: [f32; 5],
 }
 
 impl Cuda {
@@ -171,8 +175,10 @@ impl Cuda {
             .arg(&e.cpe)
             .arg(&noise)
             .arg(&e.seed)
-            .arg(&e.frame)
-            .arg(&mut out);
+            .arg(&e.frame);
+        let [vx0, vy0, vk, vr2, vs] = e.vignette;
+        launch.arg(&vx0).arg(&vy0).arg(&vk).arg(&vr2).arg(&vs);
+        launch.arg(&mut out);
         // SAFETY: the arguments are the kernel's, in kernels/sim.cu. Every
         // slot in `grid` is within the atlas, which holds `slots` tiles of
         // `tile` + 1 pixels square; the kernel clamps each position to the

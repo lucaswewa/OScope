@@ -90,7 +90,7 @@ The OpenAPI document of every route is at `http://127.0.0.1:8212/openapi.json`, 
 - that the page is served;
 - that the stage homes, and moves to x = 30 mm, and reports being there;
 - that a gain of 999 is refused with 400;
-- that the simulator offers five samples.
+- that the simulator offers six samples, P33's colour target among them.
 
 ```sh
 cargo run -p ex-http-walkthrough -- --smoke

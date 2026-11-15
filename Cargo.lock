@@ -1120,6 +1120,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-wizard"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-sim",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ext-rust-camera"
 version = "0.1.0"
 dependencies = [

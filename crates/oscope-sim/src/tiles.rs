@@ -161,6 +161,8 @@ struct State {
 /// bucket. The least recently used go once they hold more than the budget.
 pub struct TileCache {
     budget: usize,
+    /// The sensor's colour response, applied to each tile's light.
+    response: [[f32; 3]; 3],
     state: Mutex<State>,
 }
 
@@ -171,8 +173,16 @@ impl TileCache {
     /// A cache holding up to `budget` bytes of tiles, and always at least
     /// the tiles of the field in hand.
     pub fn new(budget: usize) -> Self {
+        Self::with_response(budget, crate::camera::IDEAL)
+    }
+
+    /// A cache as [`TileCache::new`]'s, whose tiles hold the light as a
+    /// sensor of colour `response` reads it: the matrix times the light's
+    /// RGB, by rows (P33).
+    pub fn with_response(budget: usize, response: [[f64; 3]; 3]) -> Self {
         Self {
             budget,
+            response: response.map(|row| row.map(|v| v as f32)),
             state: Mutex::new(State {
                 world: None,
                 tiles: HashMap::new(),
@@ -275,11 +285,17 @@ impl TileCache {
                     height: side,
                 };
                 let image = world.render(&field, optics, light);
-                Arc::new(Tile {
-                    i,
-                    j,
-                    data: image.data().to_vec(),
-                })
+                let mut data = image.data().to_vec();
+                if self.response != crate::camera::IDEAL.map(|row| row.map(|v| v as f32)) {
+                    let m = &self.response;
+                    for rgb in data.as_chunks_mut::<3>().0 {
+                        let c = *rgb;
+                        for (out, row) in rgb.iter_mut().zip(m) {
+                            *out = row[0] * c[0] + row[1] * c[1] + row[2] * c[2];
+                        }
+                    }
+                }
+                Arc::new(Tile { i, j, data })
             })
             .collect();
 

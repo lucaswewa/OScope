@@ -14,18 +14,25 @@
 
 mod fit;
 mod jobs;
+mod photometry;
 mod procedures;
 mod set;
 mod store;
+mod wizard;
 
 pub use fit::{Decomposition, Matrix, apply, decompose, fit_matrix, inverse};
-pub use jobs::{CHECK, GEOMETRY, LastCheck, STAGE, calibration_jobs};
+pub use jobs::{CHECK, COLOUR, DARK, FLAT, GEOMETRY, LastCheck, STAGE, calibration_jobs};
+pub use photometry::{
+    ColourOptions, DarkOptions, FlatOptions, Frames, measure_colour, measure_dark, measure_flat,
+};
 pub use procedures::{
     CalibrationError, CheckReport, GeometryOptions, Motion, Quiet, Report, Rig, StageOptions,
     check_objective, measure_geometry, measure_stage,
 };
 pub use set::{
-    CalibrationSet, FORMAT, Geometry, Instrument, PerAxis, STAGE_KEY, SetSummary, SoftLimits,
-    StageValues, Values, geometry_key,
+    CalibrationSet, Colour, Dark, FORMAT, Flat, Geometry, Instrument, PerAxis, Region, STAGE_KEY,
+    SetSummary, SoftLimits, StageValues, Values, colour_key, dark_key, exposure_octave, flat_key,
+    geometry_key,
 };
 pub use store::{CalibrationStore, StoreError};
+pub use wizard::{Step, StepKind, StepState, Wizard, WizardError};

@@ -89,6 +89,24 @@ pub struct SimCameraConfig {
     pub seed: u64,
     /// The bytes of rendered tiles the camera keeps (`tiles`).
     pub cache: usize,
+    /// The optics' vignetting, s: the light falls off as 1 / (1 + s r²)²
+    /// with r the distance from the sensor's centre over its half diagonal,
+    /// cos⁴'s law. 0 for none (P33).
+    pub vignetting: f64,
+    /// The sensor's colour response, with the light's tint: the RGB it
+    /// reads is this matrix times the light's, by rows. The identity for an
+    /// ideal sensor in white light (P33).
+    pub response: [[f64; 3]; 3],
+}
+
+/// An ideal sensor in white light.
+pub const IDEAL: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+
+/// The optics' vignetting `s` at a pixel `(dx, dy)` sensor pixels from the
+/// sensor's centre, over the half diagonal's square `r2`.
+pub fn vignette(s: f64, dx: f64, dy: f64, r2: f64) -> f64 {
+    let f = 1.0 + s * (dx * dx + dy * dy) / r2;
+    1.0 / (f * f)
 }
 
 impl Default for SimCameraConfig {
@@ -105,6 +123,8 @@ impl Default for SimCameraConfig {
             readout: [Ms(60.0), Ms(18.0), Ms(15.0)],
             seed: 1,
             cache: 2 << 30,
+            vignetting: 0.0,
+            response: IDEAL,
         }
     }
 }
@@ -272,7 +292,7 @@ impl SimCamera {
         optics: Optics,
     ) -> Self {
         let capabilities = config.capabilities();
-        let tiles = TileCache::new(config.cache);
+        let tiles = TileCache::with_response(config.cache, config.response);
         let settings = CameraSettings {
             mode: "full".to_owned(),
             format: BAYER16,
@@ -420,6 +440,14 @@ impl Inner {
         let p = at_sample * f64::from(k);
         let (cw, ch) = (f64::from(self.config.width), f64::from(self.config.height));
         let mounting = self.config.mounting;
+        // The vignetting: an output pixel's centre from the sensor's, in the
+        // sensor's pixels, x0 + k u along x, and its half diagonal's square.
+        let vignetting = self.config.vignetting;
+        let half_diagonal = (cw * cw + ch * ch) / 4.0;
+        let (vx0, vy0) = (
+            f64::from(roi.x) + 0.5 * f64::from(k) - cw / 2.0,
+            f64::from(roi.y) + 0.5 * f64::from(k) - ch / 2.0,
+        );
         // An output pixel's centre, from the sensor's centre, in µm at the
         // sample along the sensor's axes, then on the stage.
         let local = |u: f64, v: f64| {
@@ -526,6 +554,7 @@ impl Inner {
                     sensor,
                     seed: self.config.seed,
                     frame,
+                    vignette: [vx0, vy0, f64::from(k), half_diagonal, vignetting],
                 };
                 match device.expose(&job) {
                     Ok(values) => return Some(counts(values)),
@@ -553,8 +582,10 @@ impl Inner {
                         .map(|s| sample(s.x + here.x, s.y + here.y, c))
                         .sum::<f64>()
                         / n as f64;
+                    let (dx, dy) = (vx0 + f64::from(k) * u as f64, vy0 + f64::from(k) * v as f64);
+                    let falloff = vignette(vignetting, dx, dy, half_diagonal);
                     *out = sensor.count(
-                        light * scale,
+                        light * scale * falloff,
                         exposure_ms / 1e3,
                         k * k,
                         settings.gain,

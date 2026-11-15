@@ -104,10 +104,16 @@ async fn the_gpu_exposes_frames_as_the_cpu_does() {
         config
     };
     let roi = Some(PixelRect::new(96, 48, 480, 384));
+    // And vignetted, through a tinted colour response (P33), binned in a
+    // region away from the sensor's middle.
+    let mut vignetted = mounted(0.4, false);
+    vignetted.vignetting = 0.3;
+    vignetted.response = [[0.9, 0.1, 0.0], [0.05, 0.75, 0.05], [0.0, 0.1, 0.5]];
     let cases = [
         (quiet.clone(), "full", None, false),
         (mounted(0.4, false), "bin2", roi, true),
         (mounted(-0.7, true), "bin3", None, true),
+        (vignetted, "bin2", roi, false),
     ];
     for (config, mode, roi, jog) in cases {
         let (cpu, _) = frames(config.clone(), None, mode, roi, jog).await;

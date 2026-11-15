@@ -40,12 +40,19 @@ dye = "far-red"
 fn the_catalogue_lists_its_samples_and_their_truth() {
     // The built-in samples, each with ground truth.
     let builtin = SampleCatalogue::builtin();
-    assert_eq!(builtin.samples.len(), 5);
+    assert_eq!(builtin.samples.len(), 6);
     assert!(builtin.samples.iter().all(|s| s.has_ground_truth()));
     let kinds: Vec<&str> = builtin.samples.iter().map(|s| s.kind.as_str()).collect();
     assert_eq!(
         kinds,
-        ["tissue", "test-target", "surface", "cells", "structures"]
+        [
+            "tissue",
+            "test-target",
+            "surface",
+            "cells",
+            "structures",
+            "colour-target"
+        ]
     );
     // A configuration adds imports, which have none, and replaces a
     // built-in of the same name.
@@ -58,6 +65,7 @@ fn the_catalogue_lists_its_samples_and_their_truth() {
             "reflective surface",
             "fluorescent cells",
             "sub-diffraction structures",
+            "colour target",
             "H&E tissue",
             "my section",
             "my stack"

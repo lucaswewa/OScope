@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use chrono::Utc;
+use oscope_compute::{Image, Shape};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -16,6 +17,8 @@ use super::set::{CalibrationSet, FORMAT, Instrument, SetSummary, Values};
 
 /// The file that says which set of each key is active.
 const ACTIVE: &str = "active.json";
+/// The calibration wizard's file, beside the sets (P33).
+const WIZARD: &str = "wizard.json";
 
 /// Why the store can't do something.
 #[derive(Debug, thiserror::Error)]
@@ -83,7 +86,7 @@ impl CalibrationStore {
         for entry in fs::read_dir(&folder).map_err(io(&folder))? {
             let path = entry.map_err(io(&folder))?.path();
             let named = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if !named.ends_with(".json") || named == ACTIVE {
+            if !named.ends_with(".json") || named == ACTIVE || named == WIZARD {
                 continue;
             }
             let read = fs::read(&path).map_err(io(&path))?;
@@ -163,6 +166,75 @@ impl CalibrationStore {
         Ok(set)
     }
 
+    /// Saves a new set of `values` with its `image`, a dark frame's or a
+    /// flat field's, as [`CalibrationStore::save`] does. The image is
+    /// written first, little-endian `f32`s beside the set's JSON, so that a
+    /// set read back always has it.
+    pub fn save_with_image(
+        &self,
+        values: Values,
+        instrument: Instrument,
+        account: Option<String>,
+        activate: bool,
+        image: &Image,
+    ) -> Result<CalibrationSet, StoreError> {
+        if !values.has_image() {
+            return Err(StoreError::Invalid(format!(
+                "a {} set has no image",
+                values.kind()
+            )));
+        }
+        let values = values.checked().map_err(StoreError::Invalid)?;
+        let set = CalibrationSet {
+            format: FORMAT,
+            id: Uuid::now_v7(),
+            version: 0,
+            created: Utc::now(),
+            account,
+            instrument,
+            values,
+            imported_from: None,
+        };
+        let shape = image.shape();
+        let header = [shape.width, shape.height, shape.channels as u32];
+        let mut bytes: Vec<u8> = header.iter().flat_map(|v| v.to_le_bytes()).collect();
+        bytes.extend(image.data().iter().flat_map(|v| v.to_le_bytes()));
+        let path = self.folder.join(format!("{}.f32", set.id));
+        let part = path.with_extension("f32.part");
+        fs::write(&part, bytes).map_err(io(&part))?;
+        fs::rename(&part, &path).map_err(io(&path))?;
+        self.add(set, activate)
+    }
+
+    /// Where the calibration wizard is saved, beside the sets.
+    pub fn wizard_file(&self) -> PathBuf {
+        self.folder.join(WIZARD)
+    }
+
+    /// The image of the set `id`: a dark frame's or a flat field's.
+    pub fn image(&self, id: Uuid) -> Result<Image, StoreError> {
+        let path = self.folder.join(format!("{id}.f32"));
+        let bytes = fs::read(&path).map_err(io(&path))?;
+        let word = |i: usize| {
+            bytes
+                .get(4 * i..4 * i + 4)
+                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        };
+        let broken = || StoreError::Invalid(format!("{} isn't an image", path.display()));
+        let (w, h, c) = (
+            word(0).ok_or_else(broken)?,
+            word(1).ok_or_else(broken)?,
+            word(2).ok_or_else(broken)?,
+        );
+        let data: Vec<f32> = bytes[12..]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| f32::from_le_bytes(*b))
+            .collect();
+        Image::from_vec(Shape::new(w, h, c as usize), data).map_err(|_| broken())
+    }
+
     /// Saves a new set of `values`, measured on `instrument` by `account`,
     /// as the next version of its key; and makes it active if `activate`.
     pub fn save(
@@ -172,6 +244,12 @@ impl CalibrationStore {
         account: Option<String>,
         activate: bool,
     ) -> Result<CalibrationSet, StoreError> {
+        if values.has_image() {
+            let kind = values.kind();
+            return Err(StoreError::Invalid(format!(
+                "a {kind} set is saved with its image"
+            )));
+        }
         let values = values.checked().map_err(StoreError::Invalid)?;
         let set = CalibrationSet {
             format: FORMAT,
@@ -201,9 +279,17 @@ impl CalibrationStore {
         Ok(set)
     }
 
-    /// The set `id`, as its JSON.
+    /// The set `id`, as its JSON. A dark frame or a flat field isn't
+    /// exported: its image is this instrument's own.
     pub fn export(&self, id: Uuid) -> Result<Value, StoreError> {
-        Ok(serde_json::to_value(self.get(id)?).expect("a set's JSON"))
+        let set = self.get(id)?;
+        if set.values.has_image() {
+            let kind = set.values.kind();
+            return Err(StoreError::Invalid(format!(
+                "a {kind} set holds this instrument's own frame, and isn't exported"
+            )));
+        }
+        Ok(serde_json::to_value(set).expect("a set's JSON"))
     }
 
     /// A set exported elsewhere: checked, and saved as the next version of
@@ -217,6 +303,12 @@ impl CalibrationStore {
             return Err(invalid(format!(
                 "format {}, where {FORMAT} is read",
                 set.format
+            )));
+        }
+        if set.values.has_image() {
+            return Err(invalid(format!(
+                "a {} set comes without its frame",
+                set.values.kind()
             )));
         }
         let values = set.values.checked().map_err(invalid)?;
