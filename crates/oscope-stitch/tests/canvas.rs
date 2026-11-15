@@ -104,18 +104,23 @@ fn a_frame_lands_where_its_map_puts_it() {
 #[test]
 fn the_newest_wins_or_its_edges_are_feathered() {
     let (red, blue) = (flat(100, 100, [200, 0, 0]), flat(100, 100, [0, 0, 200]));
-    let image = |pixels| Rgb {
+    let half = flat(50, 50, [0, 0, 200]);
+    let image = |pixels, side| Rgb {
         pixels,
-        width: 100,
-        height: 100,
+        width: side,
+        height: side,
     };
-    for blend in [Blend::Newest, Blend::Feather { width_px: 20.0 }] {
+    // Blue the same 100 canvas pixels square, from 100 pixels, or from 50
+    // scaled twice: its feather is in canvas pixels either way.
+    let blues = [(image(&blue, 100), 1.0), (image(&half, 50), 2.0)];
+    let blends = [Blend::Newest, Blend::Feather { width_px: 20.0 }];
+    for ((blue, scale), blend) in blues.iter().flat_map(|b| blends.map(|blend| (b, blend))) {
         let (mut canvas, _folder) = canvas(512, 512, 64);
         canvas
-            .draw(image(&red), &map(0.0, 1.0, (100.0, 100.0)), blend)
+            .draw(image(&red, 100), &map(0.0, 1.0, (100.0, 100.0)), blend)
             .unwrap();
         canvas
-            .draw(image(&blue), &map(0.0, 1.0, (150.0, 100.0)), blend)
+            .draw(*blue, &map(0.0, *scale, (150.0, 100.0)), blend)
             .unwrap();
         // Blue over red, 5 px in from blue's left edge, and 60 px in.
         let (edge, deep) = (pixel(&mut canvas, 155, 150), pixel(&mut canvas, 190, 150));
@@ -172,9 +177,27 @@ fn each_level_halves_the_one_below() {
     assert_eq!(got, [mean(0), mean(1), mean(2), 255]);
     // Red 0 and 4, green 5 and 10 (rows 252–253 of an image from 251).
     assert_eq!(got, [2, 8, 100, 255]);
-    // Level 1's row 125 has level 0's 250, bare, and 251, covered.
+    // Level 1's row 125 has level 0's 250, bare, and 251, covered: half
+    // covered, and the colour of the covered alone.
     let edge = &above[(125 * 256 + 130) * 4..][..4];
-    assert_eq!(edge[3], 128, "{edge:?}");
+    let covered = |c: usize| {
+        let (a, b) = (
+            below[(251 * 256 + 4) * 4 + c],
+            below[(251 * 256 + 5) * 4 + c],
+        );
+        (u32::from(a) + u32::from(b)).div_ceil(2) as u8
+    };
+    assert_eq!(edge, [covered(0), covered(1), covered(2), 128]);
+    // A side of 256 fits a tile; one of 257 needs a level more.
+    let fits = |side| {
+        CanvasGeometry {
+            width: side,
+            height: side,
+            ..geometry
+        }
+        .levels()
+    };
+    assert_eq!((fits(256), fits(257), fits(1024)), (1, 2, 3));
 }
 
 #[test]

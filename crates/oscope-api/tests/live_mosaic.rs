@@ -239,6 +239,14 @@ async fn a_roaming_mosaic_is_drawn_served_announced_halted_and_cleared() {
         json!({"mosaic": true, "width": 320, "height": 240}),
     )
     .await;
+    // A client that doesn't ask has none.
+    let mut plain = stream(address, json!({"width": 320, "height": 240})).await;
+    assert!(
+        blocks(&mut plain)
+            .await
+            .iter()
+            .all(|(kind, _)| *kind != TILES)
+    );
     let first = changed(&mut socket).await;
     assert_eq!(
         (&first["all"], &first["mosaic"]),

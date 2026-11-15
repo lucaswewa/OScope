@@ -324,15 +324,18 @@ impl LiveMosaic {
         Ok(lock(&self.canvas).clear()?)
     }
 
-    /// Hands it a frame a scan took at `at`, to draw as it can. One that
-    /// would wait behind too many is counted as dropped.
-    pub fn scan_frame(&self, frame: Frame, at: Xyz) {
+    /// Hands it a frame a scan took at `at`, to draw as it can: whether
+    /// it took it. One that would wait behind too many is counted as
+    /// dropped; a stopped mosaic takes none.
+    pub fn scan_frame(&self, frame: Frame, at: Xyz) -> bool {
         if self.stopped() {
-            return;
+            return false;
         }
-        if self.scans.try_send((frame, at)).is_err() {
+        let taken = self.scans.try_send((frame, at)).is_ok();
+        if !taken {
             lock(&self.counts).dropped += 1;
         }
+        taken
     }
 
     /// Tile `key`'s RGBA, as [`Canvas::tile`].
@@ -356,6 +359,8 @@ impl LiveMosaic {
         if w == 0 || h == 0 {
             return Ok(None);
         }
+        // Bare pixels are black: nothing was drawn there. Above level 0, a
+        // pixel partly covered has the colour of what covers it.
         let mut rgb = Vec::with_capacity((w * h * 3) as usize);
         for row in rgba
             .as_chunks::<{ TILE as usize * 4 }>()
@@ -363,9 +368,8 @@ impl LiveMosaic {
             .iter()
             .take(h as usize)
         {
-            for &[r, g, b, a] in row.as_chunks::<4>().0.iter().take(w as usize) {
-                let on_black = |c: u8| ((u16::from(c) * u16::from(a) + 127) / 255) as u8;
-                rgb.extend([on_black(r), on_black(g), on_black(b)]);
+            for &[r, g, b, _] in row.as_chunks::<4>().0.iter().take(w as usize) {
+                rgb.extend([r, g, b]);
             }
         }
         Ok(Some(color::encode_jpeg(&rgb, w, h, QUALITY)?))

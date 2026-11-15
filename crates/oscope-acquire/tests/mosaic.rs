@@ -35,13 +35,17 @@ fn look() -> LookSource {
     Arc::new(|| (Look::default(), false))
 }
 
-/// A 128 × 96 grey frame through the 10× at `binning`, at `at` µm,
-/// exposed for `exposure` ms from `start` ms: a pattern of `contrast`.
+/// The 10× at no binning.
+const TEN: (u32, &str) = (1, "10x");
+
+/// A 128 × 96 grey frame through `lens`'s objective at its binning, at
+/// `at` µm, exposed for `exposure` ms from `start` ms: a pattern of
+/// `contrast`.
 fn frame(
     at: Option<(f64, f64)>,
     (start, exposure): (u64, f64),
     contrast: f64,
-    binning: u32,
+    (binning, objective): (u32, &str),
 ) -> Frame {
     let (w, h) = (128, 96);
     let pool = FramePool::new(PixelFormat::Mono8.frame_bytes(w, h), 1, &HeapAllocator);
@@ -60,7 +64,7 @@ fn frame(
     meta.binning = binning;
     meta.exposure_start = Timestamp(start * 1_000_000);
     meta.exposure = Ms(exposure);
-    meta.objective = Some("10x".to_owned());
+    meta.objective = Some(objective.to_owned());
     meta.position = at.map(|(x, y)| Xyz::new(Um(x), Um(y), Um(0.0)));
     Frame::new(buffer, meta).unwrap()
 }
@@ -72,11 +76,10 @@ fn at(ms: u64, x: f64) -> PositionSample {
     }
 }
 
-#[tokio::test]
-async fn roaming_draws_new_places_and_sharper_views_unblurred() {
-    let folder = tempfile::tempdir().unwrap();
-    let setup = MosaicSetup {
-        geometry: CanvasGeometry::covering((0.0, 0.0), (2000.0, 2000.0), 1.0).unwrap(),
+/// Frames of 1 µm pixels on a canvas of 0.5 µm ones.
+fn setup(folder: &Path) -> MosaicSetup {
+    MosaicSetup {
+        geometry: CanvasGeometry::covering((0.0, 0.0), (2000.0, 2000.0), 0.5).unwrap(),
         blend: Blend::Newest,
         objective: Some("10x".to_owned()),
         binning: 1,
@@ -84,57 +87,86 @@ async fn roaming_draws_new_places_and_sharper_views_unblurred() {
         sensor: (128, 96),
         gates: Gates::default(),
         budget: 64 * TILE_BYTES,
-        folder: folder.path().to_owned(),
-    };
-    let mosaic = LiveMosaic::start(setup, preview(), look(), None).unwrap();
+        folder: folder.to_owned(),
+    }
+}
+
+#[tokio::test]
+async fn roaming_draws_new_places_and_sharper_views_unblurred() {
+    let folder = tempfile::tempdir().unwrap();
+    // Gates and a matrix that can't be.
+    let mut wrong = setup(folder.path());
+    wrong.gates.blur_px = 0.0;
+    assert!(LiveMosaic::start(wrong, preview(), look(), None).is_err());
+    let mut wrong = setup(folder.path());
+    wrong.matrix = [[1.0, 2.0], [2.0, 4.0]];
+    assert!(LiveMosaic::start(wrong, preview(), look(), None).is_err());
+    let mosaic = LiveMosaic::start(setup(folder.path()), preview(), look(), None).unwrap();
     // Still until 200 ms, then 1 µm a ms.
     let track = PositionTrack::new(16);
     for sample in [at(0, 500.0), at(200, 500.0), at(300, 600.0)] {
         track.push(sample);
     }
-    let roam = |at, exposure, contrast| mosaic.roam(&frame(at, exposure, contrast, 1), &track);
-    // A new place; the same place, no sharper, then, with nothing moved,
-    // the same unmeasured, and moved, sharper; another.
+    let roam = |at, exposure, contrast| mosaic.roam(&frame(at, exposure, contrast, TEN), &track);
+    // A new place. The same place, within a quarter of 96 µm: no sharper;
+    // with nothing moved, the same unmeasured; 5 % sharper, not enough; and
+    // sharper by half. Another place.
     assert_eq!(roam(Some((500.0, 500.0)), (10, 1.0), 0.8), Verdict::Drawn);
-    assert_eq!(roam(Some((510.0, 500.0)), (20, 1.0), 0.5), Verdict::Same);
-    assert_eq!(roam(Some((510.0, 500.0)), (25, 1.0), 1.0), Verdict::Same);
+    assert_eq!(roam(Some((518.0, 500.0)), (20, 1.0), 0.5), Verdict::Same);
+    assert_eq!(roam(Some((518.0, 500.0)), (25, 1.0), 1.0), Verdict::Same);
+    assert_eq!(roam(Some((505.0, 500.0)), (27, 1.0), 0.82), Verdict::Same);
     assert_eq!(roam(Some((505.0, 505.0)), (30, 1.0), 1.0), Verdict::Drawn);
     assert_eq!(roam(Some((800.0, 500.0)), (40, 1.0), 0.5), Verdict::Drawn);
     // Moving: 5 µm in a 5 ms exposure, then 0.4 µm in 0.4 ms.
-    assert_eq!(
-        roam(Some((550.0, 500.0)), (240, 5.0), 1.0),
-        Verdict::Blurred
-    );
+    let moving = roam(Some((550.0, 500.0)), (240, 5.0), 1.0);
+    assert_eq!(moving, Verdict::Blurred);
     assert_eq!(roam(Some((1100.0, 500.0)), (240, 0.4), 1.0), Verdict::Drawn);
-    // No position, or none the track reaches; another binning; off the
-    // canvas.
+    // No position, or none the track reaches; another binning, another
+    // objective; off the canvas.
     assert_eq!(roam(None, (40, 1.0), 1.0), Verdict::Unplaced);
-    assert_eq!(
-        roam(Some((900.0, 900.0)), (400, 1.0), 1.0),
-        Verdict::Unplaced
-    );
-    let binned = frame(Some((1500.0, 1500.0)), (40, 1.0), 1.0, 2);
-    assert_eq!(mosaic.roam(&binned, &track), Verdict::Other);
+    let late = roam(Some((900.0, 900.0)), (400, 1.0), 1.0);
+    assert_eq!(late, Verdict::Unplaced);
+    for lens in [(2, "10x"), (1, "20x")] {
+        let other = frame(Some((1500.0, 1500.0)), (40, 1.0), 1.0, lens);
+        assert_eq!(mosaic.roam(&other, &track), Verdict::Other);
+    }
     assert_eq!(roam(Some((-5000.0, 0.0)), (40, 1.0), 1.0), Verdict::Outside);
-    // A scan's frames are drawn ungated: the blurry view where the sharp
-    // one is, and one waiting in turn with the scan's position.
-    let blurry = frame(Some((500.0, 500.0)), (50, 1.0), 0.2, 1);
+    // Cleared, it forgets where it drew.
+    mosaic.clear().unwrap();
+    assert_eq!(roam(Some((500.0, 500.0)), (45, 1.0), 0.5), Verdict::Drawn);
+    // A scan's frames are drawn ungated: the blurry view where one is, and
+    // those waiting in turn with the scan's position, up to 8.
+    let blurry = frame(Some((500.0, 500.0)), (50, 1.0), 0.2, TEN);
     assert_eq!(mosaic.offer(&blurry, None), Verdict::Drawn);
     let placed = Xyz::new(Um(1500.0), Um(1500.0), Um(0.0));
-    mosaic.scan_frame(frame(None, (60, 1.0), 1.0, 1), placed);
-    let deadline = Instant::now() + Duration::from_secs(30);
-    while mosaic.counts().drawn < 6 {
-        assert!(Instant::now() < deadline, "{:?}", mosaic.counts());
-        tokio::time::sleep(Duration::from_millis(10)).await;
+    let drawn = async |frames: u64| {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while mosaic.counts().scans < frames {
+            assert!(Instant::now() < deadline, "{:?}", mosaic.counts());
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    };
+    assert!(mosaic.scan_frame(frame(None, (60, 1.0), 1.0, TEN), placed));
+    drawn(2).await;
+    for k in 0..12 {
+        let taken = mosaic.scan_frame(frame(None, (61 + k, 1.0), 1.0, TEN), placed);
+        assert_eq!(taken, k < 8, "frame {k}");
     }
+    drawn(10).await;
     let counts = mosaic.counts();
-    let tally = [counts.drawn, counts.scans, counts.same, counts.blurred];
-    assert_eq!(tally, [6, 2, 2, 1], "{counts:?}");
-    assert_eq!(counts.unplaced, 2);
-    assert_eq!([counts.other, counts.outside, counts.failed], [1, 1, 0]);
+    let tally = [counts.drawn, counts.scans, counts.dropped, counts.same];
+    assert_eq!(tally, [15, 10, 4, 3], "{counts:?}");
+    let refused = [
+        counts.blurred,
+        counts.unplaced,
+        counts.other,
+        counts.outside,
+    ];
+    assert_eq!((refused, counts.failed), ([1, 2, 2, 1], 0), "{counts:?}");
     // Stopped, it takes no more.
     mosaic.stop();
-    mosaic.scan_frame(frame(Some((300.0, 300.0)), (70, 1.0), 1.0, 1), placed);
+    let late = frame(Some((300.0, 300.0)), (90, 1.0), 1.0, TEN);
+    assert!(!mosaic.scan_frame(late, placed));
     assert_eq!(mosaic.counts(), counts);
 }
 

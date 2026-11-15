@@ -21,6 +21,7 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,6 +34,9 @@ pub const TILE_BYTES: usize = (TILE * TILE * 4) as usize;
 pub const LEAST_TILES: usize = 5;
 /// The longest side a canvas has at level 0, in pixels: 8 m of 2 µm.
 pub const MOST_PIXELS: u32 = 1 << 22;
+/// The canvases made: each names its files by its number, so that two in
+/// one folder, one going as another comes, never share a file.
+static MADE: AtomicU64 = AtomicU64::new(0);
 
 /// What a canvas can't do.
 #[derive(Debug, thiserror::Error)]
@@ -242,6 +246,8 @@ pub struct Canvas {
     /// The most tiles in memory.
     budget: usize,
     folder: PathBuf,
+    /// Its number, which its files are named by.
+    serial: u64,
     resident: HashMap<TileKey, Resident>,
     stored: HashSet<TileKey>,
     uses: u64,
@@ -254,7 +260,7 @@ pub struct Canvas {
 
 impl Canvas {
     /// An empty canvas over `geometry`, with at most `budget` bytes of tiles
-    /// in memory and the rest in `folder`. It removes the tiles a canvas
+    /// in memory and the rest in `folder`. It removes the tiles canvases
     /// left in `folder` before.
     pub fn new(
         geometry: CanvasGeometry,
@@ -275,6 +281,7 @@ impl Canvas {
             levels: geometry.levels(),
             budget: tiles,
             folder,
+            serial: MADE.fetch_add(1, Ordering::Relaxed),
             resident: HashMap::new(),
             stored: HashSet::new(),
             uses: 0,
@@ -425,7 +432,7 @@ impl Canvas {
     }
 
     fn file(&self, key: TileKey) -> PathBuf {
-        let name = format!("{}-{}-{}.rgba", key.level, key.col, key.row);
+        let name = format!("{}-{}-{}-{}.rgba", self.serial, key.level, key.col, key.row);
         self.folder.join(name)
     }
 
