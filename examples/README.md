@@ -61,6 +61,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-plan`](ex-plan/README.md) | P35 | A focus map measured by autofocus over a tilted simulated slide, a plane and a thin-plate spline against the truth; raster, snake, tissue-only, mapped, tiled z-stack, z-scan and multi-position plans over the H&E slide, with their tiles, data and time; a page drawing each plan's tiles and path |
 | [`ex-scan`](ex-scan/README.md) | P36 | A snake scan of the tilted simulated H&E slide through the `scan` Thing: planned and previewed, run as a job autofocusing every tenth tile, each tile printed as it arrives, and the acquisition checked, each frame where it was taken; a page drawing the tiles as they arrive |
 | [`ext-python-workflow`](ext-python-workflow/README.md) | P36 | A sample Python extension: the scan workflow `example.spiral`, tiles in a square spiral out from a centre |
+| [`ex-histo-scan`](ex-histo-scan/README.md) | P37 | A histological scan of the simulated H&E slide: an overview binned 3 × 3, the tissue found in it by its saturation, checked against the simulator's truth, and the tissue scanned, its focus map measured first; a page showing the overview, the tissue and the tiles as they arrive |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` and `ext-rust-camera` are libraries too: the sample extensions that `ex-rust-ext` and `ex-ext-camera` load. `ext-python-node` is a Python extension, which the workspace leaves out.
 
