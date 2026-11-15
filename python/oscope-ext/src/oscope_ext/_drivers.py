@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-KINDS = ("camera", "stage", "illumination", "importer", "exporter")
+KINDS = ("camera", "stage", "illumination", "importer", "exporter", "workflow")
 
 _DRIVERS: dict[str, tuple[str, type]] = {}
 _INSTANCES: dict[str, Any] = {}
@@ -21,7 +21,7 @@ _INSTANCES: dict[str, Any] = {}
 
 def driver(name: str, *, kind: str):
     """Declares a class as the driver ``name``, of ``kind``: ``camera``,
-    ``stage`` or ``illumination``.
+    ``stage``, ``illumination``, ``importer``, ``exporter`` or ``workflow``.
 
     OScope makes one instance, with no arguments, when it first needs it.
     It calls its methods with JSON: no argument when there is nothing to
@@ -44,6 +44,11 @@ def driver(name: str, *, kind: str):
     - An exporter: ``format()``, ``begin({"path", "image", "name"})``,
       ``write({"plane"}, pixels)`` (the plane's samples, little-endian, as a
       flat array of bytes), and ``end()``.
+    - A scan workflow (ADR-0025): ``schema()`` (its parameters' JSON
+      Schema) and ``plan({"params", "field"})`` (the tiles, in order: a list
+      of ``{"x_um", "y_um"}``, each with ``"z_um"`` and ``"name"`` if it has
+      them). ``field`` has the frame's ``cell_um`` and the grid's
+      ``step_um``, each ``{"width", "height"}``.
     """
     if kind not in KINDS:
         raise ValueError(f"a driver is one of {', '.join(KINDS)}, not {kind!r}")

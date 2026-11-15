@@ -38,9 +38,11 @@ impl Mask {
     }
 }
 
-/// Where a scan goes, in stage µm.
+/// Where a scan goes, in stage µm. In JSON, an object of one key, its kind:
+/// `{"rect": {"origin", "size"}}`, `{"polygon": {"corners"}}` or
+/// `{"mask": {…}}`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum Region {
     /// A rectangle, square with the stage, its edges inside.
     Rect(Rect),

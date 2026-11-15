@@ -27,7 +27,7 @@ mod panels;
 mod python;
 mod worker;
 
-pub use drivers::{Drivers, Formats, OWN_DRIVERS};
+pub use drivers::{Drivers, Formats, OWN_DRIVERS, Workflows};
 pub use installed::{Extension, Extensions, Loaded, Registry, WorkerState};
 pub use manifest::{API_VERSION, Contribution, Kind, Manifest, PLATFORM, PLATFORMS, Python, Rust};
 pub use native::{DriverInfo, Library, MAX_SAMPLES};

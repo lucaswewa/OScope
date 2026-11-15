@@ -18,7 +18,7 @@ use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuild
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
 
-use crate::calibration::CalibrationThing;
+use crate::calibration::{CalibrationThing, Calibrations};
 use crate::capture::CaptureThing;
 use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
@@ -29,6 +29,7 @@ use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
+use crate::scan::ScanThing;
 use crate::system::{System, VERSION};
 use crate::{data, media, pages};
 
@@ -170,6 +171,7 @@ impl ApiBuilder {
         self.things = self
             .things
             .service(devices)
+            .service(Arc::new(Calibrations::default()))
             .thing("camera", CameraThing::default())
             .thing("stage", StageThing::default())
             .thing("illumination", IlluminationThing::default())
@@ -178,7 +180,8 @@ impl ApiBuilder {
             .thing("capture", CaptureThing::default())
             .thing("calibration", CalibrationThing::default())
             .thing("autofocus", AutofocusThing::default())
-            .thing("exposure", ExposureThing::default());
+            .thing("exposure", ExposureThing::default())
+            .thing("scan", ScanThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }

@@ -188,6 +188,21 @@ impl ZPolicy {
     }
 }
 
+/// How the stage moves through a plan (ADR-0025).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Motion {
+    /// It stops at each tile, settles, and takes its frames: M1's.
+    #[default]
+    StopAndGo,
+    /// Reserved for M3 (D14): each row swept at a constant speed, frames
+    /// triggered at the tiles' positions. The engine refuses it until then.
+    Continuous {
+        /// The sweep's speed, in µm/s.
+        speed_um_s: f64,
+    },
+}
+
 /// The pattern a plan follows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -202,6 +217,8 @@ pub enum Pattern {
     TiledStack,
     /// Positions, in the order given.
     Positions,
+    /// Positions an extension's workflow planned (ADR-0025).
+    Workflow,
 }
 
 /// A position to visit, as a multi-position plan is given it.
@@ -245,6 +262,9 @@ pub struct Tile {
 pub struct Plan {
     /// The pattern.
     pub pattern: Pattern,
+    /// How the stage moves through it.
+    #[serde(default)]
+    pub motion: Motion,
     /// The field that spaced the tiles.
     pub field: Field,
     /// The grid's rows; 1 for positions.

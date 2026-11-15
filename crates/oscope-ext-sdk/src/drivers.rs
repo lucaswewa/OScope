@@ -1,5 +1,6 @@
-//! Drivers: cameras, stages and lights an extension drives (ADR-0036), and
-//! its importers and exporters of other file formats (ADR-0037).
+//! Drivers: cameras, stages and lights an extension drives (ADR-0036), its
+//! importers and exporters of other file formats (ADR-0037), and its scan
+//! workflows (ADR-0025).
 //!
 //! OScope wraps each device driver in a driver of its HAL (ADR-0012). It
 //! checks settings, targets, speeds and lights against the driver's
@@ -194,6 +195,52 @@ pub trait Exporter: Send + Sync + 'static {
     fn end(&self) -> Result<(), String>;
 }
 
+/// A frame's cell on the stage, and a grid's steps, as OScope's plans give
+/// them to a workflow (P35), in µm.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ScanField {
+    /// The cell: the largest rectangle, square with the stage, each frame
+    /// holds.
+    pub cell_um: Extent,
+    /// The steps between a grid's tiles, for the overlap asked.
+    pub step_um: Extent,
+}
+
+/// A width and a height, in µm.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Extent {
+    /// Along x.
+    pub width: f64,
+    /// Along y.
+    pub height: f64,
+}
+
+/// A tile a workflow plans: where the stage takes its frames, in µm.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PlannedTile {
+    /// The stage's x at its centre.
+    pub x_um: f64,
+    /// Its y.
+    pub y_um: f64,
+    /// Its z, if the workflow knows it; autofocus finds it otherwise.
+    #[serde(default)]
+    pub z_um: Option<f64>,
+    /// Its name, if it has one.
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+/// Plans scans (ADR-0025): from its parameters and the field, the tiles,
+/// which OScope's engine runs in the order given.
+pub trait ScanWorkflow: Send + Sync + 'static {
+    /// Its parameters' JSON Schema, which OScope checks them against.
+    fn schema(&self) -> Value;
+
+    /// The tiles for `params`, as its schema describes them, with frames of
+    /// `field`. Parameters it can't take are refused, saying why.
+    fn plan(&self, params: Value, field: ScanField) -> Result<Vec<PlannedTile>, String>;
+}
+
 /// A driver of one of the kinds.
 pub enum Driver {
     /// A camera.
@@ -206,6 +253,8 @@ pub enum Driver {
     Importer(Box<dyn Importer>),
     /// An exporter.
     Exporter(Box<dyn Exporter>),
+    /// A scan workflow.
+    Workflow(Box<dyn ScanWorkflow>),
 }
 
 /// A driver, and the name the configuration knows it by: one of the
@@ -262,6 +311,15 @@ pub fn exporter(name: &str, exporter: impl Exporter) -> NamedDriver {
     }
 }
 
+/// A scan workflow named `name`, for [`export!`](crate::export).
+pub fn workflow(name: &str, workflow: impl ScanWorkflow) -> NamedDriver {
+    let driver = Driver::Workflow(Box::new(workflow));
+    NamedDriver {
+        name: name.to_owned(),
+        driver,
+    }
+}
+
 /// `params`' `key`, read as `T`.
 fn arg<T: DeserializeOwned>(params: &Value, key: &str) -> Result<T, String> {
     let value = params.get(key).cloned().unwrap_or(Value::Null);
@@ -277,6 +335,7 @@ impl Driver {
             Driver::Illumination(_) => "illumination",
             Driver::Importer(_) => "importer",
             Driver::Exporter(_) => "exporter",
+            Driver::Workflow(_) => "workflow",
         }
     }
 
@@ -323,6 +382,11 @@ impl Driver {
                 done(e.begin(&path, &arg(&params, "image")?, &name))
             }
             (Driver::Exporter(e), "end") => done(e.end()),
+            (Driver::Workflow(w), "schema") => Ok(w.schema()),
+            (Driver::Workflow(w), "plan") => {
+                let field = arg(&params, "field")?;
+                json(w.plan(params.get("params").cloned().unwrap_or(Value::Null), field)?)
+            }
             (driver, method) => Err(format!(
                 "a {} driver has no method `{method}`",
                 driver.kind()

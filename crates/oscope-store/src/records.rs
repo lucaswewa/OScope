@@ -52,6 +52,10 @@ pub struct FrameRecord {
     /// When it was exposed, on the host's clock.
     #[serde(default)]
     pub timestamp: Option<Timestamp>,
+    /// Where the stage's trigger output fired it: reserved for M3's
+    /// continuous scans (ADR-0025), none until then.
+    #[serde(default)]
+    pub trigger: Option<Xyz>,
 }
 
 /// An acquisition: the raw data of one run, in `raw.ome.zarr`, and how it

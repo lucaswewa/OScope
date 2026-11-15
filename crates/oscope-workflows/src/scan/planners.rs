@@ -2,7 +2,7 @@
 
 use oscope_core::Point2;
 
-use super::plan::{Field, Pattern, Plan, Position, Stack, Tile, ZPolicy, check_stack};
+use super::plan::{Field, Motion, Pattern, Plan, Position, Stack, Tile, ZPolicy, check_stack};
 use super::region::Region;
 use super::{ScanError, invalid};
 
@@ -80,6 +80,7 @@ pub fn positions(
         .collect();
     Ok(Plan {
         pattern: Pattern::Positions,
+        motion: Motion::StopAndGo,
         field: field.clone(),
         rows: 1,
         columns: list.len() as u32,
@@ -154,6 +155,7 @@ fn grid(
     }
     Ok(Plan {
         pattern,
+        motion: Motion::StopAndGo,
         field: field.clone(),
         rows,
         columns,

@@ -19,7 +19,7 @@ const BINNED: u32 = 512;
 pub(super) const SATURATED: f64 = 0.98;
 
 /// The first frame whose exposure starts at `after` or later.
-pub(super) async fn frame_after(bus: &FrameBus, after: Timestamp) -> Result<Frame, AutofocusError> {
+pub(crate) async fn frame_after(bus: &FrameBus, after: Timestamp) -> Result<Frame, AutofocusError> {
     tokio::time::timeout(FRAME_WAIT, bus.next_frame_after(after))
         .await
         .map_err(|_| failed("no frame came within 30 s: is the camera streaming?"))?

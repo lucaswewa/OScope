@@ -132,6 +132,49 @@ impl Formats {
     }
 }
 
+/// The scan workflows of the extensions this start loaded, by name
+/// (ADR-0025). Each call blocks, as the extension answers.
+#[derive(Clone, Default)]
+pub struct Workflows {
+    by_name: BTreeMap<String, Arc<dyn Link>>,
+}
+
+impl std::fmt::Debug for Workflows {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.by_name.keys()).finish()
+    }
+}
+
+impl Workflows {
+    pub(crate) fn add(&mut self, name: &str, link: Arc<dyn Link>) {
+        self.by_name.insert(name.to_owned(), link);
+    }
+
+    /// Their names.
+    pub fn names(&self) -> Vec<String> {
+        self.by_name.keys().cloned().collect()
+    }
+
+    fn link(&self, name: &str) -> std::result::Result<&Arc<dyn Link>, String> {
+        let names = self.names().join(", ");
+        self.by_name
+            .get(name)
+            .ok_or_else(|| format!("no workflow {name}: the extensions' are [{names}]"))
+    }
+
+    /// Workflow `name`'s parameters' JSON Schema.
+    pub fn schema(&self, name: &str) -> std::result::Result<Json, String> {
+        self.link(name)?.call("schema", Json::Null)
+    }
+
+    /// Workflow `name`'s tiles, for `params` with frames of `field`: a list
+    /// of `{"x_um", "y_um"}`, each with its `z_um` and `name` if it has them.
+    pub fn plan(&self, name: &str, params: Json, field: Json) -> std::result::Result<Json, String> {
+        let params = json!({ "params": params, "field": field });
+        self.link(name)?.call("plan", params)
+    }
+}
+
 /// The format of the importer or exporter `name`, which it says when first
 /// asked: its ID is its name. One that won't say has no extensions.
 fn format_of(name: &str, link: &dyn Link, format: &OnceLock<Format>) -> Format {

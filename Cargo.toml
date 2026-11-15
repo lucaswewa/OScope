@@ -2,7 +2,7 @@
 resolver = "3"
 members = ["crates/*", "examples/*", "xtask"]
 # A Python extension, not a crate (P26).
-exclude = ["examples/ext-python-node"]
+exclude = ["examples/ext-python-node", "examples/ext-python-workflow"]
 
 [workspace.package]
 version = "0.1.0"
