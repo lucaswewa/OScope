@@ -2,7 +2,7 @@
 //! blending, and multiscale pyramids.
 //!
 //! Layer L1 of ADR-0005. The live mosaic's [`canvas`] (P38); a scan's
-//! [`tiles`], their [`solve`] and their [`blend`] (P39).
+//! [`tiles`], their [`solve`](mod@solve) and their [`blend`](mod@blend) (P39).
 
 pub mod blend;
 pub mod canvas;
