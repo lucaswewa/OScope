@@ -68,6 +68,8 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-checkpoint-d`](ex-checkpoint-d/README.md) | P40 | Checkpoint D: the simulated H&E slide histo-scanned while the live mosaic draws its tiles, stitched, then browsed in deep zoom |
 | [`ex-volume`](ex-volume/README.md) | P41 | A z-scan through the simulated fluorescent cells at 50× and a confocal, stored as a volume and served as slices and bricks, drawn by VTK.js as a maximum intensity projection or composited |
 | [`ex-depth-from-focus`](ex-depth-from-focus/README.md) | P42 | A z-scan of the simulated reflective chip at 50× made into heights, their confidence and an all-in-focus image by depth from focus, checked against the simulator's truth, and drawn by VTK.js as a textured surface |
+| [`ex-deconvolve`](ex-deconvolve/README.md) | P43 | A widefield z-scan of the simulated fluorescent cells deconvolved by Richardson–Lucy with Born and Wolf's PSF, against the simulator's truth, drawn by VTK.js as a projection, composited or an isosurface, before and after |
+| [`ex-checkpoint-e`](ex-checkpoint-e/README.md) | P43 | Checkpoint E: the reflective chip's heights by depth from focus and the fluorescent cells deconvolved, from one server, side by side in VTK.js |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` and `ext-rust-camera` are libraries too: the sample extensions that `ex-rust-ext` and `ex-ext-camera` load. `ext-python-node` is a Python extension, which the workspace leaves out.
 
