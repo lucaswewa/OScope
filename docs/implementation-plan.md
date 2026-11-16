@@ -845,8 +845,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P44 | Annotations and measurements | P40 | M | — | In review |
-| P45 | Stain analysis | P44 | M | — | Planned |
+| P44 | Annotations and measurements | P40 | M | — | Done |
+| P45 | Stain analysis | P44 | M | — | In review |
 | P46 | Cell detection and counting | P45 | L | — | Planned |
 | P47 | Reports, and report extensions | P46 | L | 0030 | Planned |
 | P48 | The `workspace` Thing: analyses on datasets, results, provenance | P47 | M | — | Planned |

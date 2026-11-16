@@ -22,12 +22,16 @@ fn unit(v: Vector) -> Vector {
 }
 
 /// An H-DAB picture's pixel at `(x, y)` of `w` × `h`, from 0 to 1: glass in
-/// its top-left eighth, hematoxylin across it and DAB down it.
+/// its top-left eighth, a faint stain under tissue's density along its
+/// bottom, and hematoxylin across it and DAB down it.
 fn hdab(x: u64, y: u64, (w, h): (u64, u64)) -> [f32; 3] {
     if x < w / 8 && y < h / 8 {
         return WHITE;
     }
-    let (a, b) = (0.1 + 0.9 * x as f64 / w as f64, 0.9 * y as f64 / h as f64);
+    let (a, b) = match y >= h - h / 16 {
+        true => (0.01, 0.0),
+        false => (0.1 + 0.9 * x as f64 / w as f64, 0.9 * y as f64 / h as f64),
+    };
     let (hv, dv) = (unit(HEMATOXYLIN), unit(DAB));
     [0, 1, 2].map(|c| WHITE[c] * 10f64.powf(-(a * hv[c] + b * dv[c])) as f32)
 }
@@ -294,10 +298,14 @@ fn a_cancel_leaves_nothing_and_what_isn_t_stained_is_refused() {
     assert!(m.store.contents(m.project).unwrap().results.is_empty());
     // Cancelled in the first pass, which finds the white.
     let sampling = StainOptions::default();
-    let early = separate(&m.store, m.project, m.input, &sampling, &|share, _| {
+    let told = std::sync::Mutex::new(Vec::new());
+    let early = separate(&m.store, m.project, m.input, &sampling, &|share, what| {
+        told.lock().unwrap().push(what);
         share < 0.1
     });
     assert!(matches!(early, Err(StoreError::Cancelled)), "{early:?}");
+    let told = told.into_inner().unwrap();
+    assert!(told.iter().all(|what| what == "sampled"), "{told:?}");
     assert!(m.store.contents(m.project).unwrap().results.is_empty());
     let same = StainOptions {
         stains: StainChoice::Vectors(vec![HEMATOXYLIN, HEMATOXYLIN]),

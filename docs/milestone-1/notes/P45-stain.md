@@ -1,12 +1,19 @@
 # P45: Stain analysis
 
 - Status: In review
-- Branch / PR: `m1/p45-stain` / #61
-- Size: M · estimated ~2,500 before it started (in `oscope-imaging`, optical density, stain vectors and colour deconvolution, Macenko's estimate with a 3 × 3 eigensolver, and the DAB bins, ~350; in `oscope-sim`, the H-DAB section and the stains' amounts as truth, ~120; the pipeline's four nodes ~220; in `oscope-workflows`, the job over a stored slide, tile by tile, ~320; tests ~850; `ex-stain` and its page ~600; glue ~40); one pull request, at the owner's standing choice
+- Branch / PR: `m1/p45-stain` / [#61](https://github.com/lucaswewa/OScope/pull/61)
+- Size: M · estimated ~2,500 before it started (in `oscope-imaging`, optical density, stain vectors and colour deconvolution, Macenko's estimate with a 3 × 3 eigensolver, and the DAB bins, ~350; in `oscope-sim`, the H-DAB section and the stains' amounts as truth, ~120; the pipeline's four nodes ~220; in `oscope-workflows`, the job over a stored slide, tile by tile, ~320; tests ~850; `ex-stain` and its page ~600; glue ~40); one pull request, at the owner's standing choice · measured **2,410** hand-written lines added (code 1,120: `oscope-workflows` 426, `oscope-imaging` 378, `oscope-pipeline` 226, `oscope-sim` 86, `oscope-api` 4; tests 892; examples 373; glue 25), and 20 removed. **That is 1,810 over M's 600, and 4 % under the estimate.**
 
 ## Summary
 
-To come with the code.
+Brightfield stains separated, and DAB quantified, on whole slides ([spec](../phases.md#p45); plan §5.17, D25).
+
+- **Colour deconvolution** (Ruifrok and Johnston, 2001) gives each pixel's amount of each stain: H&E, H-DAB, or vectors given. Macenko's method (2009) estimates two stains' vectors from the image if asked.
+- **DAB is binned** as negative, weak, moderate or strong, giving the positive percentage of the tissue and the H-score.
+- **Four pipeline nodes,** two of which run tile by tile.
+- **A job, `stain.separate`,** works a stored slide tile by tile. It makes three results: the stains' amounts, and each stain's image. It also writes a summary.
+- **The simulator** has an H-DAB section beside its H&E one, and gives both sections' stain amounts as truth.
+- **`ex-stain`** separates a stitched H&E slide's stains, by the standard vectors and by Macenko's. It then quantifies an H-DAB slide's DAB.
 
 ## Behaviour spec
 
@@ -95,24 +102,140 @@ Written before the code, from the sources at its end ([spec](../phases.md#p45); 
 
 ## What was built
 
-To come with the code.
+- **`oscope-imaging::stain`:**
+  - `optical_density`;
+  - `Stains`: the vectors, a residual made for two, the inverse, `deconvolve` and `alone`;
+  - `StainChoice` (`he`, `hdab`, `vectors`);
+  - `macenko`, with Jacobi's method for the 3 × 3 second moments;
+  - `DabThresholds`, `dab_class`, `dab_classes` and `DabCounts`, with its positive percentage and H-score.
+- **`oscope-sim`:**
+  - `HeTissue::ihc`, the H-DAB section, a sample kind `ihc-tissue` named "H-DAB tissue";
+  - each `Nucleus`'s `dab`;
+  - `HeTissue::stain_amounts`, the truth.
+
+  The H&E section renders as before, to the bit: the second stain is chosen, its density's expression unchanged.
+- **The pipeline:** `stain.deconvolve` and `stain.dab` run pixel by pixel, and so by tiles; `stain.estimate` and `stain.dab_score` need the whole image.
+- **`oscope-workflows::stain`:** `separate` and the job factory `stain_jobs` (`stain.separate`), registered by the `projects` Thing. A raw image is read on its 2 × 2 cells, a chunk's worth at a time.
+- **`ex-stain`** (port 8231), its page and README. `ex-sim-samples` and two tests now count seven built-in samples.
 
 ## How to try it
 
-To come with the code.
+```sh
+cargo run --release -p ex-stain
+```
+
+Then open http://127.0.0.1:8231/. It takes about 34 s at real time, and prints:
+
+```text
+ex-stain: H&E, a snake over 2.0 × 1.5 mm across the island's edge, stitched; the white 0.752, 0.751, 0.753
+  H&E's vectors: hematoxylin 0.159, eosin 0.225 over the tissue; the residual's RMS 0.0292
+  Macenko's: hematoxylin 1.5° and eosin 6.0° from H&E's
+ex-stain: H-DAB, the same place: of 1091331 tissue pixels, 1003531 negative, 46287 weak, 24845 moderate, 16668 strong
+  DAB positive 8.0 % of the tissue, H-score 13
+  open http://127.0.0.1:8231/ to see the mosaics and their stains
+```
+
+The page lists the mosaics and each stain's image to show in OpenSeadragon, with the three separations' summaries. The [README](../../../examples/ex-stain/README.md) gives the job's parameters.
+
+## Performance
+
+§5.20 has no budget for stains. On this PC, with a release build, the job separates the example's mosaic in 0.78–0.82 s over three runs. The mosaic is 2598 × 1730 raw pixels, so 1.1 megapixels of cells. That time covers both passes and three results written with their pyramids. A 200-megapixel raw slide would take about a minute.
 
 ## Design notes and deviations from the plan
 
-To come with the code.
+### Where the spec moved
+
+All were revised while writing the tests or the example, and the spec above says where:
+
+- **Macenko's pixels** are those whose densities, as a vector, are at least β long. Requiring β in every channel would leave out eosin alone: the simulator's stroma has a red density of about 0.07.
+- **Macenko on the simulator** comes within 7° of H&E's vectors, not 5°: 5.7° and 5.3°. Each vector leans towards the other, as no pixel is one stain alone.
+- **Macenko on the H-DAB section** finds hematoxylin exactly, but DAB only within 20° (16.5°): DAB lies only in nuclei that hold hematoxylin too. So the job uses a stain set's own vectors unless asked to estimate.
+- **The simulator's truth** is held to 10⁻⁴, not 10⁻³, as 10⁻³ couldn't tell the vectors' lengths, which differ from 1 by up to 0.2 %.
+- **The 8-bit test** keeps its densities under 1, as the spec says: green, the densest, at 0.93.
+- **The example's smoke** has definite bounds:
+  - the residual is under a tenth of the stains' amounts, and under half of what H-DAB's vectors leave on the H&E slide;
+  - the positive percentage is between 1 % and 40 %, and the H-score between one and three times it.
+
+### Choices
+
+- **The job's input** is `{"kind": "result", "id": …}` or an acquisition's, the form its provenance records.
+- **Results' names** are the slide's, with "(Macenko)" for an estimate; the example names its scans "H&E slide" and "H-DAB slide".
+- **The white,** if not given, is each channel's 99.5th percentile. So a slide needs some glass, which the example's scan across the island's edge has. Without glass, the brightest tissue would read as clear.
+- **The residual's RMS** measures the fit. On the camera's mosaic it is 0.029, about 7 % of the stains' amounts: camera noise, and the 2 × 2 cells mixing neighbouring sites' colours. H-DAB's vectors leave more.
+- **DAB's percentage is of the tissue's area,** not of nuclei: 8 % here, where 40 % of the nuclei are positive. Counting positive nuclei is P46's.
+
+### What the mutants' reading found
+
+Fifty-four mutants, listed in advance from the code: of the densities, the vectors and their inverse, Jacobi's rotations, Macenko's steps, DAB's bins, the simulator's DAB, the nodes' defaults, the job's cells, passes, sums, images and cancels, and the job's registration. Reading the tests against the list found gaps, now covered:
+
+- **Three vectors chosen** weren't tested through `StainChoice`.
+- **Macenko's percentile** gave what the extremes give on clean data. Twenty outlying pixels now bend the extremes over 5°, and the percentile not at all.
+- **DAB beyond the nuclei** wouldn't fail the pixel test, as the render and the truth share their code. A grid of points now finds DAB only within positive nuclei.
+- **The truth's 10⁻³** couldn't see the vectors' lengths; it is 10⁻⁴ now.
+- **The nodes' default white,** H&E unbinned, both stains' images, the means, and the "(Macenko)" names weren't tested.
+
+The run then missed four:
+
+- **Tissue from any density, and no cancel in the first pass,** now caught. A faint band under tissue's density, and a check that a first-pass cancel tells nothing of the second, were added.
+- **A raw tile a chunk of cells, not half:** equivalent. The tiles are clipped to the image, so only their alignment to the chunks, and so the speed, changes.
+- **The final turn of a vector to sum positive:** not exercised. Jacobi's rotations of under 45° leave the dominant eigenvector positive on every set of densities tried, so its vectors come out positive already. The turn stays, as the spec says it.
+
+So **52 of 54 are caught,** one is equivalent, and one guards a sign never met.
+
+### The page
+
+The page wasn't seen in a browser here. Under Node, against the running example, with a stand-in DOM and OpenSeadragon, it:
+
+- listed the eight images, the two mosaics and the six stain images;
+- showed the three summaries, the H-DAB one with its 8.1 % and H-score;
+- opened the first mosaic at 2598 × 1730;
+- on another choice, replaced it in place, the new image's tile answering 200.
+
+### Two cores
+
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-imaging:stain` | 5 of 5 | 0.4 s |
+| `oscope-sim:stain` | 5 of 5 | 0.7–0.8 s |
+| `oscope-sim:loader` | 5 of 5 | 0.3–0.6 s |
+| `oscope-pipeline:stock` | 5 of 5 | 1.3–1.4 s |
+| `oscope-workflows:stain` | 5 of 5 | 5.8–6.6 s |
+| `oscope-api:devices` | 5 of 5 | 18.5–19.9 s |
+| `ex-stain --smoke` | 5 of 5 | 65.1–77.5 s |
+| `ex-sim-samples --smoke` | 5 of 5 | 1.6–1.7 s |
 
 ## Tests
 
-To come with the code.
+| Suite | Tests | What they show |
+|---|---|---|
+| `oscope-imaging` `stain` (new) | 5 | Amounts made by Beer–Lambert given back, for H&E, H-DAB and three vectors, and through 8 bits; the residual square to the stains; the floor; refusals; each stain alone; Macenko's vectors from synthetic mixtures, robust to outliers, which the extremes aren't; the stains chosen; DAB's bins at their thresholds, a patch's counts, percentage and H-score |
+| `oscope-sim` `stain` (new) | 3 | Both sections' amounts given back pixel by pixel within 10⁻⁴; Macenko on both sections; DAB in 40 % of the nuclei, at three levels in equal shares, only within positive nuclei, each level's median in its bin |
+| `oscope-sim` `loader` (changed) | 3 | Seven built-in samples |
+| `oscope-pipeline` `stock` (one new) | 9 | The nodes give the library's results, with their defaults, and the same tiled or whole; refusals |
+| `oscope-workflows` `stain` (new) | 4 | An RGB slide's results are the library's, with both stains' images, the means, DAB's counts and the summary, and progress tile by tile; H&E isn't binned; a raw slide on its cells, the white found; Macenko's on the job's sample; cancels in either pass leave nothing; refusals; the job's parameters |
+| `oscope-api` `devices` (changed) | 9 | Seven built-in samples, eight with an import |
+| `ex-stain --smoke` | — | The H&E slide's residual, under H-DAB's; Macenko's angles; the H-DAB slide's percentage and H-score; DAB scored on H-DAB alone; the page |
+| `ex-sim-samples --smoke` (changed) | — | Nine samples, seven built in |
+
+⟨REPLAYS⟩
 
 ## Follow-ups and known gaps
 
-To come with the code.
+- **Positive nuclei,** counted rather than area: P46's cell detection on the hematoxylin and DAB channels.
+- **The white from a blank field,** a calibration's, rather than the slide's brightest pixels.
+- **Display of the amounts** themselves, a channel at a time; the page shows each stain's image instead.
+- **Stain normalisation:** mapping one slide's stains onto another's, the use Macenko's paper was written for.
+- **A DAB vector estimated** where DAB is only nuclear needs pixels of DAB alone; Macenko's method leans towards hematoxylin there.
 
 ## Clean room
 
-To come with the code.
+Nothing was copied from `microscope` or any other codebase. The methods are the published ones in the spec's sources, written from their descriptions:
+
+- colour deconvolution and the stains' vectors (Ruifrok and Johnston, 2001);
+- Macenko et al.'s estimate (2009);
+- the H-score (McCarty et al., 1985);
+- Jacobi's method (Golub and Van Loan, 2013).
+
+The vectors are the published table's numbers.
