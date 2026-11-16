@@ -360,7 +360,8 @@ impl Simulator {
         let [chance, size] = config.lost_steps;
         if !((0.0..=1.0).contains(&chance) && size >= 0.0 && size.is_finite()) {
             return Err(format!(
-                "lost steps of a chance of {chance} and {size} µm: a chance from 0 to 1, and a                  size of at least 0, are needed"
+                "lost steps of a chance of {chance} and {size} µm: a chance from 0 to 1, and a \
+                 size of at least 0, are needed"
             ));
         }
         let clock = Arc::new(SimClock::new(rate));

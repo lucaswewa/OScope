@@ -223,6 +223,27 @@ fn a_wrong_link_is_rejected() {
 }
 
 #[test]
+fn a_link_a_little_wrong_is_weighed_down_until_it_is_rejected() {
+    // A link 4 pixels wrong between two inner tiles: plain least squares
+    // spreads it over its neighbours' links, and each then misses by under
+    // 3 pixels; Huber's weights leave it its own miss, and it is rejected.
+    let scan = scan(&[]);
+    let mut links = links(&scan);
+    let wrong = links.iter().position(|l| (l.a, l.b) == (5, 6)).unwrap();
+    links[wrong].shift[0] += 4.0;
+    let plain = SolveOptions {
+        huber_px: f64::INFINITY,
+        ..SolveOptions::default()
+    };
+    let spread = solve(&scan.tiles.nominal, &links, &plain);
+    assert!(spread.rejected.is_empty(), "{spread:?}");
+    let solved = solve(&scan.tiles.nominal, &links, &SolveOptions::default());
+    assert_eq!(solved.rejected, [wrong]);
+    let all: Vec<usize> = (0..12).collect();
+    assert!(rms(&solved.offsets, &scan.truth, &all) < 0.3);
+}
+
+#[test]
 fn tiles_are_placed_on_whole_pixels_even_ones_raw_and_blended_without_seams() {
     let offsets = [[10.4, 3.6], [131.0, 4.5], [10.5, 100.49]];
     let placed = Placed::new(&offsets, (128, 100), false);

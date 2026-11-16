@@ -9,7 +9,7 @@ use oscope_store::{
     halve_samples,
 };
 use oscope_workflows::scan::{Field, Region, Stack, ZPolicy, raster, tiled_stack};
-use oscope_workflows::stitch::{StitchOptions, result_image, stitch};
+use oscope_workflows::stitch::{StitchError, StitchOptions, result_image, stitch};
 
 /// The slide: µm as pixels, `w` × `h` of texture, noise blurred thrice by
 /// 2 pixels, in 8 bits.
@@ -378,4 +378,22 @@ fn a_stack_is_solved_once_and_each_plane_written_alike() {
             }
         }
     }
+}
+
+#[test]
+fn a_cancel_stops_it_in_each_part_and_leaves_no_result() {
+    let raster = acquired(RASTER);
+    let (store, project, id) = (&raster.store, raster.project, raster.id);
+    for part in ["pairs registered", "solved", "chunks written"] {
+        let cancel = |_: f64, what: String| !what.ends_with(part);
+        let stopped = stitch(store, project, id, &StitchOptions::default(), &cancel);
+        assert!(
+            matches!(stopped, Err(StitchError::Cancelled)),
+            "{part}: {stopped:?}"
+        );
+    }
+    assert!(store.contents(project).unwrap().results.is_empty());
+    let results = store.folder(project).join("results");
+    let left = std::fs::read_dir(&results).map_or(0, |d| d.count());
+    assert_eq!(left, 0, "drafts left in {}", results.display());
 }
