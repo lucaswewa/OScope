@@ -86,7 +86,7 @@ Sharpness is compared only between frames of the same place, within a quarter of
   | the Thing Descriptions' | 19–20 |
   | `ex-live-mosaic --smoke` | 88–100 |
 
-- **The first run found three faults:**
+- **They found three faults,** two in the first run and one in its rerun:
   - **The placement test drew nothing on two cores.** The simulator took 8 s to render its first frame there, and seconds for each new place, and the mosaic, in a debug build, took over 3 s to draw a frame: the move had ended before a frame came. The path is now rendered once first, the stage stopping every 0.625 mm for a frame, and the mosaic begins after it, at real time, in pixels of 4 µm. On two cores it draws 6 or 7 frames on the way, 0.09–0.15 µm off the truth.
   - **P22's recipe test** found a recipe taking 1.1 s, once in five runs, over the 1 s it allowed an unoptimised build. It allows 10 s now; its refusal over a budget is tested apart.
   - **P17's paced-preview test,** in the rerun, found 5 intervals at 5 frames a second in 852 ms, under its 900. A frame's rendering shifts when it is ready by some 150 ms on two cores shared with other tests. It now times ten intervals, holding them to 80 % of their 2 s; without the pacing they take 510 ms.
@@ -115,7 +115,10 @@ L's budget is 900; P38 measured 3,184, 52 % over its estimate of ~2,100.
 
 **Where they ran:**
 
-{{RAN}}
+- **On Windows,** `scripts/ci-local.sh`, run alone on `d852ed4`: 49 of 49 steps, 492 tests in 183 suites. The Python tests ran for real, and every example's `--smoke`, `ex-live-mosaic`'s new among them.
+- **The CUDA tests,** `OSCOPE_CUDA=1` with the `cuda` feature, run alone on the owner's GPU, as P38 rearranged the preview's path to it: 510 tests passed.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, on a fresh clone of `d852ed4`, run alone: 49 of 49 steps, 492 tests in 183 suites, the Python tests real; 677 files, none with a CR.
+- **On two cores,** pinned, 5 times out of 5 each: `oscope-stitch`'s `canvas`; `oscope-acquire`'s `mosaic` and `preview`; `oscope-workflows`' `scan_engine`; `oscope-api`'s `live_mosaic`, `preview` (10 of 10), `scan` with `OSCOPE_PYTHON=1`, and `devices`; and `ex-live-mosaic --smoke`.
 
 **Mutation checks** (each broke the code on purpose, then the tests were run): thirty-seven of thirty-seven caught.
 
