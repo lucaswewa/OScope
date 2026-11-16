@@ -21,14 +21,15 @@ cargo run --release -p ex-depth-from-focus
 It serves at http://127.0.0.1:8247/. On the owner's PC, at real time, it printed:
 
 ```text
-ex-depth-from-focus: a z-scan of 21 planes, 0.5 µm apart, over a die's dome at 50× in reflected light, in 21.5 s
-  depth from focus in 0.5 s: heights of 684 × 456 cells, 72 % of them sure
-  against the simulator's truth, over 194087 cells sure and smooth: 0.294 µm rms, 0.071 µm the median (half a step 0.25)
+ex-depth-from-focus: a z-scan of 21 planes, 0.5 µm apart, over a die's dome at 50× in reflected light, in 19.4 s
+  depth from focus in 0.4 s: heights of 684 × 456 cells, 73 % of them sure
+  against the simulator's truth, over 190070 cells sure and smooth: 0.297 µm rms, 0.054 µm the median (half a step 0.25)
   open http://127.0.0.1:8247/ to see the surface drawn by VTK.js
 ```
 
 - **On the page,** drag to turn the surface and scroll to zoom. The frame holds the dome in the middle, the pyramid's terraces left and right, the film's pits above and below, and the ridge's slopes at the corners.
-- **The median error is 0.07 µm,** a seventh of a step. The RMS is over half a step because of the pits: small dark squares in a bright film, which take the focus of their bright rims. The dome alone, in the smoke, is 0.13 µm RMS.
+- **The median error is 0.05 µm,** a tenth of a step. The RMS, 0.27 to 0.30 µm from run to run, is over half a step because of the pits: small dark squares in a bright film, which take the focus of their bright rims. The dome alone, in the smoke, is 0.10 µm RMS.
+- **The truth** is placed where the stage was, as the scan's first frame records it: the simulated stage's play can leave it a few µm from where it was sent.
 - **The routes** it uses: the job through `jobs/submit`, and each result as a brick, `/api/v1/volume/{project}/results/{id}/brick`, the heights as `format=f32`.
 
 ## `--smoke`

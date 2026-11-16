@@ -61,4 +61,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P39 | Post-acquisition stitching | Done | [P39-post-stitching.md](P39-post-stitching.md) |
 | P40 | Deep-zoom serving, tile cache, DZI export | Done | [P40-deep-zoom.md](P40-deep-zoom.md) |
 | P41 | Z-stacks, volume store, slice and brick routes | Done | [P41-volumes.md](P41-volumes.md) |
-| P42 | Depth from focus and extended depth of field | In review | [P42-depth-from-focus.md](P42-depth-from-focus.md) |
+| P42 | Depth from focus and extended depth of field | Done | [P42-depth-from-focus.md](P42-depth-from-focus.md) |
+| P43 | Deconvolution and volume rendering | In review | [P43-deconvolution.md](P43-deconvolution.md) |

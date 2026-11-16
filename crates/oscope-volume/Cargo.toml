@@ -14,6 +14,7 @@ cuda = ["oscope-compute/cuda"]
 oscope-compute.workspace = true
 oscope-imaging.workspace = true
 rayon.workspace = true
+rustfft.workspace = true
 schemars.workspace = true
 serde.workspace = true
 thiserror.workspace = true

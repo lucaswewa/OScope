@@ -1,6 +1,6 @@
 # P42: Depth from focus and extended depth of field
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p42-depth-from-focus` / [#57](https://github.com/lucaswewa/OScope/pull/57)
 - Size: L · estimated ~2,650 before it started (in `oscope-compute`, the sum-modified-Laplacian focus measure and its CUDA twin, to the bit, ~170; in `oscope-volume`, the focus measures streamed plane by plane, the height from the peak and its parabola, the confidence, the median and the all-in-focus image ~300, and the PLY, STL and OBJ meshes ~200; the pipeline's nodes for each step ~240; in `oscope-workflows`, the depth-from-focus job, from a volume acquisition to its results and mesh, ~250; in `oscope-api`, the job's wiring and float bricks for the heightfield ~50; tests ~700; `ex-depth-from-focus` and its VTK.js page ~450; glue ~50; and about a tenth on top); one pull request, at the owner's standing choice · measured **3,039** hand-written lines added (code 1,453: `oscope-volume` 612, `oscope-workflows` 373, `oscope-pipeline` 266, `oscope-compute` 184, `oscope-api` 18; tests 967; examples 516; glue 103), and 30 removed. **That is 2,139 over L's 900, and 15 % over the estimate.** VTK.js, vendored in P41, isn't counted.
 

@@ -7,7 +7,8 @@
 //! `projects.ingest` (ADR-0022); the one that stitches a scan's
 //! acquisition into a mosaic, `stitch.run` (ADR-0027); and the one that
 //! finds a z-stack's heights and all-in-focus image,
-//! `volume.depth_from_focus` (P42).
+//! `volume.depth_from_focus` (P42); and the one that deconvolves a volume,
+//! `volume.deconvolve` (P43).
 
 use std::sync::{Arc, OnceLock};
 
@@ -18,6 +19,7 @@ use oscope_jobs::JobService;
 use oscope_store::{
     Change, Contents, NewProject, Page, Project, Query as Search, Scratch, Store, StoreError,
 };
+use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
 use oscope_workflows::depth::{DEPTH, depth_jobs};
 use oscope_workflows::stitch::{STITCH, stitch_jobs};
 use schemars::JsonSchema;
@@ -147,6 +149,7 @@ impl ProjectsThing {
             jobs.register(EXPORT, export_jobs(Arc::clone(&store), Arc::clone(&codecs)));
             jobs.register(STITCH, stitch_jobs(Arc::clone(&store)));
             jobs.register(DEPTH, depth_jobs(Arc::clone(&store)));
+            jobs.register(DECONVOLVE, deconvolve_jobs(Arc::clone(&store)));
             // Recordings from the scratch space, ingested as jobs (ADR-0022).
             if let Some(scratch) = ctx.server().service::<Scratch>() {
                 jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));

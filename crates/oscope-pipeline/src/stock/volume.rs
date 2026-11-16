@@ -1,9 +1,12 @@
 //! Depth from focus (P42), a node for each step over `oscope_volume`: a
 //! stack's focus measures, the heights and their confidence from them, and
 //! the all-in-focus image. `export.mesh`, in `export`, writes the surface.
+//! And deconvolution (P43): Born and Wolf's PSF for a stack, and
+//! Richardson–Lucy by it.
 
 use std::sync::Arc;
 
+use oscope_volume::deconvolve::{DeconvolveOptions, Volume};
 use oscope_volume::depth::{self, AllInFocus, Peaks, Planes};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -152,6 +155,92 @@ pub(super) fn all_in_focus() -> Arc<dyn Node> {
                     "image",
                     Value::image(image.finish().map_err(failed)?),
                 )]))
+            },
+        )
+    })
+}
+
+/// `volume.psf`'s parameters.
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct PsfParams {
+    /// The objective's numerical aperture.
+    na: f64,
+    /// The emission's wavelength, in µm.
+    wavelength_um: f64,
+    /// The medium's refractive index: 1 for a dry objective.
+    medium: f64,
+    /// A voxel's size, in µm: x, y and z.
+    voxel_um: [f64; 3],
+}
+
+/// `volume.psf`: Born and Wolf's widefield PSF for the stack, sampled on
+/// its voxels over its depth either way, summing to 1, as a stack.
+pub(super) fn psf() -> Arc<dyn Node> {
+    let descriptor = Descriptor::new("volume.psf", 1, "volume", "Born and Wolf's widefield PSF")
+        .input("stack", PortType::Stack)
+        .output("psf", PortType::Stack)
+        .params::<PsfParams>()
+        .capabilities(STACKS);
+    try_node(descriptor, |p: PsfParams| {
+        let optics = oscope_volume::Optics {
+            na: p.na,
+            wavelength_um: p.wavelength_um,
+            medium: p.medium,
+        };
+        Ok(
+            move |_: &StepCtx<'_>, inputs: &Inputs<'_>| -> Result<Values, NodeError> {
+                let stack = Volume::from_planes(inputs.stack("stack")?).map_err(failed)?;
+                let kernel = oscope_volume::psf(&optics, p.voxel_um, stack.size).map_err(failed)?;
+                Ok(outputs([("psf", Value::stack(kernel.planes()))]))
+            },
+        )
+    })
+}
+
+/// `volume.deconvolve`'s parameters.
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct Deconvolve {
+    /// Richardson–Lucy's iterations.
+    #[serde(default = "twenty")]
+    #[schemars(range(min = 1, max = 500))]
+    iterations: u32,
+    /// Total variation's weight: 0 for none, 0.002 typical.
+    #[serde(default)]
+    tv: f32,
+}
+
+fn twenty() -> u32 {
+    20
+}
+
+/// `volume.deconvolve`: the stack deconvolved by the PSF, Richardson–Lucy
+/// over it padded by mirroring, on the GPU when there is one.
+pub(super) fn deconvolve() -> Arc<dyn Node> {
+    let descriptor = Descriptor::new(
+        "volume.deconvolve",
+        1,
+        "volume",
+        "Richardson–Lucy deconvolution",
+    )
+    .input("stack", PortType::Stack)
+    .input("psf", PortType::Stack)
+    .output("stack", PortType::Stack)
+    .params::<Deconvolve>()
+    .capabilities(STACKS);
+    try_node(descriptor, |Deconvolve { iterations, tv }| {
+        let options = DeconvolveOptions { iterations, tv };
+        Ok(
+            move |ctx: &StepCtx<'_>, inputs: &Inputs<'_>| -> Result<Values, NodeError> {
+                let stack = Volume::from_planes(inputs.stack("stack")?).map_err(failed)?;
+                let kernel = Volume::from_planes(inputs.stack("psf")?).map_err(failed)?;
+                let mut going = |_: u32| !ctx.is_cancelled();
+                let sharpened =
+                    oscope_volume::deconvolve(&stack, &kernel, &options, ctx.compute(), &mut going)
+                        .map_err(failed)?
+                        .ok_or(NodeError::Cancelled)?;
+                Ok(outputs([("stack", Value::stack(sharpened.planes()))]))
             },
         )
     })

@@ -7,12 +7,19 @@
 //!   focus measure peaks through a stack, with a confidence; and the
 //!   all-in-focus image (P42).
 //! - **[`mesh`]:** a height map as a mesh, in PLY, STL or OBJ (P42).
+//! - **[`mod@psf`]:** Born and Wolf's widefield point spread function (P43).
+//! - **[`mod@deconvolve`]:** Richardson–Lucy deconvolution, with total
+//!   variation if asked, on the CPU or the GPU, and the NRMSE (P43).
 
+pub mod deconvolve;
 pub mod depth;
 pub mod mesh;
+pub mod psf;
 
+pub use deconvolve::{DeconvolveOptions, Padded, Volume, deconvolve, nrmse, richardson_lucy};
 pub use depth::{AllInFocus, Depth, FocusOptions, Peaks, Planes, all_in_focus, depth_from_focus};
 pub use mesh::{Mesh, MeshFormat, MeshOptions, write_mesh};
+pub use psf::{Optics, psf};
 
 use std::path::PathBuf;
 

@@ -255,7 +255,7 @@ async fn walk(
     let (_, sure) = floats(&fetch(address, &brick(&confidence)).await?.body)?;
     let [w, h, _] = size;
     // Each cell's place on the stage, through the scan's field: its frame's
-    // corners about the stack's place, the cells two pixels across.
+    // corners about where the stage was, the cells two pixels across.
     let contents = get(address, &format!("/api/v1/projects/project/{project}"))
         .await?
         .json()?;
@@ -268,6 +268,13 @@ async fn walk(
         ])
     };
     let (tl, tr, bl) = (corner(0)?, corner(1)?, corner(3)?);
+    // Where the stage was, as the first frame records it: the stage's play
+    // may leave it a few µm from where it was sent.
+    let place = &contents["acquisitions"][0]["frames"][0]["position"];
+    let centre = [
+        place["x"].as_f64().context("a frame's x")?,
+        place["y"].as_f64().context("a frame's y")?,
+    ];
     let truth: Vec<f64> = {
         let world = world.read().unwrap_or_else(PoisonError::into_inner);
         (0..w * h)
@@ -276,7 +283,7 @@ async fn walk(
                     (2 * (i % w) + 1) as f64 / (2 * w) as f64,
                     (2 * (i / w) + 1) as f64 / (2 * h) as f64,
                 );
-                let at = |k: usize| [x, y][k] + tl[k] + u * (tr[k] - tl[k]) + v * (bl[k] - tl[k]);
+                let at = |k: usize| centre[k] + tl[k] + u * (tr[k] - tl[k]) + v * (bl[k] - tl[k]);
                 world
                     .in_focus(Point2::new(at(0), at(1)))
                     .map_or(f64::NAN, |z| z.0)
