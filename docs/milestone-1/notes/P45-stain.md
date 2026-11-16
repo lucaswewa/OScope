@@ -30,7 +30,7 @@ Written before the code, from the sources at its end ([spec](../phases.md#p45); 
    - So its amounts are a = OD · M⁻¹, each in units of its stain's vector.
    - **Refused:** vectors that aren't independent (|det M| under 10⁻³), or that have a component that is negative or not finite. The residual's components may be negative.
 5. **Macenko's estimate** of two stains' vectors from the image (Macenko et al., 2009):
-   - The pixels used are those whose OD is at least β = 0.15 in every channel: glass and the faintest stain left out.
+   - The pixels used are those whose optical densities, as a vector, have a length of at least β = 0.15: glass and the faintest stain are left out. (Revised while writing the tests: requiring β in every channel would leave out eosin alone, whose red and blue densities are small, so its vector couldn't be found.)
    - Their OD vectors' second moments, about the origin, have three eigenvectors (Jacobi's method). The two with the largest eigenvalues span the plane of the stains.
    - Each pixel's OD is projected on that plane, at angle φ. The stains' vectors are at φ's 1st and 99th percentiles, so outliers don't decide them.
    - Each vector is turned so its components sum positive. The one with more red OD comes first: hematoxylin, then eosin or DAB.
@@ -70,10 +70,11 @@ Written before the code, from the sources at its end ([spec](../phases.md#p45); 
 
 - **Deconvolution:**
   - **Synthetic pixels** made from known amounts by Beer–Lambert give their amounts back within 10⁻⁵, for H&E, H-DAB and three vectors given, and within 10⁻² once quantised to 8 bits.
-  - **The simulator's H&E and H-DAB sections,** rendered at known places, give back its amounts of each stain within 10⁻³, pixel by pixel.
+  - **The simulator's H&E and H-DAB sections,** rendered at known places, give back its amounts of each stain within 10⁻⁴, pixel by pixel. (Tightened from 10⁻³ while checking the tests: 10⁻³ couldn't tell the vectors' lengths, which differ from 1 by up to 0.2 %.) DAB lies only in the positive nuclei.
 - **Macenko's estimate:**
   - from synthetic two-stain images with spread amounts, within 2° of the vectors;
-  - from the simulator's H&E section, within 5°.
+  - from the simulator's H&E section, within 7°. (Revised while writing the tests from 5°: the section's nuclei hold eosin and its stroma hematoxylin, so no pixel is one stain alone, and each vector leans towards the other, 5.7° and 5.3°.)
+  - from the simulator's H-DAB section, hematoxylin within 1°, and DAB within 20°. (Added while writing the tests: DAB lies only in nuclei that hold hematoxylin too, so its vector leans 16.5° towards hematoxylin. So the job uses the stains' own vectors unless asked to estimate.)
 - **DAB:** synthetic patches with known fractions of each bin give their counts, percentage and H-score exactly, and pixels at the thresholds fall in the bins above them.
 - **The nodes** give what the library gives, and `stain.deconvolve` and `stain.dab` give the same tiled or whole.
 - **The job:**
@@ -81,9 +82,9 @@ Written before the code, from the sources at its end ([spec](../phases.md#p45); 
   - its summary, and a cancel;
   - refusals.
 - **The example's smoke:**
-  - the H&E slide's residual is small against its stains' amounts;
-  - Macenko's vectors are within 5° of H&E's;
-  - the H-DAB slide's positive percentage and H-score are between those of none and all of the nuclei positive.
+  - the H&E slide's residual is under a tenth of its stains' mean amounts, and under half of what H-DAB's vectors leave there (made definite while writing the example);
+  - Macenko's vectors are within 7° of H&E's;
+  - the H-DAB slide's positive percentage is between 1 % and 40 %, and its H-score between one and three times it (made definite while writing the example: 40 % of the nuclei are positive, and they cover only part of the tissue).
 
 ### Sources
 

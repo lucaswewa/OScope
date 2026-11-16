@@ -40,13 +40,14 @@ dye = "far-red"
 fn the_catalogue_lists_its_samples_and_their_truth() {
     // The built-in samples, each with ground truth.
     let builtin = SampleCatalogue::builtin();
-    assert_eq!(builtin.samples.len(), 6);
+    assert_eq!(builtin.samples.len(), 7);
     assert!(builtin.samples.iter().all(|s| s.has_ground_truth()));
     let kinds: Vec<&str> = builtin.samples.iter().map(|s| s.kind.as_str()).collect();
     assert_eq!(
         kinds,
         [
             "tissue",
+            "ihc-tissue",
             "test-target",
             "surface",
             "cells",
@@ -61,6 +62,7 @@ fn the_catalogue_lists_its_samples_and_their_truth() {
     assert_eq!(
         names,
         [
+            "H-DAB tissue",
             "test target",
             "reflective surface",
             "fluorescent cells",

@@ -181,7 +181,7 @@ async fn the_simulation_lists_loads_unloads_and_imports_samples() {
     let (client, _) = sim_server(folder.path(), 1.0).await;
     let samples = client.get("/api/v1/simulation/samples").await.json();
     let samples = samples.as_array().unwrap();
-    assert_eq!(samples.len(), 6);
+    assert_eq!(samples.len(), 7);
     assert!(samples.iter().all(|s| s["ground_truth"] == true));
     assert_eq!(
         client.get("/api/v1/simulation/loaded").await.json(),
@@ -241,7 +241,7 @@ async fn the_simulation_lists_loads_unloads_and_imports_samples() {
             .as_array()
             .unwrap()
             .len(),
-        7
+        8
     );
 }
 

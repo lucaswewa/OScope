@@ -8,7 +8,8 @@
 //! acquisition into a mosaic, `stitch.run` (ADR-0027); and the one that
 //! finds a z-stack's heights and all-in-focus image,
 //! `volume.depth_from_focus` (P42); and the one that deconvolves a volume,
-//! `volume.deconvolve` (P43). Acquisitions and results carry annotations in
+//! `volume.deconvolve` (P43); and the one that separates an image's
+//! stains, `stain.separate` (P45). Acquisitions and results carry annotations in
 //! µm, in layers, kept and removed here, and measured: lengths, areas and
 //! their pixels' statistics, as JSON or CSV (P44).
 
@@ -24,6 +25,7 @@ use oscope_store::{
 };
 use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
 use oscope_workflows::depth::{DEPTH, depth_jobs};
+use oscope_workflows::stain::{SEPARATE, stain_jobs};
 use oscope_workflows::stitch::{STITCH, stitch_jobs};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -180,6 +182,7 @@ impl ProjectsThing {
             jobs.register(STITCH, stitch_jobs(Arc::clone(&store)));
             jobs.register(DEPTH, depth_jobs(Arc::clone(&store)));
             jobs.register(DECONVOLVE, deconvolve_jobs(Arc::clone(&store)));
+            jobs.register(SEPARATE, stain_jobs(Arc::clone(&store)));
             // Recordings from the scratch space, ingested as jobs (ADR-0022).
             if let Some(scratch) = ctx.server().service::<Scratch>() {
                 jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));

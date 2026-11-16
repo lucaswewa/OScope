@@ -1,5 +1,6 @@
 //! The procedural H&E tissue: a stained section in islands, with holes,
-//! uneven thickness, nuclei, stroma and cytoplasm (D23).
+//! uneven thickness, nuclei, stroma and cytoplasm (D23); and the same
+//! section stained for immunohistochemistry, hematoxylin and DAB (P45).
 
 use std::f64::consts::PI;
 
@@ -13,9 +14,15 @@ use crate::sample::{Layer, LayerKind, Sample, render_pixels};
 /// stain, normalised (Ruifrok and Johnston, 2001).
 const HEMATOXYLIN: [f64; 3] = [0.650, 0.704, 0.286];
 const EOSIN: [f64; 3] = [0.072, 0.990, 0.105];
+const DAB: [f64; 3] = [0.268, 0.570, 0.776];
 /// Optical density per µm of section, for an amount of 1 of each stain.
 const PER_UM_H: f64 = 0.35;
 const PER_UM_E: f64 = 0.12;
+const PER_UM_DAB: f64 = 0.25;
+/// The share of nuclei with DAB in an H-DAB section, and their amounts:
+/// weak, moderate and strong, in equal numbers.
+const DAB_POSITIVE: f64 = 0.4;
+const DAB_LEVELS: [f64; 3] = [0.5, 1.0, 1.6];
 
 /// What each hash is for.
 const ISLANDS: u64 = 1;
@@ -43,6 +50,9 @@ pub struct Nucleus {
     pub layer: usize,
     /// Its amount of hematoxylin.
     pub hematoxylin: f64,
+    /// Its amount of DAB: none in H&E, or in an H-DAB section unless it is
+    /// negative (P45).
+    pub dab: f64,
 }
 
 impl Nucleus {
@@ -86,6 +96,9 @@ impl Island {
 ///   through it at high magnification brings different nuclei into focus.
 /// - **Eosin** stains the stroma's fibres, and the cytoplasm around each
 ///   nucleus.
+/// - **Or, stained for immunohistochemistry** ([`HeTissue::ihc`]), the same
+///   section has hematoxylin and no eosin, and DAB in 40 % of its nuclei,
+///   weak, moderate or strong.
 ///
 /// Everything follows from the seed (ADR-0013).
 #[derive(Clone, Debug)]
@@ -94,6 +107,7 @@ pub struct HeTissue {
     bounds: Rect,
     islands: Vec<Island>,
     layers: Vec<Layer>,
+    dab: bool,
 }
 
 impl HeTissue {
@@ -136,6 +150,25 @@ impl HeTissue {
             bounds,
             islands,
             layers: vec![half("lower half", 1.0), half("upper half", 3.0)],
+            dab: false,
+        }
+    }
+
+    /// The section from `seed` stained for immunohistochemistry: hematoxylin
+    /// and DAB, its nuclei the H&E section's (P45).
+    pub fn ihc(seed: u64, bounds: Rect) -> Self {
+        Self {
+            dab: true,
+            ..Self::new(seed, bounds)
+        }
+    }
+
+    /// The second stain's optical density per µm, and its vector: eosin's,
+    /// or DAB's.
+    fn second(&self) -> (f64, [f64; 3]) {
+        match self.dab {
+            true => (PER_UM_DAB, DAB),
+            false => (PER_UM_E, EOSIN),
         }
     }
 
@@ -188,6 +221,7 @@ impl HeTissue {
             angle: PI * nth(h, 5),
             layer: 0,
             hematoxylin: 0.0,
+            dab: 0.0,
         })
     }
 
@@ -231,16 +265,50 @@ impl HeTissue {
             angle: PI * nth(h, 5),
             layer: (h >> 63) as usize,
             hematoxylin: 0.75 + 0.5 * nth(h, 6),
+            dab: match self.dab && nth(h, 7) < DAB_POSITIVE {
+                true => DAB_LEVELS[(nth(h, 8) * 3.0) as usize % 3],
+                false => 0.0,
+            },
         })
     }
 
     /// The optical density of half-section `layer` over the pixel of side
     /// `pixel` whose corner is at `(x0, y0)`.
     fn density(&self, layer: usize, x0: f64, y0: f64, pixel: f64) -> [f32; 3] {
+        let (amount, hematoxylin, second) = self.stains(layer, x0, y0, pixel);
+        let (per_um, vector) = self.second();
+        let od = |c: usize| {
+            (amount * (PER_UM_H * hematoxylin * HEMATOXYLIN[c] + per_um * second * vector[c]))
+                as f32
+        };
+        [od(0), od(1), od(2)]
+    }
+
+    /// Each stain's amount at `at`, through the section's depth, over a
+    /// pixel of side `pixel` centred there: hematoxylin's, and eosin's or
+    /// DAB's, in units of their vectors normalised, as colour deconvolution
+    /// gives them (P45's truth).
+    pub fn stain_amounts(&self, at: Point2, pixel: f64) -> [f64; 2] {
+        let (x0, y0) = (at.x - pixel / 2.0, at.y - pixel / 2.0);
+        let (per_um, vector) = self.second();
+        let length = |v: [f64; 3]| v.iter().map(|x| x * x).sum::<f64>().sqrt();
+        (0..self.layers.len()).fold([0.0; 2], |sum, layer| {
+            let (amount, hematoxylin, second) = self.stains(layer, x0, y0, pixel);
+            [
+                sum[0] + amount * PER_UM_H * hematoxylin * length(HEMATOXYLIN),
+                sum[1] + amount * per_um * second * length(vector),
+            ]
+        })
+    }
+
+    /// Half-section `layer`'s stains over the pixel of side `pixel` whose
+    /// corner is at `(x0, y0)`: its thickness of tissue, in µm, and its
+    /// amounts of hematoxylin and of the second stain, eosin or DAB.
+    fn stains(&self, layer: usize, x0: f64, y0: f64, pixel: f64) -> (f64, f64, f64) {
         let (x, y) = (x0 + pixel / 2.0, y0 + pixel / 2.0);
         let (tissue, depth) = self.tissue(x, y, pixel);
         if tissue == 0.0 {
-            return [0.0; 3];
+            return (0.0, 0.0, 0.0);
         }
         let thinning = 0.6 + 0.4 * (depth / 150.0).clamp(0.0, 1.0);
         let thickness = Self::THICKNESS.0
@@ -250,7 +318,7 @@ impl HeTissue {
         // Nuclei, and the cytoplasm around them.
         let cell = Self::CELL;
         let (i, j) = ((x / cell).floor() as i64, (y / cell).floor() as i64);
-        let (mut nucleus, mut cytoplasm): (f64, f64) = (0.0, 0.0);
+        let (mut nucleus, mut cytoplasm, mut dab): (f64, f64, f64) = (0.0, 0.0, 0.0);
         for (di, dj) in NEIGHBOURS {
             let Some(n) = self.nucleus(i + di, j + dj).filter(|n| n.layer == layer) else {
                 continue;
@@ -258,6 +326,7 @@ impl HeTissue {
             let d = n.distance(x, y);
             nucleus = nucleus.max(coverage(d, pixel) * n.hematoxylin);
             cytoplasm = cytoplasm.max(coverage(d - 2.5, pixel));
+            dab = dab.max(coverage(d, pixel) * n.dab);
         }
         if nucleus > 0.0 {
             nucleus *= 0.7 + 0.6 * fractal(self.seed, CHROMATIN, x, y, 1.6, 3, pixel);
@@ -274,13 +343,8 @@ impl HeTissue {
         let stroma = 0.25 + 0.6 * fibres;
         let eosin = (stroma + (0.45 - stroma) * cytoplasm) * (1.0 - 0.6 * nucleus.min(1.0));
         let hematoxylin = nucleus + 0.04;
-
-        let amount = tissue * thickness / 2.0;
-        let od = |c: usize| {
-            (amount * (PER_UM_H * hematoxylin * HEMATOXYLIN[c] + PER_UM_E * eosin * EOSIN[c]))
-                as f32
-        };
-        [od(0), od(1), od(2)]
+        let second = if self.dab { dab } else { eosin };
+        (tissue * thickness / 2.0, hematoxylin, second)
     }
 
     /// The nuclei whose centres lie in `region`, and in tissue.
@@ -318,7 +382,10 @@ const NEIGHBOURS: [(i64, i64); 9] = [
 
 impl Sample for HeTissue {
     fn name(&self) -> &str {
-        "H&E tissue"
+        match self.dab {
+            true => "H-DAB tissue",
+            false => "H&E tissue",
+        }
     }
 
     fn layers(&self) -> &[Layer] {
