@@ -7,7 +7,7 @@ A sample Python extension for OScope (P36, [ADR-0025](../../docs/adr/0025-scan-p
 
 ## How to try it
 
-`ex-scan` installs it when uv is installed, and scans with it: see [its README](../ex-scan/README.md). By hand, pack it, then install the package into a server's extensions:
+The examples' servers don't load extensions, so [`ex-scan`](../ex-scan/README.md) doesn't use it. With uv installed, the API's test `a_python_workflow_plans_a_spiral_that_the_engine_runs` packs it, installs it, and plans and runs a ring of 9 tiles: `OSCOPE_PYTHON=1 cargo test -p oscope-api --test scan`. By hand, pack it, then install the package into a server's extensions:
 
 ```sh
 cargo run -p oscope-server -- ext pack examples/ext-python-workflow
