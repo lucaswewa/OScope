@@ -91,6 +91,23 @@ pub struct Rendered {
     pub recipe: Option<Duration>,
 }
 
+/// A preview before its JPEG.
+#[derive(Clone, Debug)]
+pub struct Displayed {
+    /// Its 8-bit RGB, by rows.
+    pub rgb: Vec<u8>,
+    /// The sensor's pixels it shows, as [`Rendered::roi`].
+    pub roi: PixelRect,
+    /// Its width in pixels.
+    pub width: u32,
+    /// Its height.
+    pub height: u32,
+    /// Whether the GPU made it.
+    pub gpu: bool,
+    /// How long the live recipe took, if one ran.
+    pub recipe: Option<Duration>,
+}
+
 /// What can't be previewed.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 #[non_exhaustive]
@@ -205,6 +222,31 @@ impl Preview {
         gpu: bool,
     ) -> Result<Rendered, PreviewError> {
         let started = Instant::now();
+        let shown = self.display(frame, request, look, gpu)?;
+        let (rgb, width, height) = (&shown.rgb, shown.width, shown.height);
+        let jpeg = self.compute.pools().install(Lane::Live, || {
+            color::encode_jpeg(rgb, width, height, request.quality)
+        })?;
+        Ok(Rendered {
+            jpeg,
+            roi: shown.roi,
+            width,
+            height,
+            gpu: shown.gpu,
+            took: started.elapsed(),
+            recipe: shown.recipe,
+        })
+    }
+
+    /// `frame` as [`render`](Self::render) makes it, before its JPEG: such
+    /// as the live mosaic draws (P38).
+    pub fn display(
+        &self,
+        frame: &Frame,
+        request: &PreviewRequest,
+        look: &Look,
+        gpu: bool,
+    ) -> Result<Displayed, PreviewError> {
         let meta = frame.meta();
         let view = frame.view();
         let format = view.format();
@@ -245,15 +287,12 @@ impl Preview {
         self.compute.pools().install(Lane::Live, || {
             let coloured = self.colour(&view, &steps, gpu, recipe.as_ref(), region)?;
             let (pixels, shape, on_gpu, recipe) = coloured;
-            let rgb = resize::resize(&pixels, shape, width, height);
-            let jpeg = color::encode_jpeg(&rgb, width, height, request.quality)?;
-            Ok(Rendered {
-                jpeg,
+            Ok(Displayed {
+                rgb: resize::resize(&pixels, shape, width, height),
                 roi,
                 width,
                 height,
                 gpu: on_gpu,
-                took: started.elapsed(),
                 recipe,
             })
         })

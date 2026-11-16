@@ -10,7 +10,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
-use oscope_acquire::preview::wire::{Header, MASK, STATISTICS};
+use oscope_acquire::mosaic::LookSource;
+use oscope_acquire::preview::wire::{Header, MASK, STATISTICS, TILES};
 use oscope_acquire::preview::{
     Adaptation, LiveRecipe, Look, Preview, PreviewError, PreviewRequest, Rendered, RingSettings,
     publish,
@@ -29,6 +30,7 @@ use teta_wot::prelude::*;
 
 use crate::batch;
 use crate::devices::Devices;
+use crate::mosaic::Mosaics;
 use crate::server::{RingSlot, Roots};
 
 /// How many messages a client that acknowledges may have unshown.
@@ -133,6 +135,9 @@ pub struct PreviewParams {
     /// Live statistics to send with the previews, at most 10 times a
     /// second (ADR-0035): none when not given.
     pub stats: Option<StatsRequest>,
+    /// Whether to send the live mosaic's tiles changed since the last
+    /// message, as a block with each message that has some (ADR-0026).
+    pub mosaic: Option<bool>,
 }
 
 impl PreviewParams {
@@ -273,6 +278,8 @@ struct Service {
     engine: Arc<Engine>,
     /// Where references are kept.
     references: PathBuf,
+    /// The live mosaics, whose changed tiles go with the previews.
+    mosaics: Option<Arc<Mosaics>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -453,11 +460,20 @@ impl PreviewThing {
             let settings = self.ring_settings();
             tokio::spawn(publish(preview.clone(), frames, clock, ring, settings));
         }
+        // The live mosaic draws as the previews do (ADR-0026).
+        let mosaics = ctx.server().service::<Mosaics>();
+        if let Some(mosaics) = &mosaics {
+            let (look, cpu_only) = (self.look.subscribe(), self.cpu_only.subscribe());
+            let source: LookSource =
+                Arc::new(move || (Look::from(&*look.borrow()), !*cpu_only.borrow()));
+            mosaics.set_drawing(preview.clone(), source);
+        }
         let _ = self.service.set(Service {
             devices,
             preview,
             engine,
             references,
+            mosaics,
         });
         // The saved live recipe, checked again: a reference it reads may
         // have gone.
@@ -624,6 +640,7 @@ impl PreviewThing {
         let (mut adaptation, mut meter) = (Adaptation::default(), Meter::default());
         let (mut sequence, mut replaced, mut skipped, mut warned) = (0_u32, 0, 0, false);
         let (mut next, mut measured) = (Instant::now(), None::<Instant>);
+        let mut seen = None;
         'session: loop {
             tokio::select! {
                 () = tokio::time::sleep_until(next.into()) => {}
@@ -676,7 +693,7 @@ impl PreviewThing {
                 Ok::<_, PreviewError>((rendered, frame, request.quality, blocks))
             })
             .await;
-            let (rendered, frame, quality, blocks) = match made {
+            let (rendered, frame, quality, mut blocks) = match made {
                 Ok(Ok(made)) => made,
                 Ok(Err(error)) => {
                     if !std::mem::replace(&mut warned, true) {
@@ -686,6 +703,13 @@ impl PreviewThing {
                 }
                 Err(_) => break,
             };
+            let measuring = !blocks.is_empty();
+            if subscriber.params().mosaic == Some(true)
+                && let Some(mosaics) = &service.mosaics
+                && let Some(changed) = mosaics.changes(&mut seen)
+            {
+                blocks.push((TILES, changed));
+            }
             let ready = service.devices.clock.now();
             let header = Header::of(&frame, &rendered, quality, sequence, ready);
             let latency = header.ready.saturating_since(header.exposure_end);
@@ -697,7 +721,7 @@ impl PreviewThing {
             }
             // Timed from the sending, so that messages with statistics go at
             // least 100 ms apart, however long each took to make.
-            if !blocks.is_empty() {
+            if measuring {
                 measured = Some(Instant::now());
             }
             sequence = sequence.wrapping_add(1);

@@ -27,11 +27,12 @@ use crate::extensions::ExtensionsThing;
 use crate::focus::{AutofocusThing, ExposureThing};
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
+use crate::mosaic::{LiveMosaicThing, Mosaics};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
 use crate::system::{System, VERSION};
-use crate::{data, media, pages};
+use crate::{data, media, mosaic, pages};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
 /// The OpenAPI document is at the root, `/openapi.json`, with its docs pages
@@ -86,10 +87,11 @@ pub enum ApiError {
 #[derive(Debug)]
 pub struct ApiBuilder {
     things: ThingServerBuilder,
-    pages: Option<PathBuf>,
+    pages: Vec<(String, PathBuf)>,
     logs: LogStore,
     restart: Arc<Restart>,
     store: Option<Arc<oscope_store::Store>>,
+    mosaics: Option<Arc<Mosaics>>,
 }
 
 /// A request to restart the server, which the `system` Thing's `restart`
@@ -142,8 +144,15 @@ impl ApiBuilder {
     /// `/index.html` give its `index.html`, `/js/app.js` its `js/app.js`.
     /// Each file is read when it is asked for, so an edit shows without a
     /// restart. The examples' pages use it.
-    pub fn pages(mut self, folder: impl Into<PathBuf>) -> Self {
-        self.pages = Some(folder.into());
+    pub fn pages(self, folder: impl Into<PathBuf>) -> Self {
+        self.pages_under("", folder)
+    }
+
+    /// Serves the files in `folder` under `/{prefix}/` as [`pages`](Self::pages)
+    /// does, such as the examples' vendored scripts under `/vendor/`.
+    pub fn pages_under(mut self, prefix: &str, folder: impl Into<PathBuf>) -> Self {
+        self.pages
+            .push((prefix.trim_matches('/').to_owned(), folder.into()));
         self
     }
 
@@ -165,13 +174,16 @@ impl ApiBuilder {
 
     /// Serves the instrument's `devices` as the Things `camera`, `stage`,
     /// `illumination` and `objective`, and `simulation` when a device is
-    /// simulated; and their frames' live `preview`.
+    /// simulated; and their frames' live `preview`, and `live_mosaic`.
     pub fn devices(mut self, devices: Arc<Devices>) -> Self {
         let simulated = devices.simulator.is_some();
+        let mosaics = Arc::new(Mosaics::default());
+        self.mosaics = Some(Arc::clone(&mosaics));
         self.things = self
             .things
             .service(devices)
             .service(Arc::new(Calibrations::default()))
+            .service(mosaics)
             .thing("camera", CameraThing::default())
             .thing("stage", StageThing::default())
             .thing("illumination", IlluminationThing::default())
@@ -181,7 +193,8 @@ impl ApiBuilder {
             .thing("calibration", CalibrationThing::default())
             .thing("autofocus", AutofocusThing::default())
             .thing("exposure", ExposureThing::default())
-            .thing("scan", ScanThing::default());
+            .thing("scan", ScanThing::default())
+            .thing("live_mosaic", LiveMosaicThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }
@@ -246,8 +259,11 @@ impl ApiBuilder {
         if let Some(store) = &self.store {
             routes = routes.merge(data::router(Arc::clone(store)));
         }
-        if let Some(folder) = &self.pages {
-            routes = routes.merge(pages::router(folder)?);
+        if let Some(mosaics) = &self.mosaics {
+            routes = routes.merge(mosaic::router(Arc::clone(mosaics)));
+        }
+        for (prefix, folder) in &self.pages {
+            routes = routes.merge(pages::router(prefix, folder)?);
         }
         let things = self
             .things
@@ -281,10 +297,11 @@ impl Api {
             .thing("system", System::from_config(roots.clone()));
         ApiBuilder {
             things,
-            pages: None,
+            pages: Vec::new(),
             logs: LogStore::default(),
             restart,
             store: None,
+            mosaics: None,
         }
     }
 

@@ -1,0 +1,1125 @@
+---
+source: crates/oscope-api/tests/devices.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Live mosaic",
+  "properties": {
+    "state": {
+      "description": "Its canvas, whether it is drawing, how many frames became what, and\nits tiles.",
+      "title": "How the live mosaic is.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "mosaic": {
+          "description": "Its number, from 1 since the server started: 0 before any.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "drawing": {
+          "description": "Whether it is drawing.",
+          "type": "boolean"
+        },
+        "roaming": {
+          "description": "Whether it draws the live stream's frames.",
+          "type": "boolean"
+        },
+        "canvas": {
+          "description": "Its canvas, once one is made: its tiles are `tile` pixels square,\nin `levels` levels.",
+          "oneOf": [
+            {
+              "description": "Where a canvas lies on the stage, and how fine it is.",
+              "type": "object",
+              "properties": {
+                "x_um": {
+                  "description": "The stage's x at the canvas's left edge, in µm.",
+                  "type": "number"
+                },
+                "y_um": {
+                  "description": "The stage's y at its top edge.",
+                  "type": "number"
+                },
+                "pixel_um": {
+                  "description": "A pixel's side at level 0, in µm.",
+                  "type": "number"
+                },
+                "width": {
+                  "description": "Its width at level 0, in pixels.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "height": {
+                  "description": "Its height at level 0.",
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "x_um",
+                "y_um",
+                "pixel_um",
+                "width",
+                "height"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "levels": {
+          "description": "How many levels its canvas has.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "tile": {
+          "description": "A tile's side, in pixels.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "blend": {
+          "description": "How frames are drawn over what is there.",
+          "oneOf": [
+            {
+              "description": "The newest frame wins wherever it lies.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "newest",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "Its edges fade into what is there, over `width_px` canvas pixels;\nwhere nothing is, it is drawn whole.",
+              "type": "object",
+              "properties": {
+                "width_px": {
+                  "description": "How far in from its edges it fades, in canvas pixels.",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "feather",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "width_px"
+              ]
+            }
+          ]
+        },
+        "counts": {
+          "description": "How many frames became what.",
+          "type": "object",
+          "properties": {
+            "drawn": {
+              "description": "Drawn.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "scans": {
+              "description": "Of those drawn, a scan's.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "blurred": {
+              "description": "Blurred by the stage's moving.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "same": {
+              "description": "Showing a place drawn, and no sharper.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "unplaced": {
+              "description": "Without a position.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "other": {
+              "description": "Through another objective, or at another binning.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "outside": {
+              "description": "Off the canvas.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "description": "That failed to draw.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "description": "A scan's frames not drawn, as too many were waiting.",
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "drawn",
+            "scans",
+            "blurred",
+            "same",
+            "unplaced",
+            "other",
+            "outside",
+            "failed",
+            "dropped"
+          ]
+        },
+        "tiles": {
+          "description": "Its tiles, at every level.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "memory_mb": {
+          "description": "The memory its tiles take, in MB.",
+          "type": "number"
+        },
+        "generation": {
+          "description": "Its generation: the preview stream tells a client of the tiles\nchanged since the one it last saw.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "mosaic",
+        "drawing",
+        "roaming",
+        "levels",
+        "tile",
+        "blend",
+        "counts",
+        "tiles",
+        "memory_mb",
+        "generation"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/live_mosaic/state",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "begin": {
+      "description": "On a new canvas, as `request` asks, through the objective fitted and\nthe camera's binning, by their calibration or the nominal pixel. The\nmosaic before stops, and its tiles go.",
+      "title": "Begins a new live mosaic.",
+      "forms": [
+        {
+          "href": "/api/v1/live_mosaic/begin",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "begin_input",
+        "type": "object",
+        "properties": {
+          "request": {
+            "oneOf": [
+              {
+                "description": "What a live mosaic is asked to be, each part with a default.",
+                "type": "object",
+                "properties": {
+                  "region": {
+                    "description": "The part of the stage it covers, in µm: the stage's travel if not\ngiven.",
+                    "oneOf": [
+                      {
+                        "description": "An axis-aligned rectangle: its corner of least x and y, and its size.",
+                        "type": "object",
+                        "properties": {
+                          "origin": {
+                            "description": "The corner of least x and y: the top left, in an image.",
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "description": "Across.",
+                                "type": "number"
+                              },
+                              "y": {
+                                "description": "Down, in an image.",
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ]
+                          },
+                          "size": {
+                            "description": "Its size.",
+                            "type": "object",
+                            "properties": {
+                              "width": {
+                                "description": "Along x.",
+                                "type": "number"
+                              },
+                              "height": {
+                                "description": "Along y.",
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "width",
+                              "height"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "origin",
+                          "size"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pixel_um": {
+                    "description": "Its pixel at level 0, in µm: twice the frames' if not given.",
+                    "oneOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "blend": {
+                    "description": "How frames are drawn over what is there: the newest wins.",
+                    "oneOf": [
+                      {
+                        "description": "The newest frame wins wherever it lies.",
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "newest",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "description": "Its edges fade into what is there, over `width_px` canvas pixels;\nwhere nothing is, it is drawn whole.",
+                        "type": "object",
+                        "properties": {
+                          "width_px": {
+                            "description": "How far in from its edges it fades, in canvas pixels.",
+                            "type": "number"
+                          },
+                          "kind": {
+                            "const": "feather",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "width_px"
+                        ]
+                      }
+                    ],
+                    "default": {
+                      "kind": "newest"
+                    }
+                  },
+                  "roam": {
+                    "description": "Whether it draws the live stream's frames as the stage roams, or\nonly scans': it roams, unless `false`.",
+                    "oneOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "gates": {
+                    "description": "Free roaming's gates.",
+                    "default": {
+                      "blur_px": 1.0,
+                      "near": 0.25,
+                      "sharper": 1.1
+                    },
+                    "type": "object",
+                    "properties": {
+                      "blur_px": {
+                        "description": "The most the stage may move during a frame's exposure, in canvas\npixels: 1.",
+                        "default": 1.0,
+                        "type": "number"
+                      },
+                      "near": {
+                        "description": "How near a frame drawn, as a part of the frame's shorter side, a\nframe shows the same place: 0.25.",
+                        "default": 0.25,
+                        "type": "number"
+                      },
+                      "sharper": {
+                        "description": "How many times sharper than the sharpest drawn at its place a frame\nmust be to be drawn over it: 1.1.",
+                        "default": 1.1,
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "memory_mb": {
+                    "description": "The most memory its tiles take, in MB: 256. The rest go to the\nscratch disk.",
+                    "oneOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "How the live mosaic is.",
+        "title": "begin_output",
+        "type": "object",
+        "properties": {
+          "mosaic": {
+            "description": "Its number, from 1 since the server started: 0 before any.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "description": "Whether it is drawing.",
+            "type": "boolean"
+          },
+          "roaming": {
+            "description": "Whether it draws the live stream's frames.",
+            "type": "boolean"
+          },
+          "canvas": {
+            "description": "Its canvas, once one is made: its tiles are `tile` pixels square,\nin `levels` levels.",
+            "oneOf": [
+              {
+                "description": "Where a canvas lies on the stage, and how fine it is.",
+                "type": "object",
+                "properties": {
+                  "x_um": {
+                    "description": "The stage's x at the canvas's left edge, in µm.",
+                    "type": "number"
+                  },
+                  "y_um": {
+                    "description": "The stage's y at its top edge.",
+                    "type": "number"
+                  },
+                  "pixel_um": {
+                    "description": "A pixel's side at level 0, in µm.",
+                    "type": "number"
+                  },
+                  "width": {
+                    "description": "Its width at level 0, in pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "height": {
+                    "description": "Its height at level 0.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "x_um",
+                  "y_um",
+                  "pixel_um",
+                  "width",
+                  "height"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "levels": {
+            "description": "How many levels its canvas has.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "tile": {
+            "description": "A tile's side, in pixels.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "blend": {
+            "description": "How frames are drawn over what is there.",
+            "oneOf": [
+              {
+                "description": "The newest frame wins wherever it lies.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "newest",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Its edges fade into what is there, over `width_px` canvas pixels;\nwhere nothing is, it is drawn whole.",
+                "type": "object",
+                "properties": {
+                  "width_px": {
+                    "description": "How far in from its edges it fades, in canvas pixels.",
+                    "type": "number"
+                  },
+                  "kind": {
+                    "const": "feather",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "width_px"
+                ]
+              }
+            ]
+          },
+          "counts": {
+            "description": "How many frames became what.",
+            "type": "object",
+            "properties": {
+              "drawn": {
+                "description": "Drawn.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "scans": {
+                "description": "Of those drawn, a scan's.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "blurred": {
+                "description": "Blurred by the stage's moving.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "same": {
+                "description": "Showing a place drawn, and no sharper.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "unplaced": {
+                "description": "Without a position.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "other": {
+                "description": "Through another objective, or at another binning.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "outside": {
+                "description": "Off the canvas.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "failed": {
+                "description": "That failed to draw.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "dropped": {
+                "description": "A scan's frames not drawn, as too many were waiting.",
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "drawn",
+              "scans",
+              "blurred",
+              "same",
+              "unplaced",
+              "other",
+              "outside",
+              "failed",
+              "dropped"
+            ]
+          },
+          "tiles": {
+            "description": "Its tiles, at every level.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "memory_mb": {
+            "description": "The memory its tiles take, in MB.",
+            "type": "number"
+          },
+          "generation": {
+            "description": "Its generation: the preview stream tells a client of the tiles\nchanged since the one it last saw.",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "mosaic",
+          "drawing",
+          "roaming",
+          "levels",
+          "tile",
+          "blend",
+          "counts",
+          "tiles",
+          "memory_mb",
+          "generation"
+        ]
+      },
+      "synchronous": false
+    },
+    "clear": {
+      "description": "Its canvas is emptied; it goes on drawing if it was.",
+      "title": "Clears the live mosaic.",
+      "forms": [
+        {
+          "href": "/api/v1/live_mosaic/clear",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "clear_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "description": "How the live mosaic is.",
+        "title": "clear_output",
+        "type": "object",
+        "properties": {
+          "mosaic": {
+            "description": "Its number, from 1 since the server started: 0 before any.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "description": "Whether it is drawing.",
+            "type": "boolean"
+          },
+          "roaming": {
+            "description": "Whether it draws the live stream's frames.",
+            "type": "boolean"
+          },
+          "canvas": {
+            "description": "Its canvas, once one is made: its tiles are `tile` pixels square,\nin `levels` levels.",
+            "oneOf": [
+              {
+                "description": "Where a canvas lies on the stage, and how fine it is.",
+                "type": "object",
+                "properties": {
+                  "x_um": {
+                    "description": "The stage's x at the canvas's left edge, in µm.",
+                    "type": "number"
+                  },
+                  "y_um": {
+                    "description": "The stage's y at its top edge.",
+                    "type": "number"
+                  },
+                  "pixel_um": {
+                    "description": "A pixel's side at level 0, in µm.",
+                    "type": "number"
+                  },
+                  "width": {
+                    "description": "Its width at level 0, in pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "height": {
+                    "description": "Its height at level 0.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "x_um",
+                  "y_um",
+                  "pixel_um",
+                  "width",
+                  "height"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "levels": {
+            "description": "How many levels its canvas has.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "tile": {
+            "description": "A tile's side, in pixels.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "blend": {
+            "description": "How frames are drawn over what is there.",
+            "oneOf": [
+              {
+                "description": "The newest frame wins wherever it lies.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "newest",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Its edges fade into what is there, over `width_px` canvas pixels;\nwhere nothing is, it is drawn whole.",
+                "type": "object",
+                "properties": {
+                  "width_px": {
+                    "description": "How far in from its edges it fades, in canvas pixels.",
+                    "type": "number"
+                  },
+                  "kind": {
+                    "const": "feather",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "width_px"
+                ]
+              }
+            ]
+          },
+          "counts": {
+            "description": "How many frames became what.",
+            "type": "object",
+            "properties": {
+              "drawn": {
+                "description": "Drawn.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "scans": {
+                "description": "Of those drawn, a scan's.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "blurred": {
+                "description": "Blurred by the stage's moving.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "same": {
+                "description": "Showing a place drawn, and no sharper.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "unplaced": {
+                "description": "Without a position.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "other": {
+                "description": "Through another objective, or at another binning.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "outside": {
+                "description": "Off the canvas.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "failed": {
+                "description": "That failed to draw.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "dropped": {
+                "description": "A scan's frames not drawn, as too many were waiting.",
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "drawn",
+              "scans",
+              "blurred",
+              "same",
+              "unplaced",
+              "other",
+              "outside",
+              "failed",
+              "dropped"
+            ]
+          },
+          "tiles": {
+            "description": "Its tiles, at every level.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "memory_mb": {
+            "description": "The memory its tiles take, in MB.",
+            "type": "number"
+          },
+          "generation": {
+            "description": "Its generation: the preview stream tells a client of the tiles\nchanged since the one it last saw.",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "mosaic",
+          "drawing",
+          "roaming",
+          "levels",
+          "tile",
+          "blend",
+          "counts",
+          "tiles",
+          "memory_mb",
+          "generation"
+        ]
+      },
+      "synchronous": false
+    },
+    "halt": {
+      "description": "It draws no more frames; its tiles stay to be seen.",
+      "title": "Halts the live mosaic.",
+      "forms": [
+        {
+          "href": "/api/v1/live_mosaic/halt",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "halt_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "description": "How the live mosaic is.",
+        "title": "halt_output",
+        "type": "object",
+        "properties": {
+          "mosaic": {
+            "description": "Its number, from 1 since the server started: 0 before any.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "description": "Whether it is drawing.",
+            "type": "boolean"
+          },
+          "roaming": {
+            "description": "Whether it draws the live stream's frames.",
+            "type": "boolean"
+          },
+          "canvas": {
+            "description": "Its canvas, once one is made: its tiles are `tile` pixels square,\nin `levels` levels.",
+            "oneOf": [
+              {
+                "description": "Where a canvas lies on the stage, and how fine it is.",
+                "type": "object",
+                "properties": {
+                  "x_um": {
+                    "description": "The stage's x at the canvas's left edge, in µm.",
+                    "type": "number"
+                  },
+                  "y_um": {
+                    "description": "The stage's y at its top edge.",
+                    "type": "number"
+                  },
+                  "pixel_um": {
+                    "description": "A pixel's side at level 0, in µm.",
+                    "type": "number"
+                  },
+                  "width": {
+                    "description": "Its width at level 0, in pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "height": {
+                    "description": "Its height at level 0.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "x_um",
+                  "y_um",
+                  "pixel_um",
+                  "width",
+                  "height"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "levels": {
+            "description": "How many levels its canvas has.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "tile": {
+            "description": "A tile's side, in pixels.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "blend": {
+            "description": "How frames are drawn over what is there.",
+            "oneOf": [
+              {
+                "description": "The newest frame wins wherever it lies.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "newest",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Its edges fade into what is there, over `width_px` canvas pixels;\nwhere nothing is, it is drawn whole.",
+                "type": "object",
+                "properties": {
+                  "width_px": {
+                    "description": "How far in from its edges it fades, in canvas pixels.",
+                    "type": "number"
+                  },
+                  "kind": {
+                    "const": "feather",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "width_px"
+                ]
+              }
+            ]
+          },
+          "counts": {
+            "description": "How many frames became what.",
+            "type": "object",
+            "properties": {
+              "drawn": {
+                "description": "Drawn.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "scans": {
+                "description": "Of those drawn, a scan's.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "blurred": {
+                "description": "Blurred by the stage's moving.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "same": {
+                "description": "Showing a place drawn, and no sharper.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "unplaced": {
+                "description": "Without a position.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "other": {
+                "description": "Through another objective, or at another binning.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "outside": {
+                "description": "Off the canvas.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "failed": {
+                "description": "That failed to draw.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "dropped": {
+                "description": "A scan's frames not drawn, as too many were waiting.",
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "drawn",
+              "scans",
+              "blurred",
+              "same",
+              "unplaced",
+              "other",
+              "outside",
+              "failed",
+              "dropped"
+            ]
+          },
+          "tiles": {
+            "description": "Its tiles, at every level.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "memory_mb": {
+            "description": "The memory its tiles take, in MB.",
+            "type": "number"
+          },
+          "generation": {
+            "description": "Its generation: the preview stream tells a client of the tiles\nchanged since the one it last saw.",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "mosaic",
+          "drawing",
+          "roaming",
+          "levels",
+          "tile",
+          "blend",
+          "counts",
+          "tiles",
+          "memory_mb",
+          "generation"
+        ]
+      },
+      "synchronous": false
+    }
+  },
+  "description": "The live mosaic: a mosaic that builds as frames arrive (ADR-0026).\n\nFrom the live stream as the stage roams, gated by motion blur, place\nand sharpness, and from the scans' tiles as they are taken. Its tiles\nare at `/api/v1/mosaic/tiles/{level}/{col}/{row}`.",
+  "forms": [
+    {
+      "href": "/api/v1/live_mosaic/properties",
+      "op": [
+        "readallproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/live_mosaic/actions",
+      "op": [
+        "queryallactions"
+      ]
+    }
+  ],
+  "base": "http://127.0.0.1:8220/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Function"
+}

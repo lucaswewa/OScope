@@ -1319,6 +1319,17 @@ expression: td
                 "type": "null"
               }
             ]
+          },
+          "mosaic": {
+            "description": "Whether to send the live mosaic's tiles changed since the last\nmessage, as a block with each message that has some (ADR-0026).",
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false

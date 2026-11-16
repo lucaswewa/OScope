@@ -859,6 +859,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-live-mosaic"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-live-overlays"
 version = "0.1.0"
 dependencies = [
@@ -2111,6 +2126,8 @@ dependencies = [
  "oscope-jobs",
  "oscope-pipeline",
  "oscope-shm",
+ "oscope-sim",
+ "oscope-stitch",
  "oscope-store",
  "rayon",
  "schemars",
@@ -2143,6 +2160,7 @@ dependencies = [
  "oscope-pipeline",
  "oscope-shm",
  "oscope-sim",
+ "oscope-stitch",
  "oscope-store",
  "oscope-workflows",
  "schemars",
@@ -2346,6 +2364,12 @@ dependencies = [
 [[package]]
 name = "oscope-stitch"
 version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "oscope-store"

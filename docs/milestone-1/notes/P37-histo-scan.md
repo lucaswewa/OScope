@@ -1,6 +1,6 @@
 # P37: Histo scan: overview and tissue detection
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p37-histo-scan` / [#51](https://github.com/lucaswewa/OScope/pull/51)
 - Size: M · estimated ~2,000 before it started (the overview ~220; tissue detection ~300; the engine's measured map ~80; the `scan` Thing's `overview` and `tissue` pattern ~150; the simulator's truth ~20; tests ~500; `ex-histo-scan` ~450; glue ~30; and about a tenth on top); one pull request, at the owner's standing choice · measured **1,565** hand-written lines added (code 728: `oscope-workflows` 554, `oscope-api` 168, `oscope-sim` 6; tests 427; examples 389; glue 21), and 22 removed; the `scan` Thing's TD snapshot is generated. **That is 965 over M's 600, and 22 % under the estimate.**
 

@@ -11,7 +11,9 @@ use std::sync::{Arc, PoisonError};
 use std::time::{Duration, Instant};
 
 use oscope_acquire::{Acquisition, FrameBus};
-use oscope_core::{FramePool, HeapAllocator, JobId, PixelRect, Point2, ProjectId, Rect, Um, Xyz};
+use oscope_core::{
+    Frame, FramePool, HeapAllocator, JobId, PixelRect, Point2, ProjectId, Rect, Um, Xyz,
+};
 use oscope_hal::{
     Axis, Camera, HalFuture, Illumination, ObjectiveMount, PositionSample, PositionTrack, Stage,
     StageCapabilities, StageStatus, UmPerS,
@@ -89,6 +91,8 @@ struct Bench {
     island: Point2,
     /// A frame's field, through the region.
     field: Field,
+    /// Where each frame handed to the hook, as a live mosaic's, was taken.
+    handed: Arc<std::sync::Mutex<Vec<Xyz>>>,
     _acquisition: Acquisition,
     _folder: tempfile::TempDir,
 }
@@ -154,10 +158,15 @@ async fn bench() -> Bench {
         .id;
     let jobs = JobService::open(&folder.path().join("jobs.sqlite"), JobsConfig::default()).unwrap();
     let last = LastScan::default();
+    let handed = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let hand = Arc::clone(&handed);
     let rig = ScanRig {
         focus: focus.clone(),
         store: Arc::clone(&store),
         scratch: Arc::clone(&scratch),
+        tiles: Some(Arc::new(move |_: &Frame, at: Xyz| {
+            hand.lock().unwrap().push(at)
+        })),
     };
     jobs.register(SCAN, scan_jobs(rig, Arc::clone(&last)));
     Bench {
@@ -172,6 +181,7 @@ async fn bench() -> Bench {
         island,
         // The region's width is kept a multiple of 12, for the mosaic.
         field: Field::nominal(pixel, 252, 192, 0.1).unwrap(),
+        handed,
         _acquisition: acquisition,
         _folder: folder,
     }
@@ -304,6 +314,13 @@ async fn a_scan_records_each_frame_where_the_stage_was_and_ends_where_it_started
         );
         assert!(frame.timestamp.is_some() && frame.trigger.is_none());
         lags.push(expected.z.0 - at.z.0);
+    }
+    // Each tile's middle plane, and only that, handed to the hook.
+    let handed = bench.handed.lock().unwrap().clone();
+    assert_eq!(handed.len(), 9);
+    for (tile, at) in plan.tiles.iter().zip(handed) {
+        let expected = Xyz::new(Um(tile.x_um), Um(tile.y_um), Um(tile.z_um.unwrap()));
+        assert!(near(at, expected, 2.5, 1.5), "{at:?}, not {expected:?}");
     }
     // Every plane reached moving up: z's backlash shifts each alike.
     let (low, high) = lags

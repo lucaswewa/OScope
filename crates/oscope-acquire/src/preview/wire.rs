@@ -25,8 +25,9 @@
 //!
 //! **Blocks** (ADR-0035) follow the JPEG, for a client that asks for them:
 //! each is its kind (1 byte), 3 zero bytes, its length (4), then its bytes.
-//! Kinds number messages and blocks alike: [`STATISTICS`] is JSON, and
-//! [`MASK`] a [`Mask`](crate::stats::Mask)'s bytes.
+//! Kinds number messages and blocks alike: [`STATISTICS`] is JSON,
+//! [`MASK`] a [`Mask`](crate::stats::Mask)'s bytes, and [`TILES`] JSON of
+//! the live mosaic's tiles changed (ADR-0026).
 
 use oscope_core::{Frame, FrameId, PixelRect, Timestamp};
 
@@ -44,6 +45,11 @@ pub const JPEG: u8 = 1;
 pub const STATISTICS: u8 = 2;
 /// The kind of a block holding a saturation mask.
 pub const MASK: u8 = 3;
+/// The kind of a block of the live mosaic's tiles changed since the
+/// session's last (ADR-0026), in JSON: `mosaic`, its number; `generation`;
+/// `all`, when a viewer should fetch every tile again; and `tiles`, each
+/// `[level, col, row]`.
+pub const TILES: u8 = 4;
 
 /// A message read: its header, its JPEG, and its blocks, each its kind and
 /// bytes.

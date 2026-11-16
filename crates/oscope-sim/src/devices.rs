@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
-use oscope_core::{LightState, Point2, Um};
+use oscope_core::{LightState, Ms, Point2, Um};
 use oscope_hal::{
     Camera, HalFuture, Illumination, IlluminationCapabilities, LightChannel, LightKind,
     ManualObjectiveMount, Objective, ObjectiveCatalogue, ObjectiveMount,
@@ -219,6 +219,7 @@ impl ObjectiveMount for SimMount {
 /// mirrored = false        # whether its image is mirrored
 /// scale = 1.0             # the true magnification over the catalogue's
 /// backlash = 2.0          # the stage's play when an axis reverses, in µm
+/// latency = 5.0           # how late the stage's reports arrive, in ms
 /// vignetting = 0.0        # the optics' falloff, 1 / (1 + s r²)²: s
 /// response = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]   # the sensor's colour
 ///
@@ -253,6 +254,9 @@ pub struct SimulatorConfig {
     pub scale: f64,
     /// The stage's play when an axis reverses, in µm.
     pub backlash: f64,
+    /// How late the stage's position reports arrive, in ms (P38). Each
+    /// still carries the time the stage was there.
+    pub latency: f64,
     /// The optics' vignetting, s: the light falls off as 1 / (1 + s r²)²
     /// towards the sensor's corners (P33).
     pub vignetting: f64,
@@ -276,6 +280,7 @@ impl Default for SimulatorConfig {
             mirrored: false,
             scale: 1.0,
             backlash: 2.0,
+            latency: 5.0,
             vignetting: 0.0,
             response: crate::camera::IDEAL,
             samples: Vec::new(),
@@ -336,9 +341,16 @@ impl Simulator {
                 config.response, config.tilt
             ));
         }
+        if !(config.latency >= 0.0 && config.latency.is_finite()) {
+            let latency = config.latency;
+            return Err(format!(
+                "a stage latency of {latency} ms: at least 0 is needed"
+            ));
+        }
         let clock = Arc::new(SimClock::new(rate));
         let stage_config = SimStageConfig {
             backlash: Um(config.backlash),
+            latency: Ms(config.latency),
             ..SimStageConfig::default()
         };
         let stage = Arc::new(SimStage::new(stage_config, Arc::clone(&clock)));

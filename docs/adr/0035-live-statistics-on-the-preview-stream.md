@@ -1,6 +1,6 @@
 # ADR-0035: Live statistics on the preview stream
 
-- Status: Accepted
+- Status: Accepted; extended by [ADR-0026](0026-live-stitching.md)
 - Date: 2026-11-13
 - Phase: P18
 

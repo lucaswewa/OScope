@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live mosaic</title>
+  <style>
+    :root { color-scheme: dark; font: 14px system-ui, sans-serif; }
+    body { margin: 0; padding: 12px; height: 100vh; box-sizing: border-box; background: #111; color: #ddd;
+           display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); grid-template-rows: auto minmax(0, 1fr); }
+    header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button { padding: 4px 10px; }
+    #live { width: 100%; background: #000; display: block; }
+    #mosaic { background: #000; min-height: 320px; }
+    .muted { color: #999; }
+    .bad { color: #f77; }
+    @media (max-width: 700px) { body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(320px, 1fr); } }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Live mosaic</strong>
+    <button id="begin">Begin</button>
+    <button id="halt">Halt</button>
+    <button id="clear">Clear</button>
+    <button id="scan">Scan 2 × 2 mm here</button>
+    <span id="counts" class="muted"></span>
+    <span id="message" class="muted"></span>
+  </header>
+  <section>
+    <img id="live" alt="The live view">
+    <p class="muted">The arrow keys move the stage a quarter of a millimetre; with Shift, a millimetre. Frames are drawn where it stops, or moves slowly enough not to blur them.</p>
+  </section>
+  <section id="mosaic"></section>
+  <script src="/vendor/openseadragon-6.1.1/openseadragon.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

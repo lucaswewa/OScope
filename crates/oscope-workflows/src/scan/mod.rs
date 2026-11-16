@@ -25,7 +25,9 @@ mod plan;
 mod planners;
 mod region;
 
-pub use engine::{LastScan, SCAN, ScanOptions, ScanProgress, ScanRig, TileDone, scan_jobs};
+pub use engine::{
+    LastScan, SCAN, ScanOptions, ScanProgress, ScanRig, TileDone, TileHook, scan_jobs,
+};
 pub use estimate::{Estimate, FrameSize, Timing, estimate};
 pub use focus_map::{FitOptions, FocusMap, FocusPoint, Surface, sample_points};
 pub use histo::{

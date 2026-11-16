@@ -204,16 +204,19 @@ async fn a_client_s_parameters_shape_its_previews() {
         .send(Message::text(params.to_string()))
         .await
         .unwrap();
+    // Timed from when each was ready, which a frame's rendering shifts, on
+    // two cores shared with other tests by some 150 ms (P38's two-core
+    // runs): ten intervals, at least 80 % of their 2 s.
     let mut slowed = Vec::new();
-    while slowed.len() < 6 {
+    while slowed.len() < 11 {
         let (header, _) = next(&mut socket).await;
         if header.quality == 33 {
             assert_eq!(header.roi, PixelRect::new(0, 0, 640, 480));
             slowed.push(header.ready);
         }
     }
-    let took = slowed[5].saturating_since(slowed[0]);
-    assert!(took >= Duration::from_millis(900), "5 frames in {took:?}");
+    let took = slowed[10].saturating_since(slowed[0]);
+    assert!(took >= Duration::from_millis(1600), "10 frames in {took:?}");
 
     // Parameters it can't read are answered, and change nothing.
     socket
@@ -571,9 +574,10 @@ async fn a_live_recipe_runs_on_each_preview_once_checked() {
     };
     let before = mean(&next(&mut socket).await.1);
     // The budget is for release builds: the tests' are unoptimised, and may
-    // have two cores. Recipes are timed at the default viewport's size: the
-    // stream's here.
-    let budget = http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "1000").await;
+    // have two cores, shared with the other tests (P38's two-core runs found
+    // a recipe taking 1.1 s). Recipes are timed at the default viewport's
+    // size: the stream's here.
+    let budget = http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "10000").await;
     assert!(budget.0 < 300, "{budget:?}");
     let defaults = json!({ "width": 320, "height": 240, "quality": 80, "max_fps": 30.0 });
     let defaults = http(
@@ -671,7 +675,7 @@ async fn a_live_recipe_runs_on_each_preview_once_checked() {
     .await;
     assert!(budget.0 < 300, "{budget:?}");
     assert!(refusal(&inverted).await.contains("over its budget"));
-    http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "1000").await;
+    http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "10000").await;
 
     // A flat field captured from the camera, then a recipe that reads it,
     // over the region each preview shows.

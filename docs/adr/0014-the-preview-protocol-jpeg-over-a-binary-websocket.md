@@ -1,6 +1,6 @@
 # ADR-0014: The preview protocol: JPEG over a binary WebSocket
 
-- Status: Accepted; extended by [ADR-0035](0035-live-statistics-on-the-preview-stream.md)
+- Status: Accepted; extended by [ADR-0035](0035-live-statistics-on-the-preview-stream.md) and [ADR-0026](0026-live-stitching.md)
 - Date: 2026-11-13
 - Phase: P17
 

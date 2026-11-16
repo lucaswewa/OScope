@@ -141,7 +141,7 @@ impl Example {
     }
 
     /// Serves `api`, with the example's logs and the files in `page` at the
-    /// same origin. Without
+    /// same origin, and the vendored scripts under `/vendor/`. Without
     /// `--smoke` it serves until Ctrl-C. With it, it serves until `check`,
     /// given the server's address, finishes, and returns its result.
     pub async fn serve<C, F>(
@@ -157,7 +157,9 @@ impl Example {
         for folder in [&self.roots.data, &self.roots.scratch] {
             std::fs::create_dir_all(folder).with_context(|| folder.display().to_string())?;
         }
-        let api = api.logs(self.logs.clone()).pages(page.as_ref()).build()?;
+        let vendor = concat!(env!("CARGO_MANIFEST_DIR"), "/../vendor");
+        let api = api.logs(self.logs.clone()).pages(page.as_ref());
+        let api = api.pages_under("vendor", vendor).build()?;
         let listener = TcpListener::bind(("127.0.0.1", self.port))
             .await
             .with_context(|| format!("can't listen on port {}", self.port))?;

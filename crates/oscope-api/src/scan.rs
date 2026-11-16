@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, OnceLock, PoisonError};
 
-use oscope_core::{Point2, ProjectId};
+use oscope_core::{Frame, Point2, ProjectId, Xyz};
 use oscope_ext::Extensions;
 use oscope_jobs::JobService;
 use oscope_store::{Scratch, Store};
@@ -11,8 +11,8 @@ use oscope_workflows::autofocus::FocusRig;
 use oscope_workflows::calibration::{Values, geometry_key};
 use oscope_workflows::scan::{
     Estimate, Field, FrameSize, LastOverview, LastScan, OVERVIEW, OverviewOptions, Pattern, Plan,
-    Position, Region, SCAN, ScanOptions, ScanProgress, ScanRig, Stack, Surface, Timing, ZPolicy,
-    estimate, overview_jobs, positions, raster, scan_jobs, snake, tiled_stack, z_scan,
+    Position, Region, SCAN, ScanOptions, ScanProgress, ScanRig, Stack, Surface, TileHook, Timing,
+    ZPolicy, estimate, overview_jobs, positions, raster, scan_jobs, snake, tiled_stack, z_scan,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,7 @@ use teta_wot::prelude::*;
 use crate::calibration::Calibrations;
 use crate::devices::Devices;
 use crate::jobs::{JobRef, action_error};
+use crate::mosaic::Mosaics;
 use crate::server::Roots;
 
 /// The built-in patterns, by name. `tissue` is a snake over the last
@@ -352,10 +353,15 @@ impl ScanThing {
                 OVERVIEW,
                 overview_jobs(focus.clone(), Arc::clone(&overview)),
             );
+            // Each tile's frame to the live mosaic too (P38).
+            let tiles = server.service::<Mosaics>().map(|mosaics| -> TileHook {
+                Arc::new(move |frame: &Frame, at: Xyz| mosaics.scan_frame(frame, at))
+            });
             let rig = ScanRig {
                 focus,
                 store,
                 scratch,
+                tiles,
             };
             jobs.register(SCAN, scan_jobs(rig, Arc::clone(&last)));
         }

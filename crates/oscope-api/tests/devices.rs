@@ -418,6 +418,7 @@ async fn the_things_describe_themselves() {
         "autofocus",
         "exposure",
         "scan",
+        "live_mosaic",
     ] {
         // The ID differs from computer to computer: its form, then the rest.
         let mut td = tds[name].clone();
@@ -436,6 +437,7 @@ async fn the_things_describe_themselves() {
         "/api/v1/simulation/import",
         "/api/v1/preview/defaults",
         "/api/v1/scan/run",
+        "/api/v1/live_mosaic/begin",
     ] {
         assert!(
             paths.contains_key(path),
