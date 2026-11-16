@@ -401,13 +401,8 @@ fn bench(count: usize) -> anyhow::Result<()> {
         }
         true
     };
-    let (_, report) = stitch(
-        &store,
-        project,
-        acquisition,
-        &StitchOptions::default(),
-        &progress,
-    )?;
+    let options = StitchOptions::default();
+    let (_, report) = stitch(&store, project, acquisition, &options, &progress)?;
     let ends: Vec<String> = phases
         .into_inner()
         .expect("the phases")
@@ -423,6 +418,15 @@ fn bench(count: usize) -> anyhow::Result<()> {
         report.pairs,
         report.rms_px,
         report.peak_bytes >> 20
+    );
+    // The bound over many writers, which the tests' small mosaics can't
+    // show: level 1's quarters waiting in far bands would break it.
+    let budget = u64::from(options.memory_mb) << 20;
+    ensure!(
+        report.peak_bytes <= budget,
+        "{} MB held at once, over the budget of {} MB",
+        report.peak_bytes >> 20,
+        options.memory_mb
     );
     Ok(())
 }

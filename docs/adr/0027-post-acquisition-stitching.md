@@ -61,9 +61,9 @@
   - The store's `ImageWriter::write_level` and `made` let it, and `halve_samples` halves as `finish` does.
   - The store's pyramid then starts at level 2, and makes each level's rows of chunks in parallel.
 
-**7. Memory** is bounded by `memory_mb` (512):
+**7. Memory** is bounded by `memory_mb` (256):
 
-- **Level 1's waiting quarters:** room for at most two rows of chunks of them is set aside first.
+- **Level 1's waiting quarters:** room for two rows of chunks of them is set aside first. The chunks are made a band of two rows at a time, a row of level 1's, so that no more wait. Given all the chunks at once, rayon would work on far bands together, each with its quarters waiting.
 - **Decoded chunks:** half of what is left, those used least recently let go first.
 - **Chunks being made:** the other half. A pool of writers works on as many chunks as that holds, at six chunks' worth each: four tiles' parts and the sums, where tiles overlap.
 
@@ -78,7 +78,7 @@
 ## Consequences
 
 - **P40 serves the mosaic's levels as they are.** The thumbnail and the data route show it now.
-- **Throughput:** on the owner's PC, 10.1–10.3 tiles of 20 MP a second over 40 and 60 tiles, and 9.1 over 20, where the pyramid's top and the thumbnail weigh more.
+- **Throughput:** on the owner's PC, about 10 tiles of 20 MP a second: 10.0–10.3 over 60 tiles; 9.5–11.9 over 40, 10.3 the median; and 8.6–11.7 over 20, where the pyramid's top and the thumbnail weigh more. At most 203 MB of the 256 were held at once.
   - **The rest is the store's:** with a file for each chunk, Windows' file handling costs about 9 ms a chunk.
   - **Ingest gains too:** making the pyramid's rows in parallel speeds every acquisition's.
 - **Raw tiles land within a pixel,** not half of one, as they are placed at even offsets. The solve's offsets in `stitch.json` keep their sub-pixel parts.

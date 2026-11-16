@@ -46,7 +46,7 @@ pub struct StitchOptions {
     pub solve: SolveOptions,
     /// Whether to estimate the tiles' flat field and divide it out.
     pub flat_field: bool,
-    /// The most memory the job's parts take at once, in MB: 512.
+    /// The most memory the job's parts take at once, in MB: 256.
     pub memory_mb: u32,
 }
 
@@ -58,7 +58,7 @@ impl Default for StitchOptions {
             min_confidence: 0.5,
             solve: SolveOptions::default(),
             flat_field: false,
-            memory_mb: 512,
+            memory_mb: 256,
         }
     }
 }
@@ -656,7 +656,11 @@ pub fn stitch(
         peak.fetch_max(now, Ordering::Relaxed);
     };
     // As many workers as the budget holds chunks, each making one at a
-    // time, over all the chunks: the pool, not batches, bounds the memory.
+    // time: the pool bounds the parts in hand. The chunks go a band of two
+    // rows at a time, a row of level 1's, so that level 1's quarters wait
+    // for one band's others at most, which their room holds: rayon would
+    // otherwise work on far bands at once, each with its quarters waiting.
+    let band = |&(plane, chunk): &(u32, PixelBox)| (plane, chunk.y0 / (2 * CHUNK as i64));
     let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(at_once.min(threads))
@@ -671,58 +675,63 @@ pub fn stitch(
         sample: scan.info.sample,
     });
     pool.install(|| {
-        chunks.par_iter().try_for_each(|&(plane, chunk)| {
-            let over = placed.over(chunk);
-            let mut owned = Vec::with_capacity(over.len());
-            for (tile, within) in over {
-                let part = cache.part(&scan, tile, plane, within)?;
-                hold(part.len() * 4);
-                let (x, y) = placed.at[tile];
-                let to = (
-                    (x as i64 + within.x0 - chunk.x0) as u32,
-                    (y as i64 + within.y0 - chunk.y0) as u32,
-                );
-                owned.push((within, part, to));
-            }
-            let parts: Vec<Part> = owned
-                .iter()
-                .map(|(within, samples, to)| Part {
-                    within: *within,
-                    samples,
-                    to: *to,
+        chunks
+            .chunk_by(|a, b| band(a) == band(b))
+            .try_for_each(|rows| {
+                rows.par_iter().try_for_each(|&(plane, chunk)| {
+                    let over = placed.over(chunk);
+                    let mut owned = Vec::with_capacity(over.len());
+                    for (tile, within) in over {
+                        let part = cache.part(&scan, tile, plane, within)?;
+                        hold(part.len() * 4);
+                        let (x, y) = placed.at[tile];
+                        let to = (
+                            (x as i64 + within.x0 - chunk.x0) as u32,
+                            (y as i64 + within.y0 - chunk.y0) as u32,
+                        );
+                        owned.push((within, part, to));
+                    }
+                    let parts: Vec<Part> = owned
+                        .iter()
+                        .map(|(within, samples, to)| Part {
+                            within: *within,
+                            samples,
+                            to: *to,
+                        })
+                        .collect();
+                    let size = (chunk.width() as u32, chunk.height() as u32);
+                    hold(size.0 as usize * size.1 as usize * (channels + 1) * 4);
+                    let mosaic = blend(size, scan.info.channels, tile, &parts, flat.as_ref());
+                    let out = samples(mosaic, scan.info.sample);
+                    let at = (chunk.x0 as u64, chunk.y0 as u64);
+                    writer.write(plane, at, (u64::from(size.0), u64::from(size.1)), &out)?;
+                    if let Some(level1) = &level1 {
+                        let (w, h) = (u64::from(size.0), u64::from(size.1));
+                        let half = halve_samples(&out, w, h, scan.info.channels);
+                        hold(half.len() * sample_bytes);
+                        let (cx, cy) = (at.0 / CHUNK, at.1 / CHUNK);
+                        let key = (plane, cx / 2, cy / 2);
+                        let whole =
+                            level1.add(key, (cx % 2, cy % 2), (w.div_ceil(2), h.div_ceil(2)), half);
+                        if let Some((whole, at, size)) = whole {
+                            writer.write_level(1, plane, at, size, &whole)?;
+                            let made = (size.0 * size.1) as usize * channels * sample_bytes;
+                            held.fetch_sub(made, Ordering::Relaxed);
+                        }
+                    }
+                    let freed: usize = owned.iter().map(|(_, p, _)| p.len() * 4).sum::<usize>()
+                        + size.0 as usize * size.1 as usize * (channels + 1) * 4;
+                    held.fetch_sub(freed, Ordering::Relaxed);
+                    let done = written.fetch_add(1, Ordering::Relaxed) + 1;
+                    if done % every as u64 == 0 {
+                        let share = 0.45 + 0.5 * done as f64 / chunks.len() as f64;
+                        if !progress(share, format!("{done} of {} chunks written", chunks.len())) {
+                            return Err(StitchError::Cancelled);
+                        }
+                    }
+                    Ok::<(), StitchError>(())
                 })
-                .collect();
-            let size = (chunk.width() as u32, chunk.height() as u32);
-            hold(size.0 as usize * size.1 as usize * (channels + 1) * 4);
-            let mosaic = blend(size, scan.info.channels, tile, &parts, flat.as_ref());
-            let out = samples(mosaic, scan.info.sample);
-            let at = (chunk.x0 as u64, chunk.y0 as u64);
-            writer.write(plane, at, (u64::from(size.0), u64::from(size.1)), &out)?;
-            if let Some(level1) = &level1 {
-                let (w, h) = (u64::from(size.0), u64::from(size.1));
-                let half = halve_samples(&out, w, h, scan.info.channels);
-                hold(half.len() * sample_bytes);
-                let (cx, cy) = (at.0 / CHUNK, at.1 / CHUNK);
-                let key = (plane, cx / 2, cy / 2);
-                let whole = level1.add(key, (cx % 2, cy % 2), (w.div_ceil(2), h.div_ceil(2)), half);
-                if let Some((whole, at, size)) = whole {
-                    writer.write_level(1, plane, at, size, &whole)?;
-                    let made = (size.0 * size.1) as usize * channels * sample_bytes;
-                    held.fetch_sub(made, Ordering::Relaxed);
-                }
-            }
-            let freed: usize = owned.iter().map(|(_, p, _)| p.len() * 4).sum::<usize>()
-                + size.0 as usize * size.1 as usize * (channels + 1) * 4;
-            held.fetch_sub(freed, Ordering::Relaxed);
-            let done = written.fetch_add(1, Ordering::Relaxed) + 1;
-            if done % every as u64 == 0 {
-                let share = 0.45 + 0.5 * done as f64 / chunks.len() as f64;
-                if !progress(share, format!("{done} of {} chunks written", chunks.len())) {
-                    return Err(StitchError::Cancelled);
-                }
-            }
-            Ok::<(), StitchError>(())
-        })
+            })
     })?;
     if level1.is_some() {
         writer.made(1);

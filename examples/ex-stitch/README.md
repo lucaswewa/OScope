@@ -32,13 +32,15 @@ ex-stitch: a snake of 9 tiles over 3 × 2 mm, the stage stepping blind: where it
 cargo run --release -p ex-stitch -- --bench 40
 ```
 
-It stitches N synthetic tiles of 20 MP, 16-bit, a tenth overlapping, in rows of five, recorded up to 10 µm off, and times the stitch alone. Plan §5.20 asks for 10 tiles a second. On the owner's PC it printed:
+It stitches N synthetic tiles of 20 MP, 16-bit, a tenth overlapping, in rows of five, recorded up to 10 µm off, and times the stitch alone. Plan §5.20 asks for 10 tiles a second. It fails if the stitch held more than its memory budget, 256 MB, at once. On the owner's PC it printed:
 
 ```text
-ex-stitch: 40 tiles of 20 MP written in 5.6 s
-  registered by 0.5 s, solved by 0.5 s, written by 3.5 s, pyramid by 3.5 s
-  stitched in 3.9 s: 10.3 tiles a second; 67 pairs kept of 67, missing by 0.05 px rms; at most 405 MB of parts at once
+ex-stitch: 40 tiles of 20 MP written in 4.9 s
+  registered by 0.5 s, solved by 0.5 s, written by 3.1 s, pyramid by 3.1 s
+  stitched in 3.4 s: 11.6 tiles a second; 67 pairs kept of 67, missing by 0.05 px rms; at most 197 MB of parts at once
 ```
+
+Over nine runs, 40 tiles were stitched at 9.5–11.9 tiles a second, 10.3 the median. Over six runs each, 60 tiles were stitched at 10.0–10.3, and 20 at 8.6–11.7, where the pyramid's top and the thumbnail weigh more.
 
 ## `--smoke`
 
