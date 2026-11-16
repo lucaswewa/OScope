@@ -4,7 +4,8 @@
 //! registers the jobs that import files into projects and export their
 //! images, `projects.import` and `projects.export`, and lists their formats
 //! (ADR-0037); with a scratch space, the one that ingests recordings,
-//! `projects.ingest` (ADR-0022).
+//! `projects.ingest` (ADR-0022); and the one that stitches a scan's
+//! acquisition into a mosaic, `stitch.run` (ADR-0027).
 
 use std::sync::{Arc, OnceLock};
 
@@ -15,6 +16,7 @@ use oscope_jobs::JobService;
 use oscope_store::{
     Change, Contents, NewProject, Page, Project, Query as Search, Scratch, Store, StoreError,
 };
+use oscope_workflows::stitch::{STITCH, stitch_jobs};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -140,6 +142,7 @@ impl ProjectsThing {
         if let Some(jobs) = ctx.server().service::<JobService>() {
             jobs.register(IMPORT, import_jobs(Arc::clone(&store), Arc::clone(&codecs)));
             jobs.register(EXPORT, export_jobs(Arc::clone(&store), Arc::clone(&codecs)));
+            jobs.register(STITCH, stitch_jobs(Arc::clone(&store)));
             // Recordings from the scratch space, ingested as jobs (ADR-0022).
             if let Some(scratch) = ctx.server().service::<Scratch>() {
                 jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));

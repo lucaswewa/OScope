@@ -63,6 +63,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ext-python-workflow`](ext-python-workflow/README.md) | P36 | A sample Python extension: the scan workflow `example.spiral`, tiles in a square spiral out from a centre |
 | [`ex-histo-scan`](ex-histo-scan/README.md) | P37 | A histological scan of the simulated H&E slide: an overview binned 3 × 3, the tissue found in it by its saturation, checked against the simulator's truth, and the tissue scanned, its focus map measured first; a page showing the overview, the tissue and the tiles as they arrive |
 | [`ex-live-mosaic`](ex-live-mosaic/README.md) | P38 | A live mosaic of the simulated H&E slide, drawn as the stage stops at four places and as a scan beside them takes its tiles; a page showing the live view beside the mosaic in OpenSeadragon, which grows as the arrow keys move the stage |
+| [`ex-stitch`](ex-stitch/README.md) | P39 | A scan of the simulated H&E slide by a stage without encoders, losing steps, stitched as a job: each tile registered with its neighbours and solved, against the simulator's truth; `--bench N` times N tiles of 20 MP; a page showing the mosaic |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` and `ext-rust-camera` are libraries too: the sample extensions that `ex-rust-ext` and `ex-ext-camera` load. `ext-python-node` is a Python extension, which the workspace leaves out.
 

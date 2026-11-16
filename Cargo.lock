@@ -1207,6 +1207,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-stitch"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "oscope-workflows",
+ "rayon",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "ex-wizard"
 version = "0.1.0"
 dependencies = [
@@ -2365,6 +2383,8 @@ dependencies = [
 name = "oscope-stitch"
 version = "0.1.0"
 dependencies = [
+ "oscope-compute",
+ "oscope-imaging",
  "schemars",
  "serde",
  "tempfile",
@@ -2414,7 +2434,9 @@ dependencies = [
  "oscope-imaging",
  "oscope-jobs",
  "oscope-sim",
+ "oscope-stitch",
  "oscope-store",
+ "rayon",
  "schemars",
  "serde",
  "serde_json",

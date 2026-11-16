@@ -395,8 +395,20 @@ fn halve<T: Sample>(samples: &[T], width: usize, height: usize, channels: usize)
     out
 }
 
+/// `samples`, `width` × `height` of `channels` interleaved, halved as the
+/// pyramid's levels are: each pixel the mean of the two by two below it,
+/// or of those there are at the edges.
+pub fn halve_samples(samples: &Samples, width: u64, height: u64, channels: u32) -> Samples {
+    let (w, h, c) = (width as usize, height as usize, channels as usize);
+    match samples {
+        Samples::U8(v) => Samples::U8(halve(v, w, h, c)),
+        Samples::U16(v) => Samples::U16(halve(v, w, h, c)),
+        Samples::F32(v) => Samples::F32(halve(v, w, h, c)),
+    }
+}
+
 /// Makes level `level` of plane `plane` from the level before, a chunk at a
-/// time.
+/// time, the rows of chunks in parallel.
 fn make_level<T: Sample>(
     arrays: &[Array<FilesystemStore>],
     info: &ImageInfo,
@@ -407,7 +419,8 @@ fn make_level<T: Sample>(
     let (sw, sh) = info.level_size(level - 1);
     let (tw, th) = info.level_size(level);
     let channels = u64::from(info.channels);
-    for y in (0..th).step_by(CHUNK as usize) {
+    let rows: Vec<u64> = (0..th).step_by(CHUNK as usize).collect();
+    rows.into_par_iter().try_for_each(|y| {
         for x in (0..tw).step_by(CHUNK as usize) {
             let (width, height) = (CHUNK.min(tw - x), CHUNK.min(th - y));
             let from = Region {
@@ -435,8 +448,8 @@ fn make_level<T: Sample>(
             };
             store(target, to, &halved)?;
         }
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Checks that `info` describes an image the store can hold.
@@ -466,6 +479,8 @@ fn check(info: &ImageInfo) -> Result<()> {
 pub struct ImageWriter {
     info: ImageInfo,
     arrays: Vec<Array<FilesystemStore>>,
+    /// The levels above 0 its caller has made in full, from 1.
+    made: std::sync::atomic::AtomicU32,
 }
 
 impl ImageWriter {
@@ -512,7 +527,11 @@ impl ImageWriter {
                 Ok(array)
             })
             .collect::<Result<Vec<_>>>()?;
-        Ok(Self { info, arrays })
+        Ok(Self {
+            info,
+            arrays,
+            made: std::sync::atomic::AtomicU32::new(0),
+        })
     }
 
     /// The image, as it will be.
@@ -527,6 +546,20 @@ impl ImageWriter {
     pub fn write(
         &self,
         plane: u32,
+        at: (u64, u64),
+        size: (u64, u64),
+        samples: &Samples,
+    ) -> Result<()> {
+        self.write_level(0, plane, at, size, samples)
+    }
+
+    /// As [`write`](Self::write), at level `level`: for a caller that makes
+    /// a level itself as it writes level 0, each pixel the mean of the four
+    /// below it ([`halve_samples`]). It then tells [`made`](Self::made).
+    pub fn write_level(
+        &self,
+        level: u32,
+        plane: u32,
         (x, y): (u64, u64),
         (width, height): (u64, u64),
         samples: &Samples,
@@ -540,11 +573,22 @@ impl ImageWriter {
             height,
             channels: u64::from(info.channels),
         };
-        let inside = plane < info.planes && x + width <= info.width && y + height <= info.height;
-        if !inside || width == 0 || height == 0 {
+        let Some(array) = self.arrays.get(level as usize) else {
+            let levels = info.levels;
             return Err(StoreError::Refused(format!(
-                "a region of {width} × {height} at ({x}, {y}) in plane {plane}: the image is {} × {} in {} planes",
-                info.width, info.height, info.planes
+                "level {level}: the image has {levels}"
+            )));
+        };
+        let (lw, lh) = info.level_size(level);
+        let inside = plane < info.planes && x + width <= lw && y + height <= lh;
+        if !inside || width == 0 || height == 0 {
+            let what = match level {
+                0 => "the image".to_owned(),
+                level => format!("level {level}"),
+            };
+            return Err(StoreError::Refused(format!(
+                "a region of {width} × {height} at ({x}, {y}) in plane {plane}: {what} is {lw} × {lh} in {} planes",
+                info.planes
             )));
         }
         if samples.sample_type() != info.sample || samples.len() != region.samples() {
@@ -556,18 +600,25 @@ impl ImageWriter {
                 info.sample
             )));
         }
-        let level0 = &self.arrays[0];
         match samples {
-            Samples::U8(v) => store(level0, region, v),
-            Samples::U16(v) => store(level0, region, v),
-            Samples::F32(v) => store(level0, region, v),
+            Samples::U8(v) => store(array, region, v),
+            Samples::U16(v) => store(array, region, v),
+            Samples::F32(v) => store(array, region, v),
         }
+    }
+
+    /// That its caller has written levels 1 to `level` in full, so that
+    /// [`finish`](Self::finish) makes only those above.
+    pub fn made(&self, level: u32) {
+        self.made
+            .fetch_max(level, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Makes the pyramid's other levels from what was written: the image.
     pub fn finish(self) -> Result<ImageInfo> {
         let (arrays, info) = (&self.arrays, &self.info);
-        for level in 1..info.levels {
+        let made = self.made.load(std::sync::atomic::Ordering::Relaxed);
+        for level in made + 1..info.levels {
             (0..u64::from(info.planes))
                 .into_par_iter()
                 .try_for_each(|plane| match info.sample {

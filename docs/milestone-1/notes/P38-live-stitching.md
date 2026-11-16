@@ -1,6 +1,6 @@
 # P38: Live stitching: in scans and free-roam
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p38-live-stitching` / [#52](https://github.com/lucaswewa/OScope/pull/52)
 - Size: L · estimated ~2,100 before it started (the canvas ~340; the live mosaic ~280; the `live_mosaic` Thing, its tile route, the preview's block and the wiring ~260; the engine's hook ~25; the simulator's latency ~10; the vendored folder served ~25; tests ~550; `ex-live-mosaic` ~420; glue ~40; and about a tenth on top); one pull request, at the owner's standing choice · measured **3,184** hand-written lines added (code 1,721: `oscope-acquire` 619, `oscope-stitch` 609, `oscope-api` 466, `oscope-workflows` 14, `oscope-sim` 13; tests 973; examples 442; glue 48), and 35 removed; the TD snapshots are generated, and OpenSeadragon vendored. **That is 2,284 over L's 900, and 52 % over the estimate.**
 

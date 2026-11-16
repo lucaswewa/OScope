@@ -28,7 +28,9 @@ mod thumbnail;
 pub use formats::{
     Exporter, Format, Importer, Rendition, export, exporters, import, importers, render,
 };
-pub use image::{CHUNK, ImageInfo, ImageReader, ImageWriter, PixelSize, SampleType, Samples};
+pub use image::{
+    CHUNK, ImageInfo, ImageReader, ImageWriter, PixelSize, SampleType, Samples, halve_samples,
+};
 pub use ingest::ingest;
 pub use recording::{
     FrameEntry, Recording, RecordingOptions, RecordingReader, RecordingWriter, SEGMENT_BYTES,
