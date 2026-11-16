@@ -221,7 +221,7 @@ The page wasn't seen in a browser here. Under Node, against the running example,
 
 **The local replays,** the merge gate (ADR-0038), each run alone on `999cb3d`. The commit since adds only these lines.
 
-- **Windows:** `scripts/ci-local.sh`, in 9 minutes: 61 of 61 steps, 566 tests in 210 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Windows:** `scripts/ci-local.sh`, in 5 minutes: 61 of 61 steps, 566 tests in 210 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
 - **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 7 minutes: 61 of 61 steps, 566 tests in 210 suites; 778 files, none with a CR.
 - **Two runs before them failed on Windows,** each one step:
   - **`ex-http-walkthrough`'s smoke** counted six built-in samples; it counts seven now (`999cb3d`). The other places that count them had been found by searching for the number written as a length, which this one isn't.
