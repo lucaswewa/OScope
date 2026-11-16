@@ -61,6 +61,17 @@ fn j0_is_its_table_and_the_psf_its_closed_forms() {
         assert_eq!(at(x, y, z), at(x, y, 2 * cz - z));
         assert!((at(x, y, z) - at(y + cx - cy, x + cy - cx, z)).abs() <= 1e-6 * peak);
     }
+    // Its axis, against the closed form at u = (2π/λ)(NA²/n) z.
+    let k = 2.0 * std::f64::consts::PI / OPTICS.wavelength_um;
+    for dz in [2, 4, 6] {
+        let u = k * OPTICS.na * OPTICS.na * f64::from(dz) * voxel[2];
+        let want = ((u / 4.0).sin() / (u / 4.0)).powi(2);
+        let got = f64::from(at(cx, cy, cz + dz as usize) / at(cx, cy, cz));
+        assert!(
+            (got - want).abs() < 1e-3,
+            "{dz} planes up: {got} not {want}"
+        );
+    }
     let first_minimum = (cx..nx - 1)
         .find(|&x| at(x + 1, cy, cz) > at(x, cy, cz))
         .unwrap();
@@ -177,6 +188,28 @@ fn volumes_pad_and_crop_and_the_nrmse_ignores_units() {
     let (_, kernel, data) = object(0.0);
     let padded = Padded::new(&data, &kernel).unwrap();
     assert_eq!(padded.crop(&padded.data), data);
+    // Mirrored about each edge: the voxel before the first is the first, the
+    // one after the last the last.
+    let [px, py, _] = padded.size;
+    let [ox, oy, oz] = padded.offset;
+    let [w, h, _] = data.size;
+    let at = |x: usize, y: usize, z: usize| padded.data[(z * py + y) * px + x];
+    let row = 7 * w;
+    assert_eq!(at(ox - 1, oy + 7, oz), data.data[row]);
+    assert_eq!(at(ox + w, oy + 7, oz), data.data[row + w - 1]);
+    assert_eq!(at(ox - 2, oy + 7, oz), data.data[row + 1]);
+    // A point blurred stays where it is: the PSF is centred.
+    let mut point = Volume {
+        size: data.size,
+        data: vec![0.0; data.data.len()],
+    };
+    let centre = (8 * h + 24) * w + 32;
+    point.data[centre] = 1.0;
+    let blurred = blur(&point, &kernel).unwrap();
+    let brightest = (0..blurred.data.len())
+        .max_by(|a, b| blurred.data[*a].total_cmp(&blurred.data[*b]))
+        .unwrap();
+    assert_eq!(brightest, centre);
     assert!(padded.size.iter().all(|n| {
         let mut m = *n;
         for p in [2, 3, 5, 7] {
