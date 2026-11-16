@@ -39,8 +39,8 @@
 ## Consequences
 
 - **A Windows replay takes about 6 minutes, not 21,** with the build up to date:
-  - the suites 150 s, not 615;
-  - the smoke runs some 2 minutes, not 10.
+  - the suites some 130 s, not 615;
+  - the smoke runs some 100 s, not 600.
 - **Each suite and smoke run has two CPUs,** like CI's runners, not all 24. The replays now find what only two-core runs found before. The first found that P38's halted mosaic could still finish the frame it was drawing, now fixed: drawing and stopping take turns.
 - **Disk:** suites that record side by side preallocate their segments at once, 4 GiB each by default. The replays need some 20 GB free.
 - **GitHub CI's results aren't read.** If its jobs start again, they still run, and their failures are the owner's to look at.
