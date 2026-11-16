@@ -8,6 +8,7 @@
 | [Architecture decision records](adr/README.md) | One record per significant decision, numbered across the project |
 | [Milestone 1 implementation notes](milestone-1/notes/README.md) | One file per phase: what was built, how to try it, deviations and follow-ups |
 | [Manual tests of P16–P23](milestone-1/manual-tests-P16-P23.md) | A checklist for trying each phase from P16 to P23 by hand, from its example |
+| [Manual tests of P35–P43](milestone-1/manual-tests-P35-P43.md) | A checklist for trying each phase from P35 to P43 by hand, from its example, and Checkpoints D and E |
 | [Hardware](hardware.md) | The real instrument: camera, SDK, stage controller, lights and host. Written in P02b; M3's bring-up keeps it up to date |
 | [Working rules](../CLAUDE.md) | How phases are delivered, and the rules every change follows |
 
