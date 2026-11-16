@@ -7,7 +7,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | ADR | Title | Status | Phase |
 |---|---|---|---|
 | [0001](0001-record-architecture-decisions-and-the-delivery-process.md) | Record architecture decisions, and the delivery process | Accepted | P00 |
-| [0002](0002-clean-room-and-dependency-licences.md) | Clean room: what OScope may take from `microscope`, and the dependency licence policy | Accepted | P00 |
+| [0002](0002-clean-room-and-dependency-licences.md) | Clean room: what OScope may take from `microscope`, and the dependency licence policy | Accepted; one licence's exception in 0030 | P00 |
 | [0003](0003-platforms-windows-and-ubuntu-x86-64.md) | Platforms: Windows 11 and Ubuntu LTS on x86_64 | Accepted; its CI superseded by 0038 | P00 |
 | [0004](0004-teta-wot-v0-2-0-extended-upstream-first.md) | Depend on `teta-wot` v0.2.0, extended upstream first | Accepted | P00 |
 | [0005](0005-layered-crates-and-their-dependency-rules.md) | Layered crates and their dependency rules | Accepted | P01 |
@@ -35,6 +35,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0027](0027-post-acquisition-stitching.md) | Post-acquisition stitching | Accepted | P39 |
 | [0028](0028-deep-zoom-serving.md) | Deep-zoom serving | Accepted | P40 |
 | [0029](0029-volumes-and-3d-data-on-the-media-plane.md) | Volumes and 3D data on the media plane | Accepted | P41 |
+| [0030](0030-reports.md) | Reports: the model, Typst and minijinja, templates and report generators | Accepted | P47 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |

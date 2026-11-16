@@ -23,6 +23,7 @@ pub const LAYERS: &[(&str, u8)] = &[
     ("oscope-pipeline", 3),
     ("oscope-ext", 3),
     ("oscope-ext-sdk", 3),
+    ("oscope-report", 3),
     ("oscope-acquire", 4),
     ("oscope-workflows", 4),
     ("oscope-api", 5),
@@ -43,6 +44,8 @@ pub const SAME_LAYER: &[(&str, &str)] = &[
     ("oscope-ext", "oscope-jobs"),
     ("oscope-ext", "oscope-pipeline"),
     ("oscope-ext", "oscope-ext-sdk"),
+    // Its test reads a Rust generator's report as the model (P47).
+    ("oscope-ext", "oscope-report"),
     ("oscope-workflows", "oscope-acquire"),
 ];
 

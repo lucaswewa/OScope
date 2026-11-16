@@ -471,6 +471,50 @@ expression: td
       },
       "synchronous": false
     },
+    "delete_template": {
+      "description": "Deletes a report template, a user's.",
+      "title": "Deletes a report template, a user's.",
+      "forms": [
+        {
+          "href": "/api/v1/projects/delete_template",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "delete_template_input",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "delete_template_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
     "rebuild_index": {
       "description": "For an index lost or damaged: how many projects it then lists, and\nthe documents left out because they didn't read.",
       "title": "Rebuilds the index from the folders, which are the truth.",
@@ -720,6 +764,58 @@ expression: td
           "created",
           "modified"
         ]
+      },
+      "synchronous": false
+    },
+    "save_template": {
+      "description": "Its Typst, for PDF, and its minijinja, for HTML, once a sample\nreport renders through both: otherwise refused, saying where the\ntemplate is wrong.",
+      "title": "Keeps a report template.",
+      "forms": [
+        {
+          "href": "/api/v1/projects/save_template",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "save_template_input",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "typst": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "typst",
+          "html"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "save_template_output",
+        "type": "null"
       },
       "synchronous": false
     },

@@ -186,6 +186,7 @@ Each crate depends only on crates in lower layers. A test in P01 reads `cargo me
 | | `oscope-pipeline` | The DAG engine, node registry and stock nodes |
 | | `oscope-ext` | `.omext` packages, the native loader, the Python worker supervisor (unsafe allowed) |
 | | `oscope-ext-sdk` | The SDK that Rust extension authors build against (unsafe allowed in its generated glue) |
+| | `oscope-report` | Reports: their model, Typst compiled in process to PDF, minijinja to HTML, SVG charts and the templates (P47, ADR-0030) |
 | L4 Services | `oscope-acquire` | The frame bus, preview, live statistics, recorder, live mosaic and shared-memory publisher |
 | | `oscope-workflows` | Autofocus, exposure, calibration routines, scan planners and engine, analysis runners |
 | L5 Interface | `oscope-api` | teta-wot Things, media-plane routes, authentication and the control lease. **The only crate that depends on `teta-wot`** |
@@ -847,8 +848,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P44 | Annotations and measurements | P40 | M | — | Done |
 | P45 | Stain analysis | P44 | M | — | Done |
-| P46 | Cell detection and counting | P45 | L | — | In review |
-| P47 | Reports, and report extensions | P46 | L | 0030 | Planned |
+| P46 | Cell detection and counting | P45 | L | — | Done |
+| P47 | Reports, and report extensions | P46 | L | 0030 | In review |
 | P48 | The `workspace` Thing: analyses on datasets, results, provenance | P47 | M | — | Planned |
 
 **Checkpoint F:** count cells and quantify DAB on a stitched slide, then produce a PDF report.
@@ -1105,3 +1106,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-16 | P44 was estimated at about 2,000 lines before it started (in `oscope-imaging`, shapes' lengths, areas and centres, and the pixels a polygon holds, row by row, ~170; in `oscope-store`, annotations in layers with their validation and their keeping ~260, and measurements read tile by tile, with the CSV, ~230; the `projects` Thing's routes ~130; tests ~560; `ex-annotate` and its OpenSeadragon drawing page ~490; `ex-common`'s helpers ~60; glue ~30): more than three times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54. A scan's images now record their pixel size from the plan's field, which P41 did for z-scans only, so that measurements on a stitched mosaic are in µm |
 | 2026-11-16 | P45 was estimated at about 2,500 lines before it started (in `oscope-imaging`, optical density, stain vectors and colour deconvolution, Macenko's estimate with a 3 × 3 eigensolver, and the DAB bins, ~350; in `oscope-sim`, the H-DAB section and the stains' amounts as truth, ~120; the pipeline's four nodes ~220; in `oscope-workflows`, the job over a stored slide, tile by tile, ~320; tests ~850; `ex-stain` and its page ~600; glue ~40): more than four times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
 | 2026-11-16 | P46 was estimated at about 2,750 lines before it started (in `oscope-imaging`, an adaptive threshold, the distance transform and labelling moved from the pipeline, a seeded watershed, each object's measures and outline, ~550; the pipeline's nodes ~200; in `oscope-workflows`, the counting job over a stored slide, tile by tile with a halo, its table, outlines and annotation layer, ~400; a stub Python extension ~80; tests ~900; `ex-count-cells` and its page ~550; glue and `ex-checkpoint-d`'s wait ~70): about three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P54 |
+| 2026-11-16 | P47 was estimated at about 2,600 lines before it started: the report crate, with its model, Typst and minijinja renderers, charts and templates; the report generator kind in both SDKs and the loader; the job and OScope's generator; the `projects` Thing's templates; tests; and `ex-report`. Nearly three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P54. Typst's tree comes with one licence exception and eight advisories ignored, as the owner chose (ADR-0030) |

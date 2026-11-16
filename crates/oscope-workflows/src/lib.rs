@@ -10,6 +10,7 @@ pub mod calibration;
 pub mod cells;
 pub mod deconvolve;
 pub mod depth;
+pub mod report;
 pub mod scan;
 pub mod stain;
 pub mod stitch;

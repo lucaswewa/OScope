@@ -1,0 +1,26 @@
+[package]
+name = "oscope-report"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Reports (P47): a report's model, rendered to PDF by Typst and to HTML by minijinja"
+
+[dependencies]
+minijinja.workspace = true
+png.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+typst.workspace = true
+typst-layout.workspace = true
+typst-pdf.workspace = true
+
+[dev-dependencies]
+insta = { workspace = true, features = ["json"] }
+tempfile.workspace = true
+
+[lints]
+workspace = true

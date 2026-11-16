@@ -8,6 +8,9 @@
 //!   ignored, and the whole file sent.
 //! - **Never outside the project:** each part of the path must be a plain
 //!   name, and not hidden.
+//! - **Pages sandboxed:** an HTML file, a report's (P47), comes with
+//!   `Content-Security-Policy: sandbox`, so it runs no scripts and has an
+//!   origin of its own.
 
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
@@ -75,6 +78,8 @@ fn content_type(path: &Path) -> &'static str {
         "tif" | "tiff" => "image/tiff",
         "csv" => "text/csv; charset=utf-8",
         "txt" | "log" => "text/plain; charset=utf-8",
+        "pdf" => "application/pdf",
+        "html" => "text/html; charset=utf-8",
         _ => "application/octet-stream",
     }
 }
@@ -185,6 +190,14 @@ async fn download(
         header::X_CONTENT_TYPE_OPTIONS,
         HeaderValue::from_static("nosniff"),
     );
+    // A page, a report's say, is shown in an origin of its own, without
+    // scripts: what its template holds can't act as the app.
+    if content_type(&file).starts_with("text/html") {
+        headers.insert(
+            header::CONTENT_SECURITY_POLICY,
+            HeaderValue::from_static("sandbox"),
+        );
+    }
     if status == StatusCode::PARTIAL_CONTENT
         && let Ok(part) = HeaderValue::from_str(&format!("bytes {from}-{}/{length}", to - 1))
     {

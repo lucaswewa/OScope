@@ -14,6 +14,7 @@ oscope-core.workspace = true
 oscope-hal.workspace = true
 oscope-imaging.workspace = true
 oscope-jobs.workspace = true
+oscope-report.workspace = true
 oscope-store.workspace = true
 oscope-stitch.workspace = true
 oscope-volume.workspace = true
