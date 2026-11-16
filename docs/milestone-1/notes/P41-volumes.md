@@ -1,6 +1,6 @@
 # P41: Z-stacks, volume store, slice and brick routes
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p41-volumes` / [#56](https://github.com/lucaswewa/OScope/pull/56)
 - Size: L · estimated ~1,760 before it started (in `oscope-store`, a volume's pyramid halving z as well as x and y, as its voxels near a cube, its levels' planes and the OME metadata's z scale, ~220; a z-scan's voxel size from its plan at ingest ~30; in `oscope-api`, the volume routes: metadata, orthogonal slices and bricks with a binary header, uint8 or uint16, at a level chosen to fit, a raw image from its first level, ~320; tests ~550; `ex-volume` and its VTK.js page ~440; glue ~40; and about a tenth on top); one pull request, at the owner's standing choice · measured **1,567** hand-written lines added (code 525: `oscope-api` 402, `oscope-store` 118, `oscope-workflows` 5; tests 574; examples 447; glue 21), and 39 removed. **That is 667 over L's 900, and 11 % under the estimate.** VTK.js, vendored, isn't counted.
 
