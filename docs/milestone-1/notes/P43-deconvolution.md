@@ -221,7 +221,15 @@ L's budget is 900; P43 measured 2,733, 9 % under its estimate of ~3,000.
 
 **Where they ran:**
 
-⟨REPLAYS⟩
+- **On Windows,** `scripts/ci-local.sh --cuda`, run alone on `8290957`, in 15 minutes: 60 of 60 steps, 540 tests in 203 suites.
+  - **The CUDA tests ran on the GPU,** as P43 adds CUDA kernels: the twin within 2 × 10⁻⁶ of the CPU, and `deconvolve` taking the GPU.
+  - **The rest:** the Python tests ran for real, and every example's `--smoke`, `ex-deconvolve`'s and `ex-checkpoint-e`'s among them. Each suite and smoke run had two CPUs of its own, eight at a time (ADR-0038).
+  - **The first run, on `1c3815a`, failed two steps:**
+    - **the docs.** `oscope-volume`'s crate docs linked `psf` and `deconvolve`, each both a module and a function. `8290957` links the modules.
+    - **`oscope-hal`'s conformance suite,** which P43 doesn't touch. The fake camera dropped a frame under the replay's load, and three of its tests failed on it. The suite then passed ten times in ten on two cores, and in the rerun.
+  - The commit since adds only these notes.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, run alone on a fresh clone of `8290957`, in 7 minutes: 59 of 59 steps, 540 tests in 203 suites, the Python tests real; 754 files, none with a CR. WSL has no CUDA toolkit.
+- **On two cores,** five times each, side by side: the suites in the table above.
 
 ## Follow-ups and known gaps
 
@@ -231,6 +239,7 @@ L's budget is 900; P43 measured 2,733, 9 % under its estimate of ~3,000.
 - **Volumes larger than memory:** on the CPU, the padded volume, the transfer function, the spectrum and the steps between take about 40 bytes a padded voxel, by their buffers: some 0.9 GB for the example's. A slide's tiled z-stack would need blocks with overlaps.
 - **The job reserves no GPU memory** from the scheduler (`gpu_mib` 0), as P42's doesn't. Its buffers take about 20 bytes a padded voxel, 32 with total variation, besides cuFFT's work areas.
 - **Total variation's weight** is the user's to choose; nothing estimates it from the noise.
+- **`oscope-hal`'s conformance suite** runs the fake camera in real time, and dropped a frame once under the replay's load. P12 slowed the simulator's run of it for the same reason; the fake's run may need the same.
 - **The job runs on the GPU** through the compute layer when the server is built with CUDA. The examples' builds run on the CPU, unless built with `--features oscope-api/cuda`.
 
 ## Clean room
