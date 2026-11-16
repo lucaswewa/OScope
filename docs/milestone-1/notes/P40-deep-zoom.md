@@ -1,6 +1,6 @@
 # P40: Deep-zoom serving, tile cache, DZI export
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p40-deep-zoom` / [#55](https://github.com/lucaswewa/OScope/pull/55)
 - Size: M · estimated ~2,750 before it started (in `oscope-imaging`, the DZI geometry and tiles rendered from a pyramid's levels through a display transform, raw frames demosaiced, ~320; in `oscope-store`, tiles read through a cache of decompressed chunks, a colour overview for raw images, the disk tile cache on scratch and the DZI export, ~440; the pipeline's DZI node ~70; in `oscope-api`, the routes with `Server-Timing`, the tile pool capped while a hardware job runs, the cache warmed when a stitch ends and the export format, ~320; tests ~650; `ex-deep-zoom` and its bench ~410; `ex-checkpoint-d` ~250; glue ~50; and about a tenth on top); one pull request, at the owner's standing choice · measured **3,607** hand-written lines added (code 1,672: `oscope-store` 677, `oscope-api` 577, `oscope-imaging` 306, `oscope-pipeline` 112; tests 966; examples 921; glue 48), and 17 removed. **That is 3,007 over M's 600, and 31 % over the estimate.**
 
