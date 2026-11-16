@@ -7,8 +7,8 @@
 //!   focus measure peaks through a stack, with a confidence; and the
 //!   all-in-focus image (P42).
 //! - **[`mesh`]:** a height map as a mesh, in PLY, STL or OBJ (P42).
-//! - **[`psf`]:** Born and Wolf's widefield point spread function (P43).
-//! - **[`deconvolve`]:** Richardson–Lucy deconvolution, with total
+//! - **[`mod@psf`]:** Born and Wolf's widefield point spread function (P43).
+//! - **[`mod@deconvolve`]:** Richardson–Lucy deconvolution, with total
 //!   variation if asked, on the CPU or the GPU, and the NRMSE (P43).
 
 pub mod deconvolve;
