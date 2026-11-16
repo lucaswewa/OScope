@@ -42,3 +42,51 @@ extern "C" __global__ void focus_terms(const float* in, float* brenner, float* t
     tenengrad[i] = gx * gx + gy * gy;
     laplacian[i] = a01 + a21 + a10 + a12 - 4.0f * c;
 }
+
+// Pixel i's modified Laplacian with neighbours `step` pixels away (P42):
+// |2I - I(x - s) - I(x + s)| + |2I - I(y - s) - I(y + s)|, where all four
+// are inside, and 0 elsewhere. focus.rs's `modified_laplacian`, step for
+// step.
+extern "C" __global__ void modified_laplacian(const float* in, float* out, unsigned int width,
+                                              unsigned int height, unsigned int step) {
+    unsigned long long i = (unsigned long long)blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned long long n = (unsigned long long)width * height;
+    if (i >= n) return;
+    unsigned int x = (unsigned int)(i % width);
+    unsigned int y = (unsigned int)(i / width);
+    if (x < step || y < step || x + step >= width || y + step >= height) {
+        out[i] = 0.0f;
+        return;
+    }
+    unsigned long long s = step;
+    unsigned long long sw = s * width;
+    float c = in[i];
+    float across = fabsf(2.0f * c - in[i - s] - in[i + s]);
+    float down = fabsf(2.0f * c - in[i - sw] - in[i + sw]);
+    out[i] = across + down;
+}
+
+// Each pixel's sum over the window of `radius` about it, within the image:
+// along its row if `across`, else down its column, in order. focus.rs's
+// `window_sums`.
+extern "C" __global__ void window_sums(const float* in, float* out, unsigned int width,
+                                       unsigned int height, unsigned int radius,
+                                       unsigned int across) {
+    unsigned long long i = (unsigned long long)blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned long long n = (unsigned long long)width * height;
+    if (i >= n) return;
+    unsigned int x = (unsigned int)(i % width);
+    unsigned int y = (unsigned int)(i / width);
+    unsigned long long w = width;
+    float sum = 0.0f;
+    if (across) {
+        unsigned int from = x > radius ? x - radius : 0;
+        unsigned int to = x + radius + 1 < width ? x + radius + 1 : width;
+        for (unsigned int k = from; k < to; k++) sum = sum + in[y * w + k];
+    } else {
+        unsigned int from = y > radius ? y - radius : 0;
+        unsigned int to = y + radius + 1 < height ? y + radius + 1 : height;
+        for (unsigned int k = from; k < to; k++) sum = sum + in[k * w + x];
+    }
+    out[i] = sum;
+}

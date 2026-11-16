@@ -223,6 +223,24 @@ impl Compute {
         self.pools.install(lane, || focus::measures(image))
     }
 
+    /// [`focus::sml`] of `image`, in `lane`: on the GPU when there is one
+    /// (P42).
+    pub fn focus_sml(
+        &self,
+        lane: Lane,
+        image: &Image,
+        step: u32,
+        radius: u32,
+    ) -> Result<Image, ComputeError> {
+        #[cfg(feature = "cuda")]
+        if let Some(cuda) = self.cuda() {
+            let device = cuda.upload(lane, image)?;
+            let measured = cuda.focus_sml(lane, &device, step, radius)?;
+            return cuda.download(lane, &measured);
+        }
+        self.pools.install(lane, || focus::sml(image, step, radius))
+    }
+
     /// [`cpu::to_f32`], in `lane`.
     pub fn to_f32(&self, lane: Lane, view: &FrameView<'_>) -> Result<Image, ComputeError> {
         self.pools.install(lane, || cpu::to_f32(view))
