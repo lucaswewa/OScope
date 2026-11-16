@@ -43,15 +43,14 @@ fn the_parabola_s_vertex_is_the_height_and_a_peak_at_an_end_has_no_confidence() 
     );
     assert_eq!((h[1], c[1]), (z0 as f32, 0.0));
     assert_eq!((h[2], c[2]), ((z0 + 8.0 * step) as f32, 0.0));
-    // A tie keeps the lower plane: 1, 3, 3, 1 peaks at plane 1, and its
-    // parabola lies a quarter of a step on, towards plane 2.
+    // A tie keeps the lower plane: 1, 3, 1, 3, 1 peaks at plane 1, not 3.
     let mut tied = Peaks::new(1, 1);
-    for f in [1.0, 3.0, 3.0, 1.0] {
+    for f in [1.0, 3.0, 1.0, 3.0, 1.0] {
         tied.push(&Image::from_vec(Shape::new(1, 1, 1), vec![f]).unwrap())
             .unwrap();
     }
     let depth = tied.finish(PLANES).unwrap();
-    assert_eq!(depth.heights.data()[0], 0.5 + 0.25);
+    assert_eq!(depth.heights.data()[0], 0.5);
     // Refused: planes of another size, fewer than 3, and no step.
     let mut few = Peaks::new(2, 2);
     assert!(few.push(&Image::zeros(Shape::new(2, 3, 1))).is_err());

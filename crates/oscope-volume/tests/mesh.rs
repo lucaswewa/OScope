@@ -159,7 +159,8 @@ fn each_format_reads_back_and_none_is_written_over() {
     let count = |prefix: &str| obj.lines().filter(|l| l.starts_with(prefix)).count();
     assert_eq!((count("v "), count("vt "), count("f ")), (6, 6, 4));
     assert!(obj.contains("mtllib surface.mtl\nusemtl surface\n"));
-    assert!(obj.lines().any(|l| l == "f 4/4 5/5 2/2"), "{obj}");
+    let first = obj.lines().find(|l| l.starts_with("f ")).unwrap();
+    assert_eq!(first, "f 4/4 5/5 2/2", "{obj}");
     assert!(
         std::fs::read_to_string(&files[1])
             .unwrap()
