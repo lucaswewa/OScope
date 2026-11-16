@@ -89,16 +89,54 @@ pub struct Separated {
 }
 
 /// A stored image read in colour, tile by tile: a raw one on its 2 × 2
-/// cells, each one RGB pixel.
-struct Colour {
+/// cells, each one RGB pixel; a grey one as RGB of equal channels.
+pub(crate) struct Colour {
     reader: ImageReader,
     pattern: Option<BayerPattern>,
-    size: (u64, u64),
+    /// Its size in RGB pixels: a raw image's in cells.
+    pub(crate) size: (u64, u64),
+    /// Whether it is grey.
+    pub(crate) grey: bool,
+    /// Its pixels' side in the stored image's: 2 for a raw one's cells.
+    pub(crate) cell: u64,
 }
 
 impl Colour {
+    /// `kind` record `id`'s image of `project`, and the image: refused
+    /// unless it is RGB, raw or grey.
+    pub(crate) fn open(
+        store: &Store,
+        project: ProjectId,
+        kind: RecordKind,
+        id: &str,
+    ) -> Result<(Self, ImageInfo), StoreError> {
+        let (path, pattern) = record_image(store, project, kind, id)?;
+        let reader = ImageReader::open(&path)?;
+        let info = reader.info().clone();
+        let (cell, grey) = match (pattern, info.channels) {
+            (Some(_), _) => (2, false),
+            (None, 3) => (1, false),
+            (None, 1) => (1, true),
+            (None, n) => {
+                return Err(StoreError::Refused(format!(
+                    "{} {id} has {n} channels: RGB, raw or grey are read",
+                    kind.name()
+                )));
+            }
+        };
+        let size = (info.width / cell, info.height / cell);
+        let colour = Self {
+            reader,
+            pattern,
+            size,
+            grey,
+            cell,
+        };
+        Ok((colour, info))
+    }
+
     /// Its tiles on its chunks' grid: left, top, width and height.
-    fn tiles(&self) -> Vec<(u64, u64, u64, u64)> {
+    pub(crate) fn tiles(&self) -> Vec<(u64, u64, u64, u64)> {
         let side = if self.pattern.is_some() {
             CHUNK / 2
         } else {
@@ -114,9 +152,13 @@ impl Colour {
     }
 
     /// A tile's RGB, from 0 to 1 of full scale.
-    fn rgb(&self, (x, y, w, h): (u64, u64, u64, u64)) -> Result<Vec<f32>, StoreError> {
+    pub(crate) fn rgb(&self, (x, y, w, h): (u64, u64, u64, u64)) -> Result<Vec<f32>, StoreError> {
         let Some(pattern) = self.pattern else {
-            return Ok(self.reader.read(0, 0, (x, y), (w, h))?.to_unit());
+            let samples = self.reader.read(0, 0, (x, y), (w, h))?.to_unit();
+            return Ok(match self.grey {
+                true => samples.iter().flat_map(|&v| [v; 3]).collect(),
+                false => samples,
+            });
         };
         let raw = self
             .reader
@@ -166,24 +208,14 @@ pub fn separate(
         Input::Acquisition(a) => (RecordKind::Acquisition, a.to_string()),
         Input::Result(r) => (RecordKind::Result, r.to_string()),
     };
-    let (path, pattern) = record_image(store, project, kind, &id)?;
-    let reader = ImageReader::open(&path)?;
-    let info = reader.info().clone();
-    let cell = match (pattern, info.channels) {
-        (Some(_), _) => 2,
-        (None, 3) => 1,
-        _ => {
-            return Err(refused(format!(
-                "{} {id} isn't in colour: stains are separated in RGB or a raw mosaic",
-                kind.name()
-            )));
-        }
-    };
-    let colour = Colour {
-        reader,
-        pattern,
-        size: (info.width / cell, info.height / cell),
-    };
+    let (colour, info) = Colour::open(store, project, kind, &id)?;
+    if colour.grey {
+        return Err(refused(format!(
+            "{} {id} isn't in colour: stains are separated in RGB or a raw mosaic",
+            kind.name()
+        )));
+    }
+    let cell = colour.cell;
     let tiles = colour.tiles();
     let mut stains = options
         .stains

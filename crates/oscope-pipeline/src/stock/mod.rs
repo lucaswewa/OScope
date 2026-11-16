@@ -40,6 +40,9 @@
 //! | `stain.estimate` | Two stains' vectors, by Macenko's method | CPU; live |
 //! | `stain.dab` | Each pixel's class by its DAB, from glass to strong | CPU; live; tiles |
 //! | `stain.dab_score` | DAB's counts, positive percentage and H-score | CPU; live |
+//! | `threshold.adaptive` | The pixels over their neighbourhood's mean (P46) | CPU; live; tiles |
+//! | `cells.split` | Objects, touching ones split by a seeded watershed | CPU; live |
+//! | `cells.measure` | Each object's measures, and its outline as GeoJSON | CPU; live |
 //! | `export.dzi`, `export.mesh` | A static Deep Zoom folder; a height map as PLY, STL or OBJ | CPU; batch |
 //!
 //! **References** cover the camera's whole frame. A dark frame or a flat
@@ -48,6 +51,7 @@
 //! frame_width, frame_height}` in the frame's pixels, or the whole frame
 //! without it.
 
+mod cells;
 mod correction;
 mod display;
 mod export;
@@ -117,6 +121,9 @@ pub fn registry(references: impl Into<PathBuf>) -> Registry {
         stain::estimate(),
         stain::dab(),
         stain::dab_score(),
+        cells::threshold_adaptive(),
+        cells::split(),
+        cells::measure_node(),
     ];
     for node in nodes.into_iter().chain(morphology::operations()) {
         registry

@@ -5,6 +5,7 @@
 //! Layer L1 of ADR-0005. It may not use unsafe code, so the CUDA kernels of
 //! its algorithms live in `oscope-compute`, which may.
 
+pub mod cells;
 pub mod color;
 pub mod registration;
 pub mod shapes;

@@ -950,3 +950,114 @@ fn the_stain_nodes_are_the_library_s_and_run_by_tiles() {
     let refused = engine.run(&plan, &grey, &options);
     assert!(refused.is_err());
 }
+
+#[test]
+fn the_cells_nodes_are_the_library_s() {
+    use oscope_imaging::cells::{adaptive, distances, fill_holes, measure, outline, watershed};
+    let folder = tempfile::tempdir().unwrap();
+    let engine = engine(folder.path());
+    // Discs, two of them touching, bright on a slope.
+    let (w, h) = (96_u32, 72_u32);
+    let discs = [(20.0, 20.0, 7.0), (31.0, 20.0, 7.0), (60.0, 45.0, 9.0)];
+    let values: Vec<f32> = (0..w * h)
+        .map(|i| {
+            let (x, y) = (f64::from(i % w) + 0.5, f64::from(i / w) + 0.5);
+            // The big disc is hollow: split fills it.
+            let on = discs.iter().any(|&(cx, cy, r)| (x - cx).hypot(y - cy) <= r)
+                && (x - 60.0).hypot(y - 45.0) > 3.0;
+            (0.3 * x / f64::from(w) + if on { 0.5 } else { 0.0 }) as f32
+        })
+        .collect();
+    let slide = Image::from_vec(Shape::new(w, h, 1), values.clone()).unwrap();
+    let params = json!({"radius": 12, "offset": 0.1});
+    let out = run(
+        &engine,
+        "threshold.adaptive",
+        params.clone(),
+        one(slide.clone()),
+    );
+    let mask = out["mask"].as_mask().unwrap().clone();
+    assert_eq!(
+        mask.data(),
+        adaptive(&values, w as usize, 12, 0.1).as_slice()
+    );
+    // In colour, on the channels' mean.
+    let colour: Vec<f32> = values.iter().flat_map(|&v| [v - 0.1, v, v + 0.1]).collect();
+    let coloured = Image::from_vec(Shape::new(w, h, 3), colour).unwrap();
+    let params_c = json!({"radius": 12, "offset": 0.1});
+    let out_c = run(&engine, "threshold.adaptive", params_c, one(coloured));
+    assert_eq!(out_c["mask"].as_mask().unwrap().data(), mask.data());
+    // By tiles, with the window's halo, as whole.
+    let options = RunOptions {
+        memoise: false,
+        ..RunOptions::default()
+    };
+    let inputs = one(slide.clone());
+    let plan = Plan::new(
+        engine.registry(),
+        &single(&engine, "threshold.adaptive", params, &inputs),
+        false,
+    )
+    .unwrap();
+    let tiled = engine
+        .run_tiled(&plan, &inputs, 32, &options, |_, _| {})
+        .unwrap()
+        .outputs;
+    assert_eq!(tiled["mask"].as_mask().unwrap().data(), mask.data());
+    // Split: the touching pair apart.
+    let inputs = Values::from([("mask".to_owned(), Value::mask(mask.clone()))]);
+    let split = run(&engine, "cells.split", json!({}), inputs);
+    let labels = image(&split, "labels");
+    let filled = fill_holes(mask.data(), w as usize);
+    let (want, count) = watershed(&filled, &distances(&filled, w as usize), w as usize, 2, 1.5);
+    assert_eq!(count, 3);
+    assert_eq!(
+        labels.data(),
+        want.iter()
+            .map(|&l| l as f32)
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+    // Measured on pixels of 0.5 µm, the image's means beside.
+    let inputs = Values::from([
+        ("labels".to_owned(), Value::image(labels.clone())),
+        ("image".to_owned(), Value::image(slide.clone())),
+    ]);
+    let measured = run(
+        &engine,
+        "cells.measure",
+        json!({"pixel_um": [0.5, 0.5], "min_area": 5.0}),
+        inputs,
+    );
+    let table = measured["objects"].as_table().unwrap();
+    let objects = measure(&want, w as usize, count, [0.5, 0.5], &[&values]);
+    assert_eq!(table.rows.len(), 3);
+    assert_eq!(
+        table.columns,
+        [
+            "label",
+            "area",
+            "perimeter",
+            "circularity",
+            "x",
+            "y",
+            "mean 0"
+        ]
+    );
+    for (row, o) in table.rows.iter().zip(&objects) {
+        assert_eq!(row[1], json!(o.area));
+        assert_eq!(row[6], json!(o.means[0]));
+    }
+    let outlines = measured["outlines"].as_json().unwrap();
+    let ring = outline(&want, w as usize, &objects[0]);
+    let first = &outlines["features"][0]["geometry"]["coordinates"][0][0];
+    assert_eq!(first, &json!([ring[0][0] * 0.5, ring[0][1] * 0.5]));
+    assert_eq!(outlines["features"].as_array().map(Vec::len), Some(3));
+    // By default, pixels of 1 µm and areas of 10 to 200 µm²: the big disc,
+    // 254 µm², is dropped.
+    let inputs = Values::from([("labels".to_owned(), Value::image(labels))]);
+    let defaults = run(&engine, "cells.measure", json!({}), inputs);
+    let rows = &defaults["objects"].as_table().unwrap().rows;
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().all(|r| r[1].as_f64().unwrap() < 200.0));
+}
