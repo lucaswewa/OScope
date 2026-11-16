@@ -837,7 +837,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P41 | Z-stacks, volume store, slice and brick routes | P36 | L | 0029 | Done |
 | P42 | Depth from focus and extended depth of field | P41 | L | — | Done |
-| P43 | Deconvolution and volume rendering | P42 | L | — | In review |
+| P43 | Deconvolution and volume rendering | P42 | L | — | Done |
 
 **Checkpoint E:** a height-map surface of the reflective sample, and a deconvolved fluorescent volume, both in VTK.js.
 
@@ -845,7 +845,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P44 | Annotations and measurements | P40 | M | — | Planned |
+| P44 | Annotations and measurements | P40 | M | — | In review |
 | P45 | Stain analysis | P44 | M | — | Planned |
 | P46 | Cell detection and counting | P45 | L | — | Planned |
 | P47 | Reports, and report extensions | P46 | L | 0030 | Planned |
@@ -1102,3 +1102,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-16 | P41 was estimated at about 1,760 lines before it started (in `oscope-store`, a volume's pyramid halving z as well as x and y, as its voxels near a cube, its levels' planes and the OME metadata's z scale, ~220; a z-scan's voxel size from its plan at ingest ~30; in `oscope-api`, the volume routes: metadata, orthogonal slices and bricks with a binary header, uint8 or uint16, at a level chosen to fit, a raw image from its first level, ~320; tests ~550; `ex-volume` and its VTK.js page ~440; glue ~40; and about a tenth on top): about twice L's 900. One pull request, with the overrun explained, as the owner decided for P24–P43. VTK.js is vendored, as the owner chose, and not counted |
 | 2026-11-16 | P42 was estimated at about 2,650 lines before it started (in `oscope-compute`, the sum-modified-Laplacian focus measure and its CUDA twin, to the bit, ~170; in `oscope-volume`, the focus measures streamed plane by plane, the height from the peak and its parabola, the confidence, the median and the all-in-focus image ~300, and the PLY, STL and OBJ meshes ~200; the pipeline's nodes for each step ~240; in `oscope-workflows`, the depth-from-focus job, from a volume acquisition to its results and mesh, ~250; in `oscope-api`, the job's wiring and float bricks for the heightfield ~50; tests ~700; `ex-depth-from-focus` and its VTK.js page ~450; glue ~50; and about a tenth on top): nearly three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P43 |
 | 2026-11-16 | P43 was estimated at about 3,000 lines before it started (in `oscope-volume`, the Born–Wolf widefield PSF with its Bessel function and integral ~150, Richardson–Lucy on rustfft's 3D FFTs with mirrored padding, total-variation regularisation and its iterations ~280; in `oscope-compute`, its CUDA twin on cuFFT with its kernels ~230; the pipeline's nodes ~150; in `oscope-workflows`, the deconvolution job, from a volume acquisition to a result volume, ~200; tests ~750; `ex-deconvolve` and its VTK.js page with MIP, composite, isosurface and a before-and-after toggle ~500; `ex-checkpoint-e` ~200; glue ~60; and about a tenth on top): more than three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P43. The PSF is Born–Wolf's alone, as the owner chose |
+| 2026-11-16 | P44 was estimated at about 2,000 lines before it started (in `oscope-imaging`, shapes' lengths, areas and centres, and the pixels a polygon holds, row by row, ~170; in `oscope-store`, annotations in layers with their validation and their keeping ~260, and measurements read tile by tile, with the CSV, ~230; the `projects` Thing's routes ~130; tests ~560; `ex-annotate` and its OpenSeadragon drawing page ~490; `ex-common`'s helpers ~60; glue ~30): more than three times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54. A scan's images now record their pixel size from the plan's field, which P41 did for z-scans only, so that measurements on a stitched mosaic are in µm |

@@ -280,9 +280,11 @@ fn a_z_scan_s_frames_become_a_volume_of_its_voxels() {
     assert!(volume.volume);
     let size = volume.pixel_size.unwrap();
     assert_eq!((size.x, size.y, size.z), (0.5, 0.5, 2.0));
-    // A tiled stack's planes are each tile's, not a volume.
+    // A tiled stack's planes are each tile's, not a volume, but its pixels
+    // have their size (P44).
     let tiles = ingested("tiled_stack");
-    assert!(!tiles.volume && tiles.pixel_size.is_none());
+    let size = tiles.pixel_size.unwrap();
+    assert!(!tiles.volume && (size.x, size.y, size.z) == (0.5, 0.5, 1.0));
     // The records keep it, as the project's contents give them.
     let contents = store.contents(project).unwrap();
     let volumes: Vec<bool> = contents

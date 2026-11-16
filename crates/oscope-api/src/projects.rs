@@ -8,7 +8,9 @@
 //! acquisition into a mosaic, `stitch.run` (ADR-0027); and the one that
 //! finds a z-stack's heights and all-in-focus image,
 //! `volume.depth_from_focus` (P42); and the one that deconvolves a volume,
-//! `volume.deconvolve` (P43).
+//! `volume.deconvolve` (P43). Acquisitions and results carry annotations in
+//! µm, in layers, kept and removed here, and measured: lengths, areas and
+//! their pixels' statistics, as JSON or CSV (P44).
 
 use std::sync::{Arc, OnceLock};
 
@@ -17,7 +19,8 @@ use oscope_core::ProjectId;
 use oscope_ext::Extensions;
 use oscope_jobs::JobService;
 use oscope_store::{
-    Change, Contents, NewProject, Page, Project, Query as Search, Scratch, Store, StoreError,
+    Annotations, CHUNK, Change, Contents, Feature, Measurement, NewProject, Page, Project,
+    Query as Search, RecordKind, Scratch, Store, StoreError, measure, measurements_csv,
 };
 use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
 use oscope_workflows::depth::{DEPTH, depth_jobs};
@@ -71,6 +74,33 @@ fn project_id(params: &PathParams) -> Result<ProjectId, StoreError> {
         let text = params.get("id").unwrap_or_default();
         StoreError::Refused(format!("{text:?} isn't a project's ID"))
     })
+}
+
+/// The record a path names: its project, its kind by its folder's name,
+/// `acquisitions` or `results`, and its ID.
+fn record(params: &PathParams) -> Result<(ProjectId, RecordKind, String), StoreError> {
+    let project = project_id(params)?;
+    let folder = params.get("kind").unwrap_or_default();
+    let kind = [RecordKind::Acquisition, RecordKind::Result]
+        .into_iter()
+        .find(|k| k.folder() == folder)
+        .ok_or_else(|| StoreError::Refused(format!("{folder:?}: acquisitions or results")))?;
+    Ok((
+        project,
+        kind,
+        params.get("record").unwrap_or_default().to_owned(),
+    ))
+}
+
+/// Which measurements, and as what.
+#[derive(Debug, Deserialize)]
+pub struct MeasureQuery {
+    /// One layer's, or with none, every layer's.
+    layer: Option<String>,
+    /// A stack's plane: its first by default.
+    plane: Option<u32>,
+    /// `csv` for CSV, and JSON otherwise.
+    format: Option<String>,
 }
 
 /// The projects: one slide or experiment each, holding its acquisitions,
@@ -209,6 +239,97 @@ impl ProjectsThing {
     async fn record_thumbnail(&self, params: PathParams) -> Response {
         let record = params.get("record").unwrap_or_default().to_owned();
         self.thumbnail_of(&params, Some(record)).await
+    }
+
+    /// A record's annotations.
+    ///
+    /// A project's acquisition's or result's, `kind` being `acquisitions` or
+    /// `results`: its layers by name, each a GeoJSON FeatureCollection, in
+    /// µm from the image's top-left corner.
+    #[endpoint(get, "annotations/{id}/{kind}/{record}")]
+    async fn annotations(&self, params: PathParams) -> Response {
+        let read = match record(&params) {
+            Ok((project, kind, id)) => {
+                let read = self.blocking(move |store| store.annotations(project, kind, &id));
+                read.await
+            }
+            Err(error) => Err(error),
+        };
+        match read {
+            Ok(annotations) => Json::<Annotations>(annotations).into_response(),
+            Err(error) => failed(&error),
+        }
+    }
+
+    /// What a record's annotations measure.
+    ///
+    /// In µm: lengths, areas, centres, and the statistics of a polygon's
+    /// pixels, a raw image's by the colours of its filters. `?layer=…` for one layer's, `&plane=…` for a stack's plane, and
+    /// `&format=csv` for CSV.
+    #[endpoint(get, "measurements/{id}/{kind}/{record}")]
+    async fn measurements(
+        &self,
+        params: PathParams,
+        Query(query): Query<MeasureQuery>,
+    ) -> Response {
+        let (project, kind, id) = match record(&params) {
+            Ok(record) => record,
+            Err(error) => return failed(&error),
+        };
+        let (layer, plane) = (query.layer, query.plane.unwrap_or(0));
+        let measured = self.blocking(move |store| {
+            measure(store, project, kind, &id, layer.as_deref(), plane, CHUNK)
+        });
+        match (measured.await, query.format.as_deref()) {
+            (Ok(measured), Some("csv")) => {
+                let disposition = "attachment; filename=\"measurements.csv\"";
+                let headers = [
+                    (header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+                    (header::CONTENT_DISPOSITION, disposition),
+                ];
+                (headers, measurements_csv(&measured)).into_response()
+            }
+            (Ok(measured), _) => Json::<Vec<Measurement>>(measured).into_response(),
+            (Err(error), _) => failed(&error),
+        }
+    }
+
+    /// Keeps an annotation.
+    ///
+    /// On a project's acquisition or result, in layer `layer`, made if need
+    /// be: a GeoJSON Feature in µm, which replaces the one with its `id`, or
+    /// with none is new. The feature as kept, with its ID.
+    #[action]
+    async fn annotate(
+        &self,
+        project: ProjectId,
+        kind: RecordKind,
+        record: String,
+        layer: String,
+        feature: Feature,
+    ) -> Result<Feature, ActionError> {
+        let kept =
+            self.blocking(move |store| store.annotate(project, kind, &record, &layer, feature));
+        kept.await.map_err(action_error)
+    }
+
+    /// Removes an annotation, or a layer.
+    ///
+    /// Feature `feature` of layer `layer` of a project's acquisition or
+    /// result, or with no `feature`, the whole layer.
+    #[action]
+    async fn remove_annotation(
+        &self,
+        project: ProjectId,
+        kind: RecordKind,
+        record: String,
+        layer: String,
+        #[param(default)] feature: Option<String>,
+    ) -> Result<(), ActionError> {
+        let removed = self.blocking(move |store| {
+            store.remove_annotation(project, kind, &record, &layer, feature.as_deref())
+        });
+        removed.await.map_err(action_error)
     }
 
     /// Makes a project.

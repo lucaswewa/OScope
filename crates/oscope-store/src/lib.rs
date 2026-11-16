@@ -8,17 +8,21 @@
 //!
 //! ```text
 //! {data root}/projects/<project>/project.json
-//!     acquisitions/<id>/acquisition.json, raw.ome.zarr/, thumbnail.jpg
-//!     results/<id>/result.json, image.ome.zarr/ (if an image), thumbnail.jpg
+//!     acquisitions/<id>/acquisition.json, raw.ome.zarr/, thumbnail.jpg,
+//!         annotations.json (P44)
+//!     results/<id>/result.json, image.ome.zarr/ (if an image), thumbnail.jpg,
+//!         annotations.json
 //!     reports/<id>/report.json
 //! {data root}/index.sqlite
 //! {scratch root}/recordings/<recording>/recording.json, 000000.frames, …
 //! ```
 
+mod annotations;
 mod formats;
 mod image;
 mod index;
 mod ingest;
+mod measure;
 mod recording;
 mod records;
 mod scratch;
@@ -26,6 +30,7 @@ mod store;
 mod thumbnail;
 pub mod zoom;
 
+pub use annotations::{Annotations, Feature, Geometry, Layer};
 pub use formats::{
     Exporter, Format, Importer, Rendition, export, exporters, import, importers, render,
 };
@@ -33,6 +38,7 @@ pub use image::{
     CHUNK, ImageInfo, ImageReader, ImageWriter, PixelSize, SampleType, Samples, halve_samples,
 };
 pub use ingest::ingest;
+pub use measure::{ChannelStats, Measurement, measure, measurements_csv, polygon_stats};
 pub use recording::{
     FrameEntry, Recording, RecordingOptions, RecordingReader, RecordingWriter, SEGMENT_BYTES,
 };
