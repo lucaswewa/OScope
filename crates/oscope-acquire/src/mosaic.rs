@@ -193,6 +193,9 @@ pub struct LiveMosaic {
     look: LookSource,
     roaming: bool,
     stopped: AtomicBool,
+    /// Held while the loops draw a frame, so that [`stop`](Self::stop) can
+    /// wait for one being drawn.
+    drawing: Mutex<()>,
     halt: Arc<Notify>,
     scans: mpsc::Sender<(Frame, Xyz)>,
 }
@@ -231,6 +234,7 @@ impl LiveMosaic {
             look,
             roaming: roam.is_some(),
             stopped: AtomicBool::new(false),
+            drawing: Mutex::new(()),
             halt: Arc::clone(&halt),
             scans,
         });
@@ -241,7 +245,9 @@ impl LiveMosaic {
                 let Some(mosaic) = drawer.upgrade() else {
                     break;
                 };
-                let drawn = tokio::task::spawn_blocking(move || mosaic.offer(&frame, Some(at)));
+                let drawn = tokio::task::spawn_blocking(move || {
+                    mosaic.unless_stopped(|mosaic| mosaic.offer(&frame, Some(at)));
+                });
                 if drawn.await.is_err() {
                     break;
                 }
@@ -263,7 +269,7 @@ impl LiveMosaic {
                     };
                     let track = Arc::clone(&track);
                     let drawn = tokio::task::spawn_blocking(move || {
-                        mosaic.roam(&frame, &track);
+                        mosaic.unless_stopped(|mosaic| mosaic.roam(&frame, &track));
                     });
                     if drawn.await.is_err() {
                         break;
@@ -310,10 +316,22 @@ impl LiveMosaic {
         self.stopped.load(Ordering::Relaxed)
     }
 
-    /// Stops drawing new frames. The canvas stays to be seen.
+    /// Stops drawing new frames. The canvas stays to be seen. A frame being
+    /// drawn ends first: once this returns, nothing more is drawn, and the
+    /// counts are final. It blocks for that frame, so call it off an async
+    /// runtime's threads.
     pub fn stop(&self) {
         self.stopped.store(true, Ordering::Relaxed);
         self.halt.notify_one();
+        drop(lock(&self.drawing));
+    }
+
+    /// Runs `draw` unless the mosaic has stopped, while holding the
+    /// drawing lock that [`stop`](Self::stop) waits for: a frame the loops
+    /// took before a stop isn't drawn after it.
+    fn unless_stopped(&self, draw: impl FnOnce(&Self) -> Verdict) -> Option<Verdict> {
+        let _drawing = lock(&self.drawing);
+        (!self.stopped()).then(|| draw(self))
     }
 
     /// Empties the canvas.

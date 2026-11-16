@@ -322,12 +322,13 @@ impl LiveMosaicThing {
             let frames = devices.acquisition.bus().subscribe_latest("live mosaic");
             (frames, devices.stage.track())
         });
-        let mut current = lock(&state.mosaics.current);
-        if let Some((_, before)) = current.take() {
-            before.stop();
+        let before = lock(&state.mosaics.current).take();
+        if let Some((_, before)) = before {
+            stopped(before).await?;
         }
         let mosaic = LiveMosaic::start(setup, preview, look, roam).map_err(refused)?;
         let id = state.mosaics.made.fetch_add(1, Ordering::Relaxed) + 1;
+        let mut current = lock(&state.mosaics.current);
         *current = Some((id, mosaic));
         Ok(state_of(current.clone()))
     }
@@ -339,7 +340,7 @@ impl LiveMosaicThing {
     async fn halt(&self) -> Result<MosaicState, ActionError> {
         let current = self.ready()?.mosaics.current();
         if let Some((_, mosaic)) = &current {
-            mosaic.stop();
+            stopped(Arc::clone(mosaic)).await?;
         }
         Ok(state_of(current))
     }
@@ -357,6 +358,14 @@ impl LiveMosaicThing {
         }
         Ok(state_of(current))
     }
+}
+
+/// Stops `mosaic`, off the runtime's threads, as a frame being drawn ends
+/// first.
+async fn stopped(mosaic: Arc<LiveMosaic>) -> Result<(), ActionError> {
+    tokio::task::spawn_blocking(move || mosaic.stop())
+        .await
+        .map_err(|e| ActionError::handled(format!("error (500): {e}")))
 }
 
 /// The tile route, over `mosaics`.

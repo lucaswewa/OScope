@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Runs CI's checks (.github/workflows/ci.yml) on the checkout you are in, in
-# the same order, and says which passed.
+# the same order, and says which passed. The test suites and the examples'
+# smoke runs go side by side, each on two CPUs of its own, as on CI's
+# two-core runners.
 #
-#   scripts/ci-local.sh [--cuda] [--logs DIR]
+#   scripts/ci-local.sh [--cuda] [--jobs N] [--logs DIR]
 #
 #   --cuda      also run the CUDA tests (OSCOPE_CUDA=1 and the cuda feature),
 #               which need a GPU and the CUDA toolkit
+#   --jobs N    how many suites or smoke runs at once, each on a pair of CPUs
+#               [default: 8, or as many pairs as there are]
 #   --logs DIR  where to write each step's log
 #               [default: target/ci-logs/<date-time>]
 #
@@ -15,25 +19,33 @@ set -uo pipefail
 
 cuda=false
 logs=""
+jobs=8
 while [ $# -gt 0 ]; do
   case "$1" in
     --cuda) cuda=true ;;
+    --jobs) jobs=${2:?--jobs needs a number}; shift ;;
     --logs) logs=${2:?--logs needs a folder}; shift ;;
-    -h | --help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift
 done
 
+here=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=pinned.sh
+. "$here/pinned.sh"
 root=$(git rev-parse --show-toplevel) || exit 2
 cd "$root" || exit 2
 if [ -f "$HOME/.cargo/env" ]; then
   . "$HOME/.cargo/env"
 fi
-logs=${logs:-${CARGO_TARGET_DIR:-$root/target}/ci-logs/$(date +%Y%m%d-%H%M%S)}
+target=${CARGO_TARGET_DIR:-$root/target}
+logs=${logs:-$target/ci-logs/$(date +%Y%m%d-%H%M%S)}
 mkdir -p "$logs" || exit 2
+slots=$(pinned_slots "$jobs")
 changes=$(git status --porcelain | wc -l)
 echo "$root at $(git rev-parse --short HEAD), with $changes changed files; logs in $logs"
+echo "suites and smoke runs: $slots at once, each on two CPUs"
 
 # uv, for Python extensions (ADR-0020): on PATH, or where its installers put
 # it. Found, it runs the Python SDK's tests, and the tests that need Python.
@@ -51,6 +63,7 @@ fi
 passed=0
 failed=0
 count=0
+last=ok
 # step LABEL COMMAND...: runs the command, with its output in a log.
 step() {
   local label=$1
@@ -61,18 +74,63 @@ step() {
   start=$SECONDS
   if "$@" > "$log" 2>&1; then
     passed=$((passed + 1))
+    last=ok
     printf 'ok    %-30s %4d s\n' "$label" $((SECONDS - start))
   else
     failed=$((failed + 1))
+    last=failed
     printf 'FAIL  %-30s %4d s  %s\n' "$label" $((SECONDS - start)) "$log"
     tail -n 20 "$log" | sed 's/^/      /'
   fi
 }
 
+# The last runs' times, so that the longest go first and none is left to
+# run alone at the end.
+times="$target/ci-times.tsv"
+# longest_first LIST: LIST's lines, those that took longest last time first,
+# and those not run before before them.
+longest_first() {
+  if [ -f "$times" ]; then
+    awk -F'\t' 'NR == FNR { t[$1] = $2; next } { print (($1 in t) ? t[$1] : 100000) "\t" $0 }' \
+      "$times" "$1" | sort -t$'\t' -k1,1nr | cut -f2-
+  else
+    cat "$1"
+  fi
+}
+# keep_times: adds PINNED_RESULTS' times to the file of times.
+keep_times() {
+  {
+    [ -f "$times" ] && cat "$times"
+    printf '%s\n' "${PINNED_RESULTS[@]}" | awk -F'\t' '{ print $1 "\t" $3 }'
+  } | awk -F'\t' '{ t[$1] = $2 } END { for (k in t) print k "\t" t[k] }' > "$times.new" \
+    && mv "$times.new" "$times"
+}
+
 step "toolchain" rustup toolchain install
 step "fmt" cargo fmt --all --check
 step "clippy" cargo clippy --workspace --all-targets --locked -- -D warnings
-step "tests" cargo test --workspace --locked
+# The tests: their binaries built, then run side by side, each in its
+# package's folder, as cargo test runs them; then the doc tests.
+step "tests build" cargo test --workspace --locked --no-run --message-format=json
+if [ "$last" = ok ]; then
+  mkdir -p "$logs/tests"
+  test_runs "$(ls "$logs"/*-tests-build.log)" > "$logs/tests.tsv"
+  longest_first "$logs/tests.tsv" > "$logs/tests.order"
+  count=$((count + 1))
+  start=$SECONDS
+  PINNED_RESULTS=()
+  run_pinned "$slots" "$logs/tests" "$logs/tests.order" quiet
+  keep_times
+  if [ "$PINNED_FAILED" -eq 0 ]; then
+    passed=$((passed + 1))
+    printf 'ok    %-30s %4d s\n' "tests" $((SECONDS - start))
+  else
+    failed=$((failed + 1))
+    printf 'FAIL  %-30s %4d s  %s of %s suites failed\n' "tests" $((SECONDS - start)) \
+      "$PINNED_FAILED" "$(wc -l < "$logs/tests.tsv")"
+  fi
+fi
+step "doc tests" cargo test --workspace --locked --doc
 python_sdk() { (cd python/oscope-ext && "$uv" run --locked pytest -q); }
 if [ -n "$uv" ]; then
   step "python sdk tests" python_sdk
@@ -91,21 +149,36 @@ else
   echo "      cargo install cargo-deny --version 0.20.2 --locked"
 fi
 step "server --version" cargo run -q -p oscope-server --locked -- --version
-# Every example with a binary, headless (examples/README.md).
+# Every example with a binary, headless (examples/README.md): built
+# together, then their smoke runs side by side, from the repository's root.
+examples=()
 for manifest in examples/*/Cargo.toml; do
   [ -f "$(dirname "$manifest")/src/main.rs" ] || continue
-  name=$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -1)
-  step "$name --smoke" cargo run -q -p "$name" --locked -- --smoke
+  examples+=("$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -1)")
 done
+step "examples build" cargo build --locked "${examples[@]/#/--package=}"
+if [ "$last" = ok ]; then
+  for name in "${examples[@]}"; do
+    binary="$target/debug/$name"
+    [ ! -f "$binary.exe" ] || binary="$binary.exe"
+    printf '%s --smoke\t%s\t%s --smoke\n' "$name" "$root" "$binary"
+  done > "$logs/smokes.tsv"
+  longest_first "$logs/smokes.tsv" > "$logs/smokes.order"
+  mkdir -p "$logs/smokes"
+  PINNED_RESULTS=()
+  run_pinned "$slots" "$logs/smokes" "$logs/smokes.order"
+  keep_times
+  count=$((count + ${#examples[@]}))
+  passed=$((passed + ${#examples[@]} - PINNED_FAILED))
+  failed=$((failed + PINNED_FAILED))
+fi
 if $cuda; then
   step "CUDA tests" env OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda
 fi
 
-tests_log=$(ls "$logs"/*-tests.log 2> /dev/null | head -1)
-if [ -n "$tests_log" ]; then
-  suites=$(grep -c '^test result: ok' "$tests_log")
-  tests=$(grep -o '^test result: ok. [0-9]* passed' "$tests_log" | awk '{s += $4} END {print s + 0}')
-  echo "tests: $tests passed, in $suites suites"
-fi
+results=$(cat "$logs"/tests/*.log "$logs"/*-doc-tests.log 2> /dev/null)
+suites=$(grep -c '^test result: ok' <<< "$results")
+tests=$(grep -o '^test result: ok. [0-9]* passed' <<< "$results" | awk '{s += $4} END {print s + 0}')
+echo "tests: $tests passed, in $suites suites"
 echo "steps: $passed passed, $failed failed"
 [ "$failed" -eq 0 ]

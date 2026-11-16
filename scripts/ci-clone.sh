@@ -3,10 +3,11 @@
 # line endings in a folder of its own, as CI sees the code. On Windows, run
 # it under WSL, so that the clone and its build are on the Linux side.
 #
-#   scripts/ci-clone.sh [COMMIT] [--cuda]
+#   scripts/ci-clone.sh [COMMIT] [--cuda] [--jobs N]
 #
-#   COMMIT  what to check [default: HEAD]; it must be committed
-#   --cuda  also run the CUDA tests
+#   COMMIT    what to check [default: HEAD]; it must be committed
+#   --cuda    also run the CUDA tests
+#   --jobs N  how many suites or smoke runs at once, as ci-local.sh's
 #
 # The clone goes to $CI_CLONE_DIR/oscope-<commit> [default: ~/ci], replacing
 # an earlier clone of the same commit, and builds in $CARGO_TARGET_DIR
@@ -16,13 +17,15 @@ set -uo pipefail
 
 commit=HEAD
 options=()
-for arg in "$@"; do
-  case "$arg" in
+while [ $# -gt 0 ]; do
+  case "$1" in
     --cuda) options+=(--cuda) ;;
-    -h | --help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    -*) echo "unknown option: $arg (try --help)" >&2; exit 2 ;;
-    *) commit=$arg ;;
+    --jobs) options+=(--jobs "${2:?--jobs needs a number}"); shift ;;
+    -h | --help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
+    *) commit=$1 ;;
   esac
+  shift
 done
 
 if [ -f "$HOME/.cargo/env" ]; then

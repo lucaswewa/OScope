@@ -2,36 +2,50 @@
 
 ## Running CI's checks locally
 
-Two scripts run the checks that CI runs on every pull request ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)), in the same order. They are for the last check before opening a pull request, as CLAUDE.md asks.
+Two scripts run the checks that CI runs on every pull request ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)), in the same order. They are the merge gate ([ADR-0038](../docs/adr/0038-local-ci-replays-side-by-side.md)): a pull request merges when both pass, each run alone, as CLAUDE.md asks.
 
 | Step | Command |
 |---|---|
 | toolchain | `rustup toolchain install` |
 | fmt | `cargo fmt --all --check` |
 | clippy | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| tests | `cargo test --workspace --locked`, the layering test among them; with `OSCOPE_PYTHON=1` where uv is found, as CI does on Ubuntu |
+| tests build | `cargo test --workspace --locked --no-run`, its messages as JSON |
+| tests | each test binary built, the layering test's among them, run in its package's folder as `cargo test` runs it; with `OSCOPE_PYTHON=1` where uv is found, as CI does on Ubuntu |
+| doc tests | `cargo test --workspace --locked --doc` |
 | python sdk tests | `uv run --locked pytest` in `python/oscope-ext`. The step fails if uv isn't on `PATH`, in `~/.local/bin` or `~/.cargo/bin`, or in winget's folder on Windows. GitHub CI runs it on Ubuntu alone |
 | docs | `cargo doc --workspace --no-deps --locked`, with `RUSTDOCFLAGS="-D warnings"` |
 | deny | `cargo deny --locked check` |
 | server --version | `cargo run -p oscope-server --locked -- --version` |
-| *each example* --smoke | `cargo run -p <example> --locked -- --smoke`, for every example with a binary: always here, though GitHub CI skips them while its `RUN_EXAMPLES` is `"false"` |
+| examples build | `cargo build --locked`, every example with a binary |
+| *each example* --smoke | the example's binary, with `--smoke`, from the repository's root: always here, though GitHub CI skips them while its `RUN_EXAMPLES` is `"false"` |
 | CUDA tests, with `--cuda` | `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` |
 
-Each step's output goes to a log file. A failing step shows the end of its log. Both scripts exit with 0 only if every step passed.
+Each step's output goes to a log file, and each suite's and smoke run's to its own. A failing step shows the end of its log. Both scripts exit with 0 only if every step passed.
+
+### Side by side, on two CPUs each
+
+The test suites, and then the smoke runs, go eight at a time, each limited to two CPUs of its own, as on CI's two-core runners. Slot k gets CPUs 2k and 2k+1: on the owner's PC, an i9-12900, CPUs 0–15 are its eight performance cores' threads. `--jobs N` runs N at a time, at most one for each pair of CPUs there is. On Windows the limit is set through PowerShell; on Linux, with `taskset`.
+
+- **The longest go first,** by the last run's times, kept in `target/ci-times.tsv`, so that none is left to run alone at the end.
+- **The suites are quiet** but for any that fails, which shows the end of its log; the smoke runs each show a line.
+- **Disk:** suites that record preallocate their segments, several at once. Keep some 20 GB free.
+
+[`pinned.sh`](pinned.sh) holds the runner, which both scripts and `two-core.sh` share.
 
 ### `ci-local.sh`: this checkout, as it is
 
 ```sh
 scripts/ci-local.sh            # in Git Bash on Windows, or a Linux shell
 scripts/ci-local.sh --cuda     # also the CUDA tests: a GPU and the CUDA toolkit
+scripts/ci-local.sh --jobs 4   # four at a time
 ```
 
 It checks the checkout you are in, uncommitted changes included, and builds in the usual `target/`. Its logs go to `target/ci-logs/<date-time>/`, or to `--logs DIR`. It ends like this:
 
 ```text
-ok    ex-sim-render --smoke            21 s
-tests: 145 passed, in 77 suites
-steps: 17 passed, 0 failed
+ok    ex-autofocus --smoke             99 s
+tests: 504 passed, in 186 suites
+steps: 53 passed, 0 failed
 ```
 
 ### `ci-clone.sh`: a commit, as CI sees it
@@ -61,3 +75,25 @@ MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu-24.04 -- bash /mnt/c/repos/OScope/scripts/c
 - **For `--cuda`:** an NVIDIA GPU and the CUDA toolkit, with `nvcc` on the `PATH` ([`docs/hardware.md`](../docs/hardware.md)).
 
 They don't run the weekly CUDA build (`.github/workflows/cuda.yml`), which builds the kernels for every GPU architecture on a CI runner.
+
+## Two cores, five times: `two-core.sh`
+
+Before a pull request, the suites and smoke runs a change touches, and only those, run five times each on two CPUs, as CLAUDE.md asks. GitHub's runners have two cores, and this PC's 24 threads hide timing faults: rates, pacing and ordering that only hold on a fast machine.
+
+```sh
+scripts/two-core.sh oscope-workflows:stitch oscope-stitch:lib ex-stitch
+scripts/two-core.sh --repeat 10 oscope-api:preview
+```
+
+- **A target** is a test suite, `PACKAGE:TEST` for its `tests/TEST.rs` or `PACKAGE:lib` for its unit tests, or an example by its name, for its `--smoke`.
+- **Its runs go side by side,** eight at a time on their own pairs of CPUs, as `ci-local.sh`'s do: a target's five copies run together.
+- **`--repeat N`** runs each N times, and `--jobs N` N at a time. Logs go to `target/two-core/<date-time>/`, or to `--logs DIR`.
+
+It prints each run as it ends, then each target's passes and times, and exits with 0 only if every run passed:
+
+```text
+oscope-api:devices                       5 of 5 passed, 19.5-20.1 s
+ex-core-tour                             5 of 5 passed, 0.2-0.3 s
+```
+
+**Which suites:** those a change adds or edits, and those that run code it changes. A suite whose code behaves as before needn't run: one whose simulator only gained settings, their defaults the old behaviour, for instance.

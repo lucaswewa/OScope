@@ -8,7 +8,7 @@ One record per significant decision, so that later phases, and later readers, ca
 |---|---|---|---|
 | [0001](0001-record-architecture-decisions-and-the-delivery-process.md) | Record architecture decisions, and the delivery process | Accepted | P00 |
 | [0002](0002-clean-room-and-dependency-licences.md) | Clean room: what OScope may take from `microscope`, and the dependency licence policy | Accepted | P00 |
-| [0003](0003-platforms-windows-and-ubuntu-x86-64.md) | Platforms: Windows 11 and Ubuntu LTS on x86_64 | Accepted | P00 |
+| [0003](0003-platforms-windows-and-ubuntu-x86-64.md) | Platforms: Windows 11 and Ubuntu LTS on x86_64 | Accepted; its CI superseded by 0038 | P00 |
 | [0004](0004-teta-wot-v0-2-0-extended-upstream-first.md) | Depend on `teta-wot` v0.2.0, extended upstream first | Accepted | P00 |
 | [0005](0005-layered-crates-and-their-dependency-rules.md) | Layered crates and their dependency rules | Accepted | P01 |
 | [0006](0006-control-plane-and-media-plane.md) | Control plane and media plane | Accepted | P04 |
@@ -37,6 +37,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |
 | [0037](0037-importers-exporters-and-the-abi-s-third-version.md) | Importers, exporters, and the ABI's third version | Accepted | P30 |
+| [0038](0038-local-ci-replays-side-by-side.md) | Local CI replays, side by side on two CPUs | Accepted | — |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

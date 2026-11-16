@@ -350,38 +350,36 @@ async fn settings_are_kept_across_a_restart() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_things_answer_on_a_test_port() {
-    // Served on 8221, with plain HTTP/1.1 requests.
+    // Served on a port the system picks, so that copies of the suite run
+    // side by side, with plain HTTP/1.1 requests.
     let folder = tempfile::tempdir().unwrap();
     let (_, devices) = sim_server(folder.path(), 1.0).await;
     let roots = roots(folder.path());
     let api = Api::builder(&roots).devices(devices).build().unwrap();
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8221")
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let at = listener.local_addr().unwrap();
     let (stop, stopped) = tokio::sync::oneshot::channel::<()>();
     let serving = tokio::spawn(api.serve(listener, async {
         let _ = stopped.await;
     }));
-    let (status, body) = http("GET", "/api/v1/stage/capabilities", "").await;
+    let (status, body) = http(at, "GET", "/api/v1/stage/capabilities", "").await;
     assert_eq!(status, 200);
     assert_eq!(body["model"], "simulated grblHAL stage");
-    let (status, body) = http("PUT", "/api/v1/camera/gain", "999").await;
+    let (status, body) = http(at, "PUT", "/api/v1/camera/gain", "999").await;
     assert_eq!(status, 400, "{body}");
     assert_eq!(body["title"], "out of range");
-    let (status, body) = http("GET", "/api/v1/objective/fitted", "").await;
+    let (status, body) = http(at, "GET", "/api/v1/objective/fitted", "").await;
     assert_eq!((status, body["name"].as_str()), (200, Some("10x")));
     let _ = stop.send(());
     serving.await.unwrap().unwrap();
 }
 
-/// One HTTP/1.1 request to 127.0.0.1:8221: the status, and the body as JSON.
-async fn http(method: &str, path: &str, body: &str) -> (u16, Value) {
+/// One HTTP/1.1 request to `at`: the status, and the body as JSON.
+async fn http(at: std::net::SocketAddr, method: &str, path: &str, body: &str) -> (u16, Value) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let mut stream = tokio::net::TcpStream::connect("127.0.0.1:8221")
-        .await
-        .unwrap();
+    let mut stream = tokio::net::TcpStream::connect(at).await.unwrap();
     let request = format!(
-        "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:8221\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        "{method} {path} HTTP/1.1\r\nHost: {at}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
     stream.write_all(request.as_bytes()).await.unwrap();
