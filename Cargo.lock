@@ -2468,6 +2468,16 @@ dependencies = [
 [[package]]
 name = "oscope-volume"
 version = "0.1.0"
+dependencies = [
+ "oscope-compute",
+ "oscope-imaging",
+ "rand",
+ "rayon",
+ "schemars",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "oscope-workflows"
