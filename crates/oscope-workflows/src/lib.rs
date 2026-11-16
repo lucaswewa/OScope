@@ -7,3 +7,4 @@
 pub mod autofocus;
 pub mod calibration;
 pub mod scan;
+pub mod stitch;

@@ -19,7 +19,7 @@ use crate::catalogue::{SampleCatalogue, SampleEntry, SlideLoader};
 use crate::clock::{Rate, SimClock};
 use crate::fluorescence::Excitation;
 use crate::optics::Optics;
-use crate::stage::{SimStage, SimStageConfig};
+use crate::stage::{LostSteps, SimStage, SimStageConfig};
 use crate::world::{Light, World};
 
 /// The channels, in the order the camera looks for one that is on, and the
@@ -220,6 +220,8 @@ impl ObjectiveMount for SimMount {
 /// scale = 1.0             # the true magnification over the catalogue's
 /// backlash = 2.0          # the stage's play when an axis reverses, in µm
 /// latency = 5.0           # how late the stage's reports arrive, in ms
+/// encoders = true          # whether the stage reports where it is, or where it was sent
+/// lost_steps = [0.0, 5.0]  # the chance a move loses steps, and how far behind it falls, in µm
 /// vignetting = 0.0        # the optics' falloff, 1 / (1 + s r²)²: s
 /// response = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]   # the sensor's colour
 ///
@@ -257,6 +259,12 @@ pub struct SimulatorConfig {
     /// How late the stage's position reports arrive, in ms (P38). Each
     /// still carries the time the stage was there.
     pub latency: f64,
+    /// Whether the stage has encoders, and reports where it is; without
+    /// them it reports where it was sent, as a stepper stage does (P39).
+    pub encoders: bool,
+    /// The chance that a move loses steps, and how far behind the stage then
+    /// falls along the move's main axis, in µm: the losses add up (P39).
+    pub lost_steps: [f64; 2],
     /// The optics' vignetting, s: the light falls off as 1 / (1 + s r²)²
     /// towards the sensor's corners (P33).
     pub vignetting: f64,
@@ -281,6 +289,8 @@ impl Default for SimulatorConfig {
             scale: 1.0,
             backlash: 2.0,
             latency: 5.0,
+            encoders: true,
+            lost_steps: [0.0, 5.0],
             vignetting: 0.0,
             response: crate::camera::IDEAL,
             samples: Vec::new(),
@@ -347,12 +357,23 @@ impl Simulator {
                 "a stage latency of {latency} ms: at least 0 is needed"
             ));
         }
+        let [chance, size] = config.lost_steps;
+        if !((0.0..=1.0).contains(&chance) && size >= 0.0 && size.is_finite()) {
+            return Err(format!(
+                "lost steps of a chance of {chance} and {size} µm: a chance from 0 to 1, and a                  size of at least 0, are needed"
+            ));
+        }
         let clock = Arc::new(SimClock::new(rate));
-        let stage_config = SimStageConfig {
+        let mut stage_config = SimStageConfig {
             backlash: Um(config.backlash),
             latency: Ms(config.latency),
+            lost_steps: LostSteps {
+                chance,
+                size: Um(size),
+            },
             ..SimStageConfig::default()
         };
+        stage_config.capabilities.encoders = config.encoders;
         let stage = Arc::new(SimStage::new(stage_config, Arc::clone(&clock)));
         let world = Arc::new(RwLock::new(World {
             focus: Um(config.focus),
