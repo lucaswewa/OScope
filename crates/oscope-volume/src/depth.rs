@@ -27,11 +27,13 @@ pub struct FocusOptions {
     pub median: u32,
 }
 
+/// A step of 2 and a window of 7: on the simulated camera's stacks, a step
+/// of 1 measured its noise as much as the texture (P42's notes).
 impl Default for FocusOptions {
     fn default() -> Self {
         Self {
-            step: 1,
-            radius: 2,
+            step: 2,
+            radius: 3,
             median: 1,
         }
     }

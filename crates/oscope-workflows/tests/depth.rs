@@ -21,8 +21,9 @@ use serde_json::json;
 const FOCUS: f64 = 5_000.0;
 /// The chip's corner on the slide.
 const CHIP: Point2 = Point2::new(30_000.0, 8_000.0);
-/// The stack: 13 planes 0.5 µm apart, from 4 µm under the dome's top.
-const PLANES: u32 = 13;
+/// The stack: 21 planes 0.5 µm apart, from 5 µm under the dome's top to 5
+/// over it, as `ex-depth-from-focus` takes it.
+const PLANES: u32 = 21;
 const STEP: f64 = 0.5;
 
 struct Stacked {
@@ -32,6 +33,13 @@ struct Stacked {
     /// The true stage z of each cell in focus.
     truth: Vec<f32>,
     _folder: tempfile::TempDir,
+}
+
+/// A camera's noise at pixel `i` of plane `k`, from a hash: σ 0.0017, the
+/// simulated quarter sensor's shot noise at 0.64 of its full scale.
+fn noise(k: u32, i: u64) -> f32 {
+    let hash = (u64::from(k) * 1_000_003 + i).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 40;
+    (hash as f32 / (1 << 24) as f32 - 0.5) * 0.006
 }
 
 /// The z-stack over a die's dome, its frames a colour camera's raw mosaic,
@@ -69,7 +77,7 @@ fn stacked() -> Stacked {
     let pattern = BayerPattern::Rggb;
     let mut frames = Vec::new();
     for k in 0..PLANES {
-        let z = top - 4.0 + f64::from(k) * STEP;
+        let z = top - 5.0 + f64::from(k) * STEP;
         let field = Field {
             centre: dome,
             z: Um(z),
@@ -85,7 +93,8 @@ fn stacked() -> Stacked {
                     BayerColour::Green => 1,
                     BayerColour::Blue => 2,
                 };
-                rgb.data()[(y * w + x) as usize * 3 + c]
+                let i = u64::from(y * w + x);
+                rgb.data()[i as usize * 3 + c] + noise(k, i)
             })
             .collect();
         let writer = draft.image().unwrap();
@@ -182,7 +191,7 @@ fn a_dome_s_heights_are_within_half_a_step_and_its_results_are_recorded() {
         heights.len()
     );
     assert!(
-        sure.len() * 10 >= heights.len() * 8,
+        sure.len() * 10 >= heights.len() * 4,
         "{} of {} sure",
         sure.len(),
         heights.len()

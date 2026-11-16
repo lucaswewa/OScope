@@ -678,7 +678,7 @@ fn the_volume_nodes_are_depth_from_focus_step_by_step_and_its_mesh() {
     );
     let measures = measured["measures"].as_stack().expect("a stack").to_vec();
     for (plane, measure) in stack.iter().zip(&measures) {
-        assert_eq!(measure, &focus::sml(plane, 1, 2).unwrap());
+        assert_eq!(measure, &focus::sml(plane, 2, 3).unwrap());
     }
     let found = run(
         &engine,

@@ -29,17 +29,21 @@ fn two() -> u32 {
     2
 }
 
+fn three() -> u32 {
+    3
+}
+
 /// `volume.focus`'s parameters.
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Measure {
     /// The modified Laplacian's step: its neighbours this many pixels away.
-    #[serde(default = "one")]
+    #[serde(default = "two")]
     #[schemars(range(min = 1))]
     step: u32,
     /// The window's half-width: the measure is summed over 2r + 1 pixels
     /// square.
-    #[serde(default = "two")]
+    #[serde(default = "three")]
     #[schemars(range(max = 15))]
     radius: u32,
 }
