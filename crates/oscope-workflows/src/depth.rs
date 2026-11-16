@@ -46,7 +46,7 @@ pub struct DepthOptions {
     pub min_confidence: f32,
 }
 
-/// Why depth from focus stopped.
+/// Why depth from focus, or deconvolution (P43), stopped.
 #[derive(Debug, thiserror::Error)]
 pub enum DepthError {
     /// The store failed, or refused.
@@ -76,10 +76,10 @@ pub struct Depths {
 }
 
 /// A stack's planes, read one at a time: grey to measure, colour to fuse.
-struct Stack {
-    reader: ImageReader,
-    info: ImageInfo,
-    pattern: Option<BayerPattern>,
+pub(crate) struct Stack {
+    pub(crate) reader: ImageReader,
+    pub(crate) info: ImageInfo,
+    pub(crate) pattern: Option<BayerPattern>,
 }
 
 impl Stack {
@@ -93,7 +93,7 @@ impl Stack {
 
     /// Plane `k` to measure: a raw plane's cells' means, or the channels'
     /// mean.
-    fn grey(&self, k: u32) -> Result<Image, DepthError> {
+    pub(crate) fn grey(&self, k: u32) -> Result<Image, DepthError> {
         let plane = self.read(k)?;
         let c = plane.channels();
         let (scale, image) = match self.pattern {

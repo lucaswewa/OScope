@@ -34,6 +34,8 @@
 //! | `volume.focus` | A stack's focus measures, the sum-modified-Laplacian | CPU, or the GPU through the compute layer |
 //! | `volume.height` | Heights from focus measures, and their confidence | CPU |
 //! | `volume.all_in_focus` | Each pixel from the planes about its height | CPU |
+//! | `volume.psf` | Born and Wolf's widefield PSF for a stack | CPU |
+//! | `volume.deconvolve` | Richardson–Lucy deconvolution by a PSF | CPU, or the GPU through the compute layer |
 //! | `export.dzi`, `export.mesh` | A static Deep Zoom folder; a height map as PLY, STL or OBJ | CPU; batch |
 //!
 //! **References** cover the camera's whole frame. A dark frame or a flat
@@ -104,6 +106,8 @@ pub fn registry(references: impl Into<PathBuf>) -> Registry {
         volume::focus(),
         volume::height(),
         volume::all_in_focus(),
+        volume::psf(),
+        volume::deconvolve(),
     ];
     for node in nodes.into_iter().chain(morphology::operations()) {
         registry

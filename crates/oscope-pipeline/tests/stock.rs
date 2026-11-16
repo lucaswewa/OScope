@@ -767,3 +767,57 @@ fn the_volume_nodes_are_depth_from_focus_step_by_step_and_its_mesh() {
         json!({"folder": folder.path(), "name": "../up", "format": "stl", "pixel_um": 0.5})
     ));
 }
+
+#[test]
+fn the_deconvolution_nodes_are_the_library_s() {
+    use oscope_volume::deconvolve::{DeconvolveOptions, Volume, deconvolve};
+    use oscope_volume::psf::{Optics, psf};
+    let folder = tempfile::tempdir().unwrap();
+    let engine = engine(folder.path());
+    let sharp = picture(40, 30, 1);
+    let stack: Vec<Image> = (0..6)
+        .map(|k: i32| {
+            oscope_compute::filters::gaussian(&sharp, 0.3 + 0.8 * (k - 3).abs() as f32).unwrap()
+        })
+        .collect();
+    let params =
+        json!({"na": 0.55, "wavelength_um": 0.519, "medium": 1.0, "voxel_um": [0.2, 0.2, 0.4]});
+    let stacked = |name: &str, images: Vec<Image>| (name.to_owned(), Value::stack(images));
+    let made = run(
+        &engine,
+        "volume.psf",
+        params,
+        Values::from([stacked("stack", stack.clone())]),
+    );
+    let kernel = made["psf"].as_stack().expect("a stack").to_vec();
+    let optics = Optics {
+        na: 0.55,
+        wavelength_um: 0.519,
+        medium: 1.0,
+    };
+    let want = psf(&optics, [0.2, 0.2, 0.4], [40, 30, 6]).unwrap();
+    assert_eq!(Volume::from_planes(&kernel).unwrap(), want);
+    let inputs = Values::from([stacked("stack", stack.clone()), stacked("psf", kernel)]);
+    let sharpened = run(
+        &engine,
+        "volume.deconvolve",
+        json!({"iterations": 3, "tv": 0.001}),
+        inputs,
+    );
+    let got = Volume::from_planes(sharpened["stack"].as_stack().expect("a stack")).unwrap();
+    let config = ComputeConfig {
+        live_threads: Some(1),
+        batch_threads: Some(1),
+        cuda_device: None,
+    };
+    let compute = Compute::new(&config).unwrap();
+    let options = DeconvolveOptions {
+        iterations: 3,
+        tv: 0.001,
+    };
+    let volume = Volume::from_planes(&stack).unwrap();
+    let library = deconvolve(&volume, &want, &options, &compute, &mut |_| true)
+        .unwrap()
+        .unwrap();
+    assert_eq!(got, library);
+}

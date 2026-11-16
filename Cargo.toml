@@ -131,3 +131,7 @@ opt-level = 2
 
 [profile.dev.package.oscope-compute]
 opt-level = 2
+
+# Deconvolution's 3D FFTs and their steps (P43).
+[profile.dev.package.oscope-volume]
+opt-level = 2
