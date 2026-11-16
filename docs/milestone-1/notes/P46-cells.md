@@ -230,7 +230,10 @@ The page wasn't seen in a browser here. Under Node, against the running example,
 | `oscope-ext` `python` (one new) | 8 | With `OSCOPE_PYTHON=1`: the stub packed, installed and run, its stand-in's mask |
 | `ex-count-cells --smoke` | — | Over 50 nuclei; recall and precision of 0.85 or more against the truth, the offset under 10 µm; an outline each; the page |
 
-⟨REPLAYS⟩
+**The local replays,** the merge gate (ADR-0038), each run alone on `cca3bcb`. The commit since adds only these lines.
+
+- **Windows:** `scripts/ci-local.sh`, in 10 minutes: 62 of 62 steps, 577 tests in 214 suites, the Python tests real (the stub's among them), and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 7 minutes: 62 of 62 steps, 577 tests in 214 suites; 793 files, none with a CR.
 
 ## Follow-ups and known gaps
 
