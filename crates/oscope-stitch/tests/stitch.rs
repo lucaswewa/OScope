@@ -277,6 +277,66 @@ fn tiles_are_placed_on_whole_pixels_even_ones_raw_and_blended_without_seams() {
         "{:?}",
         &out[..8]
     );
+    // Where they differ, each pixel leans to the tile it is deeper in: on
+    // row 40, a's column 125 is 2.5 from its edge, b's column 4 is 4.5.
+    let (dark, light) = ([0.2_f32], [0.6_f32]);
+    let pixel = |x0, x1| PixelBox {
+        x0,
+        y0: 40,
+        x1,
+        y1: 41,
+    };
+    let parts = [
+        Part {
+            within: pixel(125, 126),
+            samples: &dark,
+            to: (0, 0),
+        },
+        Part {
+            within: pixel(4, 5),
+            samples: &light,
+            to: (0, 0),
+        },
+    ];
+    let out = blend((1, 1), 1, (128, 100), &parts, None);
+    let want = (2.5 * 0.2 + 4.5 * 0.6) / 7.0;
+    assert!((out[0] - want).abs() < 1e-6, "{} not {want}", out[0]);
+}
+
+#[test]
+fn pairs_need_their_least_overlap_and_long_ones_are_binned() {
+    // 10 pixels side by side: under 32, no pair.
+    let narrow = Tiles {
+        width: 240,
+        height: 200,
+        nominal: vec![[0.0, 0.0], [230.0, 0.0]],
+        raw: false,
+    };
+    assert!(narrow.pairs(32).is_empty());
+    assert_eq!(narrow.pairs(8).len(), 1);
+    // 5000 × 3000 tiles a tenth overlapping, the second 3.4 pixels off: a
+    // part 3000 tall, binned by 2 to under 2048, cut at even pixels.
+    let long = Tiles {
+        width: 5000,
+        height: 3000,
+        nominal: vec![[0.0, 0.0], [4503.4, 3.0]],
+        raw: false,
+    };
+    let crops = long.crops(long.pairs(32)[0]).unwrap();
+    assert_eq!(crops.bin, 2);
+    let (a, b, size) = (crops.a, crops.b, crops.size);
+    assert!(
+        [a.0, a.1, b.0, b.1, size.0, size.1]
+            .iter()
+            .all(|v| v % 2 == 0),
+        "{crops:?}"
+    );
+    // The stage's shift, back from the binned parts' expected one.
+    let back = crops.measured(crops.expected);
+    assert!(
+        (back[0] - 4503.4).abs() < 1e-9 && (back[1] - 3.0).abs() < 1e-9,
+        "{back:?}"
+    );
 }
 
 #[test]

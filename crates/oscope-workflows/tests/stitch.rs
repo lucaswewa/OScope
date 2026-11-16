@@ -8,7 +8,7 @@ use oscope_store::{
     FrameRecord, ImageInfo, ImageReader, Input, NewProject, SampleType, Samples, Store,
     halve_samples,
 };
-use oscope_workflows::scan::{Field, Region, ZPolicy, raster};
+use oscope_workflows::scan::{Field, Region, Stack, ZPolicy, raster, tiled_stack};
 use oscope_workflows::stitch::{StitchOptions, result_image, stitch};
 
 /// The slide: µm as pixels, `w` × `h` of texture, noise blurred thrice by
@@ -67,9 +67,27 @@ struct Acquired {
     _folder: tempfile::TempDir,
 }
 
-/// Tiles of 320 × 240 pixels of 1 µm, a fifth overlapping, over `w` × `h`
-/// µm from (100, 100) µm.
-fn acquired((w, h): (f64, f64)) -> Acquired {
+/// How a raster is taken: its region's size in µm, its tiles' in pixels of
+/// 1 µm, whether they are a Bayer mosaic's raw samples, and the planes of a
+/// stack at each.
+struct Taken {
+    region: (f64, f64),
+    tile: (u32, u32),
+    raw: bool,
+    planes: u32,
+}
+
+const RASTER: Taken = Taken {
+    region: (1400.0, 900.0),
+    tile: (320, 240),
+    raw: false,
+    planes: 1,
+};
+
+/// Tiles a fifth overlapping over the region from (100, 100) µm. A stack's
+/// middle plane is the slide; the others, as if far from focus, are a
+/// featureless grey, 20 brighter a plane.
+fn acquired(taken: Taken) -> Acquired {
     let folder = tempfile::tempdir().unwrap();
     let data = folder.path().join("data");
     let store = Store::open(&data, &data.join("index.sqlite")).unwrap();
@@ -78,14 +96,31 @@ fn acquired((w, h): (f64, f64)) -> Acquired {
         ..NewProject::default()
     };
     let project = store.create(new).unwrap().id;
-    let (sw, sh) = (w as usize + 300, h as usize + 300);
+    let (w, h) = taken.region;
+    let (tw, th) = taken.tile;
+    let (sw, sh) = (w as usize + tw as usize, h as usize + th as usize);
     let image = slide(sw, sh);
-    let field = Field::nominal(1.0, 320, 240, 0.2).unwrap();
+    let field = Field::nominal(1.0, tw, th, 0.2).unwrap();
     let region = Region::Rect(Rect::new(100.0, 100.0, w, h));
-    let plan = raster(&region, &field, ZPolicy::Fixed { z_um: 0.0 }).unwrap();
+    let fixed = ZPolicy::Fixed { z_um: 0.0 };
+    let plan = match taken.planes {
+        1 => raster(&region, &field, fixed).unwrap(),
+        n => {
+            let half = f64::from(n - 1) / 2.0;
+            let stack = Stack {
+                below_um: half,
+                above_um: half,
+                step_um: 1.0,
+            };
+            tiled_stack(&region, &field, fixed, stack).unwrap()
+        }
+    };
     let count = plan.tiles.len();
-    let mut info = ImageInfo::new(320, 240, 1, SampleType::U8);
-    info.planes = count as u32;
+    let mut info = ImageInfo::new(u64::from(tw), u64::from(th), 1, SampleType::U8);
+    info.planes = count as u32 * taken.planes;
+    if taken.raw {
+        info.channel_names = vec!["raw".to_owned()];
+    }
     let mut draft = store.acquisition(project, "a raster", &info).unwrap();
     // The errors: none for the first tile, and summing to none, so that the
     // solve, whose offsets keep the stage's mean, lands each on its whole
@@ -102,32 +137,45 @@ fn acquired((w, h): (f64, f64)) -> Acquired {
         errors.iter_mut().skip(1).for_each(|e| e[axis] -= mean);
     }
     let (mut truth, mut frames) = (Vec::new(), Vec::new());
+    let (half_w, half_h) = (f64::from(tw) / 2.0, f64::from(th) / 2.0);
     for (k, tile) in plan.tiles.iter().enumerate() {
         // Each tile where the plan put it, to the whole µm, its top left
         // half a frame up and left of its centre.
         let (x0, y0) = (
-            (tile.x_um - 160.0).round() as usize,
-            (tile.y_um - 120.0).round() as usize,
+            (tile.x_um - half_w).round() as usize,
+            (tile.y_um - half_h).round() as usize,
         );
         truth.push([x0 as f64, y0 as f64]);
-        let samples: Vec<u8> = (0..240)
-            .flat_map(|y| image[(y0 + y) * sw + x0..][..320].to_vec())
-            .collect();
-        let writer = draft.image().unwrap();
-        writer
-            .write(k as u32, (0, 0), (320, 240), &Samples::U8(samples))
-            .unwrap();
         let recorded = Xyz::new(
-            Um(x0 as f64 + 160.0 + errors[k][0]),
-            Um(y0 as f64 + 120.0 + errors[k][1]),
+            Um(x0 as f64 + half_w + errors[k][0]),
+            Um(y0 as f64 + half_h + errors[k][1]),
             Um(0.0),
         );
-        frames.push(FrameRecord {
-            index: k as u64,
-            position: Some(recorded),
-            timestamp: Some(Timestamp(k as u64)),
-            trigger: None,
-        });
+        for p in 0..taken.planes {
+            let samples: Vec<u8> = (0..th as usize)
+                .flat_map(|y| image[(y0 + y) * sw + x0..][..tw as usize].to_vec())
+                .map(|v| match p == taken.planes / 2 {
+                    true => v,
+                    false => 100 + 20 * p as u8,
+                })
+                .collect();
+            let frame = k as u32 * taken.planes + p;
+            let writer = draft.image().unwrap();
+            writer
+                .write(
+                    frame,
+                    (0, 0),
+                    (u64::from(tw), u64::from(th)),
+                    &Samples::U8(samples),
+                )
+                .unwrap();
+            frames.push(FrameRecord {
+                index: u64::from(frame),
+                position: Some(recorded),
+                timestamp: Some(Timestamp(u64::from(frame))),
+                trigger: None,
+            });
+        }
     }
     let record = draft.record();
     record.plan = serde_json::to_value(&plan).unwrap();
@@ -136,6 +184,7 @@ fn acquired((w, h): (f64, f64)) -> Acquired {
     let first = frames[0].position.unwrap();
     let stage = frames
         .iter()
+        .step_by(taken.planes as usize)
         .map(|f| {
             let p = f.position.unwrap();
             [p.x.0 - first.x.0, p.y.0 - first.y.0]
@@ -173,7 +222,7 @@ fn rms(found: &[[f64; 2]], truth: &[[f64; 2]]) -> f64 {
 
 #[test]
 fn tiles_go_back_where_they_were_cut_and_the_mosaic_is_the_slide() {
-    let raster = acquired((1400.0, 900.0));
+    let raster = acquired(RASTER);
     let (store, project, id) = (&raster.store, raster.project, raster.id);
     let options = StitchOptions::default();
     let (result, report) = stitch(store, project, id, &options, &|_, _| true).unwrap();
@@ -182,7 +231,10 @@ fn tiles_go_back_where_they_were_cut_and_the_mosaic_is_the_slide() {
     // none is rejected.
     let counted = report.kept + report.dropped == report.pairs;
     assert!(counted && report.rejected == 0, "{report:?}");
-    assert!(report.dropped * 4 < report.pairs, "{report:?}");
+    assert!(
+        report.dropped >= 1 && report.dropped * 4 < report.pairs,
+        "{report:?}"
+    );
     let (before, after) = (
         rms(&raster.stage, &raster.truth),
         rms(&report.offsets, &raster.truth),
@@ -233,7 +285,10 @@ fn tiles_go_back_where_they_were_cut_and_the_mosaic_is_the_slide() {
 
 #[test]
 fn its_parts_held_at_once_stay_within_its_budget() {
-    let raster = acquired((2800.0, 1900.0));
+    let raster = acquired(Taken {
+        region: (2800.0, 1900.0),
+        ..RASTER
+    });
     let options = StitchOptions {
         memory_mb: 10,
         ..StitchOptions::default()
@@ -258,4 +313,69 @@ fn its_parts_held_at_once_stay_within_its_budget() {
         "{} bytes at once",
         report.peak_bytes
     );
+}
+
+#[test]
+fn raw_tiles_are_registered_on_their_cells_from_the_first_level() {
+    // Tiles of 640 × 480: their acquisition has a level 1, which their
+    // parts, binned by 2, are read from.
+    let raster = acquired(Taken {
+        region: (1700.0, 1250.0),
+        tile: (640, 480),
+        raw: true,
+        ..RASTER
+    });
+    let (store, project, id) = (&raster.store, raster.project, raster.id);
+    let (_, report) = stitch(store, project, id, &StitchOptions::default(), &|_, _| true).unwrap();
+    assert_eq!(report.rejected, 0, "{report:?}");
+    let (before, after) = (
+        rms(&raster.stage, &raster.truth),
+        rms(&report.offsets, &raster.truth),
+    );
+    assert!(
+        before > 5.0 && after < 0.3,
+        "{before:.2} px off before, {after:.3} after"
+    );
+}
+
+#[test]
+fn a_stack_is_solved_once_and_each_plane_written_alike() {
+    let raster = acquired(Taken {
+        region: (900.0, 700.0),
+        planes: 3,
+        ..RASTER
+    });
+    let (store, project, id) = (&raster.store, raster.project, raster.id);
+    let (result, report) =
+        stitch(store, project, id, &StitchOptions::default(), &|_, _| true).unwrap();
+    assert_eq!(report.tiles, raster.truth.len());
+    let (path, _) = result_image(store, project, &result);
+    let reader = ImageReader::open(&path).unwrap();
+    assert_eq!(reader.info().planes, 3);
+    // The middle plane the slide, so registered on it; the others their
+    // grey, at the same offsets.
+    let corner = raster
+        .truth
+        .iter()
+        .fold([f64::MAX; 2], |m, t| [m[0].min(t[0]), m[1].min(t[1])]);
+    let (mw, mh) = report.size;
+    for plane in 0..3_u32 {
+        let Samples::U8(mosaic) = reader.read(0, plane, (0, 0), (mw, mh)).unwrap() else {
+            panic!("8-bit samples");
+        };
+        for y in (0..mh as usize).step_by(11) {
+            for x in (0..mw as usize).step_by(11) {
+                let (sx, sy) = (x + corner[0] as usize, y + corner[1] as usize);
+                let want = match plane {
+                    1 => raster.slide[sy * raster.slide_width + sx],
+                    _ => 100 + 20 * plane as u8,
+                };
+                assert_eq!(
+                    mosaic[y * mw as usize + x],
+                    want,
+                    "plane {plane} at ({x}, {y})"
+                );
+            }
+        }
+    }
 }
