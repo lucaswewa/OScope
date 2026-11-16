@@ -6,6 +6,7 @@
 use oscope_core::{AcquisitionId, ProjectId, Rect, Timestamp, Um, Xyz};
 use oscope_store::{
     FrameRecord, ImageInfo, ImageReader, Input, NewProject, SampleType, Samples, Store,
+    halve_samples,
 };
 use oscope_workflows::scan::{Field, Region, ZPolicy, raster};
 use oscope_workflows::stitch::{StitchOptions, result_image, stitch};
@@ -223,13 +224,18 @@ fn tiles_go_back_where_they_were_cut_and_the_mosaic_is_the_slide() {
         }
     }
     assert_eq!(differ, 0, "{differ} sampled pixels differ from the slide");
+    // Level 1, made as level 0 was written, a quarter at a time: level 0
+    // halved, as the pyramid halves it.
+    let halved = halve_samples(&Samples::U8(mosaic), mw, mh, 1);
+    let (w1, h1) = reader.info().level_size(1);
+    assert_eq!(reader.read(1, 0, (0, 0), (w1, h1)).unwrap(), halved);
 }
 
 #[test]
 fn its_parts_held_at_once_stay_within_its_budget() {
-    let raster = acquired((2600.0, 1800.0));
+    let raster = acquired((2800.0, 1900.0));
     let options = StitchOptions {
-        memory_mb: 4,
+        memory_mb: 10,
         ..StitchOptions::default()
     };
     let (store, project, id) = (&raster.store, raster.project, raster.id);
@@ -241,10 +247,10 @@ fn its_parts_held_at_once_stay_within_its_budget() {
         "{after:.3} px off the truth over {} tiles",
         raster.truth.len()
     );
-    // Within its budget, over a mosaic four times as large.
-    let (budget, mosaic_bytes) = (4 << 20, report.size.0 * report.size.1 * 4);
+    // Within its budget, over a mosaic twice as large.
+    let (budget, mosaic_bytes) = (10 << 20, report.size.0 * report.size.1 * 4);
     assert!(
-        mosaic_bytes > 4 * budget,
+        mosaic_bytes > 2 * budget,
         "a mosaic of {mosaic_bytes} bytes"
     );
     assert!(

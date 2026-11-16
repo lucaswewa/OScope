@@ -118,7 +118,7 @@ impl Tiles {
     /// The parts of `pair` to register: the same rectangle of the mosaic, as
     /// the stage has it, in each tile, binned to at most
     /// [`MOST_REGISTERED`] pixels a side, by 2 at least for raw tiles, and
-    /// cut at even pixels for them.
+    /// cut at even pixels for them and wherever they are binned.
     pub fn crops(&self, pair: Pair) -> Option<Crops> {
         let (oa, ob) = (self.nominal[pair.a], self.nominal[pair.b]);
         let met = self.frame(oa).meet(&self.frame(ob))?;
@@ -127,7 +127,9 @@ impl Tiles {
         if self.raw {
             bin = bin.max(2).next_multiple_of(2);
         }
-        let step = if self.raw { 2 } else { 1 };
+        // Even corners for raw tiles, and wherever the parts are binned, so
+        // that a level above, each pixel the mean of two by two, lines up.
+        let step = if self.raw || bin >= 2 { 2 } else { 1 };
         // Each part's corner in its tile, even for raw tiles: the frames are
         // at whole pixels, so the corners differ by whole pixels too.
         let corner = |o: [f64; 2]| {
