@@ -1298,6 +1298,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-stain"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-imaging",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-stitch"
 version = "0.1.0"
 dependencies = [
@@ -2394,6 +2410,7 @@ dependencies = [
  "rand",
  "rayon",
  "rustfft",
+ "schemars",
  "serde",
  "tempfile",
  "thiserror",

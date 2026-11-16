@@ -16,6 +16,7 @@ oscope-core.workspace = true
 png.workspace = true
 rayon.workspace = true
 rustfft.workspace = true
+schemars.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tiff = { workspace = true, features = ["deflate", "jpeg", "lzw"] }

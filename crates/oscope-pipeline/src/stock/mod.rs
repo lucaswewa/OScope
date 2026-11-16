@@ -36,6 +36,10 @@
 //! | `volume.all_in_focus` | Each pixel from the planes about its height | CPU |
 //! | `volume.psf` | Born and Wolf's widefield PSF for a stack | CPU |
 //! | `volume.deconvolve` | Richardson–Lucy deconvolution by a PSF | CPU, or the GPU through the compute layer |
+//! | `stain.deconvolve` | Each stain's amount, by colour deconvolution (P45) | CPU; live; tiles |
+//! | `stain.estimate` | Two stains' vectors, by Macenko's method | CPU; live |
+//! | `stain.dab` | Each pixel's class by its DAB, from glass to strong | CPU; live; tiles |
+//! | `stain.dab_score` | DAB's counts, positive percentage and H-score | CPU; live |
 //! | `export.dzi`, `export.mesh` | A static Deep Zoom folder; a height map as PLY, STL or OBJ | CPU; batch |
 //!
 //! **References** cover the camera's whole frame. A dark frame or a flat
@@ -52,6 +56,7 @@ mod geometry;
 mod measure;
 mod morphology;
 mod reference;
+mod stain;
 mod threshold;
 mod volume;
 
@@ -108,6 +113,10 @@ pub fn registry(references: impl Into<PathBuf>) -> Registry {
         volume::all_in_focus(),
         volume::psf(),
         volume::deconvolve(),
+        stain::deconvolve(),
+        stain::estimate(),
+        stain::dab(),
+        stain::dab_score(),
     ];
     for node in nodes.into_iter().chain(morphology::operations()) {
         registry

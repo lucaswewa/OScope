@@ -95,7 +95,7 @@ fn light_for(entry: &SampleEntry) -> (Vec<Light>, f64) {
             .collect()
     };
     match entry.kind {
-        SampleKind::Tissue => (vec![Light::Transmitted], 2.0),
+        SampleKind::Tissue | SampleKind::IhcTissue => (vec![Light::Transmitted], 2.0),
         SampleKind::TestTarget | SampleKind::ColourTarget => (vec![Light::Transmitted], 0.05),
         SampleKind::Surface => (vec![Light::Reflected], 2.5),
         SampleKind::Cells => (
@@ -284,9 +284,9 @@ fn run() -> anyhow::Result<()> {
     println!("the images are in {}", folder.display());
 
     if smoke {
-        ensure!(means.len() == 8, "{} samples", means.len());
+        ensure!(means.len() == 9, "{} samples", means.len());
         ensure!(
-            means.iter().filter(|(e, _)| e.has_ground_truth()).count() == 6,
+            means.iter().filter(|(e, _)| e.has_ground_truth()).count() == 7,
             "the built-in samples carry ground truth, the imports don't"
         );
         for (entry, row) in &means {

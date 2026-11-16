@@ -1,6 +1,6 @@
 # P44: Annotations and measurements
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p44-annotations` / [#60](https://github.com/lucaswewa/OScope/pull/60)
 - Size: M · estimated ~2,000 before it started (in `oscope-imaging`, shapes' lengths, areas and centres, and the pixels a polygon holds, row by row, ~170; in `oscope-store`, annotations in layers with their validation and their keeping, ~260, and measurements read tile by tile, with the CSV, ~230; the `projects` Thing's routes ~130; tests ~560; `ex-annotate` and its OpenSeadragon drawing page ~490; `ex-common`'s helpers ~60; glue ~30); one pull request, at the owner's standing choice · measured **2,439** hand-written lines added (code 881: `oscope-store` 617, `oscope-imaging` 141, `oscope-api` 123; tests 913; examples 614; glue 31), and 20 removed. **That is 1,839 over M's 600, and 22 % over the estimate.** OpenSeadragon, vendored in P38, isn't counted.
 

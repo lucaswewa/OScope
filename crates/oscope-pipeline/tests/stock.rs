@@ -821,3 +821,132 @@ fn the_deconvolution_nodes_are_the_library_s() {
         .unwrap();
     assert_eq!(got, library);
 }
+
+/// An H-DAB picture, `w` × `h`: hematoxylin across it and DAB down it, with
+/// glass in its top-left corner, the light it passes of `white`.
+fn hdab_picture(w: u32, h: u32, white: [f32; 3]) -> Vec<f32> {
+    use oscope_imaging::stain::{DAB, HEMATOXYLIN};
+    let unit = |v: [f64; 3]| v.map(|x| x / v.iter().map(|x| x * x).sum::<f64>().sqrt());
+    let (hv, dv) = (unit(HEMATOXYLIN), unit(DAB));
+    (0..w * h)
+        .flat_map(|i| {
+            let (x, y) = (f64::from(i % w), f64::from(i / w));
+            let (a, b) = match x < 10.0 && y < 10.0 {
+                true => (0.0, 0.0),
+                false => (0.1 + 0.9 * x / f64::from(w), 0.8 * y / f64::from(h)),
+            };
+            [0, 1, 2].map(|c| white[c] * 10f64.powf(-(a * hv[c] + b * dv[c])) as f32)
+        })
+        .collect()
+}
+
+#[test]
+fn the_stain_nodes_are_the_library_s_and_run_by_tiles() {
+    use oscope_imaging::stain::{
+        DAB, DabCounts, DabThresholds, HEMATOXYLIN, Stains, dab_classes, macenko,
+    };
+    let folder = tempfile::tempdir().unwrap();
+    let engine = engine(folder.path());
+    let (w, h, white) = (96, 80, [0.9_f32, 0.85, 0.8]);
+    let rgb = hdab_picture(w, h, white);
+    let slide = Image::from_vec(Shape::new(w, h, 3), rgb.clone()).unwrap();
+    let hdab = Stains::hdab();
+    let library = hdab.deconvolve(&rgb, white);
+    for stains in [json!("hdab"), json!({"vectors": [HEMATOXYLIN, DAB]})] {
+        let params = json!({"stains": stains, "white": white});
+        let out = run(&engine, "stain.deconvolve", params, one(slide.clone()));
+        assert_eq!(image(&out, "amounts").data(), library.as_slice());
+    }
+    // With no white given, 1; with no stains, H&E.
+    let ones = hdab_picture(w, h, [1.0; 3]);
+    let lit = Image::from_vec(Shape::new(w, h, 3), ones.clone()).unwrap();
+    let out = run(&engine, "stain.deconvolve", json!({}), one(lit));
+    let want = Stains::he().deconvolve(&ones, [1.0; 3]);
+    assert_eq!(image(&out, "amounts").data(), want.as_slice());
+    let params = json!({"white": white});
+    let out = run(&engine, "stain.dab", params.clone(), one(slide.clone()));
+    let classes = out["classes"].as_mask().unwrap().clone();
+    assert_eq!(
+        classes.data(),
+        dab_classes(&hdab, &rgb, white, &DabThresholds::default())
+    );
+    let inputs = Values::from([("classes".to_owned(), out["classes"].clone())]);
+    let score = run(&engine, "stain.dab_score", json!({}), inputs);
+    let table = score["score"].as_table().unwrap();
+    let mut counts = DabCounts::default();
+    classes.data().iter().for_each(|&c| counts.add(c));
+    assert_eq!(table.columns[6], "positive %");
+    let want = [
+        counts.glass,
+        counts.negative,
+        counts.weak,
+        counts.moderate,
+        counts.strong,
+        counts.tissue(),
+    ];
+    assert_eq!(table.rows[0][..6], want.map(|n| json!(n)));
+    assert_eq!(
+        table.rows[0][6..],
+        [json!(counts.positive_percent()), json!(counts.h_score())]
+    );
+    assert!(
+        counts.glass == 100 && counts.weak > 0 && counts.strong > 0,
+        "{counts:?}"
+    );
+    let out = run(
+        &engine,
+        "stain.estimate",
+        params.clone(),
+        one(slide.clone()),
+    );
+    let vectors = macenko(&rgb, white, 0.15, 1.0).unwrap();
+    assert_eq!(
+        out["vectors"].as_json().unwrap(),
+        &json!({ "vectors": vectors })
+    );
+    // By tiles, as whole.
+    let options = RunOptions {
+        memoise: false,
+        ..RunOptions::default()
+    };
+    for (id, port) in [("stain.deconvolve", "amounts"), ("stain.dab", "classes")] {
+        let inputs = one(slide.clone());
+        let plan = Plan::new(
+            engine.registry(),
+            &single(&engine, id, params.clone(), &inputs),
+            false,
+        )
+        .unwrap();
+        let whole = engine.run(&plan, &inputs, &options).unwrap().outputs;
+        let tiled = engine
+            .run_tiled(&plan, &inputs, 32, &options, |_, _| {})
+            .unwrap()
+            .outputs;
+        match port {
+            "amounts" => assert_eq!(image(&tiled, port).data(), image(&whole, port).data()),
+            _ => assert_eq!(
+                tiled[port].as_mask().unwrap().data(),
+                whole[port].as_mask().unwrap().data()
+            ),
+        }
+    }
+    // Refused: vectors that aren't independent, and grey.
+    let same = json!({"stains": {"vectors": [HEMATOXYLIN, HEMATOXYLIN]}});
+    let inputs = one(slide.clone());
+    let plan = Plan::new(
+        engine.registry(),
+        &single(&engine, "stain.deconvolve", same, &inputs),
+        false,
+    );
+    let refused = plan.map(|plan| engine.run(&plan, &inputs, &options).map(|_| ()));
+    assert!(!matches!(refused, Ok(Ok(()))), "dependent vectors ran");
+    let grey = one(picture(w, h, 1));
+    let plan = Plan::new(
+        engine.registry(),
+        &single(&engine, "stain.deconvolve", json!({}), &grey),
+        false,
+    )
+    .unwrap();
+    let refused = engine.run(&plan, &grey, &options);
+    assert!(refused.is_err());
+}

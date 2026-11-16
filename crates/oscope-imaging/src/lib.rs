@@ -8,4 +8,5 @@
 pub mod color;
 pub mod registration;
 pub mod shapes;
+pub mod stain;
 pub mod zoom;

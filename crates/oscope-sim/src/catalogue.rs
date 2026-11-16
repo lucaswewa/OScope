@@ -24,6 +24,9 @@ use crate::world::{Slide, World};
 pub enum SampleKind {
     /// [`HeTissue`] under the coverslip.
     Tissue,
+    /// [`HeTissue`] stained for immunohistochemistry, hematoxylin and DAB,
+    /// under the coverslip (P45).
+    IhcTissue,
     /// The [`TestTarget`], at the coverslip's middle.
     TestTarget,
     /// The reflective [`Surface`], at the coverslip's middle.
@@ -45,6 +48,7 @@ impl SampleKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Tissue => "tissue",
+            Self::IhcTissue => "ihc-tissue",
             Self::TestTarget => "test-target",
             Self::Surface => "surface",
             Self::Cells => "cells",
@@ -74,8 +78,8 @@ pub enum Imaging {
 /// ```toml
 /// [[samples]]
 /// name = "H&E, another seed"
-/// kind = "tissue"           # tissue, test-target, surface, cells,
-/// seed = 7                  # structures, image or stack
+/// kind = "tissue"           # tissue, ihc-tissue, test-target, surface,
+/// seed = 7                  # cells, structures, image or stack
 ///
 /// [[samples]]
 /// name = "my section"
@@ -156,6 +160,7 @@ impl SampleEntry {
         let seed = self.seed;
         Ok(match self.kind {
             SampleKind::Tissue => Arc::new(HeTissue::new(seed, cover)),
+            SampleKind::IhcTissue => Arc::new(HeTissue::ihc(seed, cover)),
             SampleKind::TestTarget => Arc::new(TestTarget::new(
                 Point2::new(middle.x - 2_000.0, middle.y - 2_000.0),
                 0.5,
@@ -208,6 +213,7 @@ impl SampleCatalogue {
         Self {
             samples: vec![
                 entry("H&E tissue", SampleKind::Tissue),
+                entry("H-DAB tissue", SampleKind::IhcTissue),
                 entry("test target", SampleKind::TestTarget),
                 entry("reflective surface", SampleKind::Surface),
                 entry("fluorescent cells", SampleKind::Cells),

@@ -2,9 +2,10 @@
 
 The simulator's sample catalogue: listing samples, loading and unloading them, and importing your own image (P14).
 
-**The catalogue** offers six built-in samples, each with ground truth:
+**The catalogue** offers seven built-in samples, each with ground truth:
 
 - the H&E tissue (P10);
+- the same tissue stained for immunohistochemistry, hematoxylin and DAB (P45);
 - the test target (P10);
 - the reflective surface (P13);
 - the fluorescent cells (P13);
@@ -68,7 +69,7 @@ It's imported as a brightfield image, centred on the coverslip. It isn't committ
 
 **`--smoke`** runs at 192 × 128, in a temporary folder, then checks:
 
-- that the catalogue holds eight samples, the six built-in ones with ground truth;
+- that the catalogue holds nine samples, the seven built-in ones with ground truth;
 - that every sample renders something other than an empty stage;
 - that the empty stage is uniformly 1 once unloaded;
 - that the image landed 200 µm across, centred on the coverslip.
