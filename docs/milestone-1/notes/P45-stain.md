@@ -219,10 +219,17 @@ The page wasn't seen in a browser here. Under Node, against the running example,
 | `ex-stain --smoke` | — | The H&E slide's residual, under H-DAB's; Macenko's angles; the H-DAB slide's percentage and H-score; DAB scored on H-DAB alone; the page |
 | `ex-sim-samples --smoke` (changed) | — | Nine samples, seven built in |
 
-⟨REPLAYS⟩
+**The local replays,** the merge gate (ADR-0038), each run alone on `999cb3d`. The commit since adds only these lines.
+
+- **Windows:** `scripts/ci-local.sh`, in 9 minutes: 61 of 61 steps, 566 tests in 210 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 7 minutes: 61 of 61 steps, 566 tests in 210 suites; 778 files, none with a CR.
+- **Two runs before them failed on Windows,** each one step:
+  - **`ex-http-walkthrough`'s smoke** counted six built-in samples; it counts seven now (`999cb3d`). The other places that count them had been found by searching for the number written as a length, which this one isn't.
+  - **`ex-checkpoint-d`'s smoke,** on `999cb3d`, read the live mosaic's state once as the scan ended, and found 8 of its 9 tiles drawn: the last was still being drawn under the replay's load. P45 doesn't touch scanning or the live mosaic. The smoke passed 5 of 5 on two cores and in the next replay. Its check should wait for the last tile; that fix goes into P46, whose replays run anyway.
 
 ## Follow-ups and known gaps
 
+- **`ex-checkpoint-d`'s smoke races its last tile:** it reads the live mosaic's state once, as the scan ends. P46 makes it wait for every tile, with a deadline.
 - **Positive nuclei,** counted rather than area: P46's cell detection on the hematoxylin and DAB channels.
 - **The white from a blank field,** a calibration's, rather than the slide's brightest pixels.
 - **Display of the amounts** themselves, a channel at a time; the page shows each stain's image instead.
