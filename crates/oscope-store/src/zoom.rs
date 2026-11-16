@@ -115,7 +115,9 @@ impl ChunkCache {
         let (w, h) = image.info().level_size(level);
         let (x, y) = (cx * CHUNK, cy * CHUNK);
         let (cw, ch) = (CHUNK.min(w - x), CHUNK.min(h - y));
-        let key = (image.path.clone(), level, image.plane, cx, cy);
+        // A volume's levels halve z too: plane p is p >> h there.
+        let plane = image.plane >> image.info().z_halvings(level);
+        let key = (image.path.clone(), level, plane, cx, cy);
         let used = self.uses.fetch_add(1, Ordering::Relaxed);
         if let Some((samples, last)) = lock(&self.held).get_mut(&key) {
             *last = used;
@@ -123,12 +125,7 @@ impl ChunkCache {
             return Ok((Arc::clone(samples), cw));
         }
         self.misses.fetch_add(1, Ordering::Relaxed);
-        let samples = Arc::new(
-            image
-                .reader
-                .read(level, image.plane, (x, y), (cw, ch))?
-                .to_unit(),
-        );
+        let samples = Arc::new(image.reader.read(level, plane, (x, y), (cw, ch))?.to_unit());
         let size = samples.len() * 4;
         let mut held = lock(&self.held);
         while self.bytes.load(Ordering::Relaxed) + size > self.budget && !held.is_empty() {

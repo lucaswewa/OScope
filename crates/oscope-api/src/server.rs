@@ -32,7 +32,7 @@ use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
 use crate::system::{System, VERSION};
-use crate::{data, media, mosaic, pages, zoom};
+use crate::{data, media, mosaic, pages, volume, zoom};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
 /// The OpenAPI document is at the root, `/openapi.json`, with its docs pages
@@ -275,6 +275,7 @@ impl ApiBuilder {
             let zoom =
                 zoom::Zoom::start(Arc::clone(store), cache, self.jobs.as_ref().map(|j| &j.0));
             routes = routes.merge(zoom::router(zoom));
+            routes = routes.merge(volume::router(Arc::clone(store)));
         }
         if let Some(mosaics) = &self.mosaics {
             routes = routes.merge(mosaic::router(Arc::clone(mosaics)));

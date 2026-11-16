@@ -9,7 +9,7 @@ use oscope_core::{FrameMeta, PixelFormat, ProjectId};
 use rayon::prelude::*;
 use serde_json::{Value, json};
 
-use crate::image::{ImageInfo, SampleType, Samples};
+use crate::image::{ImageInfo, PixelSize, SampleType, Samples};
 use crate::recording::{RecordingReader, in_progress};
 use crate::records::{Acquisition, FrameRecord};
 use crate::store::Store;
@@ -51,6 +51,24 @@ fn camera(meta: &FrameMeta) -> Value {
         "gain": meta.gain,
         "black_level": meta.black_level,
         "line_time_ms": meta.line_time,
+    })
+}
+
+/// A z-scan's voxel, from its `plan` (ADR-0025) and its frames' `width`: the
+/// frame's top edge, its corners' distance on the stage, over its pixels,
+/// and the stack's step. None for any other plan.
+fn voxel(plan: &Value, width: u32) -> Option<PixelSize> {
+    if plan["pattern"] != "z_scan" || width == 0 {
+        return None;
+    }
+    let corner = |k: usize, axis: &str| plan["field"]["corners_um"][k][axis].as_f64();
+    let across = (corner(1, "x")? - corner(0, "x")?).hypot(corner(1, "y")? - corner(0, "y")?);
+    let pixel = across / f64::from(width);
+    let step = plan["stack"]["step_um"].as_f64()?;
+    (pixel > 0.0 && step > 0.0).then_some(PixelSize {
+        x: pixel,
+        y: pixel,
+        z: step,
     })
 }
 
@@ -103,6 +121,11 @@ pub fn ingest(
     );
     info.planes = frames.len() as u32;
     info.channel_names = channel_names;
+    // A z-scan's planes, at one place, are a volume (ADR-0029).
+    if let Some(voxel) = voxel(&recording.source["plan"], first.meta.width) {
+        info.volume = true;
+        info.pixel_size = Some(voxel);
+    }
     let name = name.unwrap_or(&recording.name);
     let mut draft = store.acquisition(project, name, &info)?;
     let record = draft.record();

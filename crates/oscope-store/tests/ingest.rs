@@ -248,3 +248,39 @@ fn ingest_refuses_what_it_cannot_take_and_stops_when_cancelled() {
     assert!(store.contents(project).unwrap().acquisitions.is_empty());
     assert!(folder.exists());
 }
+
+#[test]
+fn a_z_scan_s_frames_become_a_volume_of_its_voxels() {
+    let root = tempfile::tempdir().unwrap();
+    let (store, scratch, project) = open(root.path());
+    // A field 32 µm across its 64 pixels, and planes 2 µm apart.
+    let corners = json!([
+        {"x": -16.0, "y": -12.0}, {"x": 16.0, "y": -12.0},
+        {"x": 16.0, "y": 12.0}, {"x": -16.0, "y": 12.0},
+    ]);
+    let stack = json!({"below_um": 4.0, "above_um": 4.0, "step_um": 2.0});
+    let ingested = |pattern: &str| {
+        let plan = json!({"pattern": pattern, "field": {"corners_um": corners}, "stack": stack});
+        let recording = RecordingOptions {
+            source: json!({ "plan": plan }),
+            ..options()
+        };
+        let mut writer = scratch.record(recording).unwrap();
+        for n in 0..5 {
+            let (meta, pixels) = frame(n, RAW, 64, 48);
+            writer.append(&meta, &pixels).unwrap();
+        }
+        let folder = writer.folder().to_owned();
+        writer.finish(None).unwrap();
+        ingest(&store, project, &folder, None, false, &|_, _| true)
+            .unwrap()
+            .image
+    };
+    let volume = ingested("z_scan");
+    assert!(volume.volume);
+    let size = volume.pixel_size.unwrap();
+    assert_eq!((size.x, size.y, size.z), (0.5, 0.5, 2.0));
+    // A tiled stack's planes are each tile's, not a volume.
+    let tiles = ingested("tiled_stack");
+    assert!(!tiles.volume && tiles.pixel_size.is_none());
+}

@@ -51,7 +51,7 @@ pub(crate) fn make(reader: &ImageReader, out: &Path) -> Result<()> {
         .max_by_key(|&level| (side(level), level))
         .unwrap_or(info.levels - 1);
     let (width, height) = info.level_size(level);
-    let samples = reader.read(level, info.planes / 2, (0, 0), (width, height))?;
+    let samples = reader.read(level, info.level_planes(level) / 2, (0, 0), (width, height))?;
     let unit = samples.to_unit();
     let display = display(info.sample, &unit);
     let (w, h, channels) = (width as usize, height as usize, info.channels as usize);
