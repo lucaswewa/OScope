@@ -1,6 +1,6 @@
 # ADR-0003: Platforms: Windows 11 and Ubuntu LTS on x86_64
 
-- Status: Accepted
+- Status: Accepted; its CI section superseded by [ADR-0038](0038-local-ci-replays-side-by-side.md)
 - Date: 2026-11-11
 - Phase: P00
 

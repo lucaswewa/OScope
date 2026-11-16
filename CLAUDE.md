@@ -60,7 +60,7 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
 
   Every `unsafe` block has a `SAFETY:` comment.
 - **Platforms** are Windows 11 and Ubuntu 22.04/24.04 LTS, both x86_64 ([ADR-0003](docs/adr/0003-platforms-windows-and-ubuntu-x86-64.md)).
-  - CI checks both on every PR.
+  - The local replays check both before every merge ([ADR-0038](docs/adr/0038-local-ci-replays-side-by-side.md)).
   - Keep platform-specific code in small `cfg` blocks, each with an equivalent for the other platform or a clear error.
   - On the owner's Windows PC, check Linux locally under WSL (`Ubuntu-24.04`), with a Linux-side `CARGO_TARGET_DIR` so the Windows and Linux builds don't share a target folder.
 - **Line endings are LF** (`.gitattributes`). Scripts that write files must not produce CRLF.
@@ -72,7 +72,8 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
   Every driver also has a fake at its protocol or SDK boundary.
 - **Tests:**
   - Wait for a condition, never a fixed time.
-  - Give each test its own data root, port and build directory.
+  - Give each test its own data root and build directory, and a port the system picks: suites run side by side, several copies at once.
+  - Keep what a test writes small, unless its size is what it tests: recordings preallocate their segments.
   - Test with the default samples and over real distances, not only with samples chosen to make tests quick.
   - For anything that supervises, recovers or detects, break the code on purpose once and check that the test fails; say so in the notes.
 - **Ports:**
@@ -97,6 +98,10 @@ cargo deny check
 OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda
 ```
 
-`scripts/ci-local.sh` runs all of CI's checks, every example's `--smoke` among them, and `--cuda` adds the CUDA tests. `scripts/ci-clone.sh` runs them on a fresh clone of a commit; on Windows, run it under WSL ([`scripts/README.md`](scripts/README.md)).
+`scripts/ci-local.sh` runs all of CI's checks, every example's `--smoke` among them, and `--cuda` adds the CUDA tests. It runs the suites and smoke runs eight at a time, each on two CPUs of its own. `scripts/ci-clone.sh` runs them on a fresh clone of a commit; on Windows, run it under WSL ([`scripts/README.md`](scripts/README.md)).
+
+- **The replays are the merge gate** ([ADR-0038](docs/adr/0038-local-ci-replays-side-by-side.md)): both pass, each run alone, on the commit merged, or on one that only docs follow. GitHub Actions isn't waited for.
+- **Two cores, five times:** the suites and smoke runs a change touches, and only those, run five times each, side by side, on two CPUs each: `scripts/two-core.sh PACKAGE:TEST… EXAMPLE…`.
+- **Disk:** check `df -h` first. The replays need some 20 GB free, and build output grows by the phase: `cargo clean --profile dev` clears it, with the owner's word.
 
 Docs-only phases check that their relative links and anchors resolve.
