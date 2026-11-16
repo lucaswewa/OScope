@@ -151,7 +151,45 @@ The page draws the 4,441 outlines over the mosaic, with the summary and the tabl
 - **The stub's learned paths are called through each library's documented interface,** and neither library is a dependency. The test runs the stand-in, as the CI has neither.
 - **The spec held:** no revisions were needed while writing the tests, beyond test data. A sanity bound of 300 nuclei needed a larger region in the truth test, and the job test's ground was set to count as tissue.
 
-⟨MUTANTS⟩
+### What the mutants' reading found
+
+Thirty-three mutants, listed in advance from the code, covering:
+
+- the distance transform and labelling, Otsu's level, the adaptive window, hole filling;
+- the watershed's seeds, flooding and unseeded parts;
+- the measures, the filters and the outline's turns;
+- the nodes' halo, colour and filling;
+- the job's halo, seams, white, tissue, DAB classes, layer, refusals and cancels;
+- the layer's IDs.
+
+Reading the tests against the list first found gaps, now covered:
+
+- Otsu's first split across a gap;
+- a background open only at the edge, which isn't a hole;
+- plateau-peaked squares, which only plateau seeds can split;
+- unequal discs, split at their waist;
+- `segment` itself;
+- the adaptive threshold in colour, and a hollow disc for `cells.split`;
+- the job's white found, its density, grey's tissue and a first-pass cancel.
+
+The outline's walk got a bound, so that a wrong start couldn't loop for ever.
+
+The run then missed nine:
+
+- **Fixed in the tests (eight):**
+  - an anti-diagonal line, to keep eight-connected labelling's up-right neighbour;
+  - a square's border missing one corner pixel, whose inside meets the outside only at that corner;
+  - the unequal discs' split located at their waist, x = 36.5, where breadth-first flooding would put it half-way;
+  - a filter by the largest area;
+  - the adaptive node on tiles of 8 pixels, smaller than its window, so that only its halo makes them agree;
+  - channels whose mean is flat, where the first channel's isn't;
+  - glass in the job's picture, brighter than its ground, so the white found is the glass's and not the median;
+  - white glass in its grey picture, which only grey's rule counts as tissue.
+- **Equivalent (one):** popping a parabola that ties the envelope's last bound, or keeping it, gives the same distances.
+
+One mutant was too weak and was redone: flooding by the parent's depth rather than one's own is still deepest first, a step behind, so it splits at the same waist. True breadth-first flooding is caught.
+
+So **32 of 33 are caught,** and one is equivalent.
 
 ### The page
 
@@ -163,7 +201,22 @@ The page wasn't seen in a browser here. Under Node, against the running example,
 - gave the summary in its heading;
 - linked the table, which answered 200 with 4,440 rows.
 
-⟨TWO-CORE⟩
+### Two cores
+
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each. P45's suites and example are among them, for the shared reader:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-imaging:cells` | 5 of 5 | 0.6 s |
+| `oscope-sim:nuclei` | 5 of 5 | 0.5–0.7 s |
+| `oscope-pipeline:stock` | 5 of 5 | 1.2–1.3 s |
+| `oscope-pipeline:filters` | 5 of 5 | 0.5–1.1 s |
+| `oscope-store:annotations` | 5 of 5 | 7.3–7.7 s |
+| `oscope-workflows:cells` | 5 of 5 | 9.9–11.5 s |
+| `oscope-workflows:stain` | 5 of 5 | 6.7–7.3 s |
+| `ex-count-cells --smoke` | 5 of 5 | 25.5–28.6 s |
+| `ex-checkpoint-d --smoke` | 5 of 5 | 59.1–66.8 s |
+| `ex-stain --smoke` | 5 of 5 | 59.0–77.5 s |
 
 ## Tests
 
