@@ -206,6 +206,56 @@ pub async fn get(address: SocketAddr, path: &str) -> anyhow::Result<Answer> {
     request(address, "GET", path, None).await
 }
 
+/// An answer to [`fetch`]: its status, its head's fields, and its body's
+/// bytes.
+#[derive(Debug, Clone)]
+pub struct Fetched {
+    /// Its status code.
+    pub status: u16,
+    /// Its head's fields, their names in lower case.
+    pub headers: Vec<(String, String)>,
+    /// Its body.
+    pub body: Vec<u8>,
+}
+
+impl Fetched {
+    /// The field `name`, in lower case, if it has it.
+    pub fn header(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, v)| v.as_str())
+    }
+}
+
+/// `GET path`, as [`get`], keeping the head's fields and the body's bytes:
+/// for images and their timings.
+pub async fn fetch(address: SocketAddr, path: &str) -> anyhow::Result<Fetched> {
+    let mut stream = TcpStream::connect(address).await?;
+    let head = format!("GET {path} HTTP/1.1\r\nhost: {address}\r\nconnection: close\r\n\r\n");
+    stream.write_all(head.as_bytes()).await?;
+    let mut bytes = Vec::new();
+    stream.read_to_end(&mut bytes).await?;
+    let end = bytes
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .context("an HTTP answer")?;
+    let head = String::from_utf8_lossy(&bytes[..end]);
+    let mut lines = head.lines();
+    let status = lines.next().and_then(|l| l.split(' ').nth(1)?.parse().ok());
+    let headers = lines
+        .filter_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            Some((name.trim().to_ascii_lowercase(), value.trim().to_owned()))
+        })
+        .collect();
+    Ok(Fetched {
+        status: status.context("a status code")?,
+        headers,
+        body: bytes[end + 4..].to_vec(),
+    })
+}
+
 /// `POST path` with a JSON body, as [`get`].
 pub async fn post(address: SocketAddr, path: &str, body: &Value) -> anyhow::Result<Answer> {
     request(address, "POST", path, Some(body)).await
