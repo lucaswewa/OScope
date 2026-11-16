@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use oscope_acquire::mosaic::{Gates, LiveMosaic, LookSource, MosaicSetup, Verdict};
 use oscope_acquire::preview::{Look, Preview};
-use oscope_acquire::{Acquisition, FrameBus};
+use oscope_acquire::{Acquisition, FrameBus, LatestReceiver};
 use oscope_compute::{Compute, ComputeConfig, Image, Shape};
 use oscope_core::{
     Frame, FrameId, FrameMeta, FramePool, HeapAllocator, Ms, PixelFormat, PixelRect, Point2,
@@ -195,12 +195,26 @@ fn region(mosaic: &LiveMosaic, (x, y): (u32, u32), (w, h): (u32, u32)) -> (Image
     (Image::from_vec(Shape::new(w, h, 1), grey).unwrap(), drawn)
 }
 
+/// Waits for a frame taken with the stage within 5 µm of `at`: as it
+/// reports, its true position, a backlash's half from where it was sent.
+async fn frame_at(frames: &mut LatestReceiver, at: Xyz) {
+    loop {
+        let frame = frames.recv().await.unwrap();
+        let here = frame
+            .meta()
+            .position
+            .unwrap_or(Xyz::new(Um(f64::MAX), Um(0.0), Um(0.0)));
+        if (here.x.0 - at.x.0).hypot(here.y.0 - at.y.0) < 5.0 {
+            return;
+        }
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn frames_drawn_as_the_stage_moves_lie_where_the_slide_does() {
-    // The H&E slide through the quarter sensor at twice real time, the
-    // stage's reports 40 ms late.
+    // The H&E slide through the quarter sensor at real time, the stage's
+    // reports 40 ms late.
     let config = SimulatorConfig {
-        rate: 2.0,
         sensor: "quarter".to_owned(),
         latency: 40.0,
         ..SimulatorConfig::default()
@@ -227,12 +241,23 @@ async fn frames_drawn_as_the_stage_moves_lie_where_the_slide_does() {
     let (_, w, h) = capabilities.frame_shape(&settings).unwrap();
     let pool = FramePool::new(settings.format.frame_bytes(w, h), 8, &HeapAllocator);
     sim.camera.start(pool, acquisition.sink()).await.unwrap();
-    // Pixels of 2 µm over 5 × 2 mm about the path, through the nominal M.
+    // The path rendered once, a frame every 0.625 mm with the stage still,
+    // so that the frames on the way come as fast as the camera takes them:
+    // a new place takes the simulator seconds to render on two cores.
+    let mut frames = bus.subscribe_latest("the path");
+    for k in 0..=4 {
+        let at = Xyz::new(Um(start.x.0 + 625.0 * f64::from(k)), start.y, z);
+        sim.stage.move_to(at, None).await.unwrap();
+        frame_at(&mut frames, at).await;
+    }
+    sim.stage.move_to(start, None).await.unwrap();
+    frame_at(&mut frames, start).await;
+    // Pixels of 4 µm over 5 × 2 mm about the path, through the nominal M.
     let pixel = capabilities.pixel_size.0 / 10.0;
     let corner = (island.x - 2000.0, island.y - 1000.0);
     let folder = tempfile::tempdir().unwrap();
     let setup = MosaicSetup {
-        geometry: CanvasGeometry::covering(corner, (5000.0, 2000.0), 2.0).unwrap(),
+        geometry: CanvasGeometry::covering(corner, (5000.0, 2000.0), 4.0).unwrap(),
         blend: Blend::Newest,
         objective: Some("10x".to_owned()),
         binning: 1,
@@ -251,39 +276,47 @@ async fn frames_drawn_as_the_stage_moves_lie_where_the_slide_does() {
     sim.camera.stop().await.unwrap();
     let counts = mosaic.counts();
     assert!(counts.drawn >= 4 && counts.failed == 0, "{counts:?}");
-    // 1 × 0.25 mm about the path's middle, which only frames on the way
-    // saw: a frame is 1.3 mm wide, and the first was 1.25 mm before it. It
-    // is in the frames' upper half, where the rolling shutter exposed rows
-    // some 17 ms before the middle row's.
-    let middle = (island.x + 250.0, island.y - 250.0);
-    let (u, v) = ((middle.0 - corner.0) / 2.0, (middle.1 - corner.1) / 2.0);
-    let (drawn, seen) = region(&mosaic, (u as u32 - 256, v as u32 - 64), (512, 128));
-    assert!(seen > 512 * 128 * 99 / 100, "{seen} pixels drawn");
+    // 1 × 0.25 mm about the path's middle, some 2.25 and 0.75 mm from the
+    // canvas's corner, which only frames on the way saw: a frame is 1.3 mm
+    // wide, and the first was 1.25 mm before it. It is in the frames' upper
+    // half, where the rolling shutter exposed rows some 17 ms before the
+    // middle row's.
+    let near = (562_u32, 187_u32);
+    let (drawn, seen) = region(&mosaic, (near.0 - 128, near.1 - 32), (256, 64));
+    assert!(seen > 256 * 64 * 99 / 100, "{seen} pixels drawn");
+    // The region's own middle, on the stage: whole pixels from the corner.
+    let middle = Point2::new(
+        corner.0 + 4.0 * f64::from(near.0),
+        corner.1 + 4.0 * f64::from(near.1),
+    );
+    // The truth, rendered at 1 µm and averaged in fours, so that each 4 µm
+    // pixel is the mean of its square, as the canvas's is.
     let optics = Optics {
         na: 0.25,
         magnification: 1.0,
-        sensor_pixel: Um(2.0),
+        sensor_pixel: Um(1.0),
         wavelength: Um(0.55),
         medium: 1.0,
     };
     let field = Field {
-        centre: Point2::new(middle.0, middle.1),
+        centre: middle,
         z,
-        width: 512,
-        height: 128,
+        width: 1024,
+        height: 256,
     };
-    let truth = world
+    let fine = world
         .read()
         .unwrap()
         .render(&field, &optics, Light::Transmitted);
+    let truth = oscope_compute::cpu::downsample(&fine, 4).unwrap();
     let grey: Vec<f32> = truth
         .data()
         .chunks_exact(truth.channels())
         .map(|c| c.iter().sum::<f32>() / c.len() as f32)
         .collect();
-    let truth = Image::from_vec(Shape::new(512, 128, 1), grey).unwrap();
+    let truth = Image::from_vec(Shape::new(256, 64, 1), grey).unwrap();
     let found = register(&truth, &drawn, &RegisterOptions::default()).unwrap();
-    let off_um = 2.0 * found.dx.hypot(found.dy);
+    let off_um = 4.0 * found.dx.hypot(found.dy);
     assert!(found.confidence > 0.2, "{found:?}");
     assert!(off_um < 2.0, "{off_um:.2} µm off the truth: {found:?}");
 }

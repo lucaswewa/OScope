@@ -571,9 +571,10 @@ async fn a_live_recipe_runs_on_each_preview_once_checked() {
     };
     let before = mean(&next(&mut socket).await.1);
     // The budget is for release builds: the tests' are unoptimised, and may
-    // have two cores. Recipes are timed at the default viewport's size: the
-    // stream's here.
-    let budget = http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "1000").await;
+    // have two cores, shared with the other tests (P38's two-core runs found
+    // a recipe taking 1.1 s). Recipes are timed at the default viewport's
+    // size: the stream's here.
+    let budget = http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "10000").await;
     assert!(budget.0 < 300, "{budget:?}");
     let defaults = json!({ "width": 320, "height": 240, "quality": 80, "max_fps": 30.0 });
     let defaults = http(
@@ -671,7 +672,7 @@ async fn a_live_recipe_runs_on_each_preview_once_checked() {
     .await;
     assert!(budget.0 < 300, "{budget:?}");
     assert!(refusal(&inverted).await.contains("over its budget"));
-    http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "1000").await;
+    http(address, "PUT", "/api/v1/preview/recipe_budget_ms", "10000").await;
 
     // A flat field captured from the camera, then a recipe that reads it,
     // over the region each preview shows.
