@@ -19,12 +19,13 @@ Written before the code, from the sources at its end ([spec](../phases.md#p39); 
    - taken through the objective, and at the binning, that its calibration (P32) describes.
 
    A stepper stage without encoders reports where it was sent, while each frame shows where it was: off by the backlash, the steps it lost and its settling. The stitch places each tile where its image says.
-2. **Tiles are placed in the camera's own pixels.** A tile's nominal offset, in pixels, is M⁻¹ (pₖ − p₀): its recorded position less the first tile's, through the inverse of the calibrated affine M, or of the nominal pixel without one. A tile is then only moved, never turned or scaled, as M has taken in the camera's turn and pixel. Preibisch et al. (2009) and Chalfoun et al. (2017) place tiles by translations too.
+2. **Tiles are placed in the camera's own pixels.** A tile's nominal offset, in pixels, is M⁻¹ (pₖ − p₀): its recorded position less the first tile's, through the inverse of the affine M the scan was planned with. The plan keeps M in its field (P35): its corners on the stage are M times the frame's corners about its centre. A tile is then only moved, never turned or scaled, as M has taken in the camera's turn and pixel. Preibisch et al. (2009) and Chalfoun et al. (2017) place tiles by translations too.
 3. **The overlap graph:** two tiles are neighbours if their nominal frames overlap by at least `min_overlap_px` (32) along both axes. In a raster or a snake, that is each tile's neighbours across and down. Diagonal neighbours, overlapping only at a corner, are left out.
 4. **Each pair is registered over its overlap,** by P31's phase correlation (Kuglin and Hines, 1975), the pairs in batch:
    - **Over what:** each tile's part is the overlap's rectangle grown by `radius_um` (25 µm), within the frame.
    - **Where:** shifts are searched within that radius of the nominal shift.
    - **Binned:** an overlap longer than 2048 pixels is binned under 2048 first, and its shift scaled back, still sub-pixel (Foroosh et al., 2002).
+   - **Raw frames,** a colour camera's Bayer mosaic as recorded, are registered on the sums of their 2 × 2 cells, and their shifts doubled.
    - **Weighted:** a pair's weight is P31's confidence, one minus the ratio of the highest value outside the peak to the peak's. Pairs under `min_confidence` (0.5) are dropped: a featureless overlap, of glass, gives none.
 5. **The global solve** takes the offsets xₖ that minimise
 
@@ -38,12 +39,12 @@ Written before the code, from the sources at its end ([spec](../phases.md#p39); 
    - pairs still over `reject_px` (3 pixels) are then rejected, and counted, and the solve repeats without them.
 7. **A flat field, if asked** (`flat_field`), is estimated from the tiles themselves, as CIDRE (Smith et al., 2015) and BaSiC (Peng et al., 2017) do more fully. It is each pixel's median over up to 64 tiles spread over the scan, smoothed by a Gaussian a 32nd of the frame's shorter side wide, and divided by its mean. Each tile is divided by it before blending.
 8. **Feathered blending** (Szeliski, 2006):
-   - each tile goes at its offset rounded to a whole pixel;
+   - each tile goes at its offset rounded to a whole pixel, or for raw frames to an even one, so that the mosaic keeps their colour pattern;
    - a mosaic pixel is the mean of the tiles over it, each weighted by its distance in pixels to its own nearest edge, plus a half.
 9. **Written out of core** as a result of the project: an OME-Zarr v3 image, NGFF 0.5 (Moore et al., 2021; ADR-0021).
    - **Chunk by chunk:** its chunks, 512 pixels square, are made a few at a time in parallel, each from the parts of the tiles over it, read from the acquisition. Then its pyramid is made, a chunk at a time.
    - **Bounded:** what is held at once is the chunks in hand and their tiles' parts, as many chunks as `memory_mb` (256) allows.
-   - **Its record:** its provenance names the acquisition and the options, and it keeps each tile's offset.
+   - **Its record:** its provenance names the acquisition and the options, and a file beside its image, `stitch.json`, keeps each tile's offset and the pairs'.
    - **A stack,** a tiled stack's planes, is solved once, on each tile's plane nearest its z, and every plane is written with the same offsets.
 10. **The stitch job,** `stitch.run`, a compute job: {`project`, `acquisition`, `options`}.
     - **Progress:** the pairs registered, the solve, then the chunks written.
