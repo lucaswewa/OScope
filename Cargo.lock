@@ -2181,6 +2181,7 @@ dependencies = [
  "oscope-stitch",
  "oscope-store",
  "oscope-workflows",
+ "rayon",
  "schemars",
  "serde",
  "serde_json",

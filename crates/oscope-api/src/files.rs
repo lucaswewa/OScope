@@ -8,6 +8,7 @@ use std::sync::Arc;
 use oscope_core::ProjectId;
 use oscope_ext::Extensions;
 use oscope_jobs::{Factory, Job, JobSpec, Resource, Stop};
+use oscope_store::zoom::export_dzi;
 use oscope_store::{Exporter, Format, Importer, RecordKind, Store, export, import};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -16,6 +17,9 @@ use serde::{Deserialize, Serialize};
 pub(crate) const IMPORT: &str = "projects.import";
 /// An export's kind.
 pub(crate) const EXPORT: &str = "projects.export";
+/// The format of a static Deep Zoom folder (ADR-0028), made from the
+/// image's pyramid rather than by an exporter.
+pub(crate) const DZI: &str = "dzi";
 
 /// The formats the server imports and exports.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -47,9 +51,15 @@ impl Codecs {
     }
 
     pub(crate) fn formats(&self) -> Formats {
+        let mut exporters: Vec<Format> = self.exporters.iter().map(|e| e.format()).collect();
+        exporters.push(Format {
+            id: DZI.to_owned(),
+            name: "Deep Zoom folder (DZI)".to_owned(),
+            extensions: vec!["dzi".to_owned()],
+        });
         Formats {
             importers: self.importers.iter().map(|i| i.format()).collect(),
-            exporters: self.exporters.iter().map(|e| e.format()).collect(),
+            exporters,
         }
     }
 
@@ -149,12 +159,16 @@ pub(crate) fn import_jobs(store: Arc<Store>, codecs: Arc<Codecs>) -> Factory {
 
 /// Makes export jobs, whose parameters are `project`, `record`, its
 /// `kind` (`acquisition`, the default, or `result`), and `format`, an
-/// exporter's ID. Each writes the record's image to its folder's
-/// `exports/`: the result is where the data route serves it.
+/// exporter's ID or `dzi`. Each writes the record's image to its folder's
+/// `exports/`, a static Deep Zoom folder for `dzi`: the result is where
+/// the data route serves it.
 pub(crate) fn export_jobs(store: Arc<Store>, codecs: Arc<Codecs>) -> Factory {
     Arc::new(move |value| {
         let params = ExportParams::deserialize(value).map_err(|e| e.to_string())?;
-        let exporter = codecs.exporter(&params.format)?;
+        let exporter = match params.format.as_str() {
+            DZI => None,
+            format => Some(codecs.exporter(format)?),
+        };
         let title = format!(
             "export {} {} as {}",
             params.kind.name(),
@@ -167,8 +181,11 @@ pub(crate) fn export_jobs(store: Arc<Store>, codecs: Arc<Codecs>) -> Factory {
             run: Box::new(move |ctx| {
                 Box::pin(async move {
                     let project = params.project;
-                    let work = tokio::task::spawn_blocking(move || {
-                        export(&store, project, params.kind, &params.record, &*exporter)
+                    let work = tokio::task::spawn_blocking(move || match exporter {
+                        Some(exporter) => {
+                            export(&store, project, params.kind, &params.record, &*exporter)
+                        }
+                        None => export_dzi(&store, project, params.kind, &params.record, None),
                     });
                     let path = work.await.map_err(Stop::failed)?.map_err(Stop::failed)?;
                     ctx.progress(Some(1.0), "exported");

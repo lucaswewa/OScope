@@ -34,6 +34,7 @@ pub mod projects;
 pub mod scan;
 mod server;
 pub mod system;
+mod zoom;
 
 pub use files::Formats;
 pub use server::{API_PREFIX, Api, ApiBuilder, ApiError, MEDIA_PREFIX, Restart, Roots};
