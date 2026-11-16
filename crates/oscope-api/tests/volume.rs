@@ -256,16 +256,23 @@ async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
     let tile = served.client.get(&zoom).await;
     assert_eq!(tile.status, 200, "{}", String::from_utf8_lossy(&tile.body));
 
-    // What is refused.
-    for bad in [
-        "slice?axis=q&index=0",
-        "slice?axis=z&index=13",
-        "slice?axis=z&index=0&level=3",
-        "brick?x=1000&w=200",
-        "brick?level=3",
-        "brick?d=0",
+    // What is refused, and why: past the last plane, by the route itself,
+    // even where level 2's 7 planes would hold the box rounded.
+    for (bad, why) in [
+        ("slice?axis=q&index=0", "no axis q"),
+        ("slice?axis=z&index=13", "no index 13 across z"),
+        ("slice?axis=z&index=0&level=3", "no level 3"),
+        ("brick?x=1000&w=200", "inside 1100 × 900 × 13"),
+        ("brick?z=12&d=2&level=2", "inside 1100 × 900 × 13"),
+        ("brick?level=3", "no level 3"),
+        ("brick?d=0", "not empty"),
     ] {
-        assert_eq!(served.get(bad).await.status, 400, "{bad}");
+        let refused = served.get(bad).await;
+        let detail = refused.json()["detail"].to_string();
+        assert!(
+            refused.status == 400 && detail.contains(why),
+            "{bad}: {detail}"
+        );
     }
     let nobody = format!(
         "/api/v1/volume/{}/acquisitions/{}/meta",
