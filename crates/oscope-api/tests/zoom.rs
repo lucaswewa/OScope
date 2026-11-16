@@ -219,6 +219,13 @@ async fn tiles_are_served_kept_and_timed_at_every_level_and_edge() {
     assert!(timed(&other, "miss"));
     assert_ne!(other.body, first.body);
     assert!(timed(&served.tile(last, (0, 0), look).await, "hit"));
+    // Gamma alone brightens it: t^(1 / 2.2) is above t.
+    let flat = served.tile(last, (0, 0), "?black=0&white=1&gamma=1").await;
+    let bright = served
+        .tile(last, (0, 0), "?black=0&white=1&gamma=2.2")
+        .await;
+    let (flat, bright) = (means(&decode(&flat.body).0), means(&decode(&bright.body).0));
+    assert!(bright[1] > flat[1] + 20.0, "{flat:?} {bright:?}");
 
     // Each level's last tile ends at its edge; past it, nothing.
     for level in [0, 1, 4, 9, 10, last] {
