@@ -17,7 +17,7 @@ It serves at http://127.0.0.1:8230/. On the owner's PC, at real time on the simu
 
 ```text
 ex-annotate: a mosaic of 2598 × 1730 pixels of 0.960 × 0.960 µm, with 5 annotations in 3 layers
-  the rectangle of 600 × 300 µm: 180000.0 µm², 1800.0 µm round, its pixels' means red 41187, green 26617, blue 43456, measured in 28 ms
+  the rectangle of 600 × 300 µm: 180000.0 µm², 1800.0 µm round, its pixels' means red 41184, green 26617, blue 43453, measured in 21 ms
   open http://127.0.0.1:8230/ to draw polygons, lines and points, and measure them
 ```
 
