@@ -2367,6 +2367,7 @@ dependencies = [
  "oscope-core",
  "oscope-imaging",
  "oscope-jobs",
+ "oscope-volume",
  "rayon",
  "schemars",
  "serde",

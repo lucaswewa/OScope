@@ -652,3 +652,103 @@ fn a_dzi_folder_is_the_image_s_tiles_and_never_written_over() {
         json!({"folder": folder.path(), "name": "other", "black": 0.5, "white": 0.2})
     ));
 }
+
+#[test]
+fn the_volume_nodes_are_depth_from_focus_step_by_step_and_its_mesh() {
+    use oscope_compute::{filters, focus};
+    use oscope_volume::{FocusOptions, Planes, all_in_focus, depth_from_focus};
+    let folder = tempfile::tempdir().unwrap();
+    let engine = engine(folder.path());
+    // Five planes of a texture, sharpest at the middle one.
+    let sharp = picture(64, 48, 1);
+    let stack: Vec<Image> = (0..5)
+        .map(|k: i32| filters::gaussian(&sharp, 0.3 + 1.2 * (k - 2).abs() as f32).unwrap())
+        .collect();
+    let planes = Planes {
+        z0_um: 10.0,
+        step_um: 0.5,
+    };
+    let planes_json = Value::json(json!({"z0_um": 10.0, "step_um": 0.5}));
+    let options = FocusOptions::default();
+    let measured = run(
+        &engine,
+        "volume.focus",
+        json!({}),
+        Values::from([("stack".to_owned(), Value::stack(stack.clone()))]),
+    );
+    let measures = measured["measures"].as_stack().expect("a stack").to_vec();
+    for (plane, measure) in stack.iter().zip(&measures) {
+        assert_eq!(measure, &focus::sml(plane, 1, 2).unwrap());
+    }
+    let found = run(
+        &engine,
+        "volume.height",
+        json!({"median": 1}),
+        Values::from([
+            ("measures".to_owned(), Value::stack(measures)),
+            ("planes".to_owned(), planes_json.clone()),
+        ]),
+    );
+    let measure = |p: &Image| focus::sml(p, options.step, options.radius);
+    let depth = depth_from_focus(&stack, planes, &options, measure).unwrap();
+    let heights = image(&found, "heights");
+    assert_eq!(
+        (&heights, &image(&found, "confidence")),
+        (&depth.heights, &depth.confidence)
+    );
+    // At plane 2, but where the window is cut at the corners.
+    let near = heights
+        .data()
+        .iter()
+        .filter(|z| (*z - 11.0).abs() < 0.25)
+        .count();
+    assert!(
+        near * 100 >= 99 * 64 * 48,
+        "{near} of {} near plane 2",
+        64 * 48
+    );
+    let fused = run(
+        &engine,
+        "volume.all_in_focus",
+        json!({}),
+        Values::from([
+            ("stack".to_owned(), Value::stack(stack.clone())),
+            ("heights".to_owned(), Value::image(heights.clone())),
+            ("planes".to_owned(), planes_json),
+        ]),
+    );
+    let fused = image(&fused, "image");
+    assert_eq!(fused, all_in_focus(&stack, &heights, planes).unwrap());
+
+    // The mesh, as PLY: a vertex for each pixel, two triangles for each
+    // square; not written over, nor outside the folder.
+    let params = json!({"folder": folder.path(), "format": "ply", "pixel_um": 0.5});
+    let inputs = Values::from([
+        ("heights".to_owned(), Value::image(heights)),
+        ("texture".to_owned(), Value::image(fused)),
+    ]);
+    let written = run(&engine, "export.mesh", params.clone(), inputs.clone());
+    let written = written["written"].as_json().expect("JSON").clone();
+    assert_eq!(
+        (&written["vertices"], &written["triangles"]),
+        (&json!(64 * 48), &json!(2 * 63 * 47))
+    );
+    assert!(folder.path().join("surface.ply").is_file());
+    let refused = |params: Json| {
+        let plan = Plan::new(
+            engine.registry(),
+            &single(&engine, "export.mesh", params, &inputs),
+            false,
+        );
+        plan.ok()
+            .and_then(|plan| engine.run(&plan, &inputs, &RunOptions::default()).ok())
+            .is_none()
+    };
+    assert!(refused(params), "written over");
+    assert!(refused(
+        json!({"folder": "relative", "format": "stl", "pixel_um": 0.5})
+    ));
+    assert!(refused(
+        json!({"folder": folder.path(), "name": "../up", "format": "stl", "pixel_um": 0.5})
+    ));
+}
