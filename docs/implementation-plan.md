@@ -837,7 +837,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 |---|---|---|---|---|---|
 | P41 | Z-stacks, volume store, slice and brick routes | P36 | L | 0029 | Done |
 | P42 | Depth from focus and extended depth of field | P41 | L | — | Done |
-| P43 | Deconvolution and volume rendering | P42 | L | — | Planned |
+| P43 | Deconvolution and volume rendering | P42 | L | — | In review |
 
 **Checkpoint E:** a height-map surface of the reflective sample, and a deconvolved fluorescent volume, both in VTK.js.
 
