@@ -1,6 +1,6 @@
 # ADR-0021: Projects, OME-Zarr v3 and the SQLite index
 
-- Status: Accepted; extended by [ADR-0027](0027-post-acquisition-stitching.md)
+- Status: Accepted; extended by [ADR-0027](0027-post-acquisition-stitching.md), [ADR-0029](0029-volumes-and-3d-data-on-the-media-plane.md)
 - Date: 2026-11-14
 - Phase: P28
 

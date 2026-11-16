@@ -1,6 +1,6 @@
 # ADR-0022: Scratch recording and ingest
 
-- Status: Accepted
+- Status: Accepted; extended by [ADR-0029](0029-volumes-and-3d-data-on-the-media-plane.md)
 - Date: 2026-11-14
 - Phase: P29
 

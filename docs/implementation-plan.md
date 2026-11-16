@@ -835,7 +835,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P41 | Z-stacks, volume store, slice and brick routes | P36 | L | 0029 | Planned |
+| P41 | Z-stacks, volume store, slice and brick routes | P36 | L | 0029 | In review |
 | P42 | Depth from focus and extended depth of field | P41 | L | — | Planned |
 | P43 | Deconvolution and volume rendering | P42 | L | — | Planned |
 
