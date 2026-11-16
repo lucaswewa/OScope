@@ -111,7 +111,8 @@ fn stacked(sample: Arc<dyn Sample>, focus: f64, (w, h): (u32, u32)) -> Stacked {
                     BayerColour::Blue => 2,
                 };
                 let i = u64::from(y * w + x);
-                0.6 * rgb.data()[i as usize * 3 + c] / top + noise(k, i)
+                // The camera's black level, 2,000 of 65,535, under the light.
+                0.03 + 0.6 * rgb.data()[i as usize * 3 + c] / top + noise(k, i)
             })
             .collect();
         let writer = draft.image().unwrap();

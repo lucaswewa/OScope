@@ -1,7 +1,8 @@
 //! Deconvolution as a job (P43): a volume acquisition deconvolved by Born
 //! and Wolf's widefield PSF, by Richardson–Lucy over it padded by
 //! mirroring, its result a volume of the project. A raw stack is
-//! deconvolved on its cells' means. P43's notes give the behaviour.
+//! deconvolved on its cells' means, and any stack's background, its 1st
+//! percentile, is taken off first. P43's notes give the behaviour.
 
 use std::sync::Arc;
 
@@ -90,7 +91,18 @@ pub fn deconvolve_acquisition(
     let planes = (0..info.planes)
         .map(|k| stack.grey(k))
         .collect::<Result<Vec<_>, _>>()?;
-    let volume = Volume::from_planes(&planes)?;
+    let mut volume = Volume::from_planes(&planes)?;
+    // The background, such as a camera's black level, taken off first: the
+    // stack's 1st percentile, from a sample of its voxels. Richardson-Lucy
+    // would take it for light, spread everywhere.
+    let step = (volume.data.len() / 100_000).max(1);
+    let mut sample: Vec<f32> = volume.data.iter().step_by(step).copied().collect();
+    sample.sort_by(f32::total_cmp);
+    let background = sample[sample.len() / 100];
+    volume
+        .data
+        .iter_mut()
+        .for_each(|v| *v = (*v - background).max(0.0));
     let optics = Optics {
         na: options.na,
         wavelength_um: options.wavelength_um,
