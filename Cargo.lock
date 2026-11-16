@@ -2365,6 +2365,8 @@ dependencies = [
 name = "oscope-stitch"
 version = "0.1.0"
 dependencies = [
+ "oscope-compute",
+ "oscope-imaging",
  "schemars",
  "serde",
  "tempfile",
