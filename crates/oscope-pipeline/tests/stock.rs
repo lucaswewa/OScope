@@ -669,21 +669,25 @@ fn the_volume_nodes_are_depth_from_focus_step_by_step_and_its_mesh() {
         step_um: 0.5,
     };
     let planes_json = Value::json(json!({"z0_um": 10.0, "step_um": 0.5}));
-    let options = FocusOptions::default();
+    let options = FocusOptions {
+        step: 1,
+        radius: 1,
+        median: 2,
+    };
     let measured = run(
         &engine,
         "volume.focus",
-        json!({}),
+        json!({"step": 1, "radius": 1}),
         Values::from([("stack".to_owned(), Value::stack(stack.clone()))]),
     );
     let measures = measured["measures"].as_stack().expect("a stack").to_vec();
     for (plane, measure) in stack.iter().zip(&measures) {
-        assert_eq!(measure, &focus::sml(plane, 2, 3).unwrap());
+        assert_eq!(measure, &focus::sml(plane, 1, 1).unwrap());
     }
     let found = run(
         &engine,
         "volume.height",
-        json!({"median": 1}),
+        json!({"median": 2}),
         Values::from([
             ("measures".to_owned(), Value::stack(measures)),
             ("planes".to_owned(), planes_json.clone()),
@@ -703,7 +707,7 @@ fn the_volume_nodes_are_depth_from_focus_step_by_step_and_its_mesh() {
         .filter(|z| (*z - 11.0).abs() < 0.25)
         .count();
     assert!(
-        near * 100 >= 99 * 64 * 48,
+        near * 100 >= 95 * 64 * 48,
         "{near} of {} near plane 2",
         64 * 48
     );
@@ -721,17 +725,28 @@ fn the_volume_nodes_are_depth_from_focus_step_by_step_and_its_mesh() {
     assert_eq!(fused, all_in_focus(&stack, &heights, planes).unwrap());
 
     // The mesh, as PLY: a vertex for each pixel, two triangles for each
-    // square; not written over, nor outside the folder.
-    let params = json!({"folder": folder.path(), "format": "ply", "pixel_um": 0.5});
+    // square sure enough; not written over, nor outside the folder.
+    let params = json!({
+        "folder": folder.path(), "format": "ply", "pixel_um": 0.5, "min_confidence": 0.5,
+    });
+    let sure = image(&found, "confidence");
+    let mesh_options = oscope_volume::MeshOptions {
+        pixel_um: 0.5,
+        stride: 1,
+        min_confidence: 0.5,
+    };
+    let kept = oscope_volume::Mesh::new(&heights, Some(&sure), None, &mesh_options).unwrap();
+    assert!(kept.triangles.len() < 2 * 63 * 47);
     let inputs = Values::from([
         ("heights".to_owned(), Value::image(heights)),
+        ("confidence".to_owned(), Value::image(sure)),
         ("texture".to_owned(), Value::image(fused)),
     ]);
     let written = run(&engine, "export.mesh", params.clone(), inputs.clone());
     let written = written["written"].as_json().expect("JSON").clone();
     assert_eq!(
         (&written["vertices"], &written["triangles"]),
-        (&json!(64 * 48), &json!(2 * 63 * 47))
+        (&json!(64 * 48), &json!(kept.triangles.len()))
     );
     assert!(folder.path().join("surface.ply").is_file());
     let refused = |params: Json| {

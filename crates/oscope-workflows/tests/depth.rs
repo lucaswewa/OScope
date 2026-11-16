@@ -236,21 +236,21 @@ fn a_flat_acquisition_is_refused_and_a_cancel_stops_it() {
     );
     assert!(matches!(stopped, Err(DepthError::Cancelled)), "{stopped:?}");
     assert!(s.store.contents(s.project).unwrap().results.is_empty());
-    // A flat image: not a volume.
-    let info = ImageInfo::new(64, 48, 1, SampleType::U16);
-    let draft = s.store.acquisition(s.project, "flat", &info).unwrap();
-    let writer = draft.image().unwrap();
-    writer
-        .write(0, (0, 0), (64, 48), &Samples::U16(vec![9; 64 * 48]))
-        .unwrap();
-    let flat = draft.commit().unwrap().id;
-    let refused = depth_from_focus(
-        &s.store,
-        s.project,
-        flat,
-        &DepthOptions::default(),
-        &compute(),
-        &|_, _| true,
-    );
-    assert!(matches!(refused, Err(DepthError::Store(_))), "{refused:?}");
+    // Three planes that aren't a volume, and a volume of two.
+    for (planes, volume) in [(3, false), (2, true)] {
+        let mut info = ImageInfo::new(64, 48, 1, SampleType::U16);
+        (info.planes, info.volume) = (planes, volume);
+        let draft = s.store.acquisition(s.project, "flat", &info).unwrap();
+        let writer = draft.image().unwrap();
+        for k in 0..planes {
+            let samples = Samples::U16(vec![9; 64 * 48]);
+            writer.write(k, (0, 0), (64, 48), &samples).unwrap();
+        }
+        let flat = draft.commit().unwrap().id;
+        let options = DepthOptions::default();
+        let refused = depth_from_focus(&s.store, s.project, flat, &options, &compute(), &|_, _| {
+            true
+        });
+        assert!(matches!(refused, Err(DepthError::Store(_))), "{refused:?}");
+    }
 }

@@ -147,6 +147,17 @@ fn a_textured_surface_s_heights_are_within_half_a_step_and_glass_has_little_conf
     let options = FocusOptions::default();
     let measure = |plane: &Image| focus::sml(plane, options.step, options.radius);
     let depth = depth_from_focus(&s.stack, PLANES, &options, measure).unwrap();
+    // The heights' median is the filter's, over those found without it.
+    let unfiltered = FocusOptions {
+        median: 0,
+        ..options
+    };
+    let raw = depth_from_focus(&s.stack, PLANES, &unfiltered, measure).unwrap();
+    assert_eq!(
+        depth.heights,
+        filters::median(&raw.heights, options.median).unwrap()
+    );
+    assert_ne!(depth.heights, raw.heights);
     let (heights, confidence) = (depth.heights.data(), depth.confidence.data());
     // Textured: left of the glass by more than the window, and the median.
     let textured: Vec<usize> = (0..heights.len())
