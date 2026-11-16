@@ -43,7 +43,7 @@ async fn serve(raw: bool) -> Served {
     if raw {
         info.channel_names = vec!["raw".to_owned()];
     }
-    let mut draft = store.acquisition(project, "a stack", &info).unwrap();
+    let draft = store.acquisition(project, "a stack", &info).unwrap();
     let writer = draft.image().unwrap();
     for z in 0..13 {
         let values: Vec<f32> = (0..900)
@@ -202,8 +202,10 @@ async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
     );
     let want = source(&served.image, 2, [0, 100, 0], [275, 1, 7]);
     let got: Vec<u16> = across.body[64..]
-        .chunks_exact(2)
-        .map(|b| u16::from_le_bytes([b[0], b[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&b| u16::from_le_bytes(b))
         .collect();
     assert_eq!(got, want);
     let down = served.get("slice?axis=x&index=274&level=2").await;
@@ -232,8 +234,10 @@ async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
     assert_eq!((head.origin, head.size), ([50, 16, 3], [151, 101, 5]));
     let want = source(&served.image, 1, [50, 16, 3], [151, 101, 5]);
     let got: Vec<u16> = boxed.body[64..]
-        .chunks_exact(2)
-        .map(|b| u16::from_le_bytes([b[0], b[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&b| u16::from_le_bytes(b))
         .collect();
     assert_eq!(got, want);
 
