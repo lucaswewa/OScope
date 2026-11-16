@@ -593,3 +593,61 @@ fn gpu_steps_match_the_cpu_s() {
         assert!(worst(&cpu, &gpu) <= 1e-5, "{id}: {}", worst(&cpu, &gpu));
     }
 }
+
+#[test]
+fn a_dzi_folder_is_the_image_s_tiles_and_never_written_over() {
+    use oscope_imaging::zoom::{Dzi, InMemory, tile};
+    let folder = tempfile::tempdir().unwrap();
+    let engine = engine(folder.path());
+    let picture = picture(600, 300, 3);
+    let params = json!({
+        "folder": folder.path(), "name": "slide", "black": 0.0, "white": 1.0, "gamma": 1.0,
+    });
+    let written = run(&engine, "export.dzi", params.clone(), one(picture.clone()));
+    let written = written["written"].as_json().expect("JSON").clone();
+    let dzi = Dzi {
+        width: 600,
+        height: 300,
+    };
+    let all: u64 = (0..dzi.levels())
+        .map(|l| dzi.tiles(l).0 * dzi.tiles(l).1)
+        .sum();
+    assert_eq!(
+        (&written["name"], &written["tiles"]),
+        (&json!("slide"), &json!(all))
+    );
+    // Its tiles are deep zoom's own, of the image.
+    let pyramid = InMemory::new(picture.clone()).unwrap();
+    let display = Display {
+        black: 0.0,
+        white: 1.0,
+        curve: Curve::Gamma { gamma: 1.0 },
+    };
+    let last = dzi.levels() - 1;
+    for (level, at) in [(last, (2, 1)), (last - 1, (1, 0)), (3, (0, 0))] {
+        let file = folder
+            .path()
+            .join(format!("slide_files/{level}/{}_{}.jpg", at.0, at.1));
+        let want = tile(&pyramid, level, at, &display).unwrap().unwrap();
+        assert_eq!(std::fs::read(file).unwrap(), want, "level {level}");
+    }
+    // Refused: written again over it, a folder not given whole, a name
+    // that leaves it, and levels the wrong way round.
+    let refused = |params: Json| {
+        let inputs = one(picture.clone());
+        let plan = Plan::new(
+            engine.registry(),
+            &single(&engine, "export.dzi", params, &inputs),
+            false,
+        );
+        plan.ok()
+            .and_then(|plan| engine.run(&plan, &inputs, &RunOptions::default()).ok())
+            .is_none()
+    };
+    assert!(refused(params.clone()), "written over");
+    assert!(refused(json!({"folder": "relative/folder"})));
+    assert!(refused(json!({"folder": folder.path(), "name": "../up"})));
+    assert!(refused(
+        json!({"folder": folder.path(), "name": "other", "black": 0.5, "white": 0.2})
+    ));
+}

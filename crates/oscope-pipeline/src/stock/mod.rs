@@ -40,6 +40,7 @@
 
 mod correction;
 mod display;
+mod export;
 mod filters;
 mod geometry;
 mod measure;
@@ -78,6 +79,7 @@ pub fn registry(references: impl Into<PathBuf>) -> Registry {
         display::levels(),
         display::lut(),
         display::false_colour(),
+        export::dzi(),
         geometry::bin(),
         geometry::resize(),
         geometry::crop(),
