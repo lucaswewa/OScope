@@ -112,3 +112,21 @@ undocumented_unsafe_blocks = "warn"
 # for its tests on two cores. Optimised in every build, it manages 24 GB/s.
 [profile.dev.package.crc32fast]
 opt-level = 3
+
+# Tests and examples render the simulator's frames and process images by the
+# thousand. Unoptimised, the simulator, imaging, compute and their
+# dependencies took most of the tests' time: optimised in dev and test
+# builds too, the suites took 248 s, not 518 s, on the owner's PC, and the
+# slowest smoke runs a quarter of their time. The rest of the workspace
+# stays unoptimised, quick to build after a change.
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev.package.oscope-sim]
+opt-level = 2
+
+[profile.dev.package.oscope-imaging]
+opt-level = 2
+
+[profile.dev.package.oscope-compute]
+opt-level = 2

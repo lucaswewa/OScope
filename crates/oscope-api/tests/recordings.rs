@@ -20,8 +20,11 @@ const POLICY: ScratchPolicy = ScratchPolicy {
 /// A recording of three small frames in the scratch space at `root`.
 fn record(root: &Path) -> RecordingId {
     let scratch = Scratch::open(root, POLICY).unwrap();
+    // Segments of 64 MiB: the default's 4 GiB, preallocated, would crowd the
+    // disk when suites run side by side.
     let options = RecordingOptions {
         name: "three frames".to_owned(),
+        segment_bytes: 64 << 20,
         ..RecordingOptions::default()
     };
     let mut writer = scratch.record(options).unwrap();

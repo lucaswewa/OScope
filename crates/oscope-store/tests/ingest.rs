@@ -52,6 +52,17 @@ fn frame(n: u64, format: PixelFormat, width: u32, height: u32) -> (FrameMeta, Ve
     (meta, pixels)
 }
 
+/// A recording's options: segments of 256 MiB, room for six full frames.
+/// The default's 4 GiB, each preallocated, would crowd the disk when suites
+/// run side by side.
+fn options() -> RecordingOptions {
+    RecordingOptions {
+        name: "a recording".to_owned(),
+        segment_bytes: 256 << 20,
+        ..RecordingOptions::default()
+    }
+}
+
 /// Records `frames` frames, as [`frame`] makes them, and returns the
 /// recording's folder.
 fn record(
@@ -60,10 +71,7 @@ fn record(
     format: PixelFormat,
     size: (u32, u32),
 ) -> std::path::PathBuf {
-    let options = RecordingOptions {
-        name: "a recording".to_owned(),
-        ..RecordingOptions::default()
-    };
+    let options = options();
     let mut writer = scratch.record(options).unwrap();
     for n in 0..frames {
         let (meta, pixels) = frame(n, format, size.0, size.1);
@@ -198,7 +206,7 @@ fn ingest_refuses_what_it_cannot_take_and_stops_when_cancelled() {
     };
 
     // Still recording.
-    let mut writer = scratch.record(RecordingOptions::default()).unwrap();
+    let mut writer = scratch.record(options()).unwrap();
     let (meta, pixels) = frame(0, RAW, 64, 48);
     writer.append(&meta, &pixels).unwrap();
     assert!(refused(writer.folder()).contains("hasn't ended"));
@@ -209,7 +217,7 @@ fn ingest_refuses_what_it_cannot_take_and_stops_when_cancelled() {
     assert!(refused(&empty).contains("has no frames"));
 
     // Frames of two sizes.
-    let mut writer = scratch.record(RecordingOptions::default()).unwrap();
+    let mut writer = scratch.record(options()).unwrap();
     for (n, size) in [(0, (64, 48)), (1, (32, 24))] {
         let (meta, pixels) = frame(n, RAW, size.0, size.1);
         writer.append(&meta, &pixels).unwrap();
