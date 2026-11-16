@@ -73,7 +73,24 @@ Sharpness is compared only between frames of the same place, within a quarter of
 
 ### The tests' turns, and two cores
 
-{{TWOCORE}}
+- **Two cores, five times each.** Pinned to two cores, every suite this phase adds or changes passed 5 times in 5, each a run in:
+
+  | Suite | Seconds |
+  |---|---|
+  | the canvas's | 2.2–2.4 |
+  | the live mosaic's | 54–57 |
+  | the `live_mosaic` Thing's | 54–62 |
+  | the engine's | 267–287 |
+  | the preview's: `oscope-acquire`'s, and the API's, 10 in 10 | 0.5–1.1, 33–35 |
+  | the `scan` Thing's, with `OSCOPE_PYTHON=1` | 94–101 |
+  | the Thing Descriptions' | 19–20 |
+  | `ex-live-mosaic --smoke` | 88–100 |
+
+- **The first run found three faults:**
+  - **The placement test drew nothing on two cores.** The simulator took 8 s to render its first frame there, and seconds for each new place, and the mosaic, in a debug build, took over 3 s to draw a frame: the move had ended before a frame came. The path is now rendered once first, the stage stopping every 0.625 mm for a frame, and the mosaic begins after it, at real time, in pixels of 4 µm. On two cores it draws 6 or 7 frames on the way, 0.09–0.15 µm off the truth.
+  - **P22's recipe test** found a recipe taking 1.1 s, once in five runs, over the 1 s it allowed an unoptimised build. It allows 10 s now; its refusal over a budget is tested apart.
+  - **P17's paced-preview test,** in the rerun, found 5 intervals at 5 frames a second in 852 ms, under its 900. A frame's rendering shifts when it is ready by some 150 ms on two cores shared with other tests. It now times ten intervals, holding them to 80 % of their 2 s; without the pacing they take 510 ms.
+- **And one of the placement test's own:** at 4 µm, the region's middle fell between pixels, so the truth's field lay half a pixel from the region read, 2.9 µm off. The field's centre is now the region's own, on whole pixels.
 
 ### The size
 
