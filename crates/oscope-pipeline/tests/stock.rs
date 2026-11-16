@@ -781,7 +781,7 @@ fn the_deconvolution_nodes_are_the_library_s() {
         })
         .collect();
     let params =
-        json!({"na": 0.55, "wavelength_um": 0.519, "medium": 1.0, "voxel_um": [0.2, 0.2, 0.4]});
+        json!({"na": 0.55, "wavelength_um": 0.519, "medium": 1.33, "voxel_um": [0.2, 0.2, 0.4]});
     let stacked = |name: &str, images: Vec<Image>| (name.to_owned(), Value::stack(images));
     let made = run(
         &engine,
@@ -793,7 +793,7 @@ fn the_deconvolution_nodes_are_the_library_s() {
     let optics = Optics {
         na: 0.55,
         wavelength_um: 0.519,
-        medium: 1.0,
+        medium: 1.33,
     };
     let want = psf(&optics, [0.2, 0.2, 0.4], [40, 30, 6]).unwrap();
     assert_eq!(Volume::from_planes(&kernel).unwrap(), want);

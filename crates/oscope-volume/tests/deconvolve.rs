@@ -45,8 +45,11 @@ fn j0_is_its_table_and_the_psf_its_closed_forms() {
     // and in x and y; its focal plane's first minimum at Airy's radius.
     let voxel = [0.1, 0.1, 0.25];
     let p = psf(&OPTICS, voxel, [80, 80, 9]).unwrap();
+    // Over the depth either way; laterally, the cone's radius 2 µm up,
+    // 2 × 0.55 / √(1 − 0.55²) = 1.32 µm, and three Airy radii, 1.73 µm: 31
+    // voxels either way.
+    assert_eq!(p.size, [63, 63, 17]);
     let [nx, ny, nz] = p.size;
-    assert!(nx % 2 == 1 && ny == nx && nz == 17, "{:?}", p.size);
     let sum: f64 = p.data.iter().map(|v| f64::from(*v)).sum();
     assert!((sum - 1.0).abs() < 1e-5);
     let at = |x: usize, y: usize, z: usize| p.data[(z * ny + y) * nx + x];
@@ -61,17 +64,38 @@ fn j0_is_its_table_and_the_psf_its_closed_forms() {
         assert_eq!(at(x, y, z), at(x, y, 2 * cz - z));
         assert!((at(x, y, z) - at(y + cx - cy, x + cy - cx, z)).abs() <= 1e-6 * peak);
     }
-    // Its axis, against the closed form at u = (2π/λ)(NA²/n) z.
+    // Its axis, against the closed form at u = (2π/λ)(NA²/n) z, dry and in
+    // water.
     let k = 2.0 * std::f64::consts::PI / OPTICS.wavelength_um;
-    for dz in [2, 4, 6] {
-        let u = k * OPTICS.na * OPTICS.na * f64::from(dz) * voxel[2];
-        let want = ((u / 4.0).sin() / (u / 4.0)).powi(2);
-        let got = f64::from(at(cx, cy, cz + dz as usize) / at(cx, cy, cz));
-        assert!(
-            (got - want).abs() < 1e-3,
-            "{dz} planes up: {got} not {want}"
-        );
+    let water = Optics {
+        na: 1.0,
+        medium: 1.33,
+        ..OPTICS
+    };
+    for optics in [OPTICS, water] {
+        let q = psf(&optics, voxel, [8, 8, 9]).unwrap();
+        let [qx, qy, qz] = q.size;
+        let axis = |dz: usize| f64::from(q.data[((qz / 2 + dz) * qy + qy / 2) * qx + qx / 2]);
+        for dz in [2, 4, 6] {
+            let u = k * optics.na * optics.na / optics.medium * dz as f64 * voxel[2];
+            let want = ((u / 4.0).sin() / (u / 4.0)).powi(2);
+            let got = axis(dz) / axis(0);
+            assert!(
+                (got - want).abs() < 1e-3,
+                "{optics:?}, {dz} planes up: {got} not {want}"
+            );
+        }
     }
+    // Off the axis, between the radial table's samples: Born and Wolf's
+    // intensity at the voxel's own distance.
+    let u = k * OPTICS.na * OPTICS.na * 2.0 * voxel[2];
+    let v = k * OPTICS.na * voxel[0].hypot(voxel[1]);
+    let got = f64::from(at(cx + 1, cy + 1, cz + 2) / at(cx, cy, cz));
+    assert!(
+        (got - born_wolf(u, v)).abs() < 3e-3,
+        "{got} not {}",
+        born_wolf(u, v)
+    );
     let first_minimum = (cx..nx - 1)
         .find(|&x| at(x + 1, cy, cz) > at(x, cy, cz))
         .unwrap();
@@ -129,6 +153,17 @@ fn object(noise: f32) -> (Volume, Volume, Volume) {
     (truth, kernel, blurred)
 }
 
+/// `psf` moved a voxel along x, each row turned: off its centre, as a
+/// measured PSF may be.
+fn skewed(psf: &Volume) -> Volume {
+    let mut skewed = psf.clone();
+    skewed
+        .data
+        .chunks_mut(psf.size[0])
+        .for_each(|row| row.rotate_right(1));
+    skewed
+}
+
 fn deconvolved(data: &Volume, kernel: &Volume, iterations: u32, tv: f32) -> Volume {
     let padded = Padded::new(data, kernel).unwrap();
     let options = DeconvolveOptions { iterations, tv };
@@ -151,20 +186,24 @@ fn richardson_lucy_nears_the_object_keeps_its_energy_and_total_variation_is_no_w
     }
     assert!(last < 0.8 * first, "{first} to {last}");
 
-    // Energy, over the padded volume, at every iteration.
-    let padded = Padded::new(&data, &kernel).unwrap();
-    let total: f64 = padded.data.iter().map(|v| f64::from(*v)).sum();
-    for iterations in [1, 3, 10] {
-        let options = DeconvolveOptions {
-            iterations,
-            tv: 0.0,
-        };
-        let u = richardson_lucy(&padded, &options, &mut |_| true).unwrap();
-        let kept: f64 = u.iter().map(|v| f64::from(*v)).sum();
-        assert!(
-            ((kept - total) / total).abs() < 1e-5,
-            "{iterations}: {kept} of {total}"
-        );
+    // Energy, over the padded volume, at every iteration; with the PSF off
+    // its centre too, for which the correction is the ratio correlated with
+    // it, not convolved.
+    for psf in [&kernel, &skewed(&kernel)] {
+        let padded = Padded::new(&data, psf).unwrap();
+        let total: f64 = padded.data.iter().map(|v| f64::from(*v)).sum();
+        for iterations in [1, 3, 10] {
+            let options = DeconvolveOptions {
+                iterations,
+                tv: 0.0,
+            };
+            let u = richardson_lucy(&padded, &options, &mut |_| true).unwrap();
+            let kept: f64 = u.iter().map(|v| f64::from(*v)).sum();
+            assert!(
+                ((kept - total) / total).abs() < 1e-5,
+                "{iterations}: {kept} of {total}"
+            );
+        }
     }
 
     // On noisier data, over more iterations, total variation does better.
@@ -174,13 +213,14 @@ fn richardson_lucy_nears_the_object_keeps_its_energy_and_total_variation_is_no_w
     eprintln!("noisy: NRMSE {plain:.4} plain, {smoothed:.4} with total variation");
     assert!(smoothed < plain, "{smoothed} against {plain}");
 
-    // A cancel at the third iteration stops it.
-    let mut seen = 0;
+    // A cancel at the third iteration stops it, told of each from the first.
+    let padded = Padded::new(&data, &kernel).unwrap();
+    let mut told = Vec::new();
     let stopped = richardson_lucy(&padded, &DeconvolveOptions::default(), &mut |k| {
-        seen = k;
+        told.push(k);
         k < 3
     });
-    assert!(stopped.is_none() && seen == 3);
+    assert!(stopped.is_none() && told == [1, 2, 3], "{told:?}");
 }
 
 #[test]
@@ -188,6 +228,11 @@ fn volumes_pad_and_crop_and_the_nrmse_ignores_units() {
     let (_, kernel, data) = object(0.0);
     let padded = Padded::new(&data, &kernel).unwrap();
     assert_eq!(padded.crop(&padded.data), data);
+    // The data clamped at 0.
+    let mut below = data.clone();
+    below.data[0] = -1.0;
+    let clamped = Padded::new(&below, &kernel).unwrap();
+    assert!(clamped.data.iter().all(|v| *v >= 0.0));
     // Mirrored about each edge: the voxel before the first is the first, the
     // one after the last the last.
     let [px, py, _] = padded.size;

@@ -297,7 +297,41 @@ fn a_flat_acquisition_is_refused_and_a_cancel_stops_it() {
     );
     assert!(matches!(stopped, Err(DepthError::Cancelled)), "{stopped:?}");
     assert!(s.store.contents(s.project).unwrap().results.is_empty());
-    let info = ImageInfo::new(64, 48, 1, SampleType::U16);
+    // Each option reaches the deconvolution: another of any, another result.
+    let base = DeconvolveJobOptions {
+        iterations: 2,
+        ..options()
+    };
+    let result = |options: DeconvolveJobOptions| {
+        let made =
+            deconvolve_acquisition(&s.store, s.project, s.id, &options, &compute(), &|_, _| {
+                true
+            })
+            .unwrap();
+        volumes(&s, &made.id.to_string()).1
+    };
+    let first = result(base);
+    for other in [
+        DeconvolveJobOptions { na: 0.4, ..base },
+        DeconvolveJobOptions {
+            wavelength_um: 0.6,
+            ..base
+        },
+        DeconvolveJobOptions {
+            medium: 1.33,
+            ..base
+        },
+        DeconvolveJobOptions { tv: 0.01, ..base },
+    ] {
+        assert_ne!(result(other), first, "{other:?}");
+    }
+    // A flat image, of known pixels.
+    let mut info = ImageInfo::new(64, 48, 1, SampleType::U16);
+    info.pixel_size = Some(PixelSize {
+        x: 0.2,
+        y: 0.2,
+        z: 0.5,
+    });
     let draft = s.store.acquisition(s.project, "flat", &info).unwrap();
     let writer = draft.image().unwrap();
     writer
