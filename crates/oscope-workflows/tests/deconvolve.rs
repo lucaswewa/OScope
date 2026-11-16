@@ -202,15 +202,16 @@ fn the_cells_and_the_structures_are_nearer_their_truth_deconvolved() {
     // The cells: their membranes, in the green dye the blue line lights.
     let cells = CellCulture::new(1, cover);
     let s = stacked(Arc::new(cells.clone()), 2.0, (384, 288));
-    let made = deconvolve_acquisition(
-        &s.store,
-        s.project,
-        s.id,
-        &options(),
-        &compute(),
-        &|_, _| true,
-    )
-    .unwrap();
+    let said = std::sync::Mutex::new(Vec::new());
+    let progress = |_: f64, what: String| {
+        said.lock().unwrap().push(what);
+        true
+    };
+    let made = deconvolve_acquisition(&s.store, s.project, s.id, &options(), &compute(), &progress)
+        .unwrap();
+    // Its 20 iterations, as its progress counts them.
+    let said = said.into_inner().unwrap();
+    assert!(said.iter().any(|w| w == "iteration 20 of 20"), "{said:?}");
     let (stack, result) = volumes(&s, &made.id.to_string());
     let (cw, ch) = s.cells;
     let truth: Vec<f32> = s
@@ -303,13 +304,22 @@ fn a_flat_acquisition_is_refused_and_a_cancel_stops_it() {
         .write(0, (0, 0), (64, 48), &Samples::U16(vec![9; 64 * 48]))
         .unwrap();
     let flat = draft.commit().unwrap().id;
-    let refused = deconvolve_acquisition(
-        &s.store,
-        s.project,
-        flat,
-        &options(),
-        &compute(),
-        &|_, _| true,
-    );
-    assert!(matches!(refused, Err(DepthError::Store(_))), "{refused:?}");
+    // A volume, but of unknown voxels.
+    let mut info = ImageInfo::new(64, 48, 1, SampleType::U16);
+    (info.planes, info.volume) = (3, true);
+    let draft = s.store.acquisition(s.project, "unknown", &info).unwrap();
+    let writer = draft.image().unwrap();
+    for k in 0..3 {
+        writer
+            .write(k, (0, 0), (64, 48), &Samples::U16(vec![9; 64 * 48]))
+            .unwrap();
+    }
+    let unknown = draft.commit().unwrap().id;
+    for id in [flat, unknown] {
+        let refused =
+            deconvolve_acquisition(&s.store, s.project, id, &options(), &compute(), &|_, _| {
+                true
+            });
+        assert!(matches!(refused, Err(DepthError::Store(_))), "{refused:?}");
+    }
 }
