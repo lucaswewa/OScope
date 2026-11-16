@@ -297,13 +297,15 @@ async fn a_raw_volume_starts_at_its_first_level() {
 #[tokio::test(flavor = "multi_thread")]
 async fn eight_bit_and_float_volumes_come_in_either_format() {
     for sample in [SampleType::U8, SampleType::F32] {
-        let mut info = ImageInfo::new(300, 200, 1, sample);
-        (info.planes, info.volume) = (3, true);
+        // Of unknown voxels, so z halves at each level: its thumbnail, of
+        // level 2, is of plane 1 of 3 there.
+        let mut info = ImageInfo::new(2100, 300, 1, sample);
+        (info.planes, info.volume) = (9, true);
         let served = serve(info).await;
         let reader = ImageReader::open(&served.image).unwrap();
         // 8 bits to 16 by 257; floats clamped from 0 to 1, then rounded.
         let (eight, sixteen): (Vec<u8>, Vec<u8>) =
-            match reader.read(0, 1, (0, 0), (300, 200)).unwrap() {
+            match reader.read(0, 1, (0, 0), (2100, 300)).unwrap() {
                 Samples::U8(v) => (
                     v.clone(),
                     v.iter()

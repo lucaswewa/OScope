@@ -99,6 +99,10 @@ fn a_volume_s_levels_halve_z_as_its_voxels_near_a_cube() {
     assert_eq!(scale(2)[1], serde_json::json!(2.0));
     assert_eq!(shift(2)[1], serde_json::json!(0.5));
     assert_eq!(multiscale["metadata"]["volume"], true);
+    // Level 2's array holds its 7 planes, no more.
+    let array: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(path.join("2").join("zarr.json")).unwrap()).unwrap();
+    assert_eq!(array["shape"], serde_json::json!([1, 7, 225, 275]));
 }
 
 #[test]
