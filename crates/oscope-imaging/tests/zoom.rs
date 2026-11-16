@@ -2,7 +2,7 @@
 //! that are the image's levels, cut and averaged; and a DZI folder.
 
 use oscope_compute::{Image, Shape, cpu};
-use oscope_imaging::color::{Curve, Display};
+use oscope_imaging::color::{Curve, Display, DisplayTable};
 use oscope_imaging::zoom::{Dzi, InMemory, Pyramid, TILE, tile_rgb, write_dzi};
 
 const LINEAR: Display = Display {
@@ -10,6 +10,10 @@ const LINEAR: Display = Display {
     white: 1.0,
     curve: Curve::Linear,
 };
+
+fn linear() -> DisplayTable {
+    DisplayTable::new(&LINEAR).unwrap()
+}
 
 #[test]
 fn levels_and_tiles_follow_deep_zoom() {
@@ -87,7 +91,7 @@ fn tiles_are_the_levels_cut_and_averaged_past_the_coarsest() {
         let (cols, rows) = dzi.tiles(level);
         for (col, row) in [(0, 0), (cols - 1, 0), (0, rows - 1), (cols - 1, rows - 1)] {
             let area = dzi.tile(level, (col, row)).unwrap();
-            let (rgb, w, h) = tile_rgb(&pyramid, level, (col, row), &LINEAR)
+            let (rgb, w, h) = tile_rgb(&pyramid, level, (col, row), &linear())
                 .unwrap()
                 .unwrap();
             assert_eq!((u64::from(w), u64::from(h)), (area.width, area.height));
@@ -103,7 +107,7 @@ fn tiles_are_the_levels_cut_and_averaged_past_the_coarsest() {
             }
         }
         assert!(
-            tile_rgb(&pyramid, level, (cols, 0), &LINEAR)
+            tile_rgb(&pyramid, level, (cols, 0), &linear())
                 .unwrap()
                 .is_none()
         );
@@ -114,7 +118,7 @@ fn tiles_are_the_levels_cut_and_averaged_past_the_coarsest() {
 fn a_dzi_folder_holds_every_tile_of_every_level() {
     let folder = tempfile::tempdir().unwrap();
     let pyramid = InMemory::new(pattern(600, 300, 1)).unwrap();
-    let count = write_dzi(&pyramid, &LINEAR, folder.path(), "slide").unwrap();
+    let count = write_dzi(&pyramid, &linear(), folder.path(), "slide").unwrap();
     let dzi = Dzi {
         width: 600,
         height: 300,

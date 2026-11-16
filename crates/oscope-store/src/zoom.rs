@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use oscope_compute::{Image, Shape};
 use oscope_core::{BayerPattern, PixelFormat, PixelRect, ProjectId};
-use oscope_imaging::color::{Curve, Demosaic, Display, crop, demosaic};
+use oscope_imaging::color::{Curve, Demosaic, Display, DisplayTable, crop, demosaic};
 use oscope_imaging::zoom::{Pyramid, ZoomError, write_dzi};
 
 use crate::image::CHUNK;
@@ -642,7 +642,8 @@ pub fn export_dzi(
     if part.exists() {
         fs::remove_dir_all(&part).map_err(crate::io(&part))?;
     }
-    let written = write_dzi(&pyramid, &display, &part, "image").map_err(failed);
+    let table = DisplayTable::new(&display).map_err(failed)?;
+    let written = write_dzi(&pyramid, &table, &part, "image").map_err(failed);
     drop(pyramid);
     if overview_path.exists() {
         fs::remove_dir_all(&overview_path).map_err(crate::io(&overview_path))?;

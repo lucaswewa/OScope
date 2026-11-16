@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use oscope_compute::{Image, Shape};
 use oscope_core::{BayerColour, BayerPattern, PixelFormat};
-use oscope_imaging::color::{Curve, Demosaic, Display, demosaic};
+use oscope_imaging::color::{Curve, Demosaic, Display, DisplayTable, demosaic};
 use oscope_imaging::zoom::{Dzi, Pyramid, tile};
 use oscope_store::zoom::{
     ChunkCache, StoredImage, StoredPyramid, TileCache, TileKey, build_overview, export_dzi,
@@ -293,13 +293,14 @@ fn an_export_is_what_is_served() {
         width: w,
         height: h,
     };
+    let table = DisplayTable::new(&display).unwrap();
     let xml = std::fs::read_to_string(exported.join("image.dzi")).unwrap();
     assert_eq!(xml, dzi.descriptor());
     for level in 0..dzi.levels() {
         let (cols, rows) = dzi.tiles(level);
         for (col, row) in (0..rows).flat_map(|r| (0..cols).map(move |c| (c, r))) {
             let file = exported.join(format!("image_files/{level}/{col}_{row}.jpg"));
-            let want = tile(&served, level, (col, row), &display).unwrap().unwrap();
+            let want = tile(&served, level, (col, row), &table).unwrap().unwrap();
             assert_eq!(
                 std::fs::read(&file).unwrap(),
                 want,

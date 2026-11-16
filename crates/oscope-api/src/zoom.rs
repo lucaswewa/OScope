@@ -29,7 +29,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Instant;
 
 use oscope_core::{BayerPattern, ProjectId};
-use oscope_imaging::color::{Curve, Display};
+use oscope_imaging::color::{Curve, Display, DisplayTable};
 use oscope_imaging::zoom::{Dzi, ZoomError};
 use oscope_jobs::{HardwareLock, JobService, JobState};
 use oscope_store::RecordKind;
@@ -75,6 +75,8 @@ struct Served {
     overview: Mutex<Option<Arc<StoredImage>>>,
     overview_path: Option<PathBuf>,
     building: AtomicBool,
+    /// Whether its coarse levels were made, in its default look.
+    coarse: AtomicBool,
     display: Display,
 }
 
@@ -104,6 +106,8 @@ pub(crate) struct Zoom {
     chunks: Arc<ChunkCache>,
     tiles: Option<TileCache>,
     images: Mutex<HashMap<String, Arc<Served>>>,
+    /// The looks' tables, by their keys: made once each.
+    tables: Mutex<HashMap<String, DisplayTable>>,
     full: rayon::ThreadPool,
     capped: rayon::ThreadPool,
     hardware: Option<HardwareLock>,
@@ -130,6 +134,7 @@ impl Zoom {
             chunks: Arc::new(ChunkCache::new(CHUNKS)),
             tiles,
             images: Mutex::new(HashMap::new()),
+            tables: Mutex::new(HashMap::new()),
             full: pool(THREADS.min(threads), "zoom"),
             capped: pool(CAPPED, "zoom-capped"),
             hardware: jobs.map(JobService::hardware),
@@ -166,6 +171,20 @@ impl Zoom {
             });
         }
         zoom
+    }
+
+    /// `display`'s table, under its key `look`: made once.
+    fn table(&self, look: &str, display: &Display) -> Result<DisplayTable, ZoomError> {
+        if let Some(table) = lock(&self.tables).get(look) {
+            return Ok(table.clone());
+        }
+        let table = DisplayTable::new(display)?;
+        let mut tables = lock(&self.tables);
+        if tables.len() >= OPEN {
+            tables.clear();
+        }
+        tables.insert(look.to_owned(), table.clone());
+        Ok(table)
     }
 
     /// The pool to make tiles on: one thread while a hardware job runs.
@@ -208,6 +227,7 @@ impl Zoom {
                 overview: Mutex::new(overview),
                 overview_path,
                 building: AtomicBool::new(false),
+                coarse: AtomicBool::new(false),
                 display,
             }))
         });
@@ -269,6 +289,9 @@ impl Zoom {
             };
             let pyramid = served.pyramid(&zoom.chunks)?;
             let (dzi, look) = (served.dzi(), look_key(&served.display));
+            let table = zoom
+                .table(&look, &served.display)
+                .map_err(|e| StoreError::Zarr(e.to_string()))?;
             for level in 0..dzi.levels() {
                 let (w, h) = dzi.size(level);
                 if w.max(h) > COARSE {
@@ -282,14 +305,15 @@ impl Zoom {
                         level,
                         tile,
                     };
-                    let made = zoom.capped.install(|| {
-                        oscope_imaging::zoom::tile(&pyramid, level, tile, &served.display)
-                    });
+                    let made = zoom
+                        .capped
+                        .install(|| oscope_imaging::zoom::tile(&pyramid, level, tile, &table));
                     if let Some(jpeg) = made.map_err(|e| StoreError::Zarr(e.to_string()))? {
                         tiles.put(&key, &jpeg)?;
                     }
                 }
             }
+            served.coarse.store(true, Ordering::Release);
             Ok(())
         });
         work.await.map_err(|e| StoreError::Zarr(e.to_string()))?
@@ -417,6 +441,7 @@ async fn status(
         "planes": served.image.info().planes,
         "raw": served.pattern.is_some(),
         "overview": overview,
+        "coarse": served.coarse.load(Ordering::Acquire),
         "look": { "black": served.display.black, "white": served.display.white, "gamma": gamma },
         "chunks": { "hits": hits, "misses": misses },
         "tiles": { "hits": tiles.hits, "misses": tiles.misses, "kept": tiles.tiles, "bytes": tiles.bytes },
@@ -469,11 +494,12 @@ async fn tile(
         if let Some(jpeg) = zoom.tiles.as_ref().and_then(|t| t.get(&key)) {
             return Ok((jpeg, true));
         }
+        let table = zoom.table(&key.look, &display)?;
         let rendered = zoom.pool().install(|| {
             let pyramid = served
                 .pyramid(&zoom.chunks)
                 .map_err(|e| ZoomError::Source(e.to_string()))?;
-            oscope_imaging::zoom::tile(&pyramid, level, tile, &display)
+            oscope_imaging::zoom::tile(&pyramid, level, tile, &table)
         })?;
         let jpeg = rendered.unwrap_or_default();
         if let (Some(tiles), true) = (&zoom.tiles, settled)

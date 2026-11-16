@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use oscope_imaging::color::{Curve, Display};
+use oscope_imaging::color::{Curve, Display, DisplayTable};
 use oscope_imaging::zoom::{InMemory, write_dzi};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -85,11 +85,12 @@ pub(super) fn dzi() -> Arc<dyn Node> {
             Some(gamma) => return Err(format!("the gamma ({gamma}) must be above 0")),
             None => Curve::Srgb,
         };
-        let display = Display {
+        let display = DisplayTable::new(&Display {
             black: p.black,
             white: p.white,
             curve,
-        };
+        })
+        .map_err(|e| e.to_string())?;
         let name = p.name;
         Ok(
             move |_: &StepCtx<'_>, inputs: &Inputs<'_>| -> Result<Values, NodeError> {

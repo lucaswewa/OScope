@@ -623,12 +623,13 @@ fn a_dzi_folder_is_the_image_s_tiles_and_never_written_over() {
         white: 1.0,
         curve: Curve::Gamma { gamma: 1.0 },
     };
+    let table = color::DisplayTable::new(&display).unwrap();
     let last = dzi.levels() - 1;
     for (level, at) in [(last, (2, 1)), (last - 1, (1, 0)), (3, (0, 0))] {
         let file = folder
             .path()
             .join(format!("slide_files/{level}/{}_{}.jpg", at.0, at.1));
-        let want = tile(&pyramid, level, at, &display).unwrap().unwrap();
+        let want = tile(&pyramid, level, at, &table).unwrap().unwrap();
         assert_eq!(std::fs::read(file).unwrap(), want, "level {level}");
     }
     // Refused: written again over it, a folder not given whole, a name

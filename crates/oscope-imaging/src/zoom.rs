@@ -17,7 +17,7 @@ use oscope_compute::{ComputeError, Image, Shape, cpu};
 use oscope_core::PixelRect;
 use rayon::prelude::*;
 
-use crate::color::{ColorError, Display, crop, encode_jpeg, to_display};
+use crate::color::{ColorError, DisplayTable, crop, encode_jpeg};
 
 /// A tile's side, in pixels.
 pub const TILE: u64 = 256;
@@ -135,12 +135,12 @@ pub trait Pyramid: Sync {
 }
 
 /// Tile `(col, row)` of `level` of `pyramid`'s DZI image, as RGB through
-/// `display`, and its size: none if there is no such tile.
+/// `display`'s table, and its size: none if there is no such tile.
 pub fn tile_rgb(
     pyramid: &dyn Pyramid,
     level: u32,
     tile: (u64, u64),
-    display: &Display,
+    display: &DisplayTable,
 ) -> Result<Option<(Vec<u8>, u32, u32)>, ZoomError> {
     let (width, height) = pyramid.size();
     let dzi = Dzi { width, height };
@@ -165,17 +165,17 @@ pub fn tile_rgb(
     if factor > 1 {
         image = cpu::downsample(&image, factor as u32)?;
     }
-    let shown = to_display(&image, display)?;
+    let shown = display.apply(&image);
     Ok(Some((rgb(&shown, channels), image.width(), image.height())))
 }
 
-/// Tile `(col, row)` of `level` of `pyramid`'s DZI image through `display`,
-/// as JPEG: none if there is no such tile.
+/// Tile `(col, row)` of `level` of `pyramid`'s DZI image through
+/// `display`'s table, as JPEG: none if there is no such tile.
 pub fn tile(
     pyramid: &dyn Pyramid,
     level: u32,
     tile: (u64, u64),
-    display: &Display,
+    display: &DisplayTable,
 ) -> Result<Option<Vec<u8>>, ZoomError> {
     let Some((rgb, width, height)) = tile_rgb(pyramid, level, tile, display)? else {
         return Ok(None);
@@ -201,7 +201,7 @@ fn rgb(shown: &[u8], channels: u32) -> Vec<u8> {
 /// how many tiles.
 pub fn write_dzi(
     pyramid: &dyn Pyramid,
-    display: &Display,
+    display: &DisplayTable,
     folder: &Path,
     name: &str,
 ) -> Result<u64, ZoomError> {
