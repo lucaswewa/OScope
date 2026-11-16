@@ -38,3 +38,68 @@ fn the_gpu_finds_the_cpu_s_heights() {
     assert_eq!(cpu.heights.data(), gpu.heights.data());
     assert_eq!(cpu.confidence.data(), gpu.confidence.data());
 }
+
+#[test]
+fn deconvolution_on_the_gpu_is_the_cpu_s_within_a_thousandth() {
+    use oscope_volume::deconvolve::{DeconvolveOptions, Padded, Volume, richardson_lucy};
+    use oscope_volume::psf::{Optics, psf};
+    if std::env::var("OSCOPE_CUDA").as_deref() != Ok("1") {
+        eprintln!("skipped: set OSCOPE_CUDA=1 to run the tests that need a GPU");
+        return;
+    }
+    let compute = Compute::new(&ComputeConfig::default()).unwrap();
+    let cuda = compute.cuda().expect("OSCOPE_CUDA=1, but no GPU");
+    let mut random = StdRng::seed_from_u64(43);
+    let size = [45, 38, 12];
+    let data: Vec<f32> = (0..size.iter().product::<usize>())
+        .map(|_| random.random_range(0.0..1.0))
+        .collect();
+    let volume = Volume { size, data };
+    let optics = Optics {
+        na: 0.55,
+        wavelength_um: 0.519,
+        medium: 1.0,
+    };
+    let kernel = psf(&optics, [0.2, 0.2, 0.4], size).unwrap();
+    let padded = Padded::new(&volume, &kernel).unwrap();
+    for tv in [0.0, 0.002] {
+        let options = DeconvolveOptions { iterations: 10, tv };
+        let cpu = richardson_lucy(&padded, &options, &mut |_| true).unwrap();
+        let gpu = cuda
+            .richardson_lucy(
+                Lane::Batch,
+                &padded.data,
+                &padded.half_otf(),
+                padded.size,
+                10,
+                tv,
+                &mut |_| true,
+            )
+            .unwrap()
+            .unwrap();
+        let top = cpu.iter().copied().fold(0.0_f32, f32::max);
+        let worst = cpu
+            .iter()
+            .zip(&gpu)
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0_f32, f32::max);
+        eprintln!(
+            "total variation {tv}: the GPU within {:.2e} of the largest voxel",
+            worst / top
+        );
+        assert!(worst <= 1e-3 * top, "{worst} of {top}");
+    }
+    // A cancel at the second iteration.
+    let stopped = cuda
+        .richardson_lucy(
+            Lane::Batch,
+            &padded.data,
+            &padded.half_otf(),
+            padded.size,
+            10,
+            0.0,
+            &mut |k| k < 2,
+        )
+        .unwrap();
+    assert!(stopped.is_none());
+}

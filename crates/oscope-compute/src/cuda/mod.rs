@@ -17,6 +17,7 @@ use oscope_core::{FrameView, HeapAllocator, Slab, SlabAllocator};
 use crate::{ComputeError, GpuInfo, Image, Lane, Shape, cpu};
 
 mod color;
+mod deconvolve;
 mod filters;
 mod focus;
 mod registration;
@@ -41,6 +42,9 @@ const REGISTRATION_KERNELS: &[u8] =
 
 /// The focus measures' kernel, compiled from `kernels/focus.cu` (P34).
 const FOCUS_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/focus.fatbin"));
+
+/// Richardson–Lucy's kernels, compiled from `kernels/deconvolve.cu` (P43).
+const DECONVOLVE_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/deconvolve.fatbin"));
 
 /// The simulated camera's kernel, compiled from `kernels/sim.cu`.
 const SIM_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sim.fatbin"));
@@ -92,6 +96,10 @@ struct Kernels {
     focus_terms: CudaFunction,
     modified_laplacian: CudaFunction,
     window_sums: CudaFunction,
+    rl_spectrum: CudaFunction,
+    rl_ratio: CudaFunction,
+    rl_normals: CudaFunction,
+    rl_update: CudaFunction,
 }
 
 /// A GPU, ready for kernels.
@@ -131,6 +139,7 @@ impl Cuda {
         let filters = context.load_module(Ptx::from_binary(FILTER_KERNELS.to_vec()))?;
         let registration = context.load_module(Ptx::from_binary(REGISTRATION_KERNELS.to_vec()))?;
         let focus = context.load_module(Ptx::from_binary(FOCUS_KERNELS.to_vec()))?;
+        let deconvolve = context.load_module(Ptx::from_binary(DECONVOLVE_KERNELS.to_vec()))?;
         let kernels = Kernels {
             to_f32_u16: module.load_function("to_f32_u16")?,
             to_f32_u8: module.load_function("to_f32_u8")?,
@@ -153,6 +162,10 @@ impl Cuda {
             focus_terms: focus.load_function("focus_terms")?,
             modified_laplacian: focus.load_function("modified_laplacian")?,
             window_sums: focus.load_function("window_sums")?,
+            rl_spectrum: deconvolve.load_function("rl_spectrum")?,
+            rl_ratio: deconvolve.load_function("rl_ratio")?,
+            rl_normals: deconvolve.load_function("rl_normals")?,
+            rl_update: deconvolve.load_function("rl_update")?,
         };
         let memory_pool = keep_freed_memory(&context).is_ok();
         let mut version = 0;
