@@ -243,7 +243,10 @@ fn the_cells_and_the_structures_are_nearer_their_truth_deconvolved() {
     );
     let image = record.image.as_ref().unwrap();
     assert!(image.volume && image.planes == PLANES && image.sample == SampleType::F32);
-    assert!((image.pixel_size.unwrap().x - s.cell).abs() < 1e-9);
+    // Its voxels: the stack's cells, and its planes' step.
+    let voxel = image.pixel_size.unwrap();
+    assert!((voxel.x - s.cell).abs() < 1e-9 && (voxel.y - s.cell).abs() < 1e-9);
+    assert!((voxel.z - STEP).abs() < 1e-9, "{voxel:?}");
 
     // The sub-diffraction structures: a thin layer of filaments, in the
     // green dye, at their height.
@@ -325,6 +328,30 @@ fn a_flat_acquisition_is_refused_and_a_cancel_stops_it() {
     ] {
         assert_ne!(result(other), first, "{other:?}");
     }
+    // The background, the stack's 1st percentile, taken off first: a field
+    // lit at 0.5, a sixteenth of it, a corner, dark at 0.1, is left 0.4 far
+    // from the corner.
+    let mut info = ImageInfo::new(64, 48, 1, SampleType::U16);
+    (info.planes, info.volume) = (5, true);
+    info.pixel_size = Some(PixelSize {
+        x: 0.2,
+        y: 0.2,
+        z: 0.5,
+    });
+    let draft = s.store.acquisition(s.project, "lit", &info).unwrap();
+    let writer = draft.image().unwrap();
+    let field: Vec<f32> = (0..64 * 48)
+        .map(|i| if i % 64 < 16 && i / 64 < 12 { 0.1 } else { 0.5 })
+        .collect();
+    for k in 0..5 {
+        let samples = Samples::from_unit(SampleType::U16, &field);
+        writer.write(k, (0, 0), (64, 48), &samples).unwrap();
+    }
+    let lit = draft.commit().unwrap().id;
+    let made =
+        deconvolve_acquisition(&s.store, s.project, lit, &base, &compute(), &|_, _| true).unwrap();
+    let far = volumes(&s, &made.id.to_string()).1[(2 * 48 + 40) * 64 + 56];
+    assert!((far - 0.4).abs() < 1e-3, "{far}");
     // A flat image, of known pixels.
     let mut info = ImageInfo::new(64, 48, 1, SampleType::U16);
     info.pixel_size = Some(PixelSize {

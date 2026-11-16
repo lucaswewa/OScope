@@ -39,6 +39,12 @@ fn j0_is_its_table_and_the_psf_its_closed_forms() {
         let want = ((u / 4.0).sin() / (u / 4.0)).powi(2);
         assert!((born_wolf(u, 0.0) - want).abs() < 1e-3, "u = {u}");
     }
+    // Far from focus, where the phase turns many times over the pupil:
+    // within 1 % of it.
+    for u in [80.0_f64, 100.0] {
+        let want = ((u / 4.0).sin() / (u / 4.0)).powi(2);
+        assert!((born_wolf(u, 0.0) - want).abs() < 1e-2 * want, "u = {u}");
+    }
     assert!(born_wolf(0.0, 3.8317) < 1e-6 && born_wolf(0.0, 3.0) > 1e-3);
 
     // Sampled: summing to 1, at its largest at the centre, symmetric in z
