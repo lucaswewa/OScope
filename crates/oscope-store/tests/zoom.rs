@@ -77,6 +77,28 @@ fn reads_through_the_chunk_cache_are_the_image_s_own() {
     }
 }
 
+#[test]
+fn the_chunk_cache_lets_the_least_recently_used_go() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("grey.ome.zarr");
+    write(&path, &ImageInfo::new(1536, 512, 1, SampleType::U16));
+    let image = Arc::new(StoredImage::open(&path, 0).unwrap());
+    // Room for two chunks of 512 × 512 samples, as f32.
+    let cache = Arc::new(ChunkCache::new(2 * 512 * 512 * 4));
+    let pyramid = StoredPyramid::new(image, Arc::clone(&cache), None).unwrap();
+    let chunk = |n: u64| pyramid.read(0, (n * 512, 0), (8, 8)).unwrap();
+    chunk(0);
+    chunk(1);
+    chunk(0);
+    assert_eq!(cache.counts(), (1, 2));
+    // A third goes in: chunk 1, used least recently, goes out.
+    chunk(2);
+    chunk(0);
+    assert_eq!(cache.counts(), (2, 3));
+    chunk(1);
+    assert_eq!(cache.counts(), (2, 4));
+}
+
 /// The mosaic of `pattern` that samples `rgb` (w × h × 3, from 0 to 1).
 fn mosaic(rgb: &[f32], w: u64, h: u64, pattern: BayerPattern) -> Vec<f32> {
     (0..h)

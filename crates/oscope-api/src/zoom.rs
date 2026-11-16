@@ -7,7 +7,8 @@
 //! - `GET /api/v1/zoom/{project}/{kind}/{id}/image_files/{level}/{col}_{row}.jpg`:
 //!   a tile, as OpenSeadragon asks for them.
 //! - `GET /api/v1/zoom/{project}/{kind}/{id}/status`: its size and levels,
-//!   its look by default, a raw image's colour overview, and the caches.
+//!   its look by default, a raw image's colour overview and coarse levels,
+//!   the threads tiles are made on now, and the caches.
 //! - **The look,** in each one's query: `plane` (0), and `black`, `white`,
 //!   from 0 to 1 of the samples' range, and `gamma`. Unset, the image shows
 //!   as its thumbnail does.
@@ -442,6 +443,7 @@ async fn status(
         "raw": served.pattern.is_some(),
         "overview": overview,
         "coarse": served.coarse.load(Ordering::Acquire),
+        "threads": zoom.pool().current_num_threads(),
         "look": { "black": served.display.black, "white": served.display.white, "gamma": gamma },
         "chunks": { "hits": hits, "misses": misses },
         "tiles": { "hits": tiles.hits, "misses": tiles.misses, "kept": tiles.tiles, "bytes": tiles.bytes },

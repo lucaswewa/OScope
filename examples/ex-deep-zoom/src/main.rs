@@ -199,6 +199,10 @@ async fn walk(address: SocketAddr, region: (f64, f64), check: bool) -> anyhow::R
     if !check {
         return Ok(());
     }
+    ensure!(
+        status["raw"] == true,
+        "the mosaic of a colour camera's frames isn't raw: {status}"
+    );
     let dzi = get(address, &format!("{base}/image.dzi")).await?;
     ensure!(
         dzi.status == 200 && dzi.body.contains(&format!("Width=\"{}\"", size[0])),

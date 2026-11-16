@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use oscope_api::{Api, Roots};
 use oscope_core::{BayerColour, BayerPattern, PixelFormat, ProjectId};
 use oscope_imaging::zoom::Dzi;
-use oscope_jobs::{JobService, JobsConfig};
+use oscope_jobs::{Job, JobService, JobSpec, JobsConfig, Resource, Stop};
 use oscope_store::{ImageInfo, NewProject, SampleType, Samples, Store};
 use serde_json::{Value, json};
 use teta_wot::testing::{TestClient, TestResponse};
@@ -81,6 +81,30 @@ async fn serve(raw: bool, (w, h): (u64, u64)) -> Served {
     }
     let id = draft.commit().unwrap().id.to_string();
     let jobs = JobService::open(&folder.path().join("jobs.sqlite"), JobsConfig::default()).unwrap();
+    // A hardware job that holds the instrument until cancelled, as a scan
+    // would.
+    jobs.register(
+        "test.hold",
+        std::sync::Arc::new(|value| {
+            Ok(Job {
+                spec: JobSpec {
+                    kind: "test.hold".to_owned(),
+                    title: "hold the instrument".to_owned(),
+                    account: None,
+                    params: value.clone(),
+                    resource: Resource::Hardware,
+                    pausable: false,
+                    gpu_mib: 0,
+                },
+                run: Box::new(|ctx| {
+                    Box::pin(async move {
+                        ctx.cancelled().await;
+                        Err(Stop::Cancelled)
+                    })
+                }),
+            })
+        }),
+    );
     let api = Api::builder(&roots)
         .projects(store)
         .jobs(jobs)
@@ -358,4 +382,35 @@ async fn a_raw_image_is_served_in_colour_once_its_overview_is_built() {
     assert_eq!(size, (dzi.size(3).0 as usize, dzi.size(3).1 as usize));
     let [r, _, b] = means(&rgb);
     assert!(r > b + 80.0, "{r} {b}");
+}
+
+/// Waits until `served`'s status gives tiles `threads` threads.
+async fn threads(served: &Served, threads: u64) {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let status = served.status().await;
+        if status["threads"] == json!(threads) {
+            return;
+        }
+        assert!(Instant::now() < deadline, "not {threads} threads: {status}");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tiles_are_made_on_one_thread_while_a_hardware_job_runs() {
+    let served = serve(false, (600, 400)).await;
+    let cpus = std::thread::available_parallelism().map_or(1, |n| n.get()) as u64;
+    threads(&served, cpus.min(8)).await;
+    let submitted = invoke(
+        &served.client,
+        "jobs/submit",
+        json!({"kind": "test.hold", "params": {}}),
+    )
+    .await;
+    let id = submitted["output"]["id"].as_str().unwrap().to_owned();
+    threads(&served, 1).await;
+    assert_eq!(served.tile(9, (0, 0), "").await.status, 200);
+    invoke(&served.client, "jobs/cancel", json!({"id": id})).await;
+    threads(&served, cpus.min(8)).await;
 }

@@ -137,4 +137,14 @@ fn a_dzi_folder_holds_every_tile_of_every_level() {
     decoder.decode_headers().unwrap();
     let (w, h) = decoder.dimensions().unwrap();
     assert_eq!((w, h), (88, 44));
+    // Grey, in each of RGB's channels alike.
+    let (rgb, ..) = tile_rgb(&pyramid, last, (2, 1), &linear())
+        .unwrap()
+        .unwrap();
+    assert!(
+        rgb.as_chunks::<3>()
+            .0
+            .iter()
+            .all(|[r, g, b]| r == g && g == b)
+    );
 }

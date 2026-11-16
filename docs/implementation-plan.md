@@ -827,7 +827,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P37 | Histo scan: overview and tissue detection | P36 | M | — | Done |
 | P38 | Live stitching: in scans and free-roam | P36 | L | 0026 | Done |
 | P39 | Post-acquisition stitching | P38 | L | 0027 | Done |
-| P40 | Deep-zoom serving, tile cache, DZI export | P39 | M | 0028 | Planned |
+| P40 | Deep-zoom serving, tile cache, DZI export | P39 | M | 0028 | In review |
 
 **Checkpoint D:** histo-scan a simulated H&E slide while the mosaic builds live, stitch it, and browse it in OpenSeadragon.
 

@@ -59,3 +59,4 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P37 | Histo scan: overview and tissue detection | Done | [P37-histo-scan.md](P37-histo-scan.md) |
 | P38 | Live stitching: in scans and free-roam | Done | [P38-live-stitching.md](P38-live-stitching.md) |
 | P39 | Post-acquisition stitching | Done | [P39-post-stitching.md](P39-post-stitching.md) |
+| P40 | Deep-zoom serving, tile cache, DZI export | In review | [P40-deep-zoom.md](P40-deep-zoom.md) |
