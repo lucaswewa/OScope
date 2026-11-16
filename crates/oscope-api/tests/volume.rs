@@ -40,6 +40,12 @@ fn stack(raw: bool) -> ImageInfo {
 
 /// A server with one acquisition, of `info`'s voxels, `value` at each.
 async fn serve(info: ImageInfo) -> Served {
+    serve_with(info, Samples::from_unit).await
+}
+
+/// A server with one acquisition, of `info`'s voxels, each plane's the
+/// samples `samples` makes of its sample type and `value`s.
+async fn serve_with(info: ImageInfo, samples: fn(SampleType, &[f32]) -> Samples) -> Served {
     let folder = tempfile::tempdir().unwrap();
     let data = folder.path().join("data");
     let store = Store::open(&data, &data.join("index.sqlite")).unwrap();
@@ -55,8 +61,8 @@ async fn serve(info: ImageInfo) -> Served {
         let values: Vec<f32> = (0..h)
             .flat_map(|y| (0..w).map(move |x| value(x, y, z)))
             .collect();
-        let samples = Samples::from_unit(info.sample, &values);
-        writer.write(z as u32, (0, 0), (w, h), &samples).unwrap();
+        let plane = samples(info.sample, &values);
+        writer.write(z as u32, (0, 0), (w, h), &plane).unwrap();
     }
     let id = draft.commit().unwrap().id.to_string();
     let image = store
@@ -310,26 +316,35 @@ async fn eight_bit_and_float_volumes_come_in_either_format() {
         (info.planes, info.volume) = (9, true);
         let served = serve(info).await;
         let reader = ImageReader::open(&served.image).unwrap();
-        // 8 bits to 16 by 257; floats clamped from 0 to 1, then rounded.
-        let (eight, sixteen): (Vec<u8>, Vec<u8>) =
-            match reader.read(0, 1, (0, 0), (2100, 300)).unwrap() {
-                Samples::U8(v) => (
-                    v.clone(),
-                    v.iter()
-                        .flat_map(|&s| (u16::from(s) * 257).to_le_bytes())
-                        .collect(),
-                ),
-                Samples::F32(v) => (
-                    v.iter()
-                        .map(|s| (s.clamp(0.0, 1.0) * 255.0).round() as u8)
-                        .collect(),
-                    v.iter()
-                        .flat_map(|s| ((s.clamp(0.0, 1.0) * 65_535.0).round() as u16).to_le_bytes())
-                        .collect(),
-                ),
-                Samples::U16(_) => panic!("written as {sample:?}"),
-            };
-        for (format, bytes, want) in [("u8", 1, eight), ("u16", 2, sixteen)] {
+        // 8 bits to 16 by 257; floats clamped from 0 to 1, then rounded; to
+        // floats, integers from 0 to 1 and floats as they are.
+        let stored = reader.read(0, 1, (0, 0), (2100, 300)).unwrap();
+        let floats: Vec<u8> = match &stored {
+            Samples::F32(v) => v.iter().flat_map(|s| s.to_le_bytes()).collect(),
+            integers => integers
+                .to_unit()
+                .iter()
+                .flat_map(|s| s.to_le_bytes())
+                .collect(),
+        };
+        let (eight, sixteen): (Vec<u8>, Vec<u8>) = match stored {
+            Samples::U8(v) => (
+                v.clone(),
+                v.iter()
+                    .flat_map(|&s| (u16::from(s) * 257).to_le_bytes())
+                    .collect(),
+            ),
+            Samples::F32(v) => (
+                v.iter()
+                    .map(|s| (s.clamp(0.0, 1.0) * 255.0).round() as u8)
+                    .collect(),
+                v.iter()
+                    .flat_map(|s| ((s.clamp(0.0, 1.0) * 65_535.0).round() as u16).to_le_bytes())
+                    .collect(),
+            ),
+            Samples::U16(_) => panic!("written as {sample:?}"),
+        };
+        for (format, bytes, want) in [("u8", 1, eight), ("u16", 2, sixteen), ("f32", 4, floats)] {
             let slice = served
                 .get(&format!("slice?axis=z&index=1&level=0&format={format}"))
                 .await;
@@ -337,4 +352,33 @@ async fn eight_bit_and_float_volumes_come_in_either_format() {
             assert!(slice.body[64..] == want[..], "{sample:?} as {format}");
         }
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_height_map_is_a_heightfield_brick_of_its_floats() {
+    // Heights in µm, about 5,000: floats far outside 0 to 1.
+    let mut info = ImageInfo::new(700, 300, 1, SampleType::F32);
+    info.channel_names = vec!["height".to_owned()];
+    let heights = |_: SampleType, values: &[f32]| {
+        Samples::F32(values.iter().map(|v| 5_000.0 + 8.0 * v).collect())
+    };
+    let served = serve_with(info, heights).await;
+    let brick = served.get("brick?format=f32&level=0").await;
+    let head = header(&brick.body);
+    assert_eq!((head.sample, head.size), (4, [700, 300, 1]));
+    let Samples::F32(stored) = ImageReader::open(&served.image)
+        .unwrap()
+        .read(0, 0, (0, 0), (700, 300))
+        .unwrap()
+    else {
+        panic!("floats");
+    };
+    let got: Vec<f32> = brick.body[64..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|&b| f32::from_le_bytes(b))
+        .collect();
+    assert_eq!(got, stored);
+    assert!(got.iter().all(|z| (5_000.0..5_008.0).contains(z)));
 }

@@ -10,7 +10,9 @@
 //!   finest whose part holds `max` voxels or fewer (512³).
 //! - **Slices and bricks** are a header of [`HEADER`] bytes, then the
 //!   voxels: x fastest, then y, then z, a voxel's channels together, as
-//!   `uint8` or `uint16`, little-endian.
+//!   `uint8` or `uint16`, or `float32` (`format=f32`, P42), little-endian.
+//!   A height map's floats come as stored, its heights in µm: the surface
+//!   as a heightfield brick.
 //! - **A raw image,** a camera's Bayer mosaic, starts at level 1, each
 //!   voxel its cell's mean: level 0 holds the mosaic's pattern.
 //!
@@ -20,7 +22,7 @@
 //! |---|---|
 //! | 0–3 | `OSV1` |
 //! | 4–5 | the header's length, 64 |
-//! | 6 | the samples: 1 for `uint8`, 2 for `uint16` |
+//! | 6 | the samples: 1 for `uint8`, 2 for `uint16`, 4 for `float32` |
 //! | 7 | the channels |
 //! | 8–11 | the level |
 //! | 12–23 | the size in voxels: x, y, z, as `u32` |
@@ -118,6 +120,9 @@ enum Format {
     U8,
     /// 16 bits, the samples scaled.
     U16,
+    /// 32-bit floats: floats as stored, such as heights in µm (P42), and
+    /// integers from 0 to 1.
+    F32,
 }
 
 impl Format {
@@ -125,12 +130,17 @@ impl Format {
         match self {
             Format::U8 => 1,
             Format::U16 => 2,
+            Format::F32 => 4,
         }
     }
 
     /// `samples` in this format, appended to `out`, little-endian.
     fn push(self, samples: &Samples, out: &mut Vec<u8>) {
         match (self, samples) {
+            (Format::F32, Samples::F32(v)) => out.extend(v.iter().flat_map(|s| s.to_le_bytes())),
+            (Format::F32, integers) => {
+                out.extend(integers.to_unit().iter().flat_map(|s| s.to_le_bytes()));
+            }
             (Format::U8, Samples::U8(v)) => out.extend_from_slice(v),
             (Format::U8, Samples::U16(v)) => {
                 out.extend(
