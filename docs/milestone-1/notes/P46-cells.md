@@ -1,6 +1,6 @@
 # P46: Cell detection and counting
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p46-cells` / [#62](https://github.com/lucaswewa/OScope/pull/62)
 - Size: L · estimated ~2,750 before it started (in `oscope-imaging`, an adaptive threshold, the distance transform and labelling moved from the pipeline, a seeded watershed, each object's measures and outline, ~550; the pipeline's nodes ~200; in `oscope-workflows`, the counting job over a stored slide, tile by tile with a halo, its table, outlines and annotation layer, ~400; a stub Python extension ~80; tests ~900; `ex-count-cells` and its page ~550; glue and `ex-checkpoint-d`'s wait ~70); one pull request, at the owner's standing choice · measured **2,728** hand-written lines added (code 1,341: `oscope-workflows` 531, `oscope-imaging` 520, `oscope-pipeline` 258, `oscope-store` 28, `oscope-api` 4; tests 888; examples 473, the stub's Python and manifest among them; glue 26), and 173 removed, most of them the code moved out of the pipeline. **That is 1,828 over L's 900, and 1 % under the estimate.**
 

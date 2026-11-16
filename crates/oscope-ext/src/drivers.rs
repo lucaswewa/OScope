@@ -139,6 +139,48 @@ pub struct Workflows {
     by_name: BTreeMap<String, Arc<dyn Link>>,
 }
 
+/// The report generators the extensions this start loaded provide (P47),
+/// by name.
+#[derive(Clone, Default)]
+pub struct Reports {
+    by_name: BTreeMap<String, Arc<dyn Link>>,
+}
+
+impl std::fmt::Debug for Reports {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.by_name.keys()).finish()
+    }
+}
+
+impl Reports {
+    pub(crate) fn add(&mut self, name: &str, link: Arc<dyn Link>) {
+        self.by_name.insert(name.to_owned(), link);
+    }
+
+    /// Their names.
+    pub fn names(&self) -> Vec<String> {
+        self.by_name.keys().cloned().collect()
+    }
+
+    fn link(&self, name: &str) -> std::result::Result<&Arc<dyn Link>, String> {
+        let names = self.names().join(", ");
+        self.by_name
+            .get(name)
+            .ok_or_else(|| format!("no report generator {name}: the extensions' are [{names}]"))
+    }
+
+    /// Generator `name`'s parameters' JSON Schema.
+    pub fn schema(&self, name: &str) -> std::result::Result<Json, String> {
+        self.link(name)?.call("schema", Json::Null)
+    }
+
+    /// Generator `name`'s report for `params`: OScope's report model, with
+    /// its `images` in base64.
+    pub fn generate(&self, name: &str, params: Json) -> std::result::Result<Json, String> {
+        self.link(name)?.call("generate", params)
+    }
+}
+
 impl std::fmt::Debug for Workflows {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.by_name.keys()).finish()

@@ -116,6 +116,7 @@ impl Library {
             "importer",
             "exporter",
             "workflow",
+            "report",
         ];
         if let Some(driver) = drivers.iter().find(|d| !kinds.contains(&d.kind.as_str())) {
             return Err(format!(

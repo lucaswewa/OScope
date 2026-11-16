@@ -10,7 +10,8 @@
 //! `volume.depth_from_focus` (P42); and the one that deconvolves a volume,
 //! `volume.deconvolve` (P43); and the one that separates an image's
 //! stains, `stain.separate` (P45); and the one that counts its cells,
-//! `cells.count` (P46). Acquisitions and results carry annotations in
+//! `cells.count` (P46); and the one that makes reports, `report.make`,
+//! through templates it keeps and checks (P47). Acquisitions and results carry annotations in
 //! µm, in layers, kept and removed here, and measured: lengths, areas and
 //! their pixels' statistics, as JSON or CSV (P44).
 
@@ -20,6 +21,7 @@ use oscope_acquire::{INGEST, ingest_jobs};
 use oscope_core::ProjectId;
 use oscope_ext::Extensions;
 use oscope_jobs::JobService;
+use oscope_report::{ReportError, Template, Templates};
 use oscope_store::{
     Annotations, CHUNK, Change, Contents, Feature, Measurement, NewProject, Page, Project,
     Query as Search, RecordKind, Scratch, Store, StoreError, measure, measurements_csv,
@@ -27,6 +29,7 @@ use oscope_store::{
 use oscope_workflows::cells::{COUNT, count_jobs};
 use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
 use oscope_workflows::depth::{DEPTH, depth_jobs};
+use oscope_workflows::report::{Generators, MAKE, report_jobs};
 use oscope_workflows::stain::{SEPARATE, stain_jobs};
 use oscope_workflows::stitch::{STITCH, stitch_jobs};
 use schemars::JsonSchema;
@@ -80,6 +83,17 @@ fn project_id(params: &PathParams) -> Result<ProjectId, StoreError> {
     })
 }
 
+/// A template's error, as an action's: refused (400).
+fn template_error(error: ReportError) -> ActionError {
+    ActionError::handled(format!("refused (400): {error}"))
+}
+
+/// A template's error, as an endpoint's.
+fn template_failed(error: &ReportError) -> Response {
+    let body = json!({"title": "refused", "status": 400, "detail": error.to_string()});
+    (StatusCode::BAD_REQUEST, Json(body)).into_response()
+}
+
 /// The record a path names: its project, its kind by its folder's name,
 /// `acquisitions` or `results`, and its ID.
 fn record(params: &PathParams) -> Result<(ProjectId, RecordKind, String), StoreError> {
@@ -124,6 +138,7 @@ pub struct ProjectsThing {
     changed: Event<ProjectId>,
     store: OnceLock<Arc<Store>>,
     codecs: OnceLock<Arc<Codecs>>,
+    templates: OnceLock<Templates>,
 }
 
 impl ProjectsThing {
@@ -178,6 +193,8 @@ impl ProjectsThing {
         // Importers and exporters: OScope's own, then the extensions'.
         let extensions = ctx.server().service::<Extensions>();
         let codecs = Arc::new(Codecs::new(extensions.as_deref()));
+        let data = store.root().parent().unwrap_or(store.root());
+        let templates = Templates::open(&data.join("templates"));
         if let Some(jobs) = ctx.server().service::<JobService>() {
             jobs.register(IMPORT, import_jobs(Arc::clone(&store), Arc::clone(&codecs)));
             jobs.register(EXPORT, export_jobs(Arc::clone(&store), Arc::clone(&codecs)));
@@ -186,12 +203,21 @@ impl ProjectsThing {
             jobs.register(DECONVOLVE, deconvolve_jobs(Arc::clone(&store)));
             jobs.register(SEPARATE, stain_jobs(Arc::clone(&store)));
             jobs.register(COUNT, count_jobs(Arc::clone(&store)));
+            // Reports, by OScope's generator or the extensions' (P47).
+            let generators = extensions.clone().map(|e| -> Generators {
+                Arc::new(move |name, params| e.reports().generate(name, params.clone()))
+            });
+            jobs.register(
+                MAKE,
+                report_jobs(Arc::clone(&store), templates.clone(), generators),
+            );
             // Recordings from the scratch space, ingested as jobs (ADR-0022).
             if let Some(scratch) = ctx.server().service::<Scratch>() {
                 jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));
             }
         }
         let _ = self.codecs.set(codecs);
+        let _ = self.templates.set(templates);
         let _ = self.store.set(store);
         Ok(())
     }
@@ -336,6 +362,60 @@ impl ProjectsThing {
             store.remove_annotation(project, kind, &record, &layer, feature.as_deref())
         });
         removed.await.map_err(action_error)
+    }
+
+    /// The report templates' names, OScope's own first.
+    #[endpoint(get, "templates")]
+    async fn templates(&self) -> Response {
+        match self.templates.get().map(Templates::names) {
+            Some(Ok(names)) => Json::<Vec<String>>(names).into_response(),
+            Some(Err(error)) => template_failed(&error),
+            None => failed(&StoreError::Index("the Thing hasn't started".to_owned())),
+        }
+    }
+
+    /// A report template: its Typst, for PDF, and its minijinja, for HTML.
+    #[endpoint(get, "template/{name}")]
+    async fn template(&self, params: PathParams) -> Response {
+        let name = params.get("name").unwrap_or_default().to_owned();
+        match self.templates.get().map(|t| t.get(&name)) {
+            Some(Ok(template)) => Json::<Template>(template).into_response(),
+            Some(Err(error)) => template_failed(&error),
+            None => failed(&StoreError::Index("the Thing hasn't started".to_owned())),
+        }
+    }
+
+    /// Keeps a report template.
+    ///
+    /// Its Typst, for PDF, and its minijinja, for HTML, once a sample
+    /// report renders through both: otherwise refused, saying where the
+    /// template is wrong.
+    #[action]
+    async fn save_template(
+        &self,
+        name: String,
+        typst: String,
+        html: String,
+    ) -> Result<(), ActionError> {
+        let templates = self
+            .templates
+            .get()
+            .cloned()
+            .ok_or_else(|| ActionError::handled("the Thing hasn't started"))?;
+        let saved = tokio::task::spawn_blocking(move || templates.save(&name, &typst, &html)).await;
+        saved
+            .map_err(|e| ActionError::handled(e.to_string()))?
+            .map_err(template_error)
+    }
+
+    /// Deletes a report template, a user's.
+    #[action]
+    async fn delete_template(&self, name: String) -> Result<(), ActionError> {
+        let templates = self
+            .templates
+            .get()
+            .ok_or_else(|| ActionError::handled("the Thing hasn't started"))?;
+        templates.delete(&name).map_err(template_error)
     }
 
     /// Makes a project.

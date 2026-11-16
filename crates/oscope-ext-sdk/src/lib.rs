@@ -53,8 +53,8 @@ mod drivers;
 
 pub use drivers::{
     CameraDriver, Driver, Exporter, Extent, Format, IlluminationDriver, ImageDescription, Importer,
-    NamedDriver, PixelSize, PlannedTile, Sample, ScanField, ScanWorkflow, StageDriver, camera,
-    exporter, illumination, importer, stage, workflow,
+    NamedDriver, PixelSize, PlannedTile, ReportGenerator, Sample, ScanField, ScanWorkflow,
+    StageDriver, camera, exporter, illumination, importer, report, stage, workflow,
 };
 pub use {oscope_core, oscope_hal, serde_json};
 

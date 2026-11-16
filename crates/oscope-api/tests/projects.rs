@@ -1,7 +1,7 @@
 //! The `projects` Thing over HTTP: made, listed, searched, paged, changed
 //! and deleted; one project's contents; thumbnails; annotations kept,
-//! measured and removed; the events, the refusals, and the Thing's
-//! description.
+//! measured and removed; report templates, and a report's files; the
+//! events, the refusals, and the Thing's description.
 
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -353,4 +353,73 @@ async fn the_projects_thing_describes_itself() {
     let id = td.as_object_mut().unwrap().remove("id").unwrap();
     assert!(id.as_str().unwrap().starts_with("urn:uuid:"), "{id}");
     insta::assert_json_snapshot!("projects", td);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn report_templates_are_listed_kept_checked_and_deleted_over_http() {
+    let folder = tempfile::tempdir().unwrap();
+    let client = server(folder.path()).await;
+    let names = client.get("/api/v1/projects/templates").await.json();
+    assert_eq!(names, json!(["standard"]));
+    let standard = client
+        .get("/api/v1/projects/template/standard")
+        .await
+        .json();
+    assert_eq!(standard["builtin"], true);
+    let (typst, html) = (
+        standard["typst"].as_str().unwrap(),
+        standard["html"].as_str().unwrap(),
+    );
+    // A template that doesn't render is refused, saying where.
+    let broken = json!({"name": "mine", "typst": "#[", "html": html});
+    let refused = invoke(&client, "save_template", broken).await;
+    let error = refused["error"].to_string();
+    assert!(
+        error.contains("refused (400)") && error.contains("line 1"),
+        "{refused}"
+    );
+    // One that does is kept, listed, read and deleted.
+    let kept = invoke(
+        &client,
+        "save_template",
+        json!({"name": "mine", "typst": typst, "html": html}),
+    )
+    .await;
+    assert_eq!(kept["status"], "completed", "{kept}");
+    assert!(folder.path().join("templates/mine/report.typ").is_file());
+    let names = client.get("/api/v1/projects/templates").await.json();
+    assert_eq!(names, json!(["standard", "mine"]));
+    let mine = client.get("/api/v1/projects/template/mine").await.json();
+    assert_eq!(
+        (mine["builtin"].as_bool(), mine["typst"].as_str()),
+        (Some(false), Some(typst))
+    );
+    let gone = invoke(&client, "delete_template", json!({"name": "mine"})).await;
+    assert_eq!(gone["status"], "completed", "{gone}");
+    let missing = client.get("/api/v1/projects/template/mine").await;
+    assert_eq!(missing.status, 400);
+    let own = invoke(&client, "delete_template", json!({"name": "standard"})).await;
+    assert!(own["error"].to_string().contains("refused (400)"), "{own}");
+    // A report's files, through the data route: its page sandboxed.
+    let project = invoke(&client, "create", json!({"name": "reports"})).await;
+    let id = project["output"]["id"].as_str().unwrap().to_owned();
+    let made = folder.path().join(format!("projects/{id}/reports/r"));
+    std::fs::create_dir_all(&made).unwrap();
+    std::fs::write(made.join("report.pdf"), b"%PDF-1.7").unwrap();
+    std::fs::write(made.join("report.html"), "<p>a report</p>").unwrap();
+    let pdf = client
+        .get(&format!("/api/v1/data/{id}/reports/r/report.pdf"))
+        .await;
+    assert_eq!(pdf.header("content-type"), Some("application/pdf"));
+    assert_eq!(pdf.header("content-security-policy"), None);
+    let page = client
+        .get(&format!("/api/v1/data/{id}/reports/r/report.html"))
+        .await;
+    assert_eq!(
+        (
+            page.header("content-type"),
+            page.header("content-security-policy")
+        ),
+        (Some("text/html; charset=utf-8"), Some("sandbox"))
+    );
 }

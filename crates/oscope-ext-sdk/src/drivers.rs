@@ -241,6 +241,18 @@ pub trait ScanWorkflow: Send + Sync + 'static {
     fn plan(&self, params: Value, field: ScanField) -> Result<Vec<PlannedTile>, String>;
 }
 
+/// Makes reports (P47): from its parameters, a report, as OScope's model
+/// has it, which OScope renders through a template.
+pub trait ReportGenerator: Send + Sync + 'static {
+    /// Its parameters' JSON Schema, which OScope checks them against.
+    fn schema(&self) -> Value;
+
+    /// The report for `params`: `{"title", "date", "subtitle", "metadata",
+    /// "sections", "provenance"}`, with its `images`, name to a PNG or JPEG
+    /// in base64. Parameters it can't take are refused, saying why.
+    fn generate(&self, params: Value) -> Result<Value, String>;
+}
+
 /// A driver of one of the kinds.
 pub enum Driver {
     /// A camera.
@@ -255,6 +267,8 @@ pub enum Driver {
     Exporter(Box<dyn Exporter>),
     /// A scan workflow.
     Workflow(Box<dyn ScanWorkflow>),
+    /// A report generator.
+    Report(Box<dyn ReportGenerator>),
 }
 
 /// A driver, and the name the configuration knows it by: one of the
@@ -320,6 +334,15 @@ pub fn workflow(name: &str, workflow: impl ScanWorkflow) -> NamedDriver {
     }
 }
 
+/// A report generator named `name`, for [`export!`](crate::export).
+pub fn report(name: &str, generator: impl ReportGenerator) -> NamedDriver {
+    let driver = Driver::Report(Box::new(generator));
+    NamedDriver {
+        name: name.to_owned(),
+        driver,
+    }
+}
+
 /// `params`' `key`, read as `T`.
 fn arg<T: DeserializeOwned>(params: &Value, key: &str) -> Result<T, String> {
     let value = params.get(key).cloned().unwrap_or(Value::Null);
@@ -336,6 +359,7 @@ impl Driver {
             Driver::Importer(_) => "importer",
             Driver::Exporter(_) => "exporter",
             Driver::Workflow(_) => "workflow",
+            Driver::Report(_) => "report",
         }
     }
 
@@ -387,6 +411,8 @@ impl Driver {
                 let field = arg(&params, "field")?;
                 json(w.plan(params.get("params").cloned().unwrap_or(Value::Null), field)?)
             }
+            (Driver::Report(r), "schema") => Ok(r.schema()),
+            (Driver::Report(r), "generate") => r.generate(params),
             (driver, method) => Err(format!(
                 "a {} driver has no method `{method}`",
                 driver.kind()

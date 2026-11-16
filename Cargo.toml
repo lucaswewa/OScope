@@ -6,6 +6,7 @@ members = ["crates/*", "examples/*", "xtask"]
 exclude = [
     "examples/ext-python-cells",
     "examples/ext-python-node",
+    "examples/ext-python-report",
     "examples/ext-python-workflow",
     "examples/vendor",
 ]
@@ -82,6 +83,10 @@ crc32fast = "1.5.3"
 # small, and all MIT OR Apache-2.0.
 rustfft = "6.4.1"
 ex-common = { path = "examples/common" }
+minijinja = { version = "=3.0.5", features = ["serde"] }
+typst = "=0.15.1"
+typst-layout = "=0.15.1"
+typst-pdf = "=0.15.1"
 oscope-acquire = { path = "crates/oscope-acquire" }
 oscope-api = { path = "crates/oscope-api" }
 oscope-compute = { path = "crates/oscope-compute" }
@@ -96,6 +101,7 @@ oscope-server = { path = "crates/oscope-server" }
 oscope-shm = { path = "crates/oscope-shm" }
 oscope-store = { path = "crates/oscope-store" }
 oscope-stitch = { path = "crates/oscope-stitch" }
+oscope-report = { path = "crates/oscope-report" }
 oscope-volume = { path = "crates/oscope-volume" }
 oscope-workflows = { path = "crates/oscope-workflows" }
 oscope-core = { path = "crates/oscope-core" }

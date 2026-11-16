@@ -21,7 +21,7 @@ use tempfile::NamedTempFile;
 
 use oscope_pipeline::Node;
 
-use crate::drivers::{Drivers, Formats, Link, NativeLink, PythonLink, Workflows};
+use crate::drivers::{Drivers, Formats, Link, NativeLink, PythonLink, Reports, Workflows};
 use crate::manifest::is_id;
 use crate::native::{DriverInfo, check, registered};
 use crate::panels::{self, Panel};
@@ -264,6 +264,7 @@ fn provided(
         (Contribution::Importers, "importers", of(&["importer"])),
         (Contribution::Exporters, "exporters", of(&["exporter"])),
         (Contribution::Workflows, "workflows", of(&["workflow"])),
+        (Contribution::Reports, "reports", of(&["report"])),
     ];
     for (contribution, what, described) in names {
         let provided = manifest.provides.get(&contribution).into_iter().flatten();
@@ -303,6 +304,7 @@ pub struct Extensions {
     drivers: Drivers,
     formats: Formats,
     workflows: Workflows,
+    reports: Reports,
     panels: BTreeMap<String, (String, Panel)>,
     /// The extensions whose code this start couldn't load: the version, and
     /// why.
@@ -375,6 +377,7 @@ impl Extensions {
         let (mut drivers, mut panels) = (Drivers::default(), BTreeMap::new());
         let mut formats = Formats::default();
         let mut workflows = Workflows::default();
+        let mut reports = Reports::default();
         for (id, plan) in &plans {
             let Installed { state, manifest } = &installed[*id];
             let Some(version) = &plan.version else {
@@ -393,6 +396,7 @@ impl Extensions {
                         match info.kind.as_str() {
                             "importer" | "exporter" => formats.add(&info.name, &info.kind, link),
                             "workflow" => workflows.add(&info.name, link),
+                            "report" => reports.add(&info.name, link),
                             _ => drivers.add(&info.name, &info.kind, link),
                         }
                     }
@@ -427,6 +431,7 @@ impl Extensions {
             drivers,
             formats,
             workflows,
+            reports,
             panels,
             failed,
             python,
@@ -446,6 +451,7 @@ impl Extensions {
             drivers: Drivers::default(),
             formats: Formats::default(),
             workflows: Workflows::default(),
+            reports: Reports::default(),
             panels: BTreeMap::new(),
             failed: BTreeMap::new(),
             python: None,
@@ -489,6 +495,11 @@ impl Extensions {
     /// The scan workflows of the extensions this start loaded (ADR-0025).
     pub fn workflows(&self) -> &Workflows {
         &self.workflows
+    }
+
+    /// The report generators of the extensions this start loaded (P47).
+    pub fn reports(&self) -> &Reports {
+        &self.reports
     }
 
     /// The panels of the extensions this start loaded, by name: each with

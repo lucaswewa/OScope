@@ -29,6 +29,7 @@ tracing.workspace = true
 zip.workspace = true
 
 [dev-dependencies]
+oscope-report.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # The workspace's lints, with unsafe code allowed (plan §4.3). Clippy checks

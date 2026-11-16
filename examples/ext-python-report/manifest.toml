@@ -1,0 +1,18 @@
+# A sample Python extension (P47): a report generator, of a camera's field
+# of view and pixel size at the sample under each objective. OScope makes
+# its environment with uv when it is installed.
+id = "org.oscope.examples.fields"
+name = "Fields of view"
+version = "0.1.0"
+license = "MIT"
+publisher = "OScope examples"
+description = "A sample Python report generator: a camera's field of view and pixel size at the sample under each objective, with a sketch of the fields."
+oscope-api = "^1.0"
+kind = "python"
+
+[provides]
+reports = ["example.fields"]
+
+[python]
+requires-python = ">=3.12,<3.15"
+entry = "fields"

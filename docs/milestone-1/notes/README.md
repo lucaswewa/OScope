@@ -65,4 +65,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P43 | Deconvolution and volume rendering | Done | [P43-deconvolution.md](P43-deconvolution.md) |
 | P44 | Annotations and measurements | Done | [P44-annotations.md](P44-annotations.md) |
 | P45 | Stain analysis | Done | [P45-stain.md](P45-stain.md) |
-| P46 | Cell detection and counting | In review | [P46-cells.md](P46-cells.md) |
+| P46 | Cell detection and counting | Done | [P46-cells.md](P46-cells.md) |
+| P47 | Reports, and report extensions | In review | [P47-reports.md](P47-reports.md) |

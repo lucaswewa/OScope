@@ -94,3 +94,24 @@ def test_a_workflow_plans_its_tiles_from_the_field():
     (planned,) = replies(outgoing)
     xs = [tile["x_um"] for tile in planned["result"]]
     assert xs == [1000.0, 1090.0, 1180.0]
+
+
+@driver("test.summary", kind="report")
+class Summary:
+    def schema(self):
+        return {"type": "object", "properties": {"count": {"type": "integer"}}}
+
+    def generate(self, params):
+        rows = [[str(k), str(k * k)] for k in range(params["count"])]
+        table = {"kind": "table", "columns": ["k", "k squared"], "rows": rows}
+        section = {"heading": "Squares", "blocks": [table]}
+        return {"title": "Squares", "date": "2026-01-01", "sections": [section], "images": {}}
+
+
+def test_a_report_generator_makes_a_report_from_its_parameters():
+    assert {"name": "test.summary", "kind": "report"} in drivers()
+    outgoing = io.BytesIO()
+    worker.serve(stream(call("test.summary", "generate", {"count": 3})), outgoing)
+    (made,) = replies(outgoing)
+    rows = made["result"]["sections"][0]["blocks"][0]["rows"]
+    assert rows == [["0", "0"], ["1", "1"], ["2", "4"]]
