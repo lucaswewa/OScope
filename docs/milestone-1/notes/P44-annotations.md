@@ -147,7 +147,10 @@ The largest files are the store's tests (614), `measure.rs` (349), `ex-annotate`
 | `oscope-api` `projects` (one new, one changed) | 3 | Annotations kept, listed, measured as JSON and CSV, one layer's and one plane's, refused and removed over HTTP; the Thing's description with the new actions |
 | `ex-annotate --smoke` | — | The rectangle's area and perimeter, a square's area, the line's length; the two squares' pixels, colour by colour, are the rectangle's, and so are their means; the rectangle's pixels match its area within 1 %; the CSV; a removal; the page and OpenSeadragon served |
 
-⟨REPLAYS⟩
+**The local replays,** the merge gate (ADR-0038), each run alone on `0c05028`. The commit since adds only these lines.
+
+- **Windows:** `scripts/ci-local.sh`, in 10 minutes from an emptied build folder: 60 of 60 steps, 553 tests in 206 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 9 minutes from an emptied build folder: 60 of 60 steps, 553 tests in 206 suites; 766 files, none with a CR.
 
 ## Follow-ups and known gaps
 
