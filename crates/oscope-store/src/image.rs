@@ -563,6 +563,11 @@ impl ImageWriter {
         check(info)?;
         let mut info = info.clone();
         info.levels = levels(info.width, info.height);
+        // A raw image, a camera's Bayer mosaic, has its cells' means, level 1,
+        // however small: level 0 holds its pattern (ADR-0029).
+        if info.channel_names == ["raw"] {
+            info.levels = info.levels.max(2);
+        }
         if info.channel_names.is_empty() {
             info.channel_names = (0..info.channels).map(|c| format!("channel {c}")).collect();
         }

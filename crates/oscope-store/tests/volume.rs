@@ -119,6 +119,12 @@ fn a_volume_of_unknown_voxels_halves_z_at_every_level_and_a_flat_image_never() {
             .collect::<Vec<_>>(),
         [9, 5, 3]
     );
+    // A raw image has its cells' means, level 1, however small.
+    let mut raw = ImageInfo::new(456, 312, 1, SampleType::U16);
+    raw.channel_names = vec!["raw".to_owned()];
+    assert_eq!(write(&folder.path().join("raw.ome.zarr"), &raw).levels, 2);
+    raw.channel_names = vec!["grey".to_owned()];
+    assert_eq!(write(&folder.path().join("grey.ome.zarr"), &raw).levels, 1);
     // Once one plane is left, z halves no more.
     let mut two = info.clone();
     two.planes = 2;

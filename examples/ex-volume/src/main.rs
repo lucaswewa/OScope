@@ -137,9 +137,15 @@ fn word(body: &[u8], at: usize) -> u32 {
     u32::from_le_bytes(bytes)
 }
 
-/// The z-scan through the cells, and its volume. With `check`, held to
-/// P41's spec.
-async fn walk(address: SocketAddr, check: bool) -> anyhow::Result<()> {
+/// The z-scan through the cells, and its volume. For `--smoke`, over the
+/// frame's middle ninth, as the simulator renders each plane afresh, and
+/// held to P41's spec.
+async fn walk(address: SocketAddr, smoke: bool) -> anyhow::Result<()> {
+    if smoke {
+        let roi = json!({"x": 456, "y": 300, "width": 456, "height": 312});
+        let set = put(address, "/api/v1/camera/roi", &roi).await?;
+        ensure!(set.status < 300, "the region: {}", set.body);
+    }
     invoke(address, "stage/home", json!({})).await?;
     // The blue line alone, which lights the membranes' dye, seen through
     // the pinhole.
@@ -192,7 +198,7 @@ async fn walk(address: SocketAddr, check: bool) -> anyhow::Result<()> {
         first["size"]
     );
     println!("  open http://{address}/ to see it drawn by VTK.js");
-    if !check {
+    if !smoke {
         return Ok(());
     }
     ensure!(

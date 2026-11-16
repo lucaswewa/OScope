@@ -36,7 +36,7 @@ ex-volume: a z-scan of 21 planes, 0.5 µm apart, through the fluorescent cells a
 cargo run -p ex-volume -- --smoke
 ```
 
-It runs the same at ten times real time, with a temporary data root, and checks:
+It runs the same at ten times real time, over the frame's middle ninth, 456 × 312 pixels, as the simulator renders each plane afresh, with a temporary data root, and checks:
 
 - the volume's metadata: raw, 21 planes 0.5 µm apart, and voxels the size of the objective's pixel at the sample;
 - the page's brick: level 1, the size the metadata gives, and as many voxels as that;
