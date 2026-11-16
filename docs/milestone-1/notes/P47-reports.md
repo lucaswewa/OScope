@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p47-reports` / [#63](https://github.com/lucaswewa/OScope/pull/63)
-- Size: L · estimated ~2,600 before it started (the report crate with its model, Typst and minijinja renderers, charts and templates; the report generator kind in both SDKs and the loader; the job and OScope's generator; the `projects` Thing's templates; tests; `ex-report`); one pull request, at the owner's standing choice · measured SIZE
+- Size: L · estimated ~2,600 before it started (the report crate with its model, Typst and minijinja renderers, charts and templates; the report generator kind in both SDKs and the loader; the job and OScope's generator; the `projects` Thing's templates; tests; `ex-report`); one pull request, at the owner's standing choice · measured **2,994** hand-written lines added (code 1,513: `oscope-report` 836, `oscope-workflows` 495, `oscope-api` 94, `oscope-ext` 55, `oscope-ext-sdk` 26, the Python SDK 7; tests 959; examples 426, the Python generator among them; glue 96), and 10 removed. Roboto's licence, vendored, isn't counted. **That is 2,094 over L's 900, and 15 % over the estimate:** the estimate left out the sample Python generator and its test through the API, the regions read through deep zoom, and the data route's types
 
 ## Summary
 
@@ -86,7 +86,46 @@ The [README](../../../examples/ex-report/README.md) gives the job's options and 
 
 ### What the mutants' reading found
 
-MUTANTS
+Thirty-nine mutants, listed in advance from the code, covering:
+
+- the charts' top, heights, labels and line;
+- the renderers:
+  - the charts' files;
+  - HTML's escaping;
+  - errors' lines;
+  - the date;
+  - the data URIs' type and padding;
+  - reading base64;
+- the templates' checks, listing and names;
+- the report kind in the SDK, the loader and the Python SDK;
+- the job:
+  - its choice of results;
+  - its tables, bins and rows;
+  - the date;
+  - its cancels and formats;
+  - its names and regions;
+- the API's types, its sandbox, its errors, and the generators' wiring.
+
+Reading the tests against the list first found gaps, now covered:
+
+- a label to escape, and the line through the bars' tops;
+- half a template's folder;
+- the sandbox's date, and what it serves;
+- a grey image's region, and a region's size in µm;
+- an extension's PNG, whole through base64;
+- the largest area on the last bin's edge, and a null in a summary;
+- a cancel at the first chance;
+- where templates are kept.
+
+The run then missed one, now caught. With the cancel before rendering dropped, the cancel after the PDF still stopped the job, with nothing kept. The test now checks that a cancel at the first chance is the last progress the job reports.
+
+So **all 39 are caught.** Three ran with `OSCOPE_PYTHON=1`, through the API's test of the Python generator:
+
+- report drivers not registered;
+- `generate` calling `schema`;
+- the extensions' generators not wired to the job.
+
+One ran through the Python SDK's tests.
 
 ### The page
 
@@ -98,7 +137,18 @@ The page wasn't seen in a browser here. Under Node, against the running example,
 
 ### Two cores
 
-TWOCORE
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each, with `OSCOPE_PYTHON=1`:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-report:report` | 5 of 5 | 1.6 s |
+| `oscope-ext:reports` | 5 of 5 | 0.2–0.9 s |
+| `oscope-workflows:report` | 5 of 5 | 1.1–1.6 s |
+| `oscope-api:projects` | 5 of 5 | 0.7–1.8 s |
+| `oscope-api:capture` | 5 of 5 | 1.7–2.4 s |
+| `oscope-api:reports` | 5 of 5 | 2.5–3.9 s |
+| `xtask:layering` | 5 of 5 | 0.4–0.5 s |
+| `ex-report --smoke` | 5 of 5 | 21.0–24.3 s |
 
 ## Tests
 
@@ -113,7 +163,10 @@ TWOCORE
 | `xtask` `layering` | 7 | `oscope-report` in L3, with `oscope-ext`'s edge |
 | `ex-report --smoke` | — | The PDF's type, the sections, the HTML's count, chart, picture and summary, the second template's PDF and the reports' names, the templates, the page |
 
-REPLAYS
+**The local replays,** the merge gate (ADR-0038), each run alone on `9d4db41`. The commit since adds only these lines and the measurements above.
+
+- **Windows:** `scripts/ci-local.sh`, in 13 minutes: 63 of 63 steps, 588 tests in 221 suites, the Python tests real (the new generator's among them), and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 13 minutes: 63 of 63 steps, 588 tests in 221 suites; 820 files, none with a CR.
 
 ## Follow-ups and known gaps
 
