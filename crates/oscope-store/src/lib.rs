@@ -24,6 +24,7 @@ mod records;
 mod scratch;
 mod store;
 mod thumbnail;
+pub mod zoom;
 
 pub use formats::{
     Exporter, Format, Importer, Rendition, export, exporters, import, importers, render,
