@@ -6,8 +6,16 @@
 //! The CUDA twin (`cuda/focus.rs`, `kernels/focus.cu`) computes each
 //! pixel's terms with the same arithmetic, and both sum them in
 //! `reduce`, so the two agree to the bit.
+//!
+//! For depth from focus (P42), [`sml`] measures each pixel: the
+//! sum-modified-Laplacian, whose CUDA twin agrees to the bit too.
 
-use crate::{ComputeError, Image};
+use rayon::prelude::*;
+
+use crate::{ComputeError, Image, Shape};
+
+/// The largest window radius of [`sml`]: a window of 31 × 31.
+pub const SML_RADIUS: u32 = 15;
 
 /// A focus measure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -100,6 +108,82 @@ pub fn measures(image: &Image) -> Result<FocusMeasures, ComputeError> {
         }
     }
     Ok(reduce(data, &b, &t, &l, w, h))
+}
+
+/// Checks [`sml`]'s image is grey, its step at least 1 and its radius at
+/// most [`SML_RADIUS`].
+pub(crate) fn check_sml(shape: Shape, step: u32, radius: u32) -> Result<(), ComputeError> {
+    if shape.channels != 1 {
+        return Err(ComputeError::Channels {
+            expected: 1,
+            got: shape.channels,
+        });
+    }
+    if step == 0 || radius > SML_RADIUS {
+        return Err(ComputeError::Setting(format!(
+            "a step of {step} and a radius of {radius}: the step 1 or more, the radius up to {SML_RADIUS}"
+        )));
+    }
+    Ok(())
+}
+
+/// Pixel `(x, y)`'s modified Laplacian with neighbours `s` pixels away, in
+/// an image of `w` × `h`: |2I − I(x − s) − I(x + s)| + |2I − I(y − s) −
+/// I(y + s)|, where all four are inside, and 0 elsewhere. The kernel's
+/// arithmetic, step for step.
+#[inline]
+fn modified_laplacian(data: &[f32], w: usize, h: usize, s: usize, x: usize, y: usize) -> f32 {
+    if x < s || y < s || x + s >= w || y + s >= h {
+        return 0.0;
+    }
+    let i = y * w + x;
+    let c = data[i];
+    let across = (2.0 * c - data[i - s] - data[i + s]).abs();
+    let down = (2.0 * c - data[i - s * w] - data[i + s * w]).abs();
+    across + down
+}
+
+/// Sums over the window of `r` about each pixel of `values`, `w` × `h`,
+/// within them: along rows if `across`, else down columns, in order. The
+/// kernel's arithmetic.
+fn window_sums(values: &[f32], w: usize, h: usize, r: usize, across: bool) -> Vec<f32> {
+    let mut out = vec![0.0_f32; values.len()];
+    out.par_chunks_mut(w.max(1))
+        .enumerate()
+        .for_each(|(y, row)| {
+            for (x, v) in row.iter_mut().enumerate() {
+                let mut sum = 0.0_f32;
+                match across {
+                    true => (x.saturating_sub(r)..(x + r + 1).min(w))
+                        .for_each(|k| sum += values[y * w + k]),
+                    false => (y.saturating_sub(r)..(y + r + 1).min(h))
+                        .for_each(|k| sum += values[k * w + x]),
+                }
+                *v = sum;
+            }
+        });
+    out
+}
+
+/// The sum-modified-Laplacian of a grey `image` (Nayar and Nakagawa,
+/// 1994), for depth from focus: each pixel's modified Laplacian, with
+/// neighbours `step` pixels away, summed over the (2`radius` + 1)² window
+/// about it, within the image, along rows and then down columns.
+pub fn sml(image: &Image, step: u32, radius: u32) -> Result<Image, ComputeError> {
+    check_sml(image.shape(), step, radius)?;
+    let (w, h) = (image.width() as usize, image.height() as usize);
+    let (s, r) = (step as usize, radius as usize);
+    let data = image.data();
+    let mut ml = vec![0.0_f32; w * h];
+    ml.par_chunks_mut(w.max(1))
+        .enumerate()
+        .for_each(|(y, row)| {
+            for (x, v) in row.iter_mut().enumerate() {
+                *v = modified_laplacian(data, w, h, s, x, y);
+            }
+        });
+    let rows = window_sums(&ml, w, h, r, true);
+    Image::from_vec(image.shape(), window_sums(&rows, w, h, r, false))
 }
 
 /// The measures from each pixel's terms: Brenner's and Tenengrad's sums
@@ -242,5 +326,44 @@ mod tests {
             (m.laplacian - (20.0 / 9.0) / (mean * mean)).abs() < 1e-9,
             "{m:?}"
         );
+    }
+
+    #[test]
+    fn the_sum_modified_laplacian_is_its_definition() {
+        // A pixel of 2 in the middle of a 7 × 7 field of 1s.
+        let mut data = vec![1.0_f32; 49];
+        data[24] = 2.0;
+        let image = Image::from_vec(Shape::new(7, 7, 1), data).unwrap();
+        // Its modified Laplacian is |4 − 1 − 1| twice; each neighbour's
+        // across it |2 − 1 − 2|; the diagonals' 0; at the edge, 0.
+        let ml = sml(&image, 1, 0).unwrap();
+        let at = |x: usize, y: usize| ml.data()[y * 7 + x];
+        assert_eq!(
+            (at(3, 3), at(2, 3), at(3, 4), at(2, 2)),
+            (4.0, 1.0, 1.0, 0.0)
+        );
+        assert_eq!(at(0, 3) + at(3, 6), 0.0);
+        // Over 3 × 3, the middle's window holds it and its four neighbours;
+        // two to its left, only the neighbour between; a corner's, of 2 × 2
+        // within the image, nothing.
+        let window = sml(&image, 1, 1).unwrap();
+        assert_eq!((window.data()[24], window.data()[0]), (8.0, 0.0));
+        assert_eq!(window.data()[3 * 7 + 1], 1.0);
+        // Two pixels away, only the middle has all four neighbours and
+        // differs from them.
+        let far = sml(&image, 2, 0).unwrap();
+        assert_eq!(far.data()[24], 4.0);
+        assert_eq!(far.data().iter().sum::<f32>(), 4.0);
+        // A flat image measures nothing; colour, a step of 0 and too wide a
+        // window are refused.
+        let flat = Image::from_vec(Shape::new(9, 5, 1), vec![0.4; 45]).unwrap();
+        assert!(sml(&flat, 1, 2).unwrap().data().iter().all(|v| *v == 0.0));
+        assert!(matches!(
+            sml(&Image::zeros(Shape::new(8, 8, 3)), 1, 1),
+            Err(ComputeError::Channels { .. })
+        ));
+        assert!(sml(&flat, 0, 1).is_err());
+        assert!(sml(&flat, 1, SML_RADIUS + 1).is_err());
+        assert!(sml(&flat, 1, SML_RADIUS).is_ok());
     }
 }

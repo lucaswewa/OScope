@@ -331,6 +331,11 @@ impl<'a> Inputs<'a> {
         })
     }
 
+    /// The stack on input `port`.
+    pub fn stack(&self, port: &str) -> Result<&'a [Image], NodeError> {
+        self.need(port, "a stack", Value::as_stack)
+    }
+
     /// The mask on input `port`.
     pub fn mask(&self, port: &str) -> Result<&'a Mask, NodeError> {
         self.need(port, "a mask", Value::as_mask)

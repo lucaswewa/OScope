@@ -90,6 +90,8 @@ struct Kernels {
     cross_power: CudaFunction,
     gather: CudaFunction,
     focus_terms: CudaFunction,
+    modified_laplacian: CudaFunction,
+    window_sums: CudaFunction,
 }
 
 /// A GPU, ready for kernels.
@@ -149,6 +151,8 @@ impl Cuda {
             cross_power: registration.load_function("cross_power")?,
             gather: registration.load_function("gather")?,
             focus_terms: focus.load_function("focus_terms")?,
+            modified_laplacian: focus.load_function("modified_laplacian")?,
+            window_sums: focus.load_function("window_sums")?,
         };
         let memory_pool = keep_freed_memory(&context).is_ok();
         let mut version = 0;

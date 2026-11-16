@@ -298,3 +298,39 @@ fn the_focus_measures_twin_matches_the_cpu() {
         Err(ComputeError::Channels { .. })
     ));
 }
+
+#[test]
+fn the_sum_modified_laplacian_twin_matches_the_cpu_to_the_bit() {
+    use oscope_compute::focus;
+    let Some(compute) = gpu() else { return };
+    let cuda = compute.cuda().unwrap();
+    let lane = Lane::Batch;
+    let mut random = StdRng::seed_from_u64(42);
+    for case in 0..60 {
+        let (w, h) = (random.random_range(1..300), random.random_range(1..300));
+        let (step, radius) = (random.random_range(1..=4), random.random_range(0..=6));
+        let data = (0..w * h).map(|_| random.random_range(0.0..1.0)).collect();
+        let image = Image::from_vec(Shape::new(w, h, 1), data).unwrap();
+        let cpu = focus::sml(&image, step, radius).unwrap();
+        let device = cuda.upload(lane, &image).unwrap();
+        let gpu = cuda
+            .download(lane, &cuda.focus_sml(lane, &device, step, radius).unwrap())
+            .unwrap();
+        let same = cpu
+            .data()
+            .iter()
+            .zip(gpu.data())
+            .all(|(a, b)| a.to_bits() == b.to_bits());
+        assert!(same, "case {case}: {w} × {h}, step {step}, radius {radius}");
+        // And through the compute layer, which takes the GPU.
+        let through = compute.focus_sml(lane, &image, step, radius).unwrap();
+        assert_eq!(through.data(), cpu.data());
+    }
+    let colour = cuda
+        .upload(lane, &Image::zeros(Shape::new(8, 8, 3)))
+        .unwrap();
+    assert!(matches!(
+        cuda.focus_sml(lane, &colour, 1, 1),
+        Err(ComputeError::Channels { .. })
+    ));
+}

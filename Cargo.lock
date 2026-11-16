@@ -793,6 +793,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-depth-from-focus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-ext-camera"
 version = "0.1.0"
 dependencies = [
@@ -2367,6 +2382,7 @@ dependencies = [
  "oscope-core",
  "oscope-imaging",
  "oscope-jobs",
+ "oscope-volume",
  "rayon",
  "schemars",
  "serde",
@@ -2468,6 +2484,16 @@ dependencies = [
 [[package]]
 name = "oscope-volume"
 version = "0.1.0"
+dependencies = [
+ "oscope-compute",
+ "oscope-imaging",
+ "rand",
+ "rayon",
+ "schemars",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "oscope-workflows"
@@ -2483,6 +2509,7 @@ dependencies = [
  "oscope-sim",
  "oscope-stitch",
  "oscope-store",
+ "oscope-volume",
  "rayon",
  "schemars",
  "serde",

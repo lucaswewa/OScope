@@ -31,6 +31,10 @@
 //! | `morphology.erode`, `dilate`, `open`, `close` | On a mask, with a square or a disk | CPU; live; tiles |
 //! | `morphology.distance` | The distance transform of a mask | CPU; live |
 //! | `morphology.label` | A mask's connected components, and a table of them | CPU; live |
+//! | `volume.focus` | A stack's focus measures, the sum-modified-Laplacian | CPU, or the GPU through the compute layer |
+//! | `volume.height` | Heights from focus measures, and their confidence | CPU |
+//! | `volume.all_in_focus` | Each pixel from the planes about its height | CPU |
+//! | `export.dzi`, `export.mesh` | A static Deep Zoom folder; a height map as PLY, STL or OBJ | CPU; batch |
 //!
 //! **References** cover the camera's whole frame. A dark frame or a flat
 //! field of another size than the image is sampled over the part of the
@@ -47,6 +51,7 @@ mod measure;
 mod morphology;
 mod reference;
 mod threshold;
+mod volume;
 
 use std::path::PathBuf;
 
@@ -80,6 +85,7 @@ pub fn registry(references: impl Into<PathBuf>) -> Registry {
         display::lut(),
         display::false_colour(),
         export::dzi(),
+        export::mesh(),
         geometry::bin(),
         geometry::resize(),
         geometry::crop(),
@@ -95,6 +101,9 @@ pub fn registry(references: impl Into<PathBuf>) -> Registry {
         threshold::otsu_node(),
         morphology::distance(),
         morphology::label(),
+        volume::focus(),
+        volume::height(),
+        volume::all_in_focus(),
     ];
     for node in nodes.into_iter().chain(morphology::operations()) {
         registry

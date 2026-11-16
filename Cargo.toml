@@ -94,6 +94,7 @@ oscope-server = { path = "crates/oscope-server" }
 oscope-shm = { path = "crates/oscope-shm" }
 oscope-store = { path = "crates/oscope-store" }
 oscope-stitch = { path = "crates/oscope-stitch" }
+oscope-volume = { path = "crates/oscope-volume" }
 oscope-workflows = { path = "crates/oscope-workflows" }
 oscope-core = { path = "crates/oscope-core" }
 

@@ -134,6 +134,11 @@ impl Value {
         Value::Image(Arc::new(image))
     }
 
+    /// A stack of images of one shape.
+    pub fn stack(images: Vec<Image>) -> Value {
+        Value::Stack(Arc::new(images))
+    }
+
     /// A mask.
     pub fn mask(mask: Mask) -> Value {
         Value::Mask(Arc::new(mask))
@@ -168,6 +173,14 @@ impl Value {
     pub fn as_image(&self) -> Option<&Image> {
         match self {
             Value::Image(image) => Some(image),
+            _ => None,
+        }
+    }
+
+    /// The stack's images, if it is one.
+    pub fn as_stack(&self) -> Option<&[Image]> {
+        match self {
+            Value::Stack(images) => Some(images),
             _ => None,
         }
     }
