@@ -60,6 +60,9 @@ fn a_volume_s_levels_halve_z_as_its_voxels_near_a_cube() {
     assert!(reader.info().volume);
     assert!(reader.read(2, 6, (0, 0), (1, 1)).is_ok());
     assert!(reader.read(2, 7, (0, 0), (1, 1)).is_err());
+    let (w2, h2) = info.level_size(2);
+    assert!(reader.read(2, 0, (w2 - 1, 0), (2, 1)).is_err());
+    assert!(reader.read(2, 0, (0, h2 - 1), (1, 2)).is_err());
     // Level 2's voxels: the means of level 1's 2 × 2 × 2, or of the one
     // plane left at the end.
     let (one, two) = (level(&reader, 1), level(&reader, 2));
@@ -110,10 +113,22 @@ fn a_volume_of_unknown_voxels_halves_z_at_every_level_and_a_flat_image_never() {
             .collect::<Vec<_>>(),
         [9, 5, 3]
     );
+    // Once one plane is left, z halves no more.
+    let mut two = info.clone();
+    two.planes = 2;
+    assert_eq!(
+        (0..3).map(|l| two.z_halvings(l)).collect::<Vec<_>>(),
+        [0, 1, 1]
+    );
     info.volume = false;
     let flat = write(&folder.path().join("flat.ome.zarr"), &info);
     assert!((0..flat.levels).all(|l| flat.level_planes(l) == 9));
     let reader = ImageReader::open(&folder.path().join("flat.ome.zarr")).unwrap();
     assert!(!reader.info().volume);
     assert!(reader.read(2, 8, (0, 0), (1, 1)).is_ok());
+    // An image recorded before volumes were, without the flag, isn't one.
+    let mut recorded = serde_json::to_value(&cube).unwrap();
+    recorded.as_object_mut().unwrap().remove("volume");
+    let old: ImageInfo = serde_json::from_value(recorded).unwrap();
+    assert!(!old.volume && old.planes == 9);
 }

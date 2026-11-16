@@ -354,10 +354,8 @@ pub fn default_display(image: &StoredImage) -> Result<Display> {
     let info = image.info();
     let level = info.levels - 1;
     let (w, h) = info.level_size(level);
-    let unit = image
-        .reader
-        .read(level, image.plane, (0, 0), (w, h))?
-        .to_unit();
+    let plane = image.plane >> info.z_halvings(level);
+    let unit = image.reader.read(level, plane, (0, 0), (w, h))?.to_unit();
     Ok(crate::thumbnail::display(info.sample, &unit))
 }
 

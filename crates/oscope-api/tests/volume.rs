@@ -22,17 +22,9 @@ struct Served {
     _folder: tempfile::TempDir,
 }
 
-/// A server with one acquisition: a volume of 1100 × 900 × 13 voxels of
-/// 0.3 × 0.3 × 1 µm in 16 bits, or a raw mosaic's.
-async fn serve(raw: bool) -> Served {
-    let folder = tempfile::tempdir().unwrap();
-    let data = folder.path().join("data");
-    let store = Store::open(&data, &data.join("index.sqlite")).unwrap();
-    let new = NewProject {
-        name: "volumes".to_owned(),
-        ..NewProject::default()
-    };
-    let project = store.create(new).unwrap().id;
+/// A volume of 1100 × 900 × 13 voxels of 0.3 × 0.3 × 1 µm in 16 bits, or
+/// a raw mosaic's.
+fn stack(raw: bool) -> ImageInfo {
     let mut info = ImageInfo::new(1100, 900, 1, SampleType::U16);
     (info.planes, info.volume) = (13, true);
     info.pixel_size = Some(PixelSize {
@@ -43,16 +35,28 @@ async fn serve(raw: bool) -> Served {
     if raw {
         info.channel_names = vec!["raw".to_owned()];
     }
+    info
+}
+
+/// A server with one acquisition, of `info`'s voxels, `value` at each.
+async fn serve(info: ImageInfo) -> Served {
+    let folder = tempfile::tempdir().unwrap();
+    let data = folder.path().join("data");
+    let store = Store::open(&data, &data.join("index.sqlite")).unwrap();
+    let new = NewProject {
+        name: "volumes".to_owned(),
+        ..NewProject::default()
+    };
+    let project = store.create(new).unwrap().id;
     let draft = store.acquisition(project, "a stack", &info).unwrap();
     let writer = draft.image().unwrap();
-    for z in 0..13 {
-        let values: Vec<f32> = (0..900)
-            .flat_map(|y| (0..1100).map(move |x| value(x, y, z)))
+    let (w, h) = (info.width, info.height);
+    for z in 0..u64::from(info.planes) {
+        let values: Vec<f32> = (0..h)
+            .flat_map(|y| (0..w).map(move |x| value(x, y, z)))
             .collect();
-        let samples = Samples::from_unit(SampleType::U16, &values);
-        writer
-            .write(z as u32, (0, 0), (1100, 900), &samples)
-            .unwrap();
+        let samples = Samples::from_unit(info.sample, &values);
+        writer.write(z as u32, (0, 0), (w, h), &samples).unwrap();
     }
     let id = draft.commit().unwrap().id.to_string();
     let image = store
@@ -135,7 +139,7 @@ fn eight(v: u16) -> u8 {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
-    let served = serve(false).await;
+    let served = serve(stack(false)).await;
     let meta = served.get("meta").await.json();
     assert_eq!(
         (
@@ -222,9 +226,12 @@ async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
     let head = header(&whole.body);
     assert_eq!((head.level, head.size), (0, [1100, 900, 13]));
     assert_eq!(whole.body.len(), 64 + 1100 * 900 * 13);
-    // Held to a million voxels: the finest level that fits, the third.
-    let fits = served.get("brick?max=1000000").await;
-    assert_eq!(header(&fits.body).level, 2);
+    // Held to a million voxels: the finest level that fits, the third; to
+    // the second's own count, the second; to one, the coarsest.
+    for (most, level) in [(1_000_000, 2), (550 * 450 * 13, 1), (1, 2)] {
+        let fits = served.get(&format!("brick?max={most}")).await;
+        assert_eq!(header(&fits.body).level, level, "{most}");
+    }
     // A box, given in full-size voxels, at level 1: from its first voxel's
     // to past its last's.
     let boxed = served
@@ -240,6 +247,14 @@ async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
         .map(|&b| u16::from_le_bytes(b))
         .collect();
     assert_eq!(got, want);
+
+    // Deep zoom through a level that halves z: plane 12 is its plane 6.
+    let zoom = format!(
+        "/api/v1/zoom/{}/acquisitions/{}/image_files/9/0_0.jpg?plane=12",
+        served.project, served.id
+    );
+    let tile = served.client.get(&zoom).await;
+    assert_eq!(tile.status, 200, "{}", String::from_utf8_lossy(&tile.body));
 
     // What is refused.
     for bad in [
@@ -267,7 +282,7 @@ async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_raw_volume_starts_at_its_first_level() {
-    let served = serve(true).await;
+    let served = serve(stack(true)).await;
     let meta = served.get("meta").await.json();
     assert_eq!(meta["raw"], json!(true));
     assert_eq!(meta["levels"][0]["level"], json!(1), "{meta}");
@@ -277,4 +292,40 @@ async fn a_raw_volume_starts_at_its_first_level() {
     assert_eq!(header(&brick.body).level, 1);
     let slice = served.get("slice?axis=z&index=2").await;
     assert_eq!(header(&slice.body).level, 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn eight_bit_and_float_volumes_come_in_either_format() {
+    for sample in [SampleType::U8, SampleType::F32] {
+        let mut info = ImageInfo::new(300, 200, 1, sample);
+        (info.planes, info.volume) = (3, true);
+        let served = serve(info).await;
+        let reader = ImageReader::open(&served.image).unwrap();
+        // 8 bits to 16 by 257; floats clamped from 0 to 1, then rounded.
+        let (eight, sixteen): (Vec<u8>, Vec<u8>) =
+            match reader.read(0, 1, (0, 0), (300, 200)).unwrap() {
+                Samples::U8(v) => (
+                    v.clone(),
+                    v.iter()
+                        .flat_map(|&s| (u16::from(s) * 257).to_le_bytes())
+                        .collect(),
+                ),
+                Samples::F32(v) => (
+                    v.iter()
+                        .map(|s| (s.clamp(0.0, 1.0) * 255.0).round() as u8)
+                        .collect(),
+                    v.iter()
+                        .flat_map(|s| ((s.clamp(0.0, 1.0) * 65_535.0).round() as u16).to_le_bytes())
+                        .collect(),
+                ),
+                Samples::U16(_) => panic!("written as {sample:?}"),
+            };
+        for (format, bytes, want) in [("u8", 1, eight), ("u16", 2, sixteen)] {
+            let slice = served
+                .get(&format!("slice?axis=z&index=1&level=0&format={format}"))
+                .await;
+            assert_eq!(header(&slice.body).sample, bytes);
+            assert!(slice.body[64..] == want[..], "{sample:?} as {format}");
+        }
+    }
 }

@@ -283,4 +283,12 @@ fn a_z_scan_s_frames_become_a_volume_of_its_voxels() {
     // A tiled stack's planes are each tile's, not a volume.
     let tiles = ingested("tiled_stack");
     assert!(!tiles.volume && tiles.pixel_size.is_none());
+    // The records keep it, as the project's contents give them.
+    let contents = store.contents(project).unwrap();
+    let volumes: Vec<bool> = contents
+        .acquisitions
+        .iter()
+        .map(|a| a.image.volume)
+        .collect();
+    assert_eq!(volumes.iter().filter(|&&v| v).count(), 1, "{volumes:?}");
 }

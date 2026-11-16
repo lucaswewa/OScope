@@ -3,12 +3,12 @@
 //! stitched into a result: each tile within 0.3 pixels of where it was cut,
 //! the mosaic the slide itself, its parts held to a few chunks at a time.
 
-use oscope_core::{AcquisitionId, ProjectId, Rect, Timestamp, Um, Xyz};
+use oscope_core::{AcquisitionId, Point2, ProjectId, Rect, Timestamp, Um, Xyz};
 use oscope_store::{
     FrameRecord, ImageInfo, ImageReader, Input, NewProject, SampleType, Samples, Store,
     halve_samples,
 };
-use oscope_workflows::scan::{Field, Region, Stack, ZPolicy, raster, tiled_stack};
+use oscope_workflows::scan::{Field, Region, Stack, ZPolicy, raster, tiled_stack, z_scan};
 use oscope_workflows::stitch::{StitchError, StitchOptions, result_image, stitch};
 
 /// The slide: µm as pixels, `w` × `h` of texture, noise blurred thrice by
@@ -69,12 +69,13 @@ struct Acquired {
 
 /// How a raster is taken: its region's size in µm, its tiles' in pixels of
 /// 1 µm, whether they are a Bayer mosaic's raw samples, and the planes of a
-/// stack at each.
+/// stack at each; or, as a volume, a z-scan's stack at the region's middle.
 struct Taken {
     region: (f64, f64),
     tile: (u32, u32),
     raw: bool,
     planes: u32,
+    volume: bool,
 }
 
 const RASTER: Taken = Taken {
@@ -82,6 +83,7 @@ const RASTER: Taken = Taken {
     tile: (320, 240),
     raw: false,
     planes: 1,
+    volume: false,
 };
 
 /// Tiles a fifth overlapping over the region from (100, 100) µm. A stack's
@@ -112,12 +114,22 @@ fn acquired(taken: Taken) -> Acquired {
                 above_um: half,
                 step_um: 1.0,
             };
-            tiled_stack(&region, &field, fixed, stack).unwrap()
+            match taken.volume {
+                true => z_scan(
+                    Point2::new(100.0 + w / 2.0, 100.0 + h / 2.0),
+                    &field,
+                    fixed,
+                    stack,
+                ),
+                false => tiled_stack(&region, &field, fixed, stack),
+            }
+            .unwrap()
         }
     };
     let count = plan.tiles.len();
     let mut info = ImageInfo::new(u64::from(tw), u64::from(th), 1, SampleType::U8);
     info.planes = count as u32 * taken.planes;
+    info.volume = taken.volume;
     if taken.raw {
         info.channel_names = vec!["raw".to_owned()];
     }
@@ -396,4 +408,25 @@ fn a_cancel_stops_it_in_each_part_and_leaves_no_result() {
     let results = store.folder(project).join("results");
     let left = std::fs::read_dir(&results).map_or(0, |d| d.count());
     assert_eq!(left, 0, "drafts left in {}", results.display());
+}
+
+#[test]
+fn a_z_scan_s_volume_is_refused() {
+    let volume = acquired(Taken {
+        planes: 3,
+        volume: true,
+        ..RASTER
+    });
+    let options = StitchOptions::default();
+    let refused = stitch(
+        &volume.store,
+        volume.project,
+        volume.id,
+        &options,
+        &|_, _| true,
+    );
+    assert!(
+        matches!(&refused, Err(StitchError::Refused(why)) if why.contains("volume")),
+        "{refused:?}"
+    );
 }
