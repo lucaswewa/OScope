@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p40-deep-zoom` / [#55](https://github.com/lucaswewa/OScope/pull/55)
-- Size: M · estimated ~2,750 before it started (in `oscope-imaging`, the DZI geometry and tiles rendered from a pyramid's levels through a display transform, raw frames demosaiced, ~320; in `oscope-store`, tiles read through a cache of decompressed chunks, a colour overview for raw images, the disk tile cache on scratch and the DZI export, ~440; the pipeline's DZI node ~70; in `oscope-api`, the routes with `Server-Timing`, the tile pool capped while a hardware job runs, the cache warmed when a stitch ends and the export format, ~320; tests ~650; `ex-deep-zoom` and its bench ~410; `ex-checkpoint-d` ~250; glue ~50; and about a tenth on top); one pull request, at the owner's standing choice · measured <<SIZE>>
+- Size: M · estimated ~2,750 before it started (in `oscope-imaging`, the DZI geometry and tiles rendered from a pyramid's levels through a display transform, raw frames demosaiced, ~320; in `oscope-store`, tiles read through a cache of decompressed chunks, a colour overview for raw images, the disk tile cache on scratch and the DZI export, ~440; the pipeline's DZI node ~70; in `oscope-api`, the routes with `Server-Timing`, the tile pool capped while a hardware job runs, the cache warmed when a stitch ends and the export format, ~320; tests ~650; `ex-deep-zoom` and its bench ~410; `ex-checkpoint-d` ~250; glue ~50; and about a tenth on top); one pull request, at the owner's standing choice · measured **3,607** hand-written lines added (code 1,672: `oscope-store` 677, `oscope-api` 577, `oscope-imaging` 306, `oscope-pipeline` 112; tests 966; examples 921; glue 48), and 17 removed. **That is 3,007 over M's 600, and 31 % over the estimate.**
 
 ## Summary
 
@@ -91,13 +91,44 @@ The bench's first run measured a cold tile at 5.74 ms, the median. Each tile reb
 
 The smoke at first waited for the colour overview and a first coarse tile, then checked a tile of level 8 as kept. The warm-up was still making the coarse levels: 12 of 17 tiles were there. The status now says when the coarse levels are all made (`coarse`), and the examples wait for that.
 
+### A fault the side-by-side replay found
+
+The first Linux replay, on `6f1ff12`, failed P36's scan test. The test compared a plan's z, taken as the stage's z when the plan was made, against z read just after, for equality.
+
+- **Why they differed:** the simulated stage reports where it truly is. After a move, its overshoot of 0.3 µm dies away over some 15 ms of its time, so z changes in its last digits.
+- **Why now:** on two CPUs beside seven other suites, the plan came while the overshoot was still dying away.
+- **The fix:** the test now takes the planned z within 0.5 µm of the stage's. On two cores it passed 8 times in 8.
+
 ### Two cores
 
-<<TWO_CORE>>
+- **Five times each, side by side,** with `scripts/two-core.sh` (ADR-0038), every suite P40 adds or changes passed 5 times in 5, each a run in:
+
+  | Suite | Seconds |
+  |---|---|
+  | `oscope-imaging`'s `zoom` | 0.5–0.6 |
+  | `oscope-store`'s `zoom` | 3.1–3.6 |
+  | `oscope-api`'s `zoom` | 2.0–3.3 |
+  | `oscope-api`'s `capture` | 2.3–2.5 |
+  | `oscope-pipeline`'s `stock` | 0.6–1.1 |
+  | `ex-deep-zoom --smoke` | 24.8–31.8 |
+  | `ex-checkpoint-d --smoke` | 46.5–54.5 |
+
+- **They found no fault.**
 
 ### The size
 
-<<SIZE_DISCUSSION>>
+M's budget is 600; P40 measured 3,607, 31 % over its estimate of ~2,750.
+
+- **One pull request,** under the owner's standing choice: the tiles, their caches, the routes, the export and Checkpoint D are one path.
+- **Against the estimate,** the code took 1,672 lines against ~1,150, the tests 966 against ~650, the examples 921 against ~660, and the glue 48 against ~50.
+- **What the estimate didn't foresee:**
+  - the status route, which the examples and tests wait on;
+  - the display tables;
+  - the warm-up's state;
+  - the bench's hardware job and its full-screen views;
+  - the tests the mutants' reading added.
+
+  Doc comments are much of the rest.
 
 ## Tests
 
@@ -123,9 +154,39 @@ Drawing in a browser is for the owner's manual test.
 
 **Where they ran:**
 
-<<WHERE_RAN>>
+- **On Windows,** `scripts/ci-local.sh`, run alone on `6f1ff12`, in 8 minutes: 55 of 55 steps, 517 tests in 191 suites. The Python tests ran for real, and every example's `--smoke`, the two new among them. Each suite and smoke run had two CPUs of its own, eight at a time (ADR-0038). The commit since, `2cca287`, changes only the scan test above.
+- **On Linux,** `scripts/ci-clone.sh` under WSL, run alone:
+  - on a fresh clone of `6f1ff12`: 54 of 55 steps, the scan test failing as above;
+  - on a fresh clone of `2cca287`: 55 of 55 steps, 517 tests in 191 suites, the Python tests real, in 5 minutes; 710 files, none with a CR.
+- **The CUDA tests** weren't run: P40 touches no CUDA path.
+- **On two cores,** five times each, side by side: the suites in the table above, and both examples' `--smoke`.
 
-**Mutation checks:** <<MUTANTS>>
+**Mutation checks** (each broke the code on purpose, then the tests were run): thirty-one of thirty-one caught.
+
+- **Reading the tests against the list first** found four gaps, now covered:
+  - a grey image's tiles, grey in each channel;
+  - the chunk cache letting the chunk used least recently go;
+  - one thread while a hardware job runs, which the status now shows;
+  - a stitched mosaic being raw, which the smoke now checks. A result whose acquisition wasn't found would show grey.
+- **The first run missed one,** gamma ignored: the test's other look changed its levels too. Gamma alone now brightens a tile.
+
+| Mutant | Caught by |
+|---|---|
+| Levels one short; their sizes rounded down; the last tile whole | Deep Zoom's levels and tiles |
+| No averaging past the coarsest; levels in memory stopping early | tiles are the levels |
+| Grey shown red; a level left out of the folder | a DZI folder |
+| A cached chunk read at a whole chunk's width | reads through the chunk cache; a raw mosaic; an export |
+| Chunks never let go; the newest let go | the chunk cache |
+| No margin to demosaic; the overview bilinear; its levels one short; grey not spread to RGB | a raw mosaic in colour |
+| The newest tile deleted; a tile used not touched; the tiles there forgotten | the tile cache |
+| The overview left beside the export | an export |
+| Hits and misses swapped; one table for every look; gamma ignored; levels the wrong way round taken | over HTTP |
+| Grey tiles kept; no overview built when asked | a raw image over HTTP |
+| No cap while a hardware job runs | one thread |
+| DZI not among the formats | `capture`'s formats |
+| DZI exported by an exporter | a DZI export over HTTP |
+| A DZI folder written over; any name for one | `export.dzi` |
+| A result's acquisition not found; no warm-up when a stitch ends | `ex-deep-zoom --smoke` |
 
 ## Follow-ups and known gaps
 
