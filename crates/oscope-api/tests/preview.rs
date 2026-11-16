@@ -204,16 +204,19 @@ async fn a_client_s_parameters_shape_its_previews() {
         .send(Message::text(params.to_string()))
         .await
         .unwrap();
+    // Timed from when each was ready, which a frame's rendering shifts, on
+    // two cores shared with other tests by some 150 ms (P38's two-core
+    // runs): ten intervals, at least 80 % of their 2 s.
     let mut slowed = Vec::new();
-    while slowed.len() < 6 {
+    while slowed.len() < 11 {
         let (header, _) = next(&mut socket).await;
         if header.quality == 33 {
             assert_eq!(header.roi, PixelRect::new(0, 0, 640, 480));
             slowed.push(header.ready);
         }
     }
-    let took = slowed[5].saturating_since(slowed[0]);
-    assert!(took >= Duration::from_millis(900), "5 frames in {took:?}");
+    let took = slowed[10].saturating_since(slowed[0]);
+    assert!(took >= Duration::from_millis(1600), "10 frames in {took:?}");
 
     // Parameters it can't read are answered, and change nothing.
     socket

@@ -13,7 +13,7 @@ A mosaic that builds as frames arrive, from scans or from moving the stage by ha
 - **Free roaming** draws the live stream's frames when they aren't blurred by the stage's moving, and show a new place, or a place drawn but sharper.
 - **A scan's tiles** are each drawn as the engine takes them.
 - **The `live_mosaic` Thing** begins, halts and clears it. Its tiles are JPEGs at `/api/v1/mosaic/tiles/{level}/{col}/{row}`, and the tiles changed go with the previews of a client that asks.
-- **On the simulator,** frames drawn while the stage moved at 0.4 mm/s, its reports 40 ms late, lie 0.15 µm from the slide's truth: 0.07 of a canvas pixel.
+- **On the simulator,** frames drawn while the stage moved at 0.4 mm/s, its reports 40 ms late, lie 0.11 µm from the slide's truth: a thirtieth of the test canvas's 4 µm pixel.
 - **`ex-live-mosaic`** shows the live view beside the mosaic in OpenSeadragon, vendored.
 - **P37 is marked Done.**
 
@@ -51,7 +51,7 @@ The first run of the placement test drew none of 18 frames: each was judged blur
 
 - **Blur** is now the stage's move while one row is exposed: its velocity, from the track over the exposure so far, times the exposure.
 - **The shear** is taken into the frame's affine. Each row is placed where the stage was as it was exposed, which for a steady velocity is linear in the row.
-- **The test was then made to see it.** It compares a region in the frames' upper half, where rows are some 17 ms early. Without the shear in the affine, it is 7.06 µm off the truth; with it, 0.15 µm.
+- **The test was then made to see it.** It compares a region in the frames' upper half, where rows are some 17 ms early. On a canvas of 2 µm pixels, without the shear in the affine, it was 7.06 µm off the truth; with it, 0.15 µm.
 
 ### Sharpness at the same place
 
@@ -88,7 +88,7 @@ L's budget is 900; P38 measured 3,184, 52 % over its estimate of ~2,100.
 | Crate | Test | What it checks |
 |---|---|---|
 | `oscope-stitch` | `canvas` (6) | **A frame lands where its map puts it:** turned 30°, scaled 1.5 and moved by fractions, every pixel checked within 1 of a plane's value, and nothing outside. **The newest wins, or its edges are feathered:** blue over red, its edge a quarter blue, whether drawn at its own scale or at twice, and alone whole. **Each level halves the one below:** the sizes and levels, a side of 256 in one; the tiles changed; a pixel the weighted mean of four, and one half bare the colour of what covers it. **Memory stays within its budget** of six tiles, of over 40 drawn, and the tiles come back from disk as they were. **Viewers learn what changed;** a drawing off the canvas, or touching it with no pixel, is no generation; all after a clearing. **A flat map or a wrong image is refused** |
-| `oscope-acquire` | `mosaic` (2) | **Roaming's gates,** on a canvas finer than the frames: a new place drawn; the same place, 18 µm off, no sharper, 5 % sharper, and still, refused, then sharper by half, drawn; 5 µm of blur refused, 0.4 µm drawn; no position, no track, another binning or objective, off the canvas; a place drawn again after a clearing. **A scan's frames** drawn ungated, and from the queue with the scan's position: 8 taken of 12 at once, 4 dropped, and none once stopped. Gates and a matrix that can't be, refused. **Frames drawn as the stage moves,** 2.5 mm at 0.4 mm/s with its reports 40 ms late, registered against the simulator's own render of the slide, in the frames' upper half: 0.15 µm off |
+| `oscope-acquire` | `mosaic` (2) | **Roaming's gates,** on a canvas finer than the frames: a new place drawn; the same place, 18 µm off, no sharper, 5 % sharper, and still, refused, then sharper by half, drawn; 5 µm of blur refused, 0.4 µm drawn; no position, no track, another binning or objective, off the canvas; a place drawn again after a clearing. **A scan's frames** drawn ungated, and from the queue with the scan's position: 8 taken of 12 at once, 4 dropped, and none once stopped. Gates and a matrix that can't be, refused. **Frames drawn as the stage moves,** 2.5 mm at 0.4 mm/s with its reports 40 ms late, the path rendered once first, in pixels of 4 µm: registered, in the frames' upper half, against the simulator's own render of the slide at 1 µm averaged in fours, 0.11 µm off |
 | `oscope-api` | `live_mosaic` (2) | **Over HTTP:** a mosaic begun, drawn where the stage stops, its tile a JPEG, 404 where nothing is drawn or no level, an edge tile cut to 220 pixels; the changes on the preview stream, none for a client that doesn't ask, all at first, then the tiles a frame changed at every level; halted, drawing no more as frames go by; cleared, empty and all announced. **Each tile a scan takes,** through an ROI, drawn |
 | `oscope-workflows` | `scan_engine` (1 changed) | **The hook** is handed each tile's middle plane of a stack of three, where it was taken |
 | `oscope-api` | `devices` (1 changed) | The `live_mosaic` Thing's TD and the preview's (snapshots) |
