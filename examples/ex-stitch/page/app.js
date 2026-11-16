@@ -13,12 +13,13 @@ async function read(path) {
 
 async function show() {
   const page = await read("/api/v1/projects/list?text=ex-stitch");
-  const found = page.projects.find((s) => s.project.name === "ex-stitch" && s.results > 0);
+  // Each summary has its project's fields, and its counts.
+  const found = page.projects.find((s) => s.name === "ex-stitch" && s.results > 0);
   if (!found) {
     $("message").textContent = "No stitch yet: the example scans and stitches as it starts.";
     return;
   }
-  const project = found.project.id;
+  const project = found.id;
   const contents = await read(`/api/v1/projects/project/${project}`);
   const result = contents.results.at(-1);
   const data = `/api/v1/data/${project}/results/${result.id}`;
