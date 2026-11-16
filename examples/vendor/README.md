@@ -24,3 +24,26 @@ size.
   The package's navigation buttons' images are left out: the pages turn the
   buttons off. Its source map is left out too, so a browser's developer tools
   report it missing.
+
+## VTK.js 38.0.4
+
+- **What:** Kitware's library for 3D graphics on WebGL. `ex-volume` renders a
+  volume's bricks with it, as a maximum intensity projection or composited
+  (P41), and P43 draws a surface with it.
+- **Licence:** BSD-3-Clause, in [`vtk.js-38.0.4/LICENSE`](vtk.js-38.0.4/LICENSE),
+  with its notice of copyright in [`vtk.js-38.0.4/Copyright.txt`](vtk.js-38.0.4/Copyright.txt).
+- **Released:** 2026-10-28, more than two weeks before it was taken on 2026-11-15.
+- **From:** the npm package `vtk.js@38.0.4`, the UMD build that a page loads
+  with a script tag, `https://registry.npmjs.org/vtk.js/-/vtk.js-38.0.4.tgz`,
+  whose integrity matched the registry's:
+  `sha512-EkhQQGrCDRauqwL9OlG3SfBJWjpiTc8UqVnj1R9pJ/dDDMQgpa6aKjIow4obLvaUolgxdUHppEXffUiQIabUpg==`.
+- **Files,** from the package's root:
+
+  | File | SHA-256 |
+  |---|---|
+  | `vtk.js` | `614497a30f96d3bcc31b975567c686e0ac1ed974b0eba281eb8ef03830abccf9` |
+  | `LICENSE` | `975132688e5330fc9bef98cf3260af11d74f7ef2ffe8309b5d10bd73e212a5fc` |
+  | `Copyright.txt` | `a8efeb737fe2a8c7fd511d61a4303c9278a402266059e471d48b57a48d895b3e` |
+
+  Its source map, `vtk.js.map`, is left out, so a browser's developer tools
+  report it missing.

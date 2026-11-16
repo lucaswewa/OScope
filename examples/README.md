@@ -66,6 +66,7 @@ Each example is a small crate that shows one thing a phase built, through the cr
 | [`ex-stitch`](ex-stitch/README.md) | P39 | A scan of the simulated H&E slide by a stage without encoders, losing steps, stitched as a job: each tile registered with its neighbours and solved, against the simulator's truth; `--bench N` times N tiles of 20 MP; a page showing the mosaic |
 | [`ex-deep-zoom`](ex-deep-zoom/README.md) | P40 | A scan of the simulated H&E slide stitched and browsed in deep zoom: OpenSeadragon with levels and gamma, the raw mosaic in colour, each tile's server time; `--bench N` times tiles and full-screen views of N megapixels against §5.20 |
 | [`ex-checkpoint-d`](ex-checkpoint-d/README.md) | P40 | Checkpoint D: the simulated H&E slide histo-scanned while the live mosaic draws its tiles, stitched, then browsed in deep zoom |
+| [`ex-volume`](ex-volume/README.md) | P41 | A z-scan through the simulated fluorescent cells at 50× and a confocal, stored as a volume and served as slices and bricks, drawn by VTK.js as a maximum intensity projection or composited |
 
 `examples/common` is the examples' shared library, `ex-common`, not an example. `ext-rust-node` and `ext-rust-camera` are libraries too: the sample extensions that `ex-rust-ext` and `ex-ext-camera` load. `ext-python-node` is a Python extension, which the workspace leaves out.
 

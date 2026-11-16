@@ -216,6 +216,19 @@ fn the_metadata_is_ngff_0_5_s() {
             "{name}"
         );
     }
+    // A volume's too, its levels halving z and flagged so (ADR-0029).
+    let stack = folder.path().join("stack.ome.zarr");
+    let mut volume = ImageInfo::new(1_100, 600, 1, SampleType::U16);
+    (volume.planes, volume.volume, volume.pixel_size) = (5, true, info.pixel_size);
+    write(&stack, &volume);
+    let group: Value =
+        serde_json::from_slice(&std::fs::read(stack.join("zarr.json")).unwrap()).unwrap();
+    let datasets = &group["attributes"]["ome"]["multiscales"][0]["datasets"];
+    assert_eq!(datasets[2]["coordinateTransformations"][0]["scale"][1], 2.0);
+    for name in ["image.schema", "strict_image.schema"] {
+        let errors = ngff_errors(name, &group["attributes"]);
+        assert_eq!(errors, Vec::<String>::new(), "a volume: {name}");
+    }
     // The schemas do check: a version they don't know, or no axes, fails.
     let mut wrong = attributes.clone();
     wrong["ome"]["version"] = "0.4".into();

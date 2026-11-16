@@ -34,6 +34,7 @@ pub mod projects;
 pub mod scan;
 mod server;
 pub mod system;
+mod volume;
 mod zoom;
 
 pub use files::Formats;

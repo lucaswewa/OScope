@@ -205,6 +205,10 @@ pub struct ImageInfo {
     /// the writer.
     #[serde(default)]
     pub levels: u32,
+    /// Whether its planes are a volume's, a z-stack at one place: its
+    /// levels then halve z too, as its voxels near a cube (ADR-0029).
+    #[serde(default)]
+    pub volume: bool,
 }
 
 impl ImageInfo {
@@ -220,6 +224,7 @@ impl ImageInfo {
             pixel_size: None,
             channel_names: Vec::new(),
             levels: levels(width, height),
+            volume: false,
         }
     }
 
@@ -228,6 +233,35 @@ impl ImageInfo {
         (0..level).fold((self.width, self.height), |(w, h), _| {
             (w.div_ceil(2), h.div_ceil(2))
         })
+    }
+
+    /// How many times z is halved by level `level`: never but for a volume,
+    /// whose levels halve z too while its z step, so halved, is under the
+    /// level's pixel and two planes or more are left.
+    pub fn z_halvings(&self, level: u32) -> u32 {
+        if !self.volume {
+            return 0;
+        }
+        let size = self.pixel_size.unwrap_or(PixelSize {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        });
+        let (mut halvings, mut planes) = (0, self.planes);
+        for k in 1..=level {
+            let pixel = size.x.max(size.y) * f64::from(1_u32 << k);
+            if planes > 1 && size.z * f64::from(1_u32 << halvings) < pixel {
+                halvings += 1;
+                planes = planes.div_ceil(2);
+            }
+        }
+        halvings
+    }
+
+    /// Its planes at level `level`: plane `p` of level 0 is plane
+    /// `p >> z_halvings(level)` there.
+    pub fn level_planes(&self, level: u32) -> u32 {
+        (0..self.z_halvings(level)).fold(self.planes, |p, _| p.div_ceil(2))
     }
 }
 
@@ -255,12 +289,15 @@ fn attributes(info: &ImageInfo, name: &str) -> Map<String, Value> {
     let datasets: Vec<Value> = (0..info.levels)
         .map(|level| {
             let f = f64::from(1_u32 << level);
-            let mut transforms = vec![json!({"type": "scale", "scale": [1.0, size.z, size.y * f, size.x * f]})];
-            // A pixel of level k is the mean of 2^k × 2^k of level 0: its
-            // centre is (2^k − 1) / 2 of level 0's pixels further on.
+            let fz = f64::from(1_u32 << info.z_halvings(level));
+            let mut transforms = vec![json!({"type": "scale", "scale": [1.0, size.z * fz, size.y * f, size.x * f]})];
+            // A pixel of level k is the mean of 2^k × 2^k of level 0, and of
+            // 2^h planes where a volume's z is halved h times: its centre is
+            // (2^k − 1) / 2 of level 0's pixels further on, and (2^h − 1) / 2
+            // of its planes.
             if level > 0 {
-                let shift = |s: f64| s * (f - 1.0) / 2.0;
-                transforms.push(json!({"type": "translation", "translation": [0.0, 0.0, shift(size.y), shift(size.x)]}));
+                let shift = |s: f64, f: f64| s * (f - 1.0) / 2.0;
+                transforms.push(json!({"type": "translation", "translation": [0.0, shift(size.z, fz), shift(size.y, f), shift(size.x, f)]}));
             }
             json!({"path": level.to_string(), "coordinateTransformations": transforms})
         })
@@ -283,9 +320,13 @@ fn attributes(info: &ImageInfo, name: &str) -> Map<String, Value> {
         "datasets": datasets,
         "type": "mean",
         "metadata": {
-            "description": "each level the mean of 2 × 2 pixels of the one before",
+            "description": match info.volume {
+                true => "each level the mean of 2 × 2 pixels of the one before, and of 2 planes where it halves z",
+                false => "each level the mean of 2 × 2 pixels of the one before",
+            },
             "method": "oscope_store::ImageWriter",
             "version": env!("CARGO_PKG_VERSION"),
+            "volume": info.volume,
         },
     });
     let ome =
@@ -391,18 +432,27 @@ fn retrieve<T: Sample>(array: &Array<FilesystemStore>, region: Region) -> Result
 /// The mean of each 2 × 2 pixels of interleaved `samples`, `width` ×
 /// `height` × `channels`; at an odd edge, of the pixels there are.
 fn halve<T: Sample>(samples: &[T], width: usize, height: usize, channels: usize) -> Vec<T> {
+    halve_stack(&[samples], width, height, channels)
+}
+
+/// `planes`, each `width` × `height` of `channels` interleaved, halved as
+/// one: each pixel the mean of the two by two below it in every plane, or
+/// of those there are at the edges.
+fn halve_stack<T: Sample>(planes: &[&[T]], width: usize, height: usize, channels: usize) -> Vec<T> {
     let (w, h) = (width.div_ceil(2), height.div_ceil(2));
     let mut out = Vec::with_capacity(w * h * channels);
     for y in 0..h {
         for x in 0..w {
             let rows = (2 * y)..(2 * y + 2).min(height);
             let cols = (2 * x)..(2 * x + 2).min(width);
-            let count = (rows.len() * cols.len()) as f64;
+            let count = (rows.len() * cols.len() * planes.len()) as f64;
             for c in 0..channels {
                 let mut sum = 0.0;
-                for yy in rows.clone() {
-                    for xx in cols.clone() {
-                        sum += samples[(yy * width + xx) * channels + c].to_f64();
+                for samples in planes {
+                    for yy in rows.clone() {
+                        for xx in cols.clone() {
+                            sum += samples[(yy * width + xx) * channels + c].to_f64();
+                        }
                     }
                 }
                 out.push(T::from_mean(sum / count));
@@ -436,11 +486,16 @@ fn make_level<T: Sample>(
     let (sw, sh) = info.level_size(level - 1);
     let (tw, th) = info.level_size(level);
     let channels = u64::from(info.channels);
+    // The planes below this one: two where a volume's level halves z.
+    let below = match info.z_halvings(level) > info.z_halvings(level - 1) {
+        true => 2 * plane..(2 * plane + 2).min(u64::from(info.level_planes(level - 1))),
+        false => plane..plane + 1,
+    };
     let rows: Vec<u64> = (0..th).step_by(CHUNK as usize).collect();
     rows.into_par_iter().try_for_each(|y| {
         for x in (0..tw).step_by(CHUNK as usize) {
             let (width, height) = (CHUNK.min(tw - x), CHUNK.min(th - y));
-            let from = Region {
+            let from = |plane| Region {
                 plane,
                 x: 2 * x,
                 y: 2 * y,
@@ -448,13 +503,13 @@ fn make_level<T: Sample>(
                 height: (2 * height).min(sh - 2 * y),
                 channels,
             };
-            let samples: Vec<T> = retrieve(source, from)?;
-            let halved = halve(
-                &samples,
-                from.width as usize,
-                from.height as usize,
-                channels as usize,
-            );
+            let stack = below
+                .clone()
+                .map(|p| retrieve::<T>(source, from(p)))
+                .collect::<Result<Vec<_>>>()?;
+            let planes: Vec<&[T]> = stack.iter().map(Vec::as_slice).collect();
+            let (fw, fh) = (from(plane).width as usize, from(plane).height as usize);
+            let halved = halve_stack(&planes, fw, fh, channels as usize);
             let to = Region {
                 plane,
                 x,
@@ -508,6 +563,11 @@ impl ImageWriter {
         check(info)?;
         let mut info = info.clone();
         info.levels = levels(info.width, info.height);
+        // A raw image, a camera's Bayer mosaic, has its cells' means, level 1,
+        // however small: level 0 holds its pattern (ADR-0029).
+        if info.channel_names == ["raw"] {
+            info.levels = info.levels.max(2);
+        }
         if info.channel_names.is_empty() {
             info.channel_names = (0..info.channels).map(|c| format!("channel {c}")).collect();
         }
@@ -522,7 +582,8 @@ impl ImageWriter {
         let arrays = (0..info.levels)
             .map(|level| {
                 let (width, height) = info.level_size(level);
-                let shape = vec![channels, u64::from(info.planes), height, width];
+                let planes = u64::from(info.level_planes(level));
+                let shape = vec![channels, planes, height, width];
                 let chunk = vec![channels, 1, CHUNK, CHUNK];
                 let mut builder = match info.sample {
                     SampleType::U8 => {
@@ -636,7 +697,7 @@ impl ImageWriter {
         let (arrays, info) = (&self.arrays, &self.info);
         let made = self.made.load(std::sync::atomic::Ordering::Relaxed);
         for level in made + 1..info.levels {
-            (0..u64::from(info.planes))
+            (0..u64::from(info.level_planes(level)))
                 .into_par_iter()
                 .try_for_each(|plane| match info.sample {
                     SampleType::U8 => make_level::<u8>(arrays, info, level, plane),
@@ -713,6 +774,7 @@ impl ImageReader {
                 .filter_map(|c| c["label"].as_str().map(str::to_owned))
                 .collect(),
             levels: arrays.len() as u32,
+            volume: multiscale["metadata"]["volume"].as_bool() == Some(true),
         };
         Ok(Self { info, arrays })
     }
@@ -723,7 +785,8 @@ impl ImageReader {
     }
 
     /// The samples, interleaved, of the pixels of plane `plane` of level
-    /// `level` whose top-left is (`x`, `y`), `width` × `height` of them.
+    /// `level` whose top-left is (`x`, `y`), `width` × `height` of them:
+    /// within the level, whose planes a volume halves too.
     pub fn read(
         &self,
         level: u32,
@@ -734,6 +797,14 @@ impl ImageReader {
         let array = self.arrays.get(level as usize).ok_or_else(|| {
             StoreError::Refused(format!("level {level}: the image has {}", self.info.levels))
         })?;
+        let (w, h) = self.info.level_size(level);
+        let planes = self.info.level_planes(level);
+        if plane >= planes || x + width > w || y + height > h {
+            return Err(StoreError::Refused(format!(
+                "{width} × {height} pixels at ({x}, {y}) of plane {plane} of level {level}, \
+                 which is {w} × {h} × {planes}"
+            )));
+        }
         let region = Region {
             plane: u64::from(plane),
             x,

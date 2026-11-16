@@ -140,6 +140,11 @@ fn scan(store: &Store, project: ProjectId, id: AcquisitionId) -> Result<Scan, St
         .into_iter()
         .find(|a| a.id == id)
         .ok_or_else(|| refused(format!("project {project} has no acquisition {id}")))?;
+    if record.image.volume {
+        return Err(refused(format!(
+            "acquisition {id} is a volume, a stack at one place: there is nothing to stitch"
+        )));
+    }
     let plan: Plan = serde_json::from_value(record.plan.clone()).map_err(|e| {
         refused(format!(
             "acquisition {id} has no scan's plan to stitch by: {e}"
