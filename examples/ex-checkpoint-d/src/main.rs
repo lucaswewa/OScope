@@ -183,7 +183,15 @@ async fn walk(address: SocketAddr, smoke: bool, check: bool) -> anyhow::Result<(
     let tiles = contents["acquisitions"][0]["frames"]
         .as_array()
         .map_or(0, Vec::len) as u64;
-    let live = get(address, "/api/v1/live_mosaic/state").await?.json()?;
+    // The last tile may still be drawing as the scan ends: wait for it.
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let live = loop {
+        let live = get(address, "/api/v1/live_mosaic/state").await?.json()?;
+        if live["counts"]["scans"] == json!(tiles) || Instant::now() > deadline {
+            break live;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
     println!(
         "  the tissue scanned: {tiles} tiles, {} drawn on the live mosaic as they were taken",
         live["counts"]["scans"]

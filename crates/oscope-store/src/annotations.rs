@@ -218,6 +218,34 @@ impl Store {
         })
     }
 
+    /// Puts `features` in place of layer `layer` of `kind` record `id`, each
+    /// with a new ID, at once: as a job keeps thousands of outlines (P46).
+    /// How many.
+    pub fn replace_layer(
+        &self,
+        project: ProjectId,
+        kind: RecordKind,
+        id: &str,
+        layer: &str,
+        features: Vec<Feature>,
+    ) -> Result<usize> {
+        let layer = checked_layer(layer)?;
+        for feature in &features {
+            checked(&feature.geometry)?;
+        }
+        self.edit((project, kind, id), |annotations| {
+            let mut kept = Layer::default();
+            for mut feature in features {
+                annotations.last_id += 1;
+                feature.id = Some(annotations.last_id.to_string());
+                kept.features.push(feature);
+            }
+            let count = kept.features.len();
+            annotations.layers.insert(layer, kept);
+            Ok(count)
+        })
+    }
+
     /// Removes feature `feature` from layer `layer` of `kind` record `id`,
     /// or with none, the whole layer.
     pub fn remove_annotation(

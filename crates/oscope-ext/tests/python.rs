@@ -638,3 +638,47 @@ async fn two_frames(camera: &dyn Camera) -> [Vec<u8>; 2] {
     camera.stop().await.unwrap();
     both
 }
+
+#[test]
+fn the_cells_stub_segments_by_its_stand_in() {
+    if !enabled() {
+        return;
+    }
+    // P46's stub, packed and installed: without cellpose or StarDist, a
+    // mask of the pixels above the image's mean.
+    let folder = tempfile::tempdir().unwrap();
+    let sample = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/ext-python-cells");
+    let package = folder.path().join("cells-stub.omext");
+    oscope_ext::pack(&sample, &package).unwrap();
+    let root = folder.path().join("extensions");
+    let python = PythonRuntime::default();
+    Extensions::open_with(&root, Some(python.clone()))
+        .unwrap()
+        .install(&package)
+        .unwrap();
+    let extensions = Extensions::open_with(&root, Some(python)).unwrap();
+    let engine = engine(&extensions);
+    let picture = ramp();
+    let labels = image(
+        &run(&engine, "example.cells_segment", json!({}), picture.clone()).unwrap(),
+        "image",
+    );
+    assert_eq!(labels.shape(), Shape::new(40, 30, 1));
+    let grey: Vec<f32> = picture
+        .data()
+        .chunks(3)
+        .map(|p| p.iter().sum::<f32>() / 3.0)
+        .collect();
+    let mean = grey.iter().sum::<f32>() / grey.len() as f32;
+    let want: Vec<f32> = grey
+        .iter()
+        .map(|&v| f32::from(u8::from(v > mean)))
+        .collect();
+    let wrong = labels
+        .data()
+        .iter()
+        .zip(&want)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(wrong <= 2, "{wrong} pixels unlike the stand-in's");
+}

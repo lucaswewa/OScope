@@ -9,7 +9,8 @@
 //! finds a z-stack's heights and all-in-focus image,
 //! `volume.depth_from_focus` (P42); and the one that deconvolves a volume,
 //! `volume.deconvolve` (P43); and the one that separates an image's
-//! stains, `stain.separate` (P45). Acquisitions and results carry annotations in
+//! stains, `stain.separate` (P45); and the one that counts its cells,
+//! `cells.count` (P46). Acquisitions and results carry annotations in
 //! µm, in layers, kept and removed here, and measured: lengths, areas and
 //! their pixels' statistics, as JSON or CSV (P44).
 
@@ -23,6 +24,7 @@ use oscope_store::{
     Annotations, CHUNK, Change, Contents, Feature, Measurement, NewProject, Page, Project,
     Query as Search, RecordKind, Scratch, Store, StoreError, measure, measurements_csv,
 };
+use oscope_workflows::cells::{COUNT, count_jobs};
 use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
 use oscope_workflows::depth::{DEPTH, depth_jobs};
 use oscope_workflows::stain::{SEPARATE, stain_jobs};
@@ -183,6 +185,7 @@ impl ProjectsThing {
             jobs.register(DEPTH, depth_jobs(Arc::clone(&store)));
             jobs.register(DECONVOLVE, deconvolve_jobs(Arc::clone(&store)));
             jobs.register(SEPARATE, stain_jobs(Arc::clone(&store)));
+            jobs.register(COUNT, count_jobs(Arc::clone(&store)));
             // Recordings from the scratch space, ingested as jobs (ADR-0022).
             if let Some(scratch) = ctx.server().service::<Scratch>() {
                 jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));

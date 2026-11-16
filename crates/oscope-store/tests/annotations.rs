@@ -207,6 +207,50 @@ fn annotations_kept_at_once_are_all_kept() {
 }
 
 #[test]
+fn a_layer_is_replaced_at_once() {
+    let m = made(&u16_image(64, 48, 1), counts, Value::Null);
+    let (store, project, id) = (&m.store, m.project, m.id.as_str());
+    let point = |x: f64| feature(Geometry::Point(vec![x, 1.0]), "");
+    store
+        .annotate(project, ACQ, id, "cells", point(0.0))
+        .unwrap();
+    store
+        .annotate(project, ACQ, id, "notes", point(9.0))
+        .unwrap();
+    let kept = store.replace_layer(
+        project,
+        ACQ,
+        id,
+        "cells",
+        (1..=3).map(|x| point(f64::from(x))).collect(),
+    );
+    assert_eq!(kept.unwrap(), 3);
+    let annotations = store.annotations(project, ACQ, id).unwrap();
+    let ids: Vec<&str> = annotations.layers["cells"]
+        .features
+        .iter()
+        .map(|f| f.id.as_deref().unwrap())
+        .collect();
+    assert_eq!(ids, ["3", "4", "5"]);
+    assert_eq!(annotations.layers["notes"].features.len(), 1);
+    // A shape that isn't refuses them all.
+    let wrong = vec![
+        point(1.0),
+        feature(Geometry::Point(vec![f64::NAN, 0.0]), ""),
+    ];
+    assert!(matches!(
+        store.replace_layer(project, ACQ, id, "cells", wrong),
+        Err(StoreError::Refused(_))
+    ));
+    assert_eq!(
+        store.annotations(project, ACQ, id).unwrap().layers["cells"]
+            .features
+            .len(),
+        3
+    );
+}
+
+#[test]
 fn shapes_and_names_that_aren_t_annotations_are_refused() {
     let m = made(&u16_image(64, 48, 1), counts, Value::Null);
     let (store, project, id) = (&m.store, m.project, m.id.as_str());

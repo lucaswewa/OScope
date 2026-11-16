@@ -141,95 +141,13 @@ pub(super) fn operations() -> Vec<Arc<dyn Node>> {
         .collect()
 }
 
-/// The 1-D squared distance transform of `f` (Felzenszwalb and
-/// Huttenlocher, 2012): `d(p) = min over q of (p − q)² + f(q)`, by the lower
-/// envelope of the parabolas rooted at each `q`.
-fn squared_1d(f: &[f64], d: &mut [f64], roots: &mut Vec<usize>, bounds: &mut Vec<f64>) {
-    let n = f.len();
-    roots.clear();
-    bounds.clear();
-    let first = (0..n).find(|&q| f[q].is_finite());
-    let Some(first) = first else {
-        d.fill(f64::INFINITY);
-        return;
-    };
-    roots.push(first);
-    bounds.push(f64::NEG_INFINITY);
-    for q in first + 1..n {
-        if !f[q].is_finite() {
-            continue;
-        }
-        loop {
-            let v = roots[roots.len() - 1];
-            let s =
-                ((f[q] + (q * q) as f64) - (f[v] + (v * v) as f64)) / (2.0 * (q as f64 - v as f64));
-            if s <= bounds[bounds.len() - 1] {
-                roots.pop();
-                bounds.pop();
-                if roots.is_empty() {
-                    roots.push(q);
-                    bounds.push(f64::NEG_INFINITY);
-                    break;
-                }
-            } else {
-                roots.push(q);
-                bounds.push(s);
-                break;
-            }
-        }
-    }
-    let mut k = 0;
-    for (p, out) in d.iter_mut().enumerate() {
-        while k + 1 < roots.len() && bounds[k + 1] < p as f64 {
-            k += 1;
-        }
-        let q = roots[k];
-        *out = (p as f64 - q as f64).powi(2) + f[q];
-    }
-}
-
 /// The Euclidean distance from each set pixel to the nearest pixel not set,
-/// in pixels, exactly: down columns, then along rows. Pixels not set are 0;
-/// with none, every distance is the image's diagonal.
+/// in pixels, exactly (Felzenszwalb and Huttenlocher, 2012; P46 moved it
+/// into `oscope-imaging`).
 pub(crate) fn distances(mask: &Mask) -> Image {
-    let (width, height) = (mask.width() as usize, mask.height() as usize);
-    let mut squared: Vec<f64> = mask
-        .data()
-        .iter()
-        .map(|&bit| if bit == 0 { 0.0 } else { f64::INFINITY })
-        .collect();
-    // Down each column.
-    let columns: Vec<Vec<f64>> = (0..width)
-        .into_par_iter()
-        .map(|x| {
-            let f: Vec<f64> = (0..height).map(|y| squared[y * width + x]).collect();
-            let mut d = vec![0.0; height];
-            squared_1d(&f, &mut d, &mut Vec::new(), &mut Vec::new());
-            d
-        })
-        .collect();
-    for (x, column) in columns.iter().enumerate() {
-        for (y, &v) in column.iter().enumerate() {
-            squared[y * width + x] = v;
-        }
-    }
-    // Along each row.
-    let diagonal = ((width * width + height * height) as f64).sqrt();
-    let mut out = Image::zeros(Shape::new(mask.width(), mask.height(), 1));
-    if width == 0 {
-        return out;
-    }
-    out.data_mut()
-        .par_chunks_mut(width)
-        .zip(squared.par_chunks(width))
-        .for_each(|(row, f)| {
-            let mut d = vec![0.0; width];
-            squared_1d(f, &mut d, &mut Vec::new(), &mut Vec::new());
-            for (out, d) in row.iter_mut().zip(d) {
-                *out = if d.is_finite() { d.sqrt() } else { diagonal } as f32;
-            }
-        });
-    out
+    let shape = Shape::new(mask.width(), mask.height(), 1);
+    let d = oscope_imaging::cells::distances(mask.data(), mask.width() as usize);
+    Image::from_vec(shape, d).expect("a distance for each pixel")
 }
 
 /// `morphology.distance`: each set pixel's Euclidean distance to the
@@ -271,67 +189,11 @@ struct Connectivity {
     connectivity: u8,
 }
 
-/// The root of `i` among `parents`, halving the path as it goes.
-fn root(parents: &mut [u32], mut i: u32) -> u32 {
-    while parents[i as usize] != i {
-        parents[i as usize] = parents[parents[i as usize] as usize];
-        i = parents[i as usize];
-    }
-    i
-}
-
 /// Each set pixel's component, from 1 in the order the components first
-/// appear row by row, and 0 elsewhere: two passes with union-find
-/// (Rosenfeld and Pfaltz, 1966).
+/// appear row by row, and 0 elsewhere (Rosenfeld and Pfaltz, 1966; P46
+/// moved it into `oscope-imaging`).
 pub(crate) fn components(mask: &Mask, eight: bool) -> (Vec<u32>, u32) {
-    let (width, height) = (mask.width() as usize, mask.height() as usize);
-    let mut labels = vec![0_u32; width * height];
-    let mut parents = vec![0_u32];
-    let before: &[(i64, i64)] = match eight {
-        true => &[(-1, 0), (-1, -1), (0, -1), (1, -1)],
-        false => &[(-1, 0), (0, -1)],
-    };
-    for y in 0..height {
-        for x in 0..width {
-            if mask.data()[y * width + x] == 0 {
-                continue;
-            }
-            let mut found = 0;
-            for &(dx, dy) in before {
-                let (xx, yy) = (x as i64 + dx, y as i64 + dy);
-                if xx < 0 || yy < 0 || xx >= width as i64 {
-                    continue;
-                }
-                let theirs = labels[yy as usize * width + xx as usize];
-                if theirs == 0 {
-                    continue;
-                }
-                if found == 0 {
-                    found = theirs;
-                } else {
-                    let (a, b) = (root(&mut parents, found), root(&mut parents, theirs));
-                    parents[a.max(b) as usize] = a.min(b);
-                }
-            }
-            if found == 0 {
-                found = parents.len() as u32;
-                parents.push(found);
-            }
-            labels[y * width + x] = found;
-        }
-    }
-    // Number the roots in the order they first appear.
-    let mut numbers = vec![0_u32; parents.len()];
-    let mut count = 0;
-    for label in labels.iter_mut().filter(|label| **label != 0) {
-        let top = root(&mut parents, *label) as usize;
-        if numbers[top] == 0 {
-            count += 1;
-            numbers[top] = count;
-        }
-        *label = numbers[top];
-    }
-    (labels, count)
+    oscope_imaging::cells::components(mask.data(), mask.width() as usize, eight)
 }
 
 /// `morphology.label`: the mask's connected components, as an image of

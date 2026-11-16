@@ -1,6 +1,6 @@
 # P45: Stain analysis
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p45-stain` / [#61](https://github.com/lucaswewa/OScope/pull/61)
 - Size: M · estimated ~2,500 before it started (in `oscope-imaging`, optical density, stain vectors and colour deconvolution, Macenko's estimate with a 3 × 3 eigensolver, and the DAB bins, ~350; in `oscope-sim`, the H-DAB section and the stains' amounts as truth, ~120; the pipeline's four nodes ~220; in `oscope-workflows`, the job over a stored slide, tile by tile, ~320; tests ~850; `ex-stain` and its page ~600; glue ~40); one pull request, at the owner's standing choice · measured **2,410** hand-written lines added (code 1,120: `oscope-workflows` 426, `oscope-imaging` 378, `oscope-pipeline` 226, `oscope-sim` 86, `oscope-api` 4; tests 892; examples 373; glue 25), and 20 removed. **That is 1,810 over M's 600, and 4 % under the estimate.**
 
