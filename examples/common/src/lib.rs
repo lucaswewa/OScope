@@ -17,6 +17,7 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use oscope_api::logs::{self, LogConfig, LogStore};
@@ -264,6 +265,66 @@ pub async fn post(address: SocketAddr, path: &str, body: &Value) -> anyhow::Resu
 /// `PUT path` with a JSON body, as [`get`].
 pub async fn put(address: SocketAddr, path: &str, body: &Value) -> anyhow::Result<Answer> {
     request(address, "PUT", path, Some(body)).await
+}
+
+/// Invokes the action `/api/v1/{action}` with `input`, and waits for its
+/// output: an error if it fails, or doesn't end within ten minutes.
+pub async fn invoke(address: SocketAddr, action: &str, input: Value) -> anyhow::Result<Value> {
+    let started = post(address, &format!("/api/v1/{action}"), &input).await?;
+    anyhow::ensure!(
+        started.status == 201,
+        "{action}: {} {}",
+        started.status,
+        started.body
+    );
+    let href = started.json()?["href"]
+        .as_str()
+        .context("an href")?
+        .to_owned();
+    let deadline = Instant::now() + Duration::from_secs(600);
+    loop {
+        let invocation = get(address, &href).await?.json()?;
+        match invocation["status"].as_str() {
+            Some("completed") => return Ok(invocation["output"].clone()),
+            Some("pending" | "running") => {}
+            _ => anyhow::bail!("{action}: {invocation}"),
+        }
+        anyhow::ensure!(Instant::now() < deadline, "{action} didn't end");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+}
+
+/// Runs the job that `action` submits, as [`invoke`], and waits for it to
+/// complete: the job as it ended, or an error if it failed, was cancelled,
+/// or took over an hour.
+pub async fn job(address: SocketAddr, action: &str, input: Value) -> anyhow::Result<Value> {
+    let submitted = invoke(address, action, input).await?;
+    let href = submitted["href"].as_str().context("a job's href")?;
+    let deadline = Instant::now() + Duration::from_secs(3_600);
+    loop {
+        let job = get(address, href).await?.json()?;
+        match job["state"].as_str() {
+            Some("completed") => return Ok(job),
+            Some("failed" | "cancelled") => anyhow::bail!("{action}: {job}"),
+            _ => {}
+        }
+        anyhow::ensure!(Instant::now() < deadline, "{action} didn't end");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+/// The ID of the first record a job made: the last part of its first
+/// result that is a record's path, as others say what it did.
+pub fn made(job: &Value) -> anyhow::Result<String> {
+    job["results"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .find(|r| r.starts_with("projects/"))
+        .and_then(|r| r.rsplit('/').next())
+        .map(str::to_owned)
+        .context("a record the job made")
 }
 
 /// `POST path` with `body`, of the media type `content_type`, as [`get`].

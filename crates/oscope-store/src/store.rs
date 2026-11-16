@@ -261,7 +261,7 @@ impl Store {
     }
 
     /// Waits for the store's lock, and holds it until the file is dropped.
-    fn lock(&self) -> Result<fs::File> {
+    pub(crate) fn lock(&self) -> Result<fs::File> {
         fs::create_dir_all(&self.root).map_err(io(&self.root))?;
         let path = self.root.join(LOCK);
         let file = fs::OpenOptions::new()

@@ -54,17 +54,22 @@ fn camera(meta: &FrameMeta) -> Value {
     })
 }
 
-/// A z-scan's voxel, from its `plan` (ADR-0025) and its frames' `width`: the
-/// frame's top edge, its corners' distance on the stage, over its pixels,
-/// and the stack's step. None for any other plan.
+/// A scan's pixel size, from its `plan` (ADR-0025) and its frames' `width`:
+/// the frame's top edge, its corners' distance on the stage, over its
+/// pixels; and for a z-scan, a volume's voxel, the stack's step between
+/// planes. None for a plan without a field.
 fn voxel(plan: &Value, width: u32) -> Option<PixelSize> {
-    if plan["pattern"] != "z_scan" || width == 0 {
+    if width == 0 {
         return None;
     }
     let corner = |k: usize, axis: &str| plan["field"]["corners_um"][k][axis].as_f64();
     let across = (corner(1, "x")? - corner(0, "x")?).hypot(corner(1, "y")? - corner(0, "y")?);
     let pixel = across / f64::from(width);
-    let step = plan["stack"]["step_um"].as_f64()?;
+    // A z-scan's planes are a step apart; others' are frames elsewhere.
+    let step = match plan["pattern"] == "z_scan" {
+        true => plan["stack"]["step_um"].as_f64()?,
+        false => 1.0,
+    };
     (pixel > 0.0 && step > 0.0).then_some(PixelSize {
         x: pixel,
         y: pixel,
@@ -121,9 +126,11 @@ pub fn ingest(
     );
     info.planes = frames.len() as u32;
     info.channel_names = channel_names;
-    // A z-scan's planes, at one place, are a volume (ADR-0029).
-    if let Some(voxel) = voxel(&recording.source["plan"], first.meta.width) {
-        info.volume = true;
+    // Any scan's pixels have their size (P44); a z-scan's planes, at one
+    // place, are a volume (ADR-0029).
+    let plan = &recording.source["plan"];
+    if let Some(voxel) = voxel(plan, first.meta.width) {
+        info.volume = plan["pattern"] == "z_scan";
         info.pixel_size = Some(voxel);
     }
     let name = name.unwrap_or(&recording.name);

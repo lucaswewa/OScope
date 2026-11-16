@@ -1,6 +1,6 @@
 # P43: Deconvolution and volume rendering
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p43-deconvolution` / [#58](https://github.com/lucaswewa/OScope/pull/58)
 - Size: L · estimated ~3,000 before it started (in `oscope-volume`, the Born–Wolf widefield PSF with its Bessel function and integral ~150, Richardson–Lucy on rustfft's 3D FFTs with mirrored padding, total-variation regularisation and its iterations ~280; in `oscope-compute`, its CUDA twin on cuFFT with its kernels ~230; the pipeline's nodes ~150; in `oscope-workflows`, the deconvolution job, from a volume acquisition to a result volume, ~200; tests ~750; `ex-deconvolve` and its VTK.js page with MIP, composite, isosurface and a before-and-after toggle ~500; `ex-checkpoint-e` ~200; glue ~60; and about a tenth on top); one pull request, at the owner's standing choice · measured **2,733** hand-written lines added (code 1,081: `oscope-volume` 566, `oscope-workflows` 235, `oscope-compute` 183, `oscope-pipeline` 93, `oscope-api` 4; tests 823; examples 760; glue 69), and 12 removed. **That is 1,833 over L's 900, and 9 % under the estimate.** VTK.js, vendored in P41, isn't counted.
 
