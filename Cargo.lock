@@ -1257,6 +1257,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-volume"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-wizard"
 version = "0.1.0"
 dependencies = [
