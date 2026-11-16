@@ -85,7 +85,7 @@ pub(crate) fn make(reader: &ImageReader, out: &Path) -> Result<()> {
 /// How samples of `sample` show: 8 bits as they are; others stretched from
 /// `unit`'s 0.5th to its 99.5th percentile, through sRGB's curve, as
 /// linear data from a camera wants.
-fn display(sample: SampleType, unit: &[f32]) -> Display {
+pub(crate) fn display(sample: SampleType, unit: &[f32]) -> Display {
     match sample {
         SampleType::U8 => Display {
             black: 0.0,

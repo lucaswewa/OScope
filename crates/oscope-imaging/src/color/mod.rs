@@ -29,7 +29,9 @@ pub use jpeg::encode_jpeg;
 pub use read::read_image;
 pub use region::{crop, demosaic_region};
 pub use target::{ColourTarget, Patch, apply3, delta_e76, fit_colour_matrix, lab};
-pub use tone::{ColourCorrection, Curve, Display, correct, subtract_black, to_display};
+pub use tone::{
+    ColourCorrection, Curve, Display, DisplayTable, correct, subtract_black, to_display,
+};
 
 use oscope_compute::{Compute, ComputeError, Image, Lane, Shape};
 use oscope_core::{FrameView, PixelFormat, PixelRect};

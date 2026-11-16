@@ -649,7 +649,7 @@ pub fn import(
 }
 
 /// A record's folder, and its image's store, if it has one.
-fn record_image(
+pub(crate) fn record_image(
     store: &Store,
     project: ProjectId,
     kind: RecordKind,

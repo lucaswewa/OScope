@@ -32,7 +32,7 @@ use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
 use crate::system::{System, VERSION};
-use crate::{data, media, mosaic, pages};
+use crate::{data, media, mosaic, pages, zoom};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
 /// The OpenAPI document is at the root, `/openapi.json`, with its docs pages
@@ -92,6 +92,18 @@ pub struct ApiBuilder {
     restart: Arc<Restart>,
     store: Option<Arc<oscope_store::Store>>,
     mosaics: Option<Arc<Mosaics>>,
+    roots: Roots,
+    jobs: Option<Jobs>,
+}
+
+/// The job service, kept for deep zoom; `Debug` names it only.
+#[derive(Clone)]
+struct Jobs(JobService);
+
+impl std::fmt::Debug for Jobs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("JobService")
+    }
 }
 
 /// A request to restart the server, which the `system` Thing's `restart`
@@ -214,6 +226,7 @@ impl ApiBuilder {
     /// lock also stops the device Things' manual moves while a hardware job
     /// runs.
     pub fn jobs(mut self, jobs: JobService) -> Self {
+        self.jobs = Some(Jobs(jobs.clone()));
         self.things = self
             .things
             .service(Arc::new(jobs))
@@ -258,6 +271,10 @@ impl ApiBuilder {
             .merge(media::router(self.logs.clone()));
         if let Some(store) = &self.store {
             routes = routes.merge(data::router(Arc::clone(store)));
+            let cache = self.roots.scratch.join("zoom");
+            let zoom =
+                zoom::Zoom::start(Arc::clone(store), cache, self.jobs.as_ref().map(|j| &j.0));
+            routes = routes.merge(zoom::router(zoom));
         }
         if let Some(mosaics) = &self.mosaics {
             routes = routes.merge(mosaic::router(Arc::clone(mosaics)));
@@ -302,6 +319,8 @@ impl Api {
             restart,
             store: None,
             mosaics: None,
+            roots: roots.clone(),
+            jobs: None,
         }
     }
 

@@ -167,11 +167,17 @@ async fn a_scan_is_planned_previewed_and_run_into_a_project() {
     // 16 bits, which the simulated camera keeps, its exposure shorter.
     let seconds = estimate["seconds"].as_f64().unwrap();
     assert!(seconds > 9.0 * (0.05 + 1.0 / 7.24), "{seconds}");
-    // At the stage's z now, as no z was asked.
+    // At the stage's z now, as no z was asked: as the stage settles after a
+    // move, its overshoot of 0.3 µm dying away, within that of z read now.
     let here = client.get("/api/v1/stage/position").await.json()["position"]["z"]
         .as_f64()
         .unwrap();
-    assert!(tiles.iter().all(|t| t["z_um"].as_f64() == Some(here)));
+    let zs: Vec<f64> = tiles.iter().filter_map(|t| t["z_um"].as_f64()).collect();
+    assert_eq!(zs.len(), tiles.len());
+    assert!(
+        zs.iter().all(|z| (z - here).abs() < 0.5),
+        "{zs:?}, the stage at {here}"
+    );
 
     // Run: one acquisition of the nine frames, each where it was taken.
     let input = json!({"request": request, "project": project, "name": "nine tiles"});

@@ -152,6 +152,23 @@ impl Samples {
             Self::F32(v) => v.clone(),
         }
     }
+
+    /// Samples of `sample` from `values` from 0 to 1, as [`to_unit`]
+    /// takes them back: 8 and 16-bit ones rounded and clamped.
+    ///
+    /// [`to_unit`]: Self::to_unit
+    pub fn from_unit(sample: SampleType, values: &[f32]) -> Samples {
+        let scaled = |most: f32| {
+            values
+                .iter()
+                .map(move |v| (v * most).round().clamp(0.0, most))
+        };
+        match sample {
+            SampleType::U8 => Samples::U8(scaled(255.0).map(|v| v as u8).collect()),
+            SampleType::U16 => Samples::U16(scaled(65_535.0).map(|v| v as u16).collect()),
+            SampleType::F32 => Samples::F32(values.to_vec()),
+        }
+    }
 }
 
 /// The physical size of a pixel, and the step between planes, in µm.

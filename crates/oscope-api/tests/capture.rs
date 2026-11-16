@@ -159,7 +159,7 @@ async fn captures_exports_downloads_and_imports() {
             .collect()
     };
     assert_eq!(ids("importers"), ["tiff", "png", "jpeg"]);
-    assert_eq!(ids("exporters"), ["ome-tiff", "tiff16", "png"]);
+    assert_eq!(ids("exporters"), ["ome-tiff", "tiff16", "png", "dzi"]);
 
     // The capture exported as OME-TIFF, downloaded whole and by ranges.
     let record = first["id"].as_str().unwrap();

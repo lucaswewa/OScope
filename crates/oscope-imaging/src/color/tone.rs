@@ -142,10 +142,28 @@ pub(crate) fn display_table(display: &Display) -> Result<Vec<u8>, ColorError> {
 /// table of 65,536 entries. Each entry stretches `black`–`white` to 0–1,
 /// clamps it, applies the curve, and rounds to 0–255.
 pub fn to_display(image: &Image, display: &Display) -> Result<Vec<u8>, ColorError> {
-    let table = display_table(display)?;
-    Ok(image
-        .data()
-        .par_iter()
-        .map(|v| table[(v.clamp(0.0, 1.0) * 65_535.0).round() as usize])
-        .collect())
+    Ok(DisplayTable::new(display)?.apply(image))
+}
+
+/// A display transform's table, made once for many images, as
+/// [`to_display`] makes it for one: building it takes 65,536 steps of the
+/// curve, more than a small image's samples.
+#[derive(Clone, Debug)]
+pub struct DisplayTable(std::sync::Arc<[u8]>);
+
+impl DisplayTable {
+    /// `display`'s table.
+    pub fn new(display: &Display) -> Result<Self, ColorError> {
+        Ok(DisplayTable(display_table(display)?.into()))
+    }
+
+    /// `image`'s samples for an 8-bit display, as [`to_display`] gives
+    /// them.
+    pub fn apply(&self, image: &Image) -> Vec<u8> {
+        image
+            .data()
+            .par_iter()
+            .map(|v| self.0[(v.clamp(0.0, 1.0) * 65_535.0).round() as usize])
+            .collect()
+    }
 }

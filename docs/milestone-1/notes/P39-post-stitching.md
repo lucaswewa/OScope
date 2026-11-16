@@ -1,6 +1,6 @@
 # P39: Post-acquisition stitching
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p39-post-stitching` / [#53](https://github.com/lucaswewa/OScope/pull/53)
 - Size: L · estimated ~2,500 before it started (the overlap graph and the pairs' parts ~120; their registration in batch, binned where long, ~120; the global solve by conjugate gradients with reweighting and rejection ~200; the flat field ~100; the blend and the out-of-core writer ~220; the stitch job, from the acquisition to the result, ~220; the simulator's encoders and lost steps as settings ~25; the job's wiring ~20; tests ~600; `ex-stitch`, its page and its throughput bench ~450; glue ~40; and about a tenth on top); one pull request, at the owner's standing choice · measured **2,880** hand-written lines added (code 1,546: `oscope-workflows` 834, `oscope-stitch` 620, `oscope-store` 64, `oscope-sim` 24, `oscope-api` 4; tests 789; examples 505; glue 40), and 18 removed. **That is 1,980 over L's 900, and 15 % over the estimate.**
 

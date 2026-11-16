@@ -28,6 +28,7 @@ oscope-stitch.workspace = true
 oscope-shm.workspace = true
 oscope-sim.workspace = true
 oscope-workflows.workspace = true
+rayon.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

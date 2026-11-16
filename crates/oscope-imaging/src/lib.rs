@@ -7,3 +7,4 @@
 
 pub mod color;
 pub mod registration;
+pub mod zoom;

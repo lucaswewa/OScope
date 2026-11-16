@@ -33,6 +33,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0025](0025-scan-planning-and-the-scan-engine.md) | Scan planning and the scan engine | Accepted; extended by 0026 | P36 |
 | [0026](0026-live-stitching.md) | Live stitching | Accepted | P38 |
 | [0027](0027-post-acquisition-stitching.md) | Post-acquisition stitching | Accepted | P39 |
+| [0028](0028-deep-zoom-serving.md) | Deep-zoom serving | Accepted | P40 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |
