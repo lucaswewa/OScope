@@ -46,6 +46,10 @@ fn nuclei() -> Vec<(f64, f64, f64)> {
 /// The picture: nuclei of hematoxylin 0.8 and radius 6 pixels, DAB at the
 /// third value's level, on a faint ground that is still tissue.
 fn picture(x: u64, y: u64) -> [f32; 3] {
+    // Glass in the bottom-right corner, clear of the nuclei.
+    if x >= 640 && y >= 540 {
+        return WHITE;
+    }
     let (x, y) = (x as f64 + 0.5, y as f64 + 0.5);
     let on = nuclei()
         .into_iter()
@@ -87,7 +91,8 @@ fn made(grey: bool) -> Made {
     let values: Vec<f32> = (0..h)
         .flat_map(|y| (0..w).map(move |x| picture(x, y)))
         .flat_map(|p| match grey {
-            true => vec![1.0 - p[1]],
+            // In grey, the glass is white: no density, but counted on.
+            true => vec![if p == WHITE { 1.0 } else { 1.0 - p[1] }],
             false => p.to_vec(),
         })
         .collect();
@@ -198,20 +203,20 @@ fn nuclei_are_counted_once_each_whatever_the_tiles() {
         serde_json::from_str(&std::fs::read_to_string(folder.join("summary.json")).unwrap())
             .unwrap();
     assert_eq!(summary["count"], json!(truth.len()));
-    let area = 0.35 * 0.3;
+    let area = (700.0 * 600.0 - 60.0 * 60.0) * 0.25e-6;
     assert!(
         (summary["tissue_mm2"].as_f64().unwrap() - area).abs() < 0.01 * area,
         "{summary}"
     );
     assert_eq!(counted.result.provenance.inputs, vec![m.input]);
-    // The white found, the ground's light, its brightest: the same nuclei.
+    // The white found, the glass's, its brightest: the same nuclei.
     let found = CountOptions {
         min_area: 5.0,
         ..CountOptions::default()
     };
     let again = count(&m.store, m.project, m.input, &found, &|_, _| true).unwrap();
-    let ground = Samples::from_unit(SampleType::U16, &picture(0, 0)).to_unit();
-    assert_eq!(again.summary.white.to_vec(), ground);
+    let glass = Samples::from_unit(SampleType::U16, &WHITE).to_unit();
+    assert_eq!(again.summary.white.to_vec(), glass);
     assert_eq!(again.summary.count, truth.len() as u64);
     let told = told.into_inner().unwrap();
     assert!(

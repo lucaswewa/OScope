@@ -81,6 +81,24 @@ fn thresholds_find_their_objects() {
         (10.0..30.0).contains(&x) && y > 10.0 && !((14.0..26.0).contains(&x) && y > 14.0)
     });
     assert_eq!(fill_holes(&cup, 40), cup);
+    // A square's border without its corner: the inside meets the outside at
+    // a corner only, so it is still a hole.
+    let border = mask(40, 40, |x, y| {
+        let on = (5.0..15.0).contains(&x) && (5.0..15.0).contains(&y);
+        let inside = (6.0..14.0).contains(&x) && (6.0..14.0).contains(&y);
+        on && !inside && !(x < 6.0 && y < 6.0)
+    });
+    let filled = fill_holes(&border, 40);
+    assert_eq!(filled[10 * 40 + 10], 1);
+    // A line up and to the right: one component by corners, three by sides.
+    let rising = mask(10, 10, |x, y| (x + y - 10.0).abs() < 0.5);
+    assert_eq!(
+        (
+            components(&rising, 10, true).1,
+            components(&rising, 10, false).1
+        ),
+        (1, 10)
+    );
 }
 
 #[test]
@@ -131,6 +149,10 @@ fn the_watershed_splits_what_touches_and_keeps_what_doesn_t() {
     let small = areas.iter().map(|o| o.area).fold(f64::INFINITY, f64::min);
     let own = std::f64::consts::PI * 49.0;
     assert!(count == 2 && small < own, "{count}: {small} of {own}");
+    // At their waist, where their circles cross, x = 36.5: not half-way.
+    let row: Vec<u32> = (0..w).map(|x| labels[25 * w + x]).collect();
+    let split = (1..w).find(|&x| row[x] != row[x - 1] && row[x - 1] != 0 && row[x] != 0);
+    assert!(split.is_some_and(|x| (35..=38).contains(&x)), "{split:?}");
     // One disc, and a bar whose ridge is a plateau: one object each.
     for shape in [
         mask(w, h, disc(40.0, 25.0, 12.0)),
@@ -242,7 +264,11 @@ fn objects_measure_as_drawn() {
         min_circularity: 0.9,
         ..filters
     };
-    assert!(!small.keep(o) && !round.keep(o));
+    let big = Filters {
+        max_area: 20.0,
+        ..filters
+    };
+    assert!(!small.keep(o) && !round.keep(o) && !big.keep(o));
 }
 
 #[test]

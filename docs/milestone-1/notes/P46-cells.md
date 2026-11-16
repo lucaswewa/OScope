@@ -1,12 +1,21 @@
 # P46: Cell detection and counting
 
 - Status: In review
-- Branch / PR: `m1/p46-cells` / #62
-- Size: L · estimated ~2,750 before it started (in `oscope-imaging`, an adaptive threshold, the distance transform and labelling moved from the pipeline, a seeded watershed, each object's measures and outline, ~550; the pipeline's nodes ~200; in `oscope-workflows`, the counting job over a stored slide, tile by tile with a halo, its table, outlines and annotation layer, ~400; a stub Python extension ~80; tests ~900; `ex-count-cells` and its page ~550; glue and `ex-checkpoint-d`'s wait ~70); one pull request, at the owner's standing choice
+- Branch / PR: `m1/p46-cells` / [#62](https://github.com/lucaswewa/OScope/pull/62)
+- Size: L · estimated ~2,750 before it started (in `oscope-imaging`, an adaptive threshold, the distance transform and labelling moved from the pipeline, a seeded watershed, each object's measures and outline, ~550; the pipeline's nodes ~200; in `oscope-workflows`, the counting job over a stored slide, tile by tile with a halo, its table, outlines and annotation layer, ~400; a stub Python extension ~80; tests ~900; `ex-count-cells` and its page ~550; glue and `ex-checkpoint-d`'s wait ~70); one pull request, at the owner's standing choice · measured **2,728** hand-written lines added (code 1,341: `oscope-workflows` 531, `oscope-imaging` 520, `oscope-pipeline` 258, `oscope-store` 28, `oscope-api` 4; tests 888; examples 473, the stub's Python and manifest among them; glue 26), and 173 removed, most of them the code moved out of the pipeline. **That is 1,828 over L's 900, and 1 % under the estimate.**
 
 ## Summary
 
-To come with the code.
+Nuclei found, split where they touch, measured and counted, on whole slides ([spec](../phases.md#p46); plan §5.17, D25).
+
+- **Segmentation:**
+  - on the hematoxylin channel (P45's colour deconvolution) or on grey;
+  - by Otsu's level, a level given, or an adaptive threshold;
+  - holes filled, and touching nuclei split by a seeded watershed on the distance transform.
+- **Each object's measures:** area, perimeter, circularity, centroid in µm, and channels' means. Each outline is GeoJSON in µm.
+- **Three pipeline nodes,** and **a job, `cells.count`,** which works a stored slide tile by tile with a halo. It counts each nucleus once, in the tile that holds its centroid. It makes a table, the outlines and a summary, and keeps the outlines as an annotation layer on the slide (P44). On an H-DAB slide it classes each nucleus by its DAB (P45).
+- **A stub Python extension** shows where cellpose or StarDist plugs in.
+- **`ex-count-cells`** counts the nuclei of a slide stitched at 20×. Against the simulator's nuclei: recall 0.995 and precision 0.994, a median miss of 0.28 µm.
 
 ## Behaviour spec
 
@@ -95,24 +104,88 @@ Written before the code, from the sources at its end ([spec](../phases.md#p46); 
 
 ## What was built
 
-To come with the code.
+- **`oscope-imaging::cells`:**
+  - `otsu`, over any range of values;
+  - `adaptive`, by a summed-area table;
+  - `fill_holes`;
+  - `distances` and `components`, moved from the pipeline's morphology, which now calls them;
+  - `watershed`, its seeds the distance's peaks and a plateau's peaks one seed, flooded deepest first through a binary heap;
+  - `segment`, the chain, with `Threshold`;
+  - `measure` and `Object`;
+  - `Filters`;
+  - `outline`, along pixels' edges, its walk bounded.
+- **The pipeline:** `threshold.adaptive` (its halo its radius), `cells.split` and `cells.measure` (a table and GeoJSON).
+- **`oscope-store`:** `Store::replace_layer`, a whole annotation layer at once, for thousands of outlines.
+- **`oscope-workflows::cells`:** `count` and the job factory `count_jobs` (`cells.count`), registered by the `projects` Thing. P45's colour reader, `Colour`, is shared, and reads grey images too.
+- **`examples/ext-python-cells`,** the stub, excluded from the workspace like the other Python samples. It has a test, gated by `OSCOPE_PYTHON=1`, that packs, installs and runs it.
+- **`ex-count-cells`** (port 8232), its page and README.
+- **`ex-checkpoint-d`** waits for its last tile to be drawn, as P45's notes promised.
 
 ## How to try it
 
-To come with the code.
+```sh
+cargo run --release -p ex-count-cells
+```
+
+Then open http://127.0.0.1:8232/. It takes about 26 s at real time, and prints:
+
+```text
+ex-count-cells: a snake over 1.00 × 0.75 mm at 20× across the island's edge, stitched; 4441 nuclei counted, 4586 per mm² of tissue
+  against the simulator's 3216 nuclei, the mosaic -0.3, -0.0 µm from where its first frame says: recall 0.995, precision 0.994, the median miss 0.28 µm
+  open http://127.0.0.1:8232/ to see their outlines
+```
+
+The page draws the 4,441 outlines over the mosaic, with the summary and the table to download. The [README](../../../examples/ex-count-cells/README.md) gives the job's options.
+
+## Performance
+
+§5.20 has no budget for counting. On this PC, with a release build, the job counted the example's 4,441 nuclei in 0.29 s. The mosaic is 2596 × 1728 raw pixels, 1.1 megapixels of cells, and the time covers both passes, the files and the layer. A 200-megapixel raw slide would take some 15 s.
 
 ## Design notes and deviations from the plan
 
-To come with the code.
+- **The job counts on 2 × 2 cells** of a raw slide, as P45 does: at 20×, 0.96 µm cells, so nuclei of 5.6 to 9.2 µm across are 6 to 10 cells. Recall and precision are 0.99 against the truth even so.
+- **The example matches through an offset found first:** the stitch doesn't record where its mosaic lies on the stage. Placed by its first frame's recorded position, the mosaic was 0.3 µm off, under the 10 µm the search allows.
+- **A tile's core is 256 cells, its halo 32** (31 µm at 20×), wider than any nucleus. So a nucleus whose centroid lies in a core lies whole in its tile. The job's test puts nuclei on the seams, and counts each once.
+- **The outlines are kept as a layer of the slide,** `cells`, replaced at each count, so P44's routes measure them and pages draw them. Keeping them one by one, through `annotate`, would rewrite the file for each.
+- **DAB's classes come from each nucleus's mean DAB,** P45's bins applied to the nucleus. P45's percentage is of tissue area; this is of nuclei.
+- **The stub's learned paths are called through each library's documented interface,** and neither library is a dependency. The test runs the stand-in, as the CI has neither.
+- **The spec held:** no revisions were needed while writing the tests, beyond test data. A sanity bound of 300 nuclei needed a larger region in the truth test, and the job test's ground was set to count as tissue.
+
+⟨MUTANTS⟩
+
+### The page
+
+The page wasn't seen in a browser here. Under Node, against the running example, with a stand-in DOM and OpenSeadragon, it:
+
+- found the mosaic and the count;
+- drew all 4,440 outlines in that run;
+- cleared them when *Outlines* was unticked;
+- gave the summary in its heading;
+- linked the table, which answered 200 with 4,440 rows.
+
+⟨TWO-CORE⟩
 
 ## Tests
 
-To come with the code.
+| Suite | Tests | What they show |
+|---|---|---|
+| `oscope-imaging` `cells` (new) | 5 | Otsu's first split across a gap; the adaptive threshold finds spots on a slope, which a global level can't; holes filled, but not a cup open at the edge; the watershed splits overlapping discs, a dumbbell, plateau-peaked squares and unequal discs at their waist; a disc, a bar and a thin line stay one; nothing leaves the mask; `segment` with each threshold; discs' areas, perimeters and circularity; a rectangle's centroid, means and crack; the filters; outlines along the edges, enclosing their pixels exactly |
+| `oscope-sim` `nuclei` (new) | 1 | The H&E section rendered at 20×'s cells, segmented on its hematoxylin: 495 nuclei, recall 0.994, precision 0.980, a median miss of 0.11 µm, 47 of 50 touching pairs split |
+| `oscope-pipeline` `stock` (one new) | 10 | The nodes give the library's results, in grey and colour; the adaptive threshold the same tiled or whole; a hollow disc filled; the filters' defaults |
+| `oscope-store` `annotations` (one new) | 9 | A layer replaced at once, with new IDs; one bad shape refuses them all |
+| `oscope-workflows` `cells` (new) | 2 | A slide wider than a tile, nuclei on its seams: each counted once, as the library counts the whole; the table, outlines, layer, summary and tissue; the white found; DAB classes; grey, its tissue the image; refusals; cancels in either pass; the job's parameters |
+| `oscope-ext` `python` (one new) | 8 | With `OSCOPE_PYTHON=1`: the stub packed, installed and run, its stand-in's mask |
+| `ex-count-cells --smoke` | — | Over 50 nuclei; recall and precision of 0.85 or more against the truth, the offset under 10 µm; an outline each; the page |
+
+⟨REPLAYS⟩
 
 ## Follow-ups and known gaps
 
-To come with the code.
+- **Full-resolution counting,** demosaiced rather than on 2 × 2 cells, for smaller nuclei or lower magnifications.
+- **Cytoplasm and membranes:** cells grown from their nuclei, for whole-cell measures.
+- **A learned segmenter in earnest:** the stub's paths, run on a machine with cellpose or StarDist.
+- **The mosaic's place on the stage,** recorded by the stitch, would spare the example its offset search.
 
 ## Clean room
 
-To come with the code.
+Nothing was copied from `microscope` or any other codebase. The methods are the published ones in the spec's sources, written from their descriptions: Otsu's level, summed-area tables, Felzenszwalb and Huttenlocher's distance transform (P23's), Rosenfeld and Pfaltz's labelling (P23's), the watershed after Beucher and Meyer and Meyer's flooding, and Kulpa's perimeter correction. The stub calls cellpose and StarDist through their own published interfaces; neither is copied or distributed.

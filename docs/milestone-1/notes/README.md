@@ -64,4 +64,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P42 | Depth from focus and extended depth of field | Done | [P42-depth-from-focus.md](P42-depth-from-focus.md) |
 | P43 | Deconvolution and volume rendering | Done | [P43-deconvolution.md](P43-deconvolution.md) |
 | P44 | Annotations and measurements | Done | [P44-annotations.md](P44-annotations.md) |
-| P45 | Stain analysis | In review | [P45-stain.md](P45-stain.md) |
+| P45 | Stain analysis | Done | [P45-stain.md](P45-stain.md) |
+| P46 | Cell detection and counting | In review | [P46-cells.md](P46-cells.md) |

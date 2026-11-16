@@ -982,12 +982,21 @@ fn the_cells_nodes_are_the_library_s() {
         adaptive(&values, w as usize, 12, 0.1).as_slice()
     );
     // In colour, on the channels' mean.
-    let colour: Vec<f32> = values.iter().flat_map(|&v| [v - 0.1, v, v + 0.1]).collect();
+    // In colour, on the channels' mean, not one of them.
+    // Their mean is flat: nothing is over its neighbourhood, as the first
+    // channel alone would be.
+    let colour: Vec<f32> = values.iter().flat_map(|&v| [v, 1.0 - v, 0.5]).collect();
+    let means: Vec<f32> = colour
+        .chunks(3)
+        .map(|p| p.iter().sum::<f32>() / 3.0)
+        .collect();
     let coloured = Image::from_vec(Shape::new(w, h, 3), colour).unwrap();
-    let params_c = json!({"radius": 12, "offset": 0.1});
+    let params_c = json!({"radius": 12, "offset": 0.02});
     let out_c = run(&engine, "threshold.adaptive", params_c, one(coloured));
-    assert_eq!(out_c["mask"].as_mask().unwrap().data(), mask.data());
-    // By tiles, with the window's halo, as whole.
+    let want_c = adaptive(&means, w as usize, 12, 0.02);
+    assert_eq!(out_c["mask"].as_mask().unwrap().data(), want_c.as_slice());
+    assert_ne!(want_c, adaptive(&values, w as usize, 12, 0.02));
+    // By tiles of 8, smaller than the window: its halo makes them agree.
     let options = RunOptions {
         memoise: false,
         ..RunOptions::default()
@@ -1000,7 +1009,7 @@ fn the_cells_nodes_are_the_library_s() {
     )
     .unwrap();
     let tiled = engine
-        .run_tiled(&plan, &inputs, 32, &options, |_, _| {})
+        .run_tiled(&plan, &inputs, 8, &options, |_, _| {})
         .unwrap()
         .outputs;
     assert_eq!(tiled["mask"].as_mask().unwrap().data(), mask.data());
