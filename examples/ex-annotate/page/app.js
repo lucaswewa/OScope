@@ -27,9 +27,9 @@ async function newest() {
   return result ? { project: found.id, result } : null;
 }
 
-// Invokes the `projects` Thing's `action`, and waits for its output.
+// Invokes the `workspace` Thing's `action`, and waits for its output.
 async function act(action, input) {
-  const answer = await fetch(`/api/v1/projects/${action}`, {
+  const answer = await fetch(`/api/v1/workspace/${action}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
@@ -113,8 +113,8 @@ function table(measured) {
 }
 
 async function refresh() {
-  annotations = await read(`/api/v1/projects/annotations/${record()}`);
-  table(await read(`/api/v1/projects/measurements/${record()}`));
+  annotations = await read(`/api/v1/workspace/annotations/${record()}`);
+  table(await read(`/api/v1/workspace/measurements/${record()}`));
   draw();
 }
 
@@ -199,7 +199,7 @@ async function start() {
     }
     if (event.key === "Enter") finish();
   });
-  $("csv").href = `/api/v1/projects/measurements/${record()}?format=csv`;
+  $("csv").href = `/api/v1/workspace/measurements/${record()}?format=csv`;
   say(`: ${status.size[0]} × ${status.size[1]} pixels of ${target.pixel[0].toFixed(3)} µm`);
   await refresh();
 }

@@ -46,7 +46,7 @@ async function start() {
   const size = mosaic.image.pixel_size;
   pixel = size ? [size.x, size.y] : [1, 1];
   const record = `${found.id}/results/${mosaic.id}`;
-  const layers = await read(`/api/v1/projects/annotations/${record}`);
+  const layers = await read(`/api/v1/workspace/annotations/${record}`);
   outlines = layers.layers.cells?.features ?? [];
   const s = await read(`/api/v1/data/${found.id}/results/${counted.id}/summary.json`);
   $("message").textContent = `: ${s.count} nuclei, ${s.per_mm2.toFixed(0)} per mm² of tissue, of ${s.mean_area.toFixed(1)} µm² and circularity ${s.mean_circularity.toFixed(2)} on average`;

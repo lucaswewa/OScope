@@ -66,4 +66,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P44 | Annotations and measurements | Done | [P44-annotations.md](P44-annotations.md) |
 | P45 | Stain analysis | Done | [P45-stain.md](P45-stain.md) |
 | P46 | Cell detection and counting | Done | [P46-cells.md](P46-cells.md) |
-| P47 | Reports, and report extensions | In review | [P47-reports.md](P47-reports.md) |
+| P47 | Reports, and report extensions | Done | [P47-reports.md](P47-reports.md) |
+| P48 | The `workspace` Thing: analyses on datasets, results, provenance | In review | [P48-workspace.md](P48-workspace.md) |

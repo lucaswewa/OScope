@@ -28,7 +28,7 @@ ex-count-cells: a snake over 1.00 × 0.75 mm at 20× across the island's edge, s
 
 - **More nuclei are counted than the region holds:** the mosaic's frames reach beyond the region scanned. Recall and precision are taken 30 µm inside the region.
 - **The table,** a row a nucleus: `/api/v1/data/<project>/results/<count>/cells.csv`.
-- **The outlines** are the mosaic's layer `cells`, which P44's routes measure: `/api/v1/projects/measurements/<project>/results/<mosaic>?layer=cells`.
+- **The outlines** are the mosaic's layer `cells`, which P44's routes measure: `/api/v1/workspace/measurements/<project>/results/<mosaic>?layer=cells`.
 
 **The job,** for any stored image:
 

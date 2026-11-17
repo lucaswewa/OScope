@@ -1,6 +1,6 @@
 //! Projects and their records: made, changed, listed, searched and deleted;
 //! records drafted, then committed with their thumbnails; the index rebuilt
-//! from the folders; and several writers at once.
+//! from the folders; results deleted (P48); and several writers at once.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -238,6 +238,7 @@ fn records_are_drafted_then_committed_with_their_thumbnails() {
             extension: None,
         }],
         inputs: vec![Input::Acquisition(acquisition.id)],
+        hashes: Default::default(),
         software: "OScope 0.1.0".into(),
     };
     let draft = store
@@ -315,6 +316,7 @@ fn records_are_drafted_then_committed_with_their_thumbnails() {
             analysis.id,
             "map",
             Provenance {
+                hashes: Default::default(),
                 software: "x".into(),
                 ..result.provenance.clone()
             },
@@ -356,6 +358,7 @@ fn a_rebuilt_index_equals_the_live_one() {
             .unwrap();
         acquire(&live, made.id, 300, 200);
         let provenance = Provenance {
+            hashes: Default::default(),
             software: "OScope".into(),
             recipe: json!(null),
             nodes: vec![],
@@ -400,6 +403,53 @@ fn a_rebuilt_index_equals_the_live_one() {
         rebuilt.list(&Query::default()).unwrap(),
         live.list(&Query::default()).unwrap()
     );
+}
+
+#[test]
+fn a_result_is_deleted_unless_another_was_made_from_it() {
+    let folder = tempfile::tempdir().unwrap();
+    let live = store(folder.path());
+    let id = live.create(project("Deleting", "", &[])).unwrap().id;
+    let made = |name: &str, inputs: Vec<Input>| {
+        let provenance = Provenance {
+            recipe: json!(null),
+            nodes: vec![],
+            inputs,
+            hashes: Default::default(),
+            software: "OScope".into(),
+        };
+        let draft = live.result(id, name, provenance, None).unwrap();
+        draft.commit().unwrap().id
+    };
+    let a = made("a", vec![]);
+    let b = made("b, from a", vec![Input::Result(a)]);
+    let refused = live.delete_result(id, a);
+    assert!(
+        matches!(&refused, Err(StoreError::Refused(why)) if why.contains("b, from a")),
+        "{refused:?}"
+    );
+    live.delete_result(id, b).unwrap();
+    let results = live.folder(id).join("results");
+    assert!(!results.join(b.to_string()).exists());
+    let left: Vec<_> = live
+        .contents(id)
+        .unwrap()
+        .results
+        .iter()
+        .map(|r| r.id)
+        .collect();
+    assert_eq!(left, [a]);
+    live.delete_result(id, a).unwrap();
+    assert!(matches!(
+        live.delete_result(id, a),
+        Err(StoreError::NotFound { .. })
+    ));
+    // A deletion cut short, its folder renamed: gone at the next rebuild.
+    let c = made("c", vec![]);
+    let going = results.join(format!(".deleting-{c}"));
+    std::fs::rename(results.join(c.to_string()), &going).unwrap();
+    live.rebuild_index().unwrap();
+    assert!(live.contents(id).unwrap().results.is_empty() && !going.exists());
 }
 
 #[test]

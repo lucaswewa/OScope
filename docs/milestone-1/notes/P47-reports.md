@@ -1,6 +1,6 @@
 # P47: Reports, and report extensions
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p47-reports` / [#63](https://github.com/lucaswewa/OScope/pull/63)
 - Size: L · estimated ~2,600 before it started (the report crate with its model, Typst and minijinja renderers, charts and templates; the report generator kind in both SDKs and the loader; the job and OScope's generator; the `projects` Thing's templates; tests; `ex-report`); one pull request, at the owner's standing choice · measured **2,994** hand-written lines added (code 1,513: `oscope-report` 836, `oscope-workflows` 495, `oscope-api` 94, `oscope-ext` 55, `oscope-ext-sdk` 26, the Python SDK 7; tests 959; examples 426, the Python generator among them; glue 96), and 10 removed. Roboto's licence, vendored, isn't counted. **That is 2,094 over L's 900, and 15 % over the estimate:** the estimate left out the sample Python generator and its test through the API, the regions read through deep zoom, and the data route's types
 

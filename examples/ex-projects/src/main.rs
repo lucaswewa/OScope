@@ -108,6 +108,7 @@ fn make(store: &Store, seed: u64, objective: &str, width: u32, result: bool) -> 
         recipe: json!({"name": "luminance", "weights": weights}),
         nodes: Vec::new(),
         inputs: vec![Input::Acquisition(acquisition.id)],
+        hashes: Default::default(),
         software: format!("ex-projects {}", env!("CARGO_PKG_VERSION")),
     };
     let grey_info = ImageInfo {

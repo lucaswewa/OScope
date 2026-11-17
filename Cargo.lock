@@ -998,6 +998,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-checkpoint-f"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ex-common"
 version = "0.1.0"
 dependencies = [
@@ -1630,6 +1645,21 @@ dependencies = [
  "oscope-api",
  "oscope-jobs",
  "oscope-sim",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ex-workspace"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
  "serde_json",
  "tokio",
 ]
@@ -3410,15 +3440,18 @@ dependencies = [
  "oscope-hal",
  "oscope-imaging",
  "oscope-jobs",
+ "oscope-pipeline",
  "oscope-report",
  "oscope-sim",
  "oscope-stitch",
  "oscope-store",
  "oscope-volume",
+ "png",
  "rayon",
  "schemars",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
  "tokio",

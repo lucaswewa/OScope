@@ -374,6 +374,7 @@ pub fn count(
             extension: None,
         }],
         inputs: vec![source],
+        hashes: Default::default(),
         software: format!("OScope {}", env!("CARGO_PKG_VERSION")),
     };
     let draft = store.result(project, &format!("{name}: cells"), provenance, None)?;

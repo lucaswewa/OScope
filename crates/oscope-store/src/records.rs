@@ -1,6 +1,8 @@
 //! The records the store keeps, each a versioned JSON document in its
 //! folder (D16, plan §5.12).
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, Utc};
 use oscope_core::version::Versioned;
 use oscope_core::{AcquisitionId, ProjectId, ReportId, ResultId, Timestamp, Xyz};
@@ -131,6 +133,10 @@ pub struct Provenance {
     /// What it was made from.
     #[serde(default)]
     pub inputs: Vec<Input>,
+    /// What it read of its inputs, hashed, by their IDs: `sha256:` and the
+    /// hash in hex (P48).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub hashes: BTreeMap<String, String>,
     /// The software that made it, such as `OScope 0.1.0`.
     pub software: String,
 }

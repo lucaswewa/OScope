@@ -275,7 +275,7 @@ async fn walk(address: SocketAddr, (w, h): (f64, f64), check: bool) -> anyhow::R
     );
     let layer = get(
         address,
-        &format!("/api/v1/projects/annotations/{project}/results/{mosaic}"),
+        &format!("/api/v1/workspace/annotations/{project}/results/{mosaic}"),
     )
     .await?
     .json()?;

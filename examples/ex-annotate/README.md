@@ -3,8 +3,8 @@
 P44's annotations and measurements on a stitched slide, through the API as a client would.
 
 1. **A scan and its stitch.** A snake over 2 × 1.5 mm about the simulated H&E slide's first island goes into a project and is stitched as a job: a raw mosaic, in the camera's Bayer pattern, with its pixels' size from the scan's field.
-2. **Annotations,** kept with the `projects` Thing's `annotate` action, in µm from the mosaic's top-left corner, in layers: two squares of 300 µm side by side and the rectangle of both (`regions`), a line (`lines`) and a point (`points`).
-3. **Their measurements,** from `GET /api/v1/projects/measurements/{project}/results/{id}`: lengths, areas and centres in µm, and each polygon's pixels' statistics by the colours of the camera's filters, read tile by tile from the full-resolution mosaic. Add `?format=csv` for CSV.
+2. **Annotations,** kept with the `workspace` Thing's `annotate` action, in µm from the mosaic's top-left corner, in layers: two squares of 300 µm side by side and the rectangle of both (`regions`), a line (`lines`) and a point (`points`).
+3. **Their measurements,** from `GET /api/v1/workspace/measurements/{project}/results/{id}`: lengths, areas and centres in µm, and each polygon's pixels' statistics by the colours of the camera's filters, read tile by tile from the full-resolution mosaic. Add `?format=csv` for CSV.
 4. **The page** opens the mosaic in OpenSeadragon, vendored, and draws the annotations over it. Draw your own, and see them measured.
 
 ## How to try it
@@ -30,9 +30,9 @@ On the page:
 
 The routes it uses:
 
-- `POST /api/v1/projects/annotate` and `/api/v1/projects/remove_annotation`, actions;
-- `GET /api/v1/projects/annotations/{project}/{acquisitions|results}/{id}`, a record's layers, each a GeoJSON FeatureCollection;
-- `GET /api/v1/projects/measurements/{project}/{acquisitions|results}/{id}`, with `?layer=…`, `&plane=…` and `&format=csv`.
+- `POST /api/v1/workspace/annotate` and `/api/v1/workspace/remove_annotation`, actions (the `workspace` Thing's since P48);
+- `GET /api/v1/workspace/annotations/{project}/{acquisitions|results}/{id}`, a record's layers, each a GeoJSON FeatureCollection;
+- `GET /api/v1/workspace/measurements/{project}/{acquisitions|results}/{id}`, with `?layer=…`, `&plane=…` and `&format=csv`.
 
 ## Its checks
 
