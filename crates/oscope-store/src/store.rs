@@ -4,6 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
 use oscope_core::version::{Versioned, from_document, to_document};
@@ -19,6 +20,25 @@ use crate::{
     Acquisition, ImageInfo, ImageReader, ImageWriter, Input, Project, Provenance, Report, Result,
     ResultRecord, StoreError, io, thumbnail,
 };
+
+/// Does `step`, and on Windows again for up to 2 s while access is denied:
+/// another program, such as a virus scanner reading new files, may hold a
+/// file in a folder for a moment (P53's soak found it).
+fn patiently(mut step: impl FnMut() -> std::io::Result<()>) -> std::io::Result<()> {
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        match step() {
+            Err(e)
+                if cfg!(windows)
+                    && e.kind() == std::io::ErrorKind::PermissionDenied
+                    && Instant::now() < deadline =>
+            {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            done => return done,
+        }
+    }
+}
 
 /// A project's document, in its folder.
 const PROJECT: &str = "project.json";
@@ -352,9 +372,9 @@ impl Store {
         let _lock = self.lock()?;
         self.project(id)?;
         let (folder, going) = (self.folder(id), self.root.join(format!("{DELETING}{id}")));
-        fs::rename(&folder, &going).map_err(io(&folder))?;
+        patiently(|| fs::rename(&folder, &going)).map_err(io(&folder))?;
         self.index().remove_project(&id.to_string())?;
-        fs::remove_dir_all(&going).map_err(io(&going))
+        patiently(|| fs::remove_dir_all(&going)).map_err(io(&going))
     }
 
     /// Deletes result `id` of `project`, with its folder, which is renamed
@@ -386,9 +406,9 @@ impl Store {
             results.join(id.to_string()),
             results.join(format!("{DELETING}{id}")),
         );
-        fs::rename(&folder, &going).map_err(io(&folder))?;
+        patiently(|| fs::rename(&folder, &going)).map_err(io(&folder))?;
         self.index().remove_record(&id.to_string())?;
-        fs::remove_dir_all(&going).map_err(io(&going))
+        patiently(|| fs::remove_dir_all(&going)).map_err(io(&going))
     }
 
     /// A page of the projects `query` finds, the most recently changed

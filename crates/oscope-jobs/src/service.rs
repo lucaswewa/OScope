@@ -41,6 +41,9 @@ pub struct JobsConfig {
     /// The GPU memory compute jobs may hold between them, in MiB: none, and
     /// GPU memory isn't counted.
     pub gpu_mib: Option<u32>,
+    /// How long a finished job stays in memory, for quick answers; after
+    /// that its record answers (P53's soak). Five minutes.
+    pub kept: Duration,
 }
 
 impl Default for JobsConfig {
@@ -49,6 +52,7 @@ impl Default for JobsConfig {
         Self {
             workers: 2,
             gpu_mib: None,
+            kept: Duration::from_secs(300),
         }
     }
 }
@@ -78,6 +82,8 @@ pub(crate) struct Shared {
     kinds: Mutex<HashMap<String, Factory>>,
     /// The runtime is stopping: start no more jobs.
     stopping: AtomicBool,
+    /// How long a finished job stays in `entries`.
+    kept: Duration,
 }
 
 pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -194,6 +200,7 @@ impl JobService {
             store,
             kinds: Mutex::default(),
             stopping: AtomicBool::new(false),
+            kept: config.kept,
         });
         tokio::spawn(hardware(Arc::clone(&shared)));
         tokio::spawn(compute(Arc::clone(&shared)));
@@ -231,7 +238,17 @@ impl JobService {
             run: Some(run),
             recorded: Instant::now(),
         };
-        lock(&self.shared.entries).insert(id, entry);
+        {
+            // Jobs finished long enough ago leave memory: their records
+            // answer for them (P53's soak found them kept for ever).
+            let mut entries = lock(&self.shared.entries);
+            let kept = self.shared.kept;
+            entries.retain(|_, entry| {
+                let finished = entry.info.finished.map(|f| (Utc::now() - f).to_std());
+                finished.is_none_or(|ago| ago.is_ok_and(|ago| ago < kept))
+            });
+            entries.insert(id, entry);
+        }
         self.shared.changed(id, true);
         let (queue, wake) = match resource {
             Resource::Hardware => (&self.shared.hardware, &self.shared.wake_hardware),
@@ -516,4 +533,55 @@ async fn run(shared: &Arc<Shared>, id: JobId) -> Option<(JobState, Option<String
     };
     span.in_scope(|| tracing::info!("the job ends: {}", state.name()));
     Some((state, error))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A compute job that completes at once.
+    fn quick() -> Job {
+        let spec = JobSpec {
+            kind: "test".to_owned(),
+            title: "a quick job".to_owned(),
+            account: None,
+            params: Value::Null,
+            resource: Resource::Compute,
+            pausable: false,
+            gpu_mib: 0,
+        };
+        let run = Box::new(|_: JobCtx| Box::pin(async { Ok(()) }) as JobFuture);
+        Job { spec, run }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn finished_jobs_leave_memory_once_kept_long_enough() {
+        let folder = tempfile::tempdir().unwrap();
+        let config = JobsConfig {
+            kept: Duration::ZERO,
+            ..JobsConfig::default()
+        };
+        let service = JobService::open(&folder.path().join("jobs.sqlite"), config).unwrap();
+        let first = service.submit(quick()).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !service.get(first).unwrap().state.is_finished() {
+            assert!(Instant::now() < deadline, "the first job didn't end");
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        // The next one's submission lets the first go: its record answers.
+        let second = service.submit(quick()).unwrap();
+        let held = lock(&service.shared.entries).contains_key(&first);
+        assert!(!held && lock(&service.shared.entries).contains_key(&second));
+        assert_eq!(service.get(first).unwrap().state, JobState::Completed);
+        // Kept longer, it stays.
+        let kept = JobService::open(&folder.path().join("kept.sqlite"), JobsConfig::default());
+        let kept = kept.unwrap();
+        let first = kept.submit(quick()).unwrap();
+        while !kept.get(first).unwrap().state.is_finished() {
+            assert!(Instant::now() < deadline, "the job didn't end");
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        kept.submit(quick()).unwrap();
+        assert!(lock(&kept.shared.entries).contains_key(&first));
+    }
 }

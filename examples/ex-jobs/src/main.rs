@@ -54,6 +54,7 @@ async fn run() -> anyhow::Result<()> {
     let budget = JobsConfig {
         workers: 2,
         gpu_mib: Some(2048),
+        ..JobsConfig::default()
     };
     let jobs = JobService::open(&example.roots.data.join("index.sqlite"), budget)?;
     register(&jobs, &devices);

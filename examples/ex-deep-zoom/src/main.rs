@@ -433,12 +433,16 @@ async fn bench(megapixels: usize) -> anyhow::Result<()> {
     println!(
         "  a kept tile: {kept50:.2} ms, the median, {kept95:.2} the 95th percentile (budget 1)"
     );
+    // What `cargo xtask perf` reads (P53).
+    println!("perf: zoom.cold_ms {cold50:.3}");
+    println!("perf: zoom.kept_ms {kept50:.3}");
     // Full-screen views of regions never seen, in looks never asked for.
     let (x, y) = (w / 3 + 128, h / 3 + 77);
     let (wall, slowest, n) = view(address, &base, last, (x, y), "?gamma=1.2").await?;
     println!(
         "  a full-screen view never seen: {n} tiles in {wall:.0} ms, the slowest {slowest:.2} ms of server time (budget 150)"
     );
+    println!("perf: zoom.view_ms {wall:.1}");
     let held = post(
         address,
         "/api/v1/jobs/submit",
@@ -456,6 +460,7 @@ async fn bench(megapixels: usize) -> anyhow::Result<()> {
     println!(
         "  the same while a hardware job holds the instrument: {n} tiles in {wall:.0} ms, the slowest {slowest:.2} ms (budget 150)"
     );
+    println!("perf: zoom.view_held_ms {wall:.1}");
     if let Some(holder) = jobs.hardware().holder() {
         jobs.cancel(holder)?;
     }

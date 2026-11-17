@@ -188,6 +188,30 @@ fn projects_are_made_changed_listed_searched_and_deleted() {
     ));
 }
 
+/// On Windows, a project is deleted though another program holds one of its
+/// files for a moment, as a virus scanner may a new one (P53's soak).
+#[cfg(windows)]
+#[test]
+fn a_project_held_for_a_moment_is_deleted_all_the_same() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let folder = tempfile::tempdir().unwrap();
+    let store = store(folder.path());
+    let made = store.create(project("Held", "", &[])).unwrap();
+    let place = folder.path().join("projects").join(made.id.to_string());
+    std::fs::write(place.join("new.bin"), b"new").unwrap();
+    // Opened sharing nothing, and let go of a moment later.
+    let mut open = std::fs::OpenOptions::new();
+    let held = open.read(true).share_mode(0).open(place.join("new.bin"));
+    let held = held.unwrap();
+    let letting_go = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        drop(held);
+    });
+    store.delete(made.id).unwrap();
+    letting_go.join().unwrap();
+    assert!(!place.exists());
+}
+
 #[test]
 fn records_are_drafted_then_committed_with_their_thumbnails() {
     let folder = tempfile::tempdir().unwrap();

@@ -436,12 +436,15 @@ fn the_preview_budget() {
         rendered.height,
         rendered.jpeg.len()
     );
+    // What `cargo xtask perf` reads (P53).
+    println!("perf: preview.cpu_ms {:.2}", cpu.as_secs_f64() * 1e3);
     assert_eq!((rendered.width, rendered.height), (1920, 1280));
     assert!(cpu <= Duration::from_millis(60), "{cpu:?}");
     if preview.has_gpu() {
         let (gpu, rendered) = median(&preview, &frame, true, 15);
         assert!(rendered.gpu);
         println!("GPU: {:.1} ms", gpu.as_secs_f64() * 1e3);
+        println!("perf: preview.gpu_ms {:.2}", gpu.as_secs_f64() * 1e3);
         assert!(gpu <= Duration::from_millis(30), "{gpu:?}");
     }
 }

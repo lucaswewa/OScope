@@ -1,8 +1,11 @@
-//! Checks on the workspace itself. For now, the layering rules of ADR-0005:
-//! which OScope crate may depend on which, read from `cargo metadata`.
+//! Checks on the workspace itself: the layering rules of ADR-0005, which
+//! OScope crate may depend on which, read from `cargo metadata`; and the
+//! budgets of `cargo xtask perf` (P53).
 
 use std::path::Path;
 use std::process::Command;
+
+pub mod perf;
 
 /// Each OScope crate and its layer (plan §5.2), the M3 crates included. A
 /// crate may depend on crates in lower layers, and on crates in its own layer

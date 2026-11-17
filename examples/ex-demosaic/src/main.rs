@@ -117,11 +117,8 @@ fn on_gpu(
 
 async fn run() -> anyhow::Result<()> {
     let example = Example::from_args_with("ex-demosaic", 8214, &["--runs", "--threads"])?;
-    let runs = if example.smoke {
-        3
-    } else {
-        example.number("--runs").unwrap_or(10).max(1)
-    };
+    let runs = example.number("--runs");
+    let runs = runs.unwrap_or(if example.smoke { 3 } else { 10 }).max(1);
     let threads = example.number("--threads").unwrap_or(8).max(1);
     let config = ComputeConfig {
         live_threads: Some(threads),
@@ -211,6 +208,11 @@ async fn run() -> anyhow::Result<()> {
         let gpu_text = gpu_ms.map_or("—".to_owned(), |t| format!("{t:.1} ms"));
         let same_text = same.map_or("—", |same| if same { "to the bit" } else { "differs" });
         println!("  {name:<16} {cpu_ms:>9.1} ms {gpu_text:>12} {quality:>5.1} dB  {same_text}");
+        // What `cargo xtask perf` reads (P53).
+        println!("perf: demosaic.{slug}.cpu_ms {cpu_ms:.2}");
+        if let Some(gpu_ms) = gpu_ms {
+            println!("perf: demosaic.{slug}.gpu_ms {gpu_ms:.2}");
+        }
         methods.push(json!({
             "name": name, "slug": slug, "cpu_ms": cpu_ms, "gpu_ms": gpu_ms, "matches_cpu": same,
             "psnr": quality, "mark": mark, "width": rgb.width(), "height": rgb.height(),

@@ -195,6 +195,8 @@ async fn run() -> anyhow::Result<()> {
             1e3 / t.warm_ms[0],
         );
         let verdict = if fps >= budget { "meets" } else { "misses" };
+        // What `cargo xtask perf` reads (P53).
+        println!("perf: sim.{}_fps {fps:.2}", t.backend.to_lowercase());
         println!(
             "{}: {fps:.1} frames a second, still: {verdict} §5.20's {budget}",
             t.backend
