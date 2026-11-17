@@ -10,12 +10,15 @@ A release builds and publishes both ([`docs/releasing.md`](../docs/releasing.md)
 ## Ubuntu: the .deb
 
 ```sh
-sudo apt install ./oscope_0.1.0_amd64.deb
+sudo apt install ./oscope_0.1.1_amd64.deb
 ```
 
-- **Its account** is `oscope`, its configuration `/etc/oscope/oscope.toml`, and its data `/var/lib/oscope`.
+- **Its account** is `oscoped` (`oscope` in 0.1.0), its configuration `/etc/oscope/oscope.toml`, and its data `/var/lib/oscope`.
 - **The service `oscope`** is enabled and started, on http://127.0.0.1:8210/.
 - **Its polkit rule** lets the service reboot and power off the host: P51's power actions, and nothing else.
+- **Its serial ports:** the service has the group `dialout`, for the stage's controller from M3.
+- **Its operators,** the members of the group `oscoped`, may start, stop and restart the service on Ubuntu 24.04, change its configuration, and read its data.
+- **[Deploying OScope on Ubuntu 24.04](../docs/deploying-on-ubuntu.md)** builds the .deb on the computer it serves, with an operator, `labuser`, and checks the service with [`linux/smoke-test.sh`](linux/smoke-test.sh).
 - **Removing it:**
   - `sudo apt remove oscope` stops the service;
   - `sudo apt purge oscope` removes the configuration too;
@@ -31,6 +34,7 @@ bash packaging/linux/build-deb.sh target/release/oscope-server target/notices
 ```
 
 - `make.sh` needs cargo-about, which the first line installs, once. Without it, `make.sh` says so.
+- [`linux/build-from-source.sh`](linux/build-from-source.sh) does all of this, with the tests between the build and the notices, and copies the .deb to `/var/tmp`.
 - A .deb built on Ubuntu 24.04 needs 24.04's C library. The release workflow builds it on 22.04, so that it installs on both.
 
 ### Its example: the .deb in clean Ubuntu containers
@@ -38,20 +42,20 @@ bash packaging/linux/build-deb.sh target/release/oscope-server target/notices
 [`linux/test-deb.sh`](linux/test-deb.sh) needs Docker:
 
 ```sh
-bash packaging/linux/test-deb.sh target/deb/oscope_0.1.0_amd64.deb ubuntu:24.04
+bash packaging/linux/test-deb.sh target/deb/oscope_0.1.1_amd64.deb ubuntu:24.04
 ```
 
 For each image, it installs the .deb in a clean container, and checks:
 
-- its account, its folders and whose they are, the unit, and the polkit rule in both its forms;
-- that its server, run as `oscope` with its configuration, answers on `/health`;
+- its account, its folders, whose they are and their modes, the unit, and the polkit rule in both its forms, the operators' among them;
+- that its server, run as `oscoped` with its configuration, answers on `/health`;
 - that purging it removes the program and the configuration, and keeps the data.
 
 It ends with `test-deb: ok`.
 
 ## Ubuntu by hand: systemd
 
-[`linux/oscope.service`](linux/oscope.service) runs `oscope-server` as the `oscope` account, with [`linux/oscope.toml`](linux/oscope.toml), whose folders are in `/var/lib/oscope`, the one place the unit lets it write.
+[`linux/oscope.service`](linux/oscope.service) runs `oscope-server` as the `oscoped` account, with [`linux/oscope.toml`](linux/oscope.toml), whose folders are in `/var/lib/oscope`, the one place the unit lets it write.
 
 - **SIGTERM stops it gracefully:** invocations cancelled, requests finished, the Things stopped and their settings saved.
 - **Exit code 75 starts it again,** as a failure does, 2 s later.
@@ -59,7 +63,7 @@ It ends with `test-deb: ok`.
 To install, as root:
 
 ```sh
-useradd --system --home-dir /var/lib/oscope --shell /usr/sbin/nologin oscope
+useradd --system --home-dir /var/lib/oscope --shell /usr/sbin/nologin oscoped
 install -m 755 oscope-server /usr/bin/
 install -D -m 644 linux/oscope.toml /etc/oscope/oscope.toml
 install -m 644 linux/oscope.service /etc/systemd/system/
@@ -105,7 +109,7 @@ cargo install cargo-about --version 0.9.3 --locked --features cli  # once
 cargo build --release --locked -p oscope-server
 bash packaging/notices/make.sh
 powershell -File packaging\windows\package.ps1 -Server target\release\oscope-server.exe -Notices target\notices
-powershell -ExecutionPolicy Bypass -File packaging\windows\test-zip.ps1 target\zip\oscope-0.1.0-windows-x86_64.zip
+powershell -ExecutionPolicy Bypass -File packaging\windows\test-zip.ps1 target\zip\oscope-0.1.1-windows-x86_64.zip
 ```
 
 - **`bash` in PowerShell is often WSL's,** unless Git's comes first in `PATH`. Then `make.sh` runs under Linux, whose cargo needs cargo-about as well: install it there too, or run `make.sh` from Git Bash. The notices are the same either way, since they cover both platforms.

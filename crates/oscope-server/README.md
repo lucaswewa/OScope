@@ -24,7 +24,7 @@ cargo run -p oscope-server
 The first run installs the pinned toolchain and fetches the dependencies. The server then creates its folders, `.oscope/data` and `.oscope/scratch`, and prints:
 
 ```text
-oscope-server 0.1.0 serving on http://127.0.0.1:8210/
+oscope-server 0.1.1 serving on http://127.0.0.1:8210/
 ```
 
 In another terminal:
@@ -87,7 +87,7 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 - **Its only line on stdout,** once it is ready, is JSON; its logs go to stderr:
 
   ```json
-  {"ready":true,"version":"0.1.0","port":53647,"pid":14316,"token":"C:\\oscope\\data\\run\\local.token","shm":"preview-14316"}
+  {"ready":true,"version":"0.1.1","port":53647,"pid":14316,"token":"C:\\oscope\\data\\run\\local.token","shm":"preview-14316"}
   ```
 
 - **Closing its stdin stops it,** as Ctrl-C does.

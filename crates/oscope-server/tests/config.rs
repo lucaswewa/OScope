@@ -348,3 +348,22 @@ fn the_settings_file_writes_only_what_changed_and_keeps_the_last() {
     assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
     assert!(!folder.path().join("oscope.toml.new").exists());
 }
+
+/// The packaged service's operators change its configuration through its
+/// group (packaging/linux/debian/postinst), so a change through the
+/// `settings` Thing keeps the file's mode.
+#[cfg(unix)]
+#[test]
+fn the_settings_file_keeps_its_mode() {
+    use std::os::unix::fs::PermissionsExt;
+    let folder = tempfile::tempdir().unwrap();
+    let path = fixture(folder.path(), "full.toml");
+    let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o664)).unwrap();
+    let file = TomlFile(path.clone());
+    let mut saved = file.read().unwrap();
+    saved.system.port = 8304;
+    file.write(&saved).unwrap();
+    assert_eq!(file.read().unwrap().system.port, 8304);
+    assert_eq!(mode(&path), 0o664);
+}

@@ -18,17 +18,18 @@ for image in "${images[@]}"; do
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq >/dev/null
         apt-get install -y -qq /tmp/oscope.deb >/dev/null
-        # What it made: the account, its folders, the unit, the polkit rule.
-        id oscope
-        test "$(stat -c %U:%G /var/lib/oscope)" = oscope:oscope
-        test "$(stat -c %G /etc/oscope/oscope.toml)" = oscope
-        test -f /usr/lib/systemd/system/oscope.service
-        test -f /usr/share/polkit-1/rules.d/50-oscope.rules
+        # What it made: the account, its folders, the unit, the polkit rules.
+        id oscoped
+        test "$(stat -c %U:%G:%a /var/lib/oscope)" = oscoped:oscoped:750
+        test "$(stat -c %G:%a /etc/oscope/oscope.toml)" = oscoped:664
+        grep -q "^User=oscoped$" /usr/lib/systemd/system/oscope.service
+        grep -q "^SupplementaryGroups=dialout$" /usr/lib/systemd/system/oscope.service
+        grep -q "manage-units" /usr/share/polkit-1/rules.d/50-oscope.rules
         test -f /var/lib/polkit-1/localauthority/10-vendor.d/50-oscope.pkla
         test -f /usr/share/doc/oscope/copyright
         oscope-server --version
         # Its server, as its account, with its configuration, answers.
-        runuser -u oscope -- oscope-server --config /etc/oscope/oscope.toml \
+        runuser -u oscoped -- oscope-server --config /etc/oscope/oscope.toml \
             >/tmp/server.log 2>&1 &
         server=$!
         for _ in $(seq 600); do
