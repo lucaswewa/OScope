@@ -1,0 +1,97 @@
+name: Release
+
+# A release (P54, ADR-0033, docs/releasing.md). Pushing a tag vX.Y.Z, where
+# X.Y.Z is the workspace's version:
+#
+# - builds the server for Windows, as a zip with its service scripts, and
+#   checks the zip;
+# - builds it on Ubuntu 22.04, as a .deb, and installs the .deb in clean
+#   Ubuntu 22.04 and 24.04 containers;
+# - publishes both, with their checksums, as the tag's GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  windows:
+    name: Windows zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: The tag is the workspace's version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          test "${GITHUB_REF_NAME}" = "v$version" || { echo "tag $GITHUB_REF_NAME, version $version"; exit 1; }
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about@0.9.3
+      - name: The server
+        run: cargo build --release --locked -p oscope-server
+      - name: The notices
+        shell: bash
+        run: bash packaging/notices/make.sh target/notices
+      - name: The zip, checked
+        shell: pwsh
+        run: |
+          $zip = powershell -NoProfile -ExecutionPolicy Bypass -File packaging\windows\package.ps1 `
+            -Server target\release\oscope-server.exe -Notices target\notices -Folder target\zip
+          powershell -NoProfile -ExecutionPolicy Bypass -File packaging\windows\test-zip.ps1 $zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: target/zip/*.zip
+
+  linux:
+    name: Ubuntu .deb
+    # The oldest Ubuntu OScope supports, so that the .deb installs on both.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about@0.9.3
+      - name: The server
+        run: cargo build --release --locked -p oscope-server
+      - name: The notices
+        run: bash packaging/notices/make.sh target/notices
+      - name: The .deb, installed in clean Ubuntu containers
+        run: |
+          deb=$(bash packaging/linux/build-deb.sh target/release/oscope-server target/notices target/deb)
+          bash packaging/linux/test-deb.sh "$deb" ubuntu:22.04 ubuntu:24.04
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: target/deb/*.deb
+
+  publish:
+    name: Publish
+    needs: [windows, linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+      - name: The release, with its checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd packages
+          sha256sum -- * > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "OScope ${GITHUB_REF_NAME#v}" \
+            --notes "OScope ${GITHUB_REF_NAME#v}: the Windows zip and the Ubuntu .deb. How to install each: packaging/README.md." \
+            -- *
