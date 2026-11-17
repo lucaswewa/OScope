@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p52-settings` / [#68](https://github.com/lucaswewa/OScope/pull/68)
-- Size: M · estimated ~1,550 before it started (the `settings` Thing ~350; the lease's exemption and the builder ~20; the simulator's checks ~30; the file's version, migration, writing and `config migrate` ~260; tests ~460; `ex-settings` ~280; glue ~30; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured SIZE
+- Size: M · estimated ~1,550 before it started (the `settings` Thing ~350; the lease's exemption and the builder ~20; the simulator's checks ~30; the file's version, migration, writing and `config migrate` ~260; tests ~460; `ex-settings` ~280; glue ~30; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured **1,627** hand-written lines added (code 772: `oscope-api` 419, `oscope-server` 301, `oscope-sim` 52; tests 597; examples 230; glue 28), and 58 removed. **That is 1,027 over M's 600, and 5 % over the estimate**
 
 ## Summary
 
@@ -105,11 +105,40 @@ None is relevant: the file is read when the settings are, and written when they 
 
 ### What the mutants' reading found
 
-MUTANTS
+Forty-two mutants, listed in advance from the code:
+
+- **the file's versions:** no version read as 2's; a newer one read; an old file not migrated; version 1's section taken in version 2; `[server]` not renamed; the simulator not moved; version 1's steps skipped;
+- **writing the file:** not stamped; the new file unchecked; version 1's file, or the last one, not kept; a file migrated twice; every key written; the port or the address never written; the data root always written; relative roots not from the file's folder; whole numbers written as decimals; the simulator's section not merged; the server's `settings` without its file;
+- **the `settings` Thing:** each refusal of the system's settings; the simulator unchecked; no restart needed; nothing written; any format, or a newer document, imported; the display imported before the checks; accounts replaced, not joined; never one's own display; one's own kept as the local account's; a reset that keeps them; the document without accounts; anonymous callers nameless; no system to read;
+- **the lease:** one's own display needing it, and all of the settings free of it;
+- **the simulator's checks:** `Simulator::new` unchecked; any sensor, objective or sample.
+
+Reading the tests against the list first found gaps, now covered:
+
+- the server handing the `settings` Thing its file;
+- a second migration keeping nothing;
+- a write touching only the keys that changed, the address among them: the file's lines are counted;
+- whole numbers kept whole;
+- a write that wouldn't read back refused, and the file kept;
+- missing roots;
+- an imported part alone, and its accounts joining those there;
+- the simulator's checks, which had no test: each refusal, by `check` and by `Simulator::new`.
+
+**All 42 are caught.**
 
 ### Two cores
 
-TWOCORE
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-api:settings` | 5 of 5 | 2.3–2.4 s |
+| `oscope-api:auth` | 5 of 5 | 16.2–17.3 s |
+| `oscope-server:config` | 5 of 5 | 0.3–1.1 s |
+| `oscope-server:cli` | 5 of 5 | 0.9–2.3 s |
+| `oscope-server:sidecar` | 5 of 5 | 0.6–1.1 s |
+| `oscope-sim:devices` | 5 of 5 | 0.7–0.9 s |
+| `ex-settings --smoke` | 5 of 5 | 0.3–1.5 s |
 
 ## Tests
 
@@ -122,7 +151,10 @@ TWOCORE
 | `oscope-sim` `devices` | 2 | Each of the simulator's refusals, by `check` and by `Simulator::new` |
 | `ex-settings --smoke` | — | The migration; display; the next start's changes; the 400; the import; the file; the page |
 
-REPLAYS
+**The local replays,** the merge gate (ADR-0038), each run alone on `826991c`. The commit since adds only these lines and the measurements above.
+
+- **Windows:** `scripts/ci-local.sh`, in 14 minutes: 69 of 69 steps, 619 tests in 233 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 9 minutes: 69 of 69 steps, 619 tests in 233 suites; 873 files, none with a CR.
 
 ## Follow-ups and known gaps
 
