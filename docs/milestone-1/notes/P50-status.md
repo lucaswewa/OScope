@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p50-status` / [#66](https://github.com/lucaswewa/OScope/pull/66)
-- Size: M · estimated ~1,450 before it started (in `oscope-sim`, the faults ~80; the GPU through NVML ~80; the disk monitor ~60; the `status` Thing ~300; the fault actions ~50; tests ~400; `ex-status` ~300; glue ~30; a tenth on top); one pull request, at the owner's standing choice · measured SIZE
+- Size: M · estimated ~1,450 before it started (in `oscope-sim`, the faults ~80; the GPU through NVML ~80; the disk monitor ~60; the `status` Thing ~300; the fault actions ~50; tests ~400; `ex-status` ~300; glue ~30; a tenth on top); one pull request, at the owner's standing choice · measured **1,035** hand-written lines added (code 503: `oscope-api` 443, `oscope-sim` 60; tests 297; examples 212; glue 23), and 3 removed. **That is 435 over M's 600, and 29 % under the estimate**
 
 ## Summary
 
@@ -65,7 +65,26 @@ A sample asks each device once, reads NVML and the disk's statistics, and lists 
 
 ### What the mutants' reading found
 
-MUTANTS
+Nineteen mutants, listed in advance from the code:
+
+- **the roll-up:** each weight, the worst, and the first of the worst;
+- **each probe:** disconnected, the stage's alarm, the injected disk, the disk's own full and low states, failed jobs, the filling rate;
+- **the simulator's faults:** an unplugged camera streaming, answering or starting; an alarm leaving its move waiting, or not stopping the stage; an alarm not cleared; a disk never emptied.
+
+Reading the tests against the list first found gaps, now covered:
+
+- the scratch disk's own full and low states, from a reserve or a low mark larger than any disk;
+- an unplugged camera's stream stopped, and its start refused;
+- a move in progress ended by the alarm;
+- a failed job degrading the jobs.
+
+The run then missed three:
+
+- **Fixed in the test:** the stage not stopping for the alarm. The test now waits, within 5 s, for its reported place to settle. That place lags by the reports in flight, as a controller's do, so a first version that read it twice, 300 ms apart, failed on the right code in 3 of 8 runs on two cores; now 8 of 8 pass.
+- **Equivalent through the API:** an unplugged camera's start. The camera Thing asks for its settings before starting it, which refuses first.
+- **Not tested, by choice:** the filling rate's sign. Other programs on the disk sway its value, so only its never being negative is checked.
+
+So **17 of the 19 are caught,** one is equivalent, and one is untested by choice.
 
 ### The page
 
@@ -73,7 +92,20 @@ The page wasn't seen in a browser here. It reads `instrument`, then keeps up thr
 
 ### Two cores
 
-TWOCORE
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-api:lib` | 5 of 5 | 0.8 s |
+| `oscope-api:status` | 5 of 5 | 23.7–24.5 s |
+| `oscope-api:devices` | 5 of 5 | 18.5–20.9 s |
+| `oscope-api:auth` | 5 of 5 | 17.4–20.1 s |
+| `oscope-sim:camera` | 5 of 5 | 0.4–0.6 s |
+| `oscope-sim:stage` | 5 of 5 | 0.3–0.5 s |
+| `ex-status --smoke` | 5 of 5 | 7.4–8.9 s |
+| `ex-sim-stage --smoke` | 5 of 5 | 1.5–2.5 s |
+
+Before the settle wait, `oscope-api:status` passed 5 of 8: see the mutants. After it, 8 of 8 passed, and then the 5 above.
 
 ## Tests
 
@@ -84,7 +116,10 @@ TWOCORE
 | `oscope-api` `devices` | 9 | The `simulation` Thing's description, with `inject_fault` |
 | `ex-status --smoke` | — | The start's fault, homed to well, each fault reported as it is and taken away, the page |
 
-REPLAYS
+**The local replays,** the merge gate (ADR-0038), each run alone on `55c8f24`. The commit since adds only these lines and the measurements above.
+
+- **Windows:** `scripts/ci-local.sh`, in 14 minutes: 67 of 67 steps, 607 tests in 229 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 10 minutes: 67 of 67 steps, 607 tests in 229 suites, NVML absent and the GPU offline; 853 files, none with a CR.
 
 ## Follow-ups and known gaps
 
