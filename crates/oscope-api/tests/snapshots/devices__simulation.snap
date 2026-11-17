@@ -71,7 +71,6 @@ expression: td
       "readOnly": true,
       "type": "array",
       "items": {
-        "description": "A sample in the catalogue.",
         "type": "object",
         "properties": {
           "name": {
@@ -269,6 +268,71 @@ expression: td
             "type": "null"
           }
         ]
+      },
+      "synchronous": false
+    },
+    "inject_fault": {
+      "description": "For the status (P50): `camera_unplugged`, `stage_alarm` or `scratch_full`, with `active`\ntrue to inject it and false to take it away. A stage alarm taken\naway is cleared, as the stage's `clear_alarm` does.",
+      "title": "Injects a fault, or takes it away.",
+      "forms": [
+        {
+          "href": "/api/v1/simulation/inject_fault",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "inject_fault_input",
+        "type": "object",
+        "properties": {
+          "fault": {
+            "description": "A sample in the catalogue.\nA fault to inject into the simulator (P50).",
+            "oneOf": [
+              {
+                "description": "The camera, unplugged.",
+                "const": "camera_unplugged",
+                "type": "string"
+              },
+              {
+                "description": "The stage in alarm, as a limit switch leaves it.",
+                "const": "stage_alarm",
+                "type": "string"
+              },
+              {
+                "description": "The scratch disk, full.",
+                "const": "scratch_full",
+                "type": "string"
+              }
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fault",
+          "active"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "inject_fault_output",
+        "type": "null"
       },
       "synchronous": false
     },
