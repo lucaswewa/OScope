@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p49-auth` / [#65](https://github.com/lucaswewa/OScope/pull/65)
-- Size: L · estimated ~2,200 before it started (in `oscope-api`, accounts, sessions, the lease, the authenticator and authoriser, the `auth` Thing ~720; in `oscope-server`, the account commands, TLS and the network's rules ~280; tests ~610; `ex-two-clients` ~280; a tenth on top); one pull request, TLS within it, at the owner's standing choice · measured SIZE
+- Size: L · estimated ~2,200 before it started (in `oscope-api`, accounts, sessions, the lease, the authenticator and authoriser, the `auth` Thing ~720; in `oscope-server`, the account commands, TLS and the network's rules ~280; tests ~610; `ex-two-clients` ~280; a tenth on top); one pull request, TLS within it, at the owner's standing choice · measured **1,768** hand-written lines added (code 941: `oscope-api` 730, `oscope-server` 211; tests 487; examples 327, `ex-common`'s `call_as` among them; glue 13), and 15 removed. **That is 868 over L's 900, and 20 % under the estimate:** teta-wot's hooks did more of the work than the estimate allowed
 
 ## Summary
 
@@ -76,11 +76,44 @@ ex-two-clients: alice took control (200), homed the stage and moved it (200); bo
 
 ### What the mutants' reading found
 
-MUTANTS
+Twenty-six mutants, listed in advance from the code:
+
+- **accounts:** names, short passwords, the decoy;
+- **sessions:** expiry, use keeping one, logging out;
+- **the authenticator:** the local token, logging in and pages left open;
+- **the authoriser:** reading free, the `auth` Thing's own, the lease needed;
+- **the lease:** idling, changes keeping it, taking it, release, requests, hand-overs by others and to strangers, the desktop app's override, a request cleared;
+- **the server:** the network's account check, TLS with a certificate, the certificate kept, a password's line end.
+
+Reading the tests against the list first found gaps, now covered:
+
+- a capital inside a name;
+- the decoy password tried on an unknown name;
+- a session kept by use past its idle time;
+- the lease kept by changes past its idle time;
+- release and hand-over by someone who doesn't hold it, a hand-over to a stranger, and the request cleared after one;
+- a password from stdin, logged in with.
+
+The run then needed one fix in a test. With TLS turned off, the server answered plain HTTP and kept the connection open, so the test waited rather than failing. It now asks for the connection to close, and that mutant fails it at once.
+
+So **25 of the 26 were run, and all 25 are caught.** One was not run: the server listening on the network without an account. It would listen on 0.0.0.0, and could ask the Windows firewall on the owner's desktop.
 
 ### Two cores
 
-TWOCORE
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-api:auth` | 5 of 5 | 20.3–20.4 s |
+| `oscope-api:api` | 5 of 5 | 0.2–2.1 s |
+| `oscope-server:cli` | 5 of 5 | 0.9–2.5 s |
+| `oscope-server:sidecar` | 5 of 5 | 0.6–1.1 s |
+| `oscope-server:config` | 5 of 5 | 0.2–1.0 s |
+| `xtask:layering` | 5 of 5 | 0.3–0.5 s |
+| `ex-two-clients --smoke` | 5 of 5 | 18.6–20.2 s |
+| `ex-http-walkthrough --smoke` | 5 of 5 | 17.6–19.2 s |
+
+The auth suite's time is mostly waiting out idle times on purpose, of 2 and 4 s.
 
 ## Tests
 
@@ -90,7 +123,13 @@ TWOCORE
 | `oscope-server` `cli` (two new) | 10 | **The account commands**, from stdin, the password without its line end, and their refusals. **On the network** without an account, refused before listening. **A certificate** made once, its key 0600 on Linux, served over HTTPS |
 | `ex-two-clients --smoke` | — | 401 without a token; the script's 200s and 403s; the request, the hand-over; the page |
 
-REPLAYS
+**The local replays,** the merge gate (ADR-0038), each run alone on `a53b6f4`. The commit since adds only these lines and the measurements above.
+
+- **Windows:** `scripts/ci-local.sh`, in 6 minutes: 66 of 66 steps, 604 tests in 227 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+  - Its first run failed one step under its load: `ex-live-recipe`'s smoke run, whose recipe took 204.2 ms against its budget of 200 ms. P49 changes nothing it runs.
+  - Alone on two cores it passed 8 of 8, and the run again passed whole.
+  - A budget that holds under load is a follow-up.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 9 minutes: 66 of 66 steps, 604 tests in 227 suites, the accounts' file and the key at 0600; 845 files, none with a CR.
 
 ## Follow-ups and known gaps
 
@@ -98,6 +137,7 @@ REPLAYS
 - **Actions that change nothing,** marked so in teta-wot, so a watcher may call them.
 - **Roles,** if M3's lab needs them: the authoriser, from the principal's attributes.
 - **Sessions kept across restarts,** if wanted.
+- **`ex-live-recipe`'s smoke budget,** which a loaded replay overran once by 4 ms.
 
 ## Clean room
 
