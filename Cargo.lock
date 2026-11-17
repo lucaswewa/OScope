@@ -1062,7 +1062,7 @@ dependencies = [
 
 [[package]]
 name = "ex-annotate"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1076,7 +1076,7 @@ dependencies = [
 
 [[package]]
 name = "ex-autofocus"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1089,7 +1089,7 @@ dependencies = [
 
 [[package]]
 name = "ex-calibrate"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1102,7 +1102,7 @@ dependencies = [
 
 [[package]]
 name = "ex-capture"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1115,7 +1115,7 @@ dependencies = [
 
 [[package]]
 name = "ex-checkpoint-b"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1132,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "ex-checkpoint-c"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1146,7 +1146,7 @@ dependencies = [
 
 [[package]]
 name = "ex-checkpoint-d"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1161,7 +1161,7 @@ dependencies = [
 
 [[package]]
 name = "ex-checkpoint-e"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1176,7 +1176,7 @@ dependencies = [
 
 [[package]]
 name = "ex-checkpoint-f"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1191,7 +1191,7 @@ dependencies = [
 
 [[package]]
 name = "ex-common"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1204,7 +1204,7 @@ dependencies = [
 
 [[package]]
 name = "ex-compute-info"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-compute",
@@ -1213,7 +1213,7 @@ dependencies = [
 
 [[package]]
 name = "ex-core-tour"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-core",
  "rand 0.9.5",
@@ -1221,7 +1221,7 @@ dependencies = [
 
 [[package]]
 name = "ex-count-cells"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1236,7 +1236,7 @@ dependencies = [
 
 [[package]]
 name = "ex-cuda-check"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-compute",
@@ -1245,7 +1245,7 @@ dependencies = [
 
 [[package]]
 name = "ex-deconvolve"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1260,7 +1260,7 @@ dependencies = [
 
 [[package]]
 name = "ex-deep-zoom"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1277,7 +1277,7 @@ dependencies = [
 
 [[package]]
 name = "ex-demosaic"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1291,7 +1291,7 @@ dependencies = [
 
 [[package]]
 name = "ex-depth-from-focus"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1306,7 +1306,7 @@ dependencies = [
 
 [[package]]
 name = "ex-ext-camera"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1326,7 +1326,7 @@ dependencies = [
 
 [[package]]
 name = "ex-filters"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1343,7 +1343,7 @@ dependencies = [
 
 [[package]]
 name = "ex-frame-bus"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-acquire",
  "oscope-core",
@@ -1352,7 +1352,7 @@ dependencies = [
 
 [[package]]
 name = "ex-hal-fakes"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-core",
@@ -1363,7 +1363,7 @@ dependencies = [
 
 [[package]]
 name = "ex-histo-scan"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1378,7 +1378,7 @@ dependencies = [
 
 [[package]]
 name = "ex-http-walkthrough"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1389,7 +1389,7 @@ dependencies = [
 
 [[package]]
 name = "ex-jobs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1404,7 +1404,7 @@ dependencies = [
 
 [[package]]
 name = "ex-live-mosaic"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1419,7 +1419,7 @@ dependencies = [
 
 [[package]]
 name = "ex-live-overlays"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1435,7 +1435,7 @@ dependencies = [
 
 [[package]]
 name = "ex-live-recipe"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1451,7 +1451,7 @@ dependencies = [
 
 [[package]]
 name = "ex-live-view"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1467,7 +1467,7 @@ dependencies = [
 
 [[package]]
 name = "ex-logs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1481,7 +1481,7 @@ dependencies = [
 
 [[package]]
 name = "ex-objectives"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-core",
@@ -1492,7 +1492,7 @@ dependencies = [
 
 [[package]]
 name = "ex-omext"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1505,7 +1505,7 @@ dependencies = [
 
 [[package]]
 name = "ex-pipeline"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "ex-plan"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1539,7 +1539,7 @@ dependencies = [
 
 [[package]]
 name = "ex-power"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1551,7 +1551,7 @@ dependencies = [
 
 [[package]]
 name = "ex-projects"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1566,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "ex-python-node"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-compute",
@@ -1582,7 +1582,7 @@ dependencies = [
 
 [[package]]
 name = "ex-record"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-acquire",
@@ -1599,7 +1599,7 @@ dependencies = [
 
 [[package]]
 name = "ex-register"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-compute",
@@ -1611,7 +1611,7 @@ dependencies = [
 
 [[package]]
 name = "ex-report"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1626,7 +1626,7 @@ dependencies = [
 
 [[package]]
 name = "ex-rust-ext"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ext-rust-node",
@@ -1649,7 +1649,7 @@ dependencies = [
 
 [[package]]
 name = "ex-scan"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1663,7 +1663,7 @@ dependencies = [
 
 [[package]]
 name = "ex-server-hello"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1674,7 +1674,7 @@ dependencies = [
 
 [[package]]
 name = "ex-settings"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1686,7 +1686,7 @@ dependencies = [
 
 [[package]]
 name = "ex-shm-reader"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1698,7 +1698,7 @@ dependencies = [
 
 [[package]]
 name = "ex-sidecar"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1708,7 +1708,7 @@ dependencies = [
 
 [[package]]
 name = "ex-sim-3d"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1724,7 +1724,7 @@ dependencies = [
 
 [[package]]
 name = "ex-sim-bench"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-compute",
@@ -1736,7 +1736,7 @@ dependencies = [
 
 [[package]]
 name = "ex-sim-camera"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-core",
@@ -1747,7 +1747,7 @@ dependencies = [
 
 [[package]]
 name = "ex-sim-render"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1763,7 +1763,7 @@ dependencies = [
 
 [[package]]
 name = "ex-sim-samples"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "oscope-compute",
@@ -1777,7 +1777,7 @@ dependencies = [
 
 [[package]]
 name = "ex-sim-stage"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1791,7 +1791,7 @@ dependencies = [
 
 [[package]]
 name = "ex-stain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1807,7 +1807,7 @@ dependencies = [
 
 [[package]]
 name = "ex-status"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1820,7 +1820,7 @@ dependencies = [
 
 [[package]]
 name = "ex-stitch"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1838,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "ex-two-clients"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1850,7 +1850,7 @@ dependencies = [
 
 [[package]]
 name = "ex-volume"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1864,7 +1864,7 @@ dependencies = [
 
 [[package]]
 name = "ex-wizard"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1877,7 +1877,7 @@ dependencies = [
 
 [[package]]
 name = "ex-workspace"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ex-common",
@@ -1892,14 +1892,14 @@ dependencies = [
 
 [[package]]
 name = "ext-rust-camera"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-ext-sdk",
 ]
 
 [[package]]
 name = "ext-rust-node"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-ext-sdk",
 ]
@@ -3418,7 +3418,7 @@ checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 
 [[package]]
 name = "oscope-acquire"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "oscope-compute",
@@ -3445,7 +3445,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-api"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "argon2",
@@ -3491,7 +3491,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-compute"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "cudarc",
@@ -3508,7 +3508,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "rand 0.9.5",
@@ -3521,7 +3521,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-ext"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "libloading 0.9.0",
@@ -3548,7 +3548,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-ext-sdk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-core",
  "oscope-hal",
@@ -3558,7 +3558,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-hal"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-core",
  "rand 0.9.5",
@@ -3572,7 +3572,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-imaging"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "oscope-compute",
@@ -3592,7 +3592,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-jobs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "oscope-core",
@@ -3608,7 +3608,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-pipeline"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-compute",
  "oscope-core",
@@ -3626,7 +3626,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-report"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "insta",
  "minijinja",
@@ -3643,7 +3643,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "clap",
@@ -3670,7 +3670,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-shm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "tempfile",
@@ -3680,7 +3680,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-sim"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "oscope-compute",
@@ -3698,7 +3698,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-stitch"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-compute",
  "oscope-imaging",
@@ -3710,7 +3710,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "crc32fast",
@@ -3737,7 +3737,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-volume"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oscope-compute",
  "oscope-imaging",
@@ -3752,7 +3752,7 @@ dependencies = [
 
 [[package]]
 name = "oscope-workflows"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "oscope-acquire",
@@ -6706,7 +6706,7 @@ checksum = "9440ea3e5aeabb0ac63af70daf835274065238cdd0cec83418f417eae38bacee"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
 ]
