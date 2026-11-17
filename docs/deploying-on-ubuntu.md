@@ -165,6 +165,40 @@ ssh -N -L 8210:127.0.0.1:8210 labuser@<this computer>
 
 While that runs, `http://127.0.0.1:8210/docs` on the other computer shows the service's API. If that computer serves OScope itself, use another local port, such as `-L 8310:127.0.0.1:8210`.
 
+## OScope's accounts
+
+OScope keeps accounts of its own, apart from Ubuntu's, to know who uses the service ([ADR-0031](adr/0031-authentication-and-the-control-lease.md)). It has none at first, and then any program on this computer may use it. To add one, as the administrator:
+
+```sh
+sudo -u oscoped oscope-server --config /etc/oscope/oscope.toml account add alice
+sudo systemctl restart oscope
+```
+
+- **`account add`** asks for the password twice, without showing it: 8 to 1024 characters.
+- **As `oscoped`, not root:** the accounts' file, `/var/lib/oscope/data/accounts.json`, is the service's alone. If root writes it, the service can't read it, and doesn't start.
+- **A restart after each change:** the service reads its accounts as it starts. `labuser` may restart it too: `systemctl restart oscope`.
+- **The other commands:** `account list`, `account passwd alice` and `account remove alice`. With none left, after a restart, the service is open to all again.
+
+**With an account, security is on.** Everything under `/api/` needs a session, except logging in. The pages, `/docs` among them, and `/health` stay open. A client logs in, then sends the token it is given:
+
+```sh
+read -rsp "alice's password: " pw; echo
+token=$(jq -n --arg name alice --arg password "$pw" '{name: $name, password: $password}' |
+    curl -s -X POST -H 'Content-Type: application/json' -d @- http://127.0.0.1:8210/api/v1/auth/login | jq -r .token)
+curl -s -H "Authorization: Bearer $token" http://127.0.0.1:8210/api/v1/system/version
+```
+
+To change anything, such as moving the stage or capturing a frame, a session first takes the control lease, which one client holds at a time. Without it, a change is refused with `403`:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{}' \
+    http://127.0.0.1:8210/api/v1/auth/acquire_control
+```
+
+- **Unused,** a session ends after 8 hours, and the lease after 10 minutes. `session_idle_minutes` and `lease_idle_minutes` in the configuration's `[security]` set them.
+- **A wrong name or password** gets `401`, as a request without a token does.
+- **The smoke test** is for a service without accounts: with them, its first request gets `401`. Run it before adding them, or with them removed.
+
 ## Day to day, as `labuser`
 
 | To | Run |
@@ -213,3 +247,5 @@ sudo apt purge oscope
 - **`git clone` says *Permission denied (publickey)*:** the deploy key isn't on GitHub yet, or `~/.ssh/config` names another file.
 - **The smoke test says an operator can't restart the service or read its log:** `labuser`'s groups take effect at its next login. `id -nG` lists `oscoped` and `systemd-journal` once they have.
 - **The service doesn't start:** `journalctl -u oscope -n 50` says why. If another program has its port, change `port` in `/etc/oscope/oscope.toml`, then `systemctl restart oscope`.
+- **The service doesn't start after `account add`:** if root wrote the accounts' file, give it to the service with `sudo chown oscoped:oscoped /var/lib/oscope/data/accounts.json`, then `sudo systemctl restart oscope`.
+- **The smoke test fails with `401`:** the service has [OScope's accounts](#oscopes-accounts).
