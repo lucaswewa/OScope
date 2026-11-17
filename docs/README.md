@@ -14,6 +14,7 @@
 | [Milestone 1 retrospective](milestone-1/retrospective.md) | A look back at Milestone 1: what it delivered, what its numbers say, what went well and what didn't, and what M2 inherits |
 | [Hardware](hardware.md) | The real instrument: camera, SDK, stage controller, lights and host. Written in P02b; M3's bring-up keeps it up to date |
 | [Releasing](releasing.md) | The checklist before a release's tag, and what the release workflow does with it |
+| [Deploying on Ubuntu 24.04](deploying-on-ubuntu.md) | Line by line: the accounts, the build and its tests, the package, the service, and its smoke test, on the computer it serves |
 | [Working rules](../CLAUDE.md) | How phases are delivered, and the rules every change follows |
 
 See the plan's [documentation conventions](implementation-plan.md#11-documentation-conventions) for how these documents are organised.

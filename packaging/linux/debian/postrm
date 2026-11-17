@@ -9,6 +9,6 @@ if [ -d /run/systemd/system ]; then
 fi
 if [ "$1" = purge ]; then
     rm -rf /etc/oscope
-    echo "oscope: its data and its account stay: /var/lib/oscope, and the user oscope"
+    echo "oscope: its data and its account stay: /var/lib/oscope, and the user oscoped"
 fi
 exit 0

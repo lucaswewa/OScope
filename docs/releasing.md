@@ -24,7 +24,8 @@ A release is a tag, `vX.Y.Z`, on `main`, which only the owner pushes. Pushing it
 2. **The packages, tried:**
    - `packaging/linux/test-deb.sh`, in clean Ubuntu 22.04 and 24.04 containers;
    - `packaging/windows/test-zip.ps1`;
-   - the zip's `install.ps1` and `uninstall.ps1`, from an administrator's PowerShell, on a Windows computer.
+   - the zip's `install.ps1` and `uninstall.ps1`, from an administrator's PowerShell, on a Windows computer;
+   - [the Ubuntu deployment](deploying-on-ubuntu.md), on an Ubuntu 24.04 computer, to `packaging/linux/smoke-test.sh`'s `smoke-test: ok`.
 
 ## 5. Tag
 

@@ -33,15 +33,16 @@
   - the polkit rule, in the two forms Ubuntu's two versions read: `/usr/share/polkit-1/rules.d/50-oscope.rules` (24.04) and `/var/lib/polkit-1/localauthority/10-vendor.d/50-oscope.pkla` (22.04);
   - the licence and the notices, in `/usr/share/doc/oscope`.
 - **Installed (postinst):**
-  - the system account and group `oscope`;
-  - `/var/lib/oscope`, theirs;
-  - `/etc/oscope` and the configuration, writable by the group, for the `settings` Thing;
+  - the system account and group `oscoped`, the service's: `oscope` in 0.1.0, whose files an upgrade gives to `oscoped`;
+  - `/var/lib/oscope`, theirs, which the group may read (`StateDirectoryMode=0750`);
+  - `/etc/oscope` and the configuration, writable by the group, for the `settings` Thing, which keeps the file's mode as it writes it;
   - the service enabled and started, where systemd runs.
+- **Its operators** are the group's other members (0.1.1). Ubuntu 24.04's rule lets them start, stop and restart the service, and nothing else; 22.04's `.pkla` can't name a unit. With `systemd-journal` for its log, they look after it without sudo. [`docs/deploying-on-ubuntu.md`](../deploying-on-ubuntu.md) makes one, `labuser`.
 - **Removed:**
   - the service is stopped and disabled (prerm);
   - purged, `/etc/oscope` goes, but `/var/lib/oscope` and the account stay: projects are the instrument's results (postrm).
 - **Built on Ubuntu 22.04,** the oldest supported, so that it installs on both (`libc6 (>= 2.35)`).
-- **The unit** gains `ReadWritePaths=/etc/oscope`.
+- **The unit** gains `ReadWritePaths=/etc/oscope`, and in 0.1.1 `SupplementaryGroups=dialout`: the stage's controller comes on a serial port in M3.
 
 **3. The notices,** which both packages carry:
 - `THIRD-PARTY-NOTICES.html`, made by `cargo-about` 0.9.3: each crate in the server's build for either platform, with its licence's text. It accepts `deny.toml`'s licences.
@@ -65,6 +66,7 @@
 - **Gains:**
   - One command installs the server on each platform, as a service.
   - The polkit rule ships with the server that needs it.
+  - Its operators look after it without being administrators (0.1.1).
   - The notices are made, not written by hand.
   - A release is made from a tag, and checked before it is published.
 - **Costs:**

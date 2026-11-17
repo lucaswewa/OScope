@@ -1,8 +1,9 @@
-# OScope's server, as the oscope account, may reboot and power off the host:
+# OScope's server, as the account oscoped, may reboot and power off the host:
 # its power actions (ADR-0032), and nothing else. Ubuntu 22.04's polkit reads
-# this; 24.04's reads oscope.rules.
+# this; 24.04's reads oscope.rules, which also lets the service's operators
+# start, stop and restart it: a .pkla can't name a unit.
 [OScope's power actions]
-Identity=unix-user:oscope
+Identity=unix-user:oscoped
 Action=org.freedesktop.login1.reboot;org.freedesktop.login1.reboot-multiple-sessions;org.freedesktop.login1.power-off;org.freedesktop.login1.power-off-multiple-sessions
 ResultAny=yes
 ResultInactive=yes

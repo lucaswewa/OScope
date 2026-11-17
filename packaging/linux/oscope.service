@@ -2,7 +2,7 @@
 # ADR-0033: packaging/README.md).
 #
 # To install it by hand, as root:
-#   useradd --system --home-dir /var/lib/oscope --shell /usr/sbin/nologin oscope
+#   useradd --system --home-dir /var/lib/oscope --shell /usr/sbin/nologin oscoped
 #   install -m 755 oscope-server /usr/bin/
 #   install -D -m 644 oscope.toml /etc/oscope/oscope.toml
 #   install -m 644 oscope.service /etc/systemd/system/
@@ -17,8 +17,11 @@ After=network.target
 
 [Service]
 Type=exec
-User=oscope
-Group=oscope
+User=oscoped
+Group=oscoped
+# The stage's controller, grblHAL, comes on a serial port in M3: Ubuntu gives
+# serial ports to the group dialout.
+SupplementaryGroups=dialout
 ExecStart=/usr/bin/oscope-server --config /etc/oscope/oscope.toml
 # SIGTERM stops it as Ctrl-C does: invocations cancelled, requests finished,
 # the Things stopped and their settings saved. The wait covers the grace
@@ -31,8 +34,10 @@ Restart=on-failure
 RestartForceExitStatus=75
 RestartSec=2
 # Its own folder, /var/lib/oscope, writable, and its configuration's, which
-# the settings Thing changes (P52); the rest of the system not.
+# the settings Thing changes (P52); the rest of the system not. Its group, its
+# operators, may read its folder, and no one else.
 StateDirectory=oscope
+StateDirectoryMode=0750
 ReadWritePaths=/etc/oscope
 NoNewPrivileges=true
 ProtectSystem=strict

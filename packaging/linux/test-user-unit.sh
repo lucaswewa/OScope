@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Tries oscope.service as the user's own unit, without root: starts it,
 # restarts it through the system Thing (exit code 75), stops it, and removes
-# it. The root-only lines (the account, the folders, the hardening) are left
-# out; the rest is the unit as installed.
+# it. The root-only lines (the account and its groups, the folders, the
+# hardening) are left out; the rest is the unit as installed.
 #
 #   packaging/linux/test-user-unit.sh [path/to/oscope-server]
 #
@@ -61,7 +61,7 @@ objective = "fake"
 EOF
 
 mkdir -p "$units"
-grep -v -E '^(User|Group|StateDirectory|NoNewPrivileges|ProtectSystem|ProtectHome|PrivateTmp)=' \
+grep -v -E '^(User|Group|SupplementaryGroups|StateDirectory|StateDirectoryMode|NoNewPrivileges|ProtectSystem|ProtectHome|PrivateTmp)=' \
     "$here/oscope.service" |
     sed -e "s|^ExecStart=.*|ExecStart=$server --config $work/oscope.toml|" \
         -e 's|^WantedBy=.*|WantedBy=default.target|' >"$units/$unit"

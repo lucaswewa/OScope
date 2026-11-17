@@ -51,8 +51,9 @@ Priority: optional
 Homepage: https://github.com/lucaswewa/OScope
 Description: OScope, the server of a motorised brightfield microscope
  Serves the instrument's Things, its media and its pages, as the account
- oscope, under systemd. Its configuration is /etc/oscope/oscope.toml, and its
- data /var/lib/oscope.
+ oscoped, under systemd. Its configuration is /etc/oscope/oscope.toml, and its
+ data /var/lib/oscope. The members of the group oscoped, its operators, may
+ start, stop and restart it, change its configuration and read its data.
 EOF
 
 mkdir -p "$folder"
