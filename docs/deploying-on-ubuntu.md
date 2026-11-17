@@ -12,7 +12,7 @@ The service is the .deb's ([`packaging/README.md`](../packaging/README.md)): the
 
 - **Ubuntu 24.04 LTS on x86_64,** with access to the internet: Ubuntu's packages, Rust, crates.io and GitHub.
 - **An administrator's account,** with sudo.
-- **Room and time** for the first build with its tests: ⟨measured⟩ of disk, and ⟨measured⟩ on a 24-thread computer. Fewer cores take longer.
+- **Room and time** for the first build with its tests: some 10 GB of disk in `labuser`'s home, and 12 minutes on a 24-thread computer. Fewer cores take longer.
 - **Your GitHub account,** to give the computer a deploy key: OScope's repository is private.
 
 Each block of commands runs as one account, in order. `sudo` asks for the administrator's password.
@@ -95,7 +95,7 @@ bash packaging/linux/build-from-source.sh
 [`build-from-source.sh`](../packaging/linux/build-from-source.sh):
 
 1. builds the server for release;
-2. runs the tests, `cargo test --workspace`: ⟨measured⟩. `--no-tests` skips them;
+2. runs the tests, `cargo test --workspace`: 235 suites, some three quarters of the time. `--no-tests` skips them;
 3. makes the third-party notices, installing cargo-about the first time;
 4. packages the .deb, and copies it to `/var/tmp`, which a restart keeps.
 
@@ -128,10 +128,23 @@ cd ~/OScope
 bash packaging/linux/smoke-test.sh
 ```
 
-[`smoke-test.sh`](../packaging/linux/smoke-test.sh) checks the service as installed:
+[`smoke-test.sh`](../packaging/linux/smoke-test.sh) checks the service as installed, in some 5 s:
 
 ```text
-⟨measured⟩
+ok   oscope 0.1.1: enabled, active, as oscoped
+ok   it may use the serial ports, where the stage comes: group dialout
+ok   it answers on http://127.0.0.1:8210, as 0.1.1
+ok   the instrument: camera ok, stage to be homed, lights ok, gpu ok, disks ok, jobs ok, extensions ok
+note the stage waits to be homed, as after each start: this test moves nothing
+ok   a frame of 5472 × 3648 captured into a new project
+ok   its folder can be read: /var/lib/oscope/data/projects/01a1eb6d-8002-71e7-b31a-65d1883ed744
+ok   the project deleted
+ok   restarted through the API: process 42453, then 42824
+ok   restarted by an operator, without sudo: process 42824, then 42946
+ok   its log can be read: journalctl -u oscope
+ok   its configuration can be changed: /etc/oscope/oscope.toml
+ok   the serial ports can be used: group dialout
+smoke-test: ok
 ```
 
 - **The service:** enabled, running as `oscoped` with the group `dialout`, and answering as the version installed.
@@ -178,7 +191,8 @@ bash packaging/linux/build-from-source.sh
 
 Then, as the administrator, the line it ends with, such as `sudo apt install /var/tmp/oscope_0.1.2_amd64.deb`. Then, as `labuser`, the smoke test.
 
-If you changed the configuration and the new version's differs, apt asks which to keep. Keep yours: `N`, the default.
+- **If you changed the configuration** and the new version's differs, apt asks which to keep. Keep yours: `N`, the default.
+- **A build of the version installed,** such as `main` between two releases, needs `--reinstall`: `sudo apt install --reinstall /var/tmp/oscope_0.1.1_amd64.deb`. Without it, apt says the package is already the newest version, and changes nothing.
 
 ## Removing it
 
