@@ -464,7 +464,15 @@ fn rewrite(
     document["version"] = toml_edit::value(CONFIG_VERSION);
     edit(&mut document);
     let new = beside(path, ".new");
-    let written = std::fs::write(&new, document.to_string()).map_err(|e| failed(&new, e));
+    // The new file takes the old one's mode: whoever could change the old
+    // one, such as the packaged service's operators through its group, still
+    // can.
+    let mode = std::fs::metadata(path)
+        .map_err(|e| failed(path, e))?
+        .permissions();
+    let written = std::fs::write(&new, document.to_string())
+        .and_then(|()| std::fs::set_permissions(&new, mode))
+        .map_err(|e| failed(&new, e));
     let loaded = written.and_then(|()| Config::load(&new).map_err(|e| e.to_string()));
     if let Err(why) = loaded.and_then(|config| check(&config)) {
         let _ = std::fs::remove_file(&new);
