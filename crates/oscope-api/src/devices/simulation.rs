@@ -2,6 +2,7 @@
 //! and how it is seen (plan §5.4; P16). Served only with the simulator.
 
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use oscope_sim::{Rate, SampleEntry, Simulator};
 use schemars::JsonSchema;
@@ -12,6 +13,18 @@ use teta_wot::prelude::*;
 use super::Link;
 
 /// A sample in the catalogue.
+/// A fault to inject into the simulator (P50).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Fault {
+    /// The camera, unplugged.
+    CameraUnplugged,
+    /// The stage in alarm, as a limit switch leaves it.
+    StageAlarm,
+    /// The scratch disk, full.
+    ScratchFull,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SampleInfo {
     /// Its name, which loads it.
@@ -155,6 +168,31 @@ impl SimulationThing {
             .read()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(world.in_focus(oscope_core::Point2::new(x, y)).map(|z| z.0))
+    }
+
+    /// Injects a fault, or takes it away.
+    ///
+    /// For the status (P50): `camera_unplugged`, `stage_alarm` or `scratch_full`, with `active`
+    /// true to inject it and false to take it away. A stage alarm taken
+    /// away is cleared, as the stage's `clear_alarm` does.
+    #[action]
+    async fn inject_fault(&self, fault: Fault, active: bool) -> Result<(), ActionError> {
+        let simulator = self.simulator()?;
+        match fault {
+            Fault::CameraUnplugged => simulator.camera.unplug(active),
+            Fault::StageAlarm if active => simulator
+                .stage
+                .inject_alarm("a limit switch (a fault injected)"),
+            Fault::StageAlarm => {
+                let cleared = oscope_hal::Stage::clear_alarm(simulator.stage.as_ref()).await;
+                cleared.map_err(|e| ActionError::handled(e.to_string()))?;
+            }
+            Fault::ScratchFull => simulator
+                .faults
+                .scratch_full
+                .store(active, Ordering::Release),
+        }
+        Ok(())
     }
 
     /// Takes the slide off the stage, and says which sample it was.

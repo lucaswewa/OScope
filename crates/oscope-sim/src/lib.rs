@@ -72,7 +72,7 @@ pub use catalogue::{SampleCatalogue, SampleEntry, SampleKind, SlideLoader};
 pub use cells::{Cell, CellCulture};
 pub use clock::{Rate, SimClock};
 pub use colour_target::ColourTargetSample;
-pub use devices::{SimLights, SimMount, Simulator, SimulatorConfig};
+pub use devices::{SimFaults, SimLights, SimMount, Simulator, SimulatorConfig};
 pub use fluorescence::{Dye, Excitation};
 pub use import::{ImportLight, Imported};
 pub use motion::Segment;

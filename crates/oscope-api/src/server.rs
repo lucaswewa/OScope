@@ -33,6 +33,7 @@ use crate::mosaic::{LiveMosaicThing, Mosaics};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
+use crate::status::StatusThing;
 use crate::system::{System, VERSION};
 use crate::workspace::WorkspaceThing;
 use crate::{data, media, mosaic, pages, volume, zoom};
@@ -335,7 +336,8 @@ impl Api {
             .api_info(TITLE, VERSION)
             .service(Arc::clone(&restart))
             .service(Arc::new(roots.clone()))
-            .thing("system", System::from_config(roots.clone()));
+            .thing("system", System::from_config(roots.clone()))
+            .thing("status", StatusThing::default());
         ApiBuilder {
             things,
             pages: Vec::new(),

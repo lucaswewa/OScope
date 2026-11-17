@@ -313,6 +313,16 @@ pub struct Simulator {
     pub mount: Arc<SimMount>,
     /// The slide loader.
     pub loader: Arc<SlideLoader>,
+    /// Faults injected that aren't a device's (P50).
+    pub faults: Arc<SimFaults>,
+}
+
+/// Faults to inject that aren't a device's (P50): the camera's and the
+/// stage's are theirs ([`SimCamera::unplug`], [`SimStage::inject_alarm`]).
+#[derive(Debug, Default)]
+pub struct SimFaults {
+    /// The scratch disk, said to be full.
+    pub scratch_full: AtomicBool,
 }
 
 impl Simulator {
@@ -434,6 +444,7 @@ impl Simulator {
             lights,
             mount,
             loader,
+            faults: Arc::default(),
         })
     }
 }

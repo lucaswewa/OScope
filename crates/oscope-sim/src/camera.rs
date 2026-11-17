@@ -278,6 +278,8 @@ struct Stream {
 pub struct SimCamera {
     inner: Arc<Inner>,
     stream: Mutex<Option<Stream>>,
+    /// Unplugged, a fault injected (P50): it answers nothing.
+    unplugged: AtomicBool,
 }
 
 impl SimCamera {
@@ -319,6 +321,7 @@ impl SimCamera {
                 }),
             }),
             stream: Mutex::new(None),
+            unplugged: AtomicBool::new(false),
         }
     }
 
@@ -364,6 +367,23 @@ impl SimCamera {
     /// The world it looks at, to load or unload slides.
     pub fn world(&self) -> Arc<RwLock<World>> {
         Arc::clone(&self.inner.world)
+    }
+
+    /// Unplugs it, or plugs it back in: a fault to inject (P50). Unplugged,
+    /// it stops streaming, and refuses everything as disconnected.
+    pub fn unplug(&self, unplugged: bool) {
+        self.unplugged.store(unplugged, Ordering::Release);
+        if unplugged {
+            self.halt();
+        }
+    }
+
+    /// `Disconnected` if it is unplugged.
+    fn plugged(&self) -> Result<(), Error> {
+        match self.unplugged.load(Ordering::Acquire) {
+            true => Err(Error::Disconnected),
+            false => Ok(()),
+        }
     }
 
     fn halt(&self) {
@@ -704,11 +724,15 @@ impl Camera for SimCamera {
     }
 
     fn settings(&self) -> HalFuture<'_, CameraSettings> {
-        Box::pin(async move { Ok(lock(&self.inner.settings).clone()) })
+        Box::pin(async move {
+            self.plugged()?;
+            Ok(lock(&self.inner.settings).clone())
+        })
     }
 
     fn configure(&self, settings: CameraSettings) -> HalFuture<'_, CameraSettings> {
         Box::pin(async move {
+            self.plugged()?;
             let applied = self.inner.capabilities.check(&settings)?;
             let streaming = self.streaming();
             let mut current = lock(&self.inner.settings);
@@ -726,6 +750,7 @@ impl Camera for SimCamera {
 
     fn start(&self, pool: FramePool, sink: FrameSink) -> HalFuture<'_, ()> {
         Box::pin(async move {
+            self.plugged()?;
             let mut stream = lock(&self.stream);
             if stream.is_some() {
                 return Err(Error::Busy {

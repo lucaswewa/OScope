@@ -293,6 +293,29 @@ impl SimStage {
         point([0, 1, 2].map(|i| if to_max[i] { t[i].max.0 } else { t[i].min.0 }))
     }
 
+    /// Raises an alarm, as a fault to inject (P50): it stops where it is
+    /// until the alarm is cleared.
+    pub fn inject_alarm(&self, reason: &str) {
+        let now = self.clock.now();
+        self.pump(now);
+        let mut state = self.state();
+        // A motion stops, and what waits for it hears of the alarm.
+        if let Some((segment, purpose)) = state.motion {
+            let here = segment.position(now);
+            self.rest_at(&mut state, now, here);
+            state.settle = None;
+            self.unfire(&mut state, now);
+            if let Purpose::Move(id, ..) | Purpose::Hold(id, ..) | Purpose::Home(id, _) = purpose {
+                state.outcomes.insert(id, Outcome::Alarm(reason.to_owned()));
+            }
+        }
+        state.status = StageStatus::Alarm {
+            reason: reason.to_owned(),
+        };
+        drop(state);
+        self.changed.notify_waiters();
+    }
+
     fn state(&self) -> MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }

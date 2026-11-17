@@ -53,6 +53,7 @@ toml = { version = "1.1.8", default-features = false, features = ["parse", "serd
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 rayon = "1.12.0"
 # New in P08b: image files.
+nvml-wrapper = "=0.13.0"
 png = "0.18.1"
 tiff = { version = "0.11.3", default-features = false }
 zune-core = "0.5.3"

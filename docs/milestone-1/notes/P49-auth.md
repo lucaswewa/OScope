@@ -1,6 +1,6 @@
 # P49: Accounts, sessions, control lease, TLS
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p49-auth` / [#65](https://github.com/lucaswewa/OScope/pull/65)
 - Size: L · estimated ~2,200 before it started (in `oscope-api`, accounts, sessions, the lease, the authenticator and authoriser, the `auth` Thing ~720; in `oscope-server`, the account commands, TLS and the network's rules ~280; tests ~610; `ex-two-clients` ~280; a tenth on top); one pull request, TLS within it, at the owner's standing choice · measured **1,768** hand-written lines added (code 941: `oscope-api` 730, `oscope-server` 211; tests 487; examples 327, `ex-common`'s `call_as` among them; glue 13), and 15 removed. **That is 868 over L's 900, and 20 % under the estimate:** teta-wot's hooks did more of the work than the estimate allowed
 
