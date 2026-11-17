@@ -12,6 +12,7 @@ cuda = ["oscope-acquire/cuda"]
 
 [dependencies]
 anyhow.workspace = true
+argon2.workspace = true
 chrono.workspace = true
 fs4.workspace = true
 futures-util.workspace = true
@@ -29,13 +30,16 @@ oscope-shm.workspace = true
 oscope-sim.workspace = true
 oscope-report.workspace = true
 oscope-workflows.workspace = true
+rand.workspace = true
 rayon.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 sysinfo.workspace = true
 tempfile.workspace = true
-teta-wot.workspace = true
+# Serving over TLS (P49).
+teta-wot = { workspace = true, features = ["tls"] }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["fs", "macros", "net", "rt", "sync", "time"] }
 tracing.workspace = true
@@ -48,8 +52,10 @@ teta-wot = { workspace = true, features = ["windows-service"] }
 
 [dev-dependencies]
 insta = { workspace = true, features = ["json"] }
+rcgen.workspace = true
 teta-wot = { workspace = true, features = ["testing"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
+tokio-rustls.workspace = true
 tokio-tungstenite = { workspace = true, features = ["connect"] }
 zune-core.workspace = true
 zune-jpeg.workspace = true

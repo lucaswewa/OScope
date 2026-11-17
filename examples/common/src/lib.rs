@@ -347,6 +347,21 @@ async fn request(
     send(address, method, path, "application/json", body.as_bytes()).await
 }
 
+/// `method path` with a JSON `body`, sent with a session's `token` as its
+/// bearer (P49), as [`get`].
+pub async fn call_as(
+    address: SocketAddr,
+    token: &str,
+    method: &str,
+    path: &str,
+    body: Option<&Value>,
+) -> anyhow::Result<Answer> {
+    let body = body.map(Value::to_string).unwrap_or_default();
+    let bearer = format!("authorization: Bearer {token}\r\n");
+    let content = "application/json";
+    send_with(address, method, path, content, body.as_bytes(), &bearer).await
+}
+
 async fn send(
     address: SocketAddr,
     method: &str,
@@ -354,10 +369,22 @@ async fn send(
     content_type: &str,
     body: &[u8],
 ) -> anyhow::Result<Answer> {
+    send_with(address, method, path, content_type, body, "").await
+}
+
+/// As [`send`], with more header `fields`, each ending in CRLF.
+async fn send_with(
+    address: SocketAddr,
+    method: &str,
+    path: &str,
+    content_type: &str,
+    body: &[u8],
+    fields: &str,
+) -> anyhow::Result<Answer> {
     let mut stream = TcpStream::connect(address).await?;
     let head = format!(
         "{method} {path} HTTP/1.1\r\nhost: {address}\r\nconnection: close\r\n\
-         content-type: {content_type}\r\ncontent-length: {}\r\n\r\n",
+         content-type: {content_type}\r\ncontent-length: {}\r\n{fields}\r\n",
         body.len()
     );
     stream.write_all(head.as_bytes()).await?;

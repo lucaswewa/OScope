@@ -16,6 +16,7 @@
 //! The media plane's routes and the pages get the same authentication, CORS
 //! and graceful shutdown as the Things.
 
+pub mod auth;
 mod batch;
 pub mod calibration;
 pub mod capture;
