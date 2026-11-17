@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p53-perf` / [#69](https://github.com/lucaswewa/OScope/pull/69)
-- Size: M · estimated ~1,050 before it started (`cargo xtask` ~70; `perf`'s benchmarks ~170 and report ~120; the benchmarks' `perf:` lines ~40; the soak ~260 and its detector ~50; tests ~200; the workflow ~35; glue ~20; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured SIZE
+- Size: M · estimated ~1,050 before it started (`cargo xtask` ~70; `perf`'s benchmarks ~170 and report ~120; the benchmarks' `perf:` lines ~40; the soak ~260 and its detector ~50; tests ~200; the workflow ~35; glue ~20; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured **1,408** hand-written lines added (code 680: `xtask` 637, `oscope-store` 24, `oscope-jobs` 19; tests 639, the soak's file of 471 among them; examples 32, the benchmarks' `perf:` lines; glue 57, the workflow's 41 and `deny.toml`'s 3 among them), and 13 removed. **That is 808 over M's 600, and 34 % over the estimate:** the soak and its tests came to 471 lines against some 310 estimated, and the two fixes it led to, with their tests, to some 120 not foreseen
 
 ## Summary
 
@@ -49,11 +49,52 @@ cargo xtask soak --minutes 15        # the soak: target/soak/soak.json
 
 The [README](../../../xtask/README.md) says what each runs. On the owner's PC:
 
-PERF
+`cargo xtask perf --quick --cuda`, its builds warm, ran the seven benchmarks in 65 s and printed:
+
+```text
+Preview: a 20 MP frame to a JPEG at 1920 px, CPU              36.17 ms  Met
+Preview: a 20 MP frame to a JPEG at 1920 px, CUDA             22.55 ms  Met
+Demosaic, 20 MP, superpixel, 8 CPU threads                    11.19 ms  Met
+Demosaic, 20 MP, bilinear, 8 CPU threads                      23.57 ms  Met
+Demosaic, 20 MP, Malvar–He–Cutler, 8 CPU threads              25.62 ms  Met
+Demosaic, 20 MP, superpixel, CUDA                              3.31 ms  Met
+Demosaic, 20 MP, bilinear, CUDA                                 5.3 ms  Met
+Demosaic, 20 MP, Malvar–He–Cutler, CUDA                        5.77 ms  Met
+Scratch recording, keeping up with the design rate, 580 MB/s     578.2 MB/s  Met
+Scratch recording: frames dropped                             0 frames  Met
+Scratch recording: for 10 minutes                                    —  Unmeasured
+Simulated camera at full resolution, CPU                      9.51 fps  Met
+Simulated camera at full resolution, CUDA                    62.93 fps  Met
+Phase correlation of a 2048² pair, CUDA                       10.53 ms  Met
+Post-stitching of 20 MP tiles                            11.25 tiles/s  Met
+Post-stitching: its parts at once                               199 MB  Met
+Deep zoom: a cold tile, server time                            4.15 ms  Met
+Deep zoom: a cached tile, server time                          0.09 ms  Met
+Deep zoom: a full-screen view never seen                       41.5 ms  Met
+Deep zoom: the same, a hardware job running                    75.4 ms  Met
+
+the report: target\perf\report.html
+```
+
+The page has the same table, with each budget's phase, and the machine: a 12th Gen Intel Core i9-12900, 24 threads, an NVIDIA RTX A2000 12 GB, Windows.
 
 ## Performance
 
-PERF_NOTES
+This phase adds no hot path; its report measures the others'. On the owner's PC, the quick run met every budget it measured, near what each phase recorded:
+
+- **Preview:** 36.2 ms on the CPU and 22.6 ms with CUDA; P17 had 34.2 and 22.0.
+- **Malvar–He–Cutler:** 25.6 ms on 8 threads and 5.8 ms with CUDA; P08 had 29.5, and P08c 5.7.
+- **Post-stitching:** 11.3 tiles a second, over 40 tiles; P39 had a median of 10.3 over 40.
+
+**The first quick run missed three budgets,** and each led to a change:
+
+- **The recording's rate, 575.2 MB/s, against ≥ 580.**
+  - The recorder can't outrun its source's 580 MB/s, and its first frame's wait counts against it; P29's 10-minute run measured 579 MB/s, and called the budget met.
+  - The budget is now keeping up within 1 %, ≥ 574.2 MB/s, beside no frame dropped.
+- **Its 10 minutes, as 30 s:** a quick run's length now counts as not measured.
+- **9.3 tiles a second over 20 tiles:** P39 had 8.6 to 11.7 over 20, and met the budget over 60. The quick run now stitches 40.
+
+**The whole run,** `cargo xtask perf --cuda`, with the recording's 10 minutes, wasn't run in this phase. Its other benchmarks are those above, longer.
 
 ## Design notes and deviations from the plan
 
@@ -77,15 +118,73 @@ PERF_NOTES
 
 ### What the soak found
 
-FOUND
+The soaks here found three things. Two are fixed; the third is recorded.
+
+- **The job service kept every finished job in memory,** for as long as the server ran, and a soak runs some 11,000 jobs an hour.
+  - Finished jobs now leave memory 5 minutes after they end. Their records, which were always kept, answer for them.
+  - A unit test sees one go, and stay when kept longer. It fails without the change.
+- **Deleting a project right after its stitch failed, once,** with "Access is denied".
+  - Another program held one of its new files for a moment, most likely the virus scanner. The next soak deleted 20 projects in a row at once.
+  - The store now tries again, on Windows, for up to 2 s.
+  - A test holds one of a project's files for 300 ms, sharing nothing. It fails without the change.
+- **Memory still grows slowly once warm:** about 55 MB an hour on Windows, steadily, at 5,500 scans and stitches an hour, some 10 KB a cycle; and about 37 MB an hour on Linux.
+  - Its source isn't found.
+  - These were checked, and are bounded:
+    - deep zoom's open images, looks, decompressed chunks (512 MB) and tiles (4 GiB, on scratch);
+    - teta-wot's invocations (kept 300 s);
+    - the jobs, now;
+    - the logs' ring, the live mosaic and the frame bus.
+  - The hour's soak passed: its 42 MB of growth was under the 48 MB that 5 % of its level allows. A four-hour soak at this pace would fail: see the follow-ups.
+
+| Soak | Scans and stitches | Previews dropped | Memory once warm | Handles once warm | Verdict |
+|---|---|---|---|---|---|
+| Windows, 12 min, before the jobs' fix | 1,095 | 0 of 5,208 | +183 MB/h | +0.0/h | passed |
+| Windows, 12 min | 1,102 | 0 of 5,212 | +114 MB/h | +0.0/h | passed |
+| Windows, 60 min | 5,524 | 0 of 26,062 | +54.5 MB/h | +3.3/h | passed |
+| Windows, 12 min, 100 KB leaked a preview | 1,102 | 0 of 5,212 | +429.7 MB/h | +0.0/h | **failed:** memory leaks |
+| Windows, 12 min, a file handle leaked a preview | 1,103 | 0 of 5,212 | +128.7 MB/h | +26,089/h | **failed:** handles leak |
+| Linux (WSL), 30 min | 2,778 | 0 of 13,022 | +37.5 MB/h | +0.0/h | passed |
+
+On Linux, the nightly's system, the soak's sampling ran for the first time here: resident memory from `/proc`, and 22 to 25 open files.
+
+**The leak injected:** `std::mem::forget` of 100 KB, or of an open file, in the preview stream, for each frame sent. Each failed its soak by far, which is this phase's mutation check of the soak.
 
 ### What the mutants' reading found
 
-MUTANTS
+Twenty-one mutants, listed in advance from the code:
+
+- **`perf`:** its lines read without their space; each bound's edge; the first of a key counting; CUDA after the arguments; a missed budget, or a failed benchmark, passing; the report unescaped, or a met budget shown missed; a quick run's length judged;
+- **the detector:** the mean of the slopes for their median; no floor to the warm-up, or no warm-up; any length judged; growth past the floor alone, or past the fraction alone;
+- **the jobs:** finished ones kept for ever; unfinished ones dropped; kept for no time by default;
+- **the store:** never patient, or patient for no time.
+
+Reading the tests against the list first found gaps, now covered: a key printed twice; the rule for passing, taken out of `main` to be tested; a series too short once warm; and each side of the leak rule alone.
+
+The run then missed two, both weak tests, now fixed:
+
+- **Spikes mid-series** cancelled out under a mean of the slopes too, so they now come at the very end, where a mean is pulled up and a median isn't.
+- **The case "past the floor"** grew 30 MB once warm, under the floor, so it now grows 45 MB.
+
+**All 21 are caught.** The soak itself was checked by leaks injected into the server: see what the soak found.
 
 ### Two cores
 
-TWOCORE
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each: the suites this phase adds or changes, and the smoke runs of the examples it touches.
+
+| Target | Passed | Time |
+|---|---|---|
+| `xtask:lib` | 5 of 5 | 0.4 s |
+| `oscope-server:soak` (the detector) | 5 of 5 | 0.5–0.8 s |
+| `oscope-jobs:lib` | 5 of 5 | 0.3–0.7 s |
+| `oscope-jobs:jobs` | 5 of 5 | 1.0–1.2 s |
+| `oscope-store:projects` | 5 of 5 | 5.9–6.8 s |
+| `ex-demosaic --smoke` | 5 of 5 | 3.1–5.3 s |
+| `ex-sim-bench --smoke` | 5 of 5 | 4.4–4.6 s |
+| `ex-register --smoke` | 5 of 5 | 1.5–1.7 s |
+| `ex-stitch --smoke` | 5 of 5 | 50.1–56.0 s |
+| `ex-deep-zoom --smoke` | 5 of 5 | 26.4–33.2 s |
+| `ex-record --smoke` | 5 of 5 | 5.4–6.1 s |
+| `ex-jobs --smoke` | 5 of 5 | 2.1–3.6 s |
 
 ## Tests
 
@@ -97,7 +196,13 @@ TWOCORE
 | `oscope-store` `projects` | 9 | On Windows, a project is deleted though another program holds a file of it for a moment |
 | The benchmarks' `--smoke` | — | Unchanged, with their `perf:` lines |
 
-REPLAYS
+**The local replays,** the merge gate (ADR-0038), each run alone on `9e391e3`. The commit since adds only these lines and the measurements above.
+
+- **Windows:** `scripts/ci-local.sh`, in 12 minutes: 69 of 69 steps, 626 tests in 235 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run; the quick report built and ran the CUDA benchmarks.
+  - **Its first run, on `d0be50f`, failed twice, outside the phase's code:**
+    - `cargo deny` met RUSTSEC-2026-0543, newly published: see the follow-ups;
+    - the examples build ran out of memory, as in P51.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 9 minutes: 69 of 69 steps, 625 tests in 235 suites, the store's Windows test the one fewer; 880 files, none with a CR.
 
 ## Follow-ups and known gaps
 
