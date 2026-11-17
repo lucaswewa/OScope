@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p48-workspace` / [#64](https://github.com/lucaswewa/OScope/pull/64)
-- Size: M · estimated ~2,200 before it started (in `oscope-store`, the inputs' hashes and deleting a result ~60; in `oscope-workflows`, the analysis job, its outputs, provenance, re-runs and comparison ~380; the `workspace` Thing with P44's annotation routes moved to it ~350; tests ~660; `ex-workspace` and `ex-checkpoint-f` ~550; and a tenth on top); one pull request, at the owner's standing choice · measured SIZE
+- Size: M · estimated ~2,200 before it started (in `oscope-store`, the inputs' hashes and deleting a result ~60; in `oscope-workflows`, the analysis job, its outputs, provenance, re-runs and comparison ~380; the `workspace` Thing with P44's annotation routes moved to it ~350; tests ~660; `ex-workspace` and `ex-checkpoint-f` ~550; and a tenth on top); one pull request, at the owner's standing choice · measured **2,842** hand-written lines added (code 1,030: `oscope-workflows` 611, `oscope-api` 364, `oscope-store` 55; tests 1,129; examples 636; glue 47), and 258 removed. The annotation routes and their test, moved from `projects`, count again where they are now, about 85 lines of code and 140 of tests. **That is 2,242 over M's 600, and 29 % over the estimate,** most of it tests: the mutants' reading added the raw mosaic, the stack, the mask's pixels and an extension's node
 
 ## Summary
 
@@ -105,7 +105,35 @@ The READMEs give the routes and the outputs' files.
 
 ### What the mutants' reading found
 
-MUTANTS
+Thirty-eight mutants, listed in advance from the code, covering:
+
+- deleting a result: what was made from it, a missing one, its row, a deletion cut short, the row removed;
+- the job's checks: its input, its outputs' names, stacks, the size limit;
+- the region: its rounding, the pixel size, a raw image's cells;
+- the provenance: the hash, the nodes once, the extensions, the hashes kept;
+- the outputs: CSV's quoting and nulls, the mask's pixels, shapes, the first image, the image's pixel size, the rows;
+- tiles and a cancel;
+- making again: changes, nulls, unknown nodes;
+- the comparison: keys, escaping, which way, what changed, empty parameters;
+- the Thing: the files listed, the changes passed, the pair compared, the extensions' versions and nodes.
+
+Reading the tests against the list first found gaps, now covered:
+
+- a refusal checked by its reason;
+- a region whose edges lie between pixels;
+- a second image, and a node used twice;
+- a recipe that can't run in tiles, run so;
+- CSV's quoting and nulls, by a unit test;
+- a key to escape;
+- a raw mosaic as the input;
+- the mask's pixels, decoded;
+- an image over the limit, never written, so it costs nothing;
+- a stack, from a node of the test's own;
+- an extension's node, from P46's Python stub, with `OSCOPE_PYTHON=1`.
+
+The run then missed one, and the mutant was at fault. `false && …` bound tighter than the `||` after it, so only the first of the input's three checks was turned off. Turned off whole, the mutant is caught.
+
+So **all 38 are caught.** Two ran with `OSCOPE_PYTHON=1`: the extensions' versions and their nodes.
 
 ### The pages
 
@@ -120,7 +148,23 @@ Neither page was seen in a browser here. Under Node, against the running example
 
 ### Two cores
 
-TWOCORE
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each, with `OSCOPE_PYTHON=1`. P45's and P46's suites are among them, for the shared reader, and so are the examples whose routes moved:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-store:projects` | 5 of 5 | 9.3–9.6 s |
+| `oscope-workflows:workspace` | 5 of 5 | 3.2–5.9 s |
+| `oscope-workflows:lib` | 5 of 5 | 0.3–1.3 s |
+| `oscope-workflows:stain` | 5 of 5 | 6.6–6.8 s |
+| `oscope-workflows:cells` | 5 of 5 | 10.4–10.6 s |
+| `oscope-api:workspace` | 5 of 5 | 2.3–6.1 s |
+| `oscope-api:projects` | 5 of 5 | 2.4–4.5 s |
+| `xtask:layering` | 5 of 5 | 0.3–0.5 s |
+| `ex-workspace --smoke` | 5 of 5 | 26.0–27.9 s |
+| `ex-checkpoint-f --smoke` | 5 of 5 | 36.1–42.6 s |
+| `ex-annotate --smoke` | 5 of 5 | 19.2–23.7 s |
+| `ex-count-cells --smoke` | 5 of 5 | 24.4–31.2 s |
+| `ex-projects --smoke` | 5 of 5 | 3.1–6.3 s |
 
 ## Tests
 
@@ -134,7 +178,13 @@ TWOCORE
 | `ex-workspace --smoke` | — | The recipe's count, within 25 % of P46's density; again the same; the changed parameter its difference; three analyses hashed; the page |
 | `ex-checkpoint-f --smoke` | — | Over 50 nuclei, 20–60 % of them DAB-positive; tissue DAB and H-score above 0; the PDF, the HTML's count and DAB, three sections or more; the page |
 
-REPLAYS
+**The local replays,** the merge gate (ADR-0038), each run alone on `2593890`. The commit since adds only these lines and the measurements above.
+
+- **Windows:** `scripts/ci-local.sh`, in 13 minutes: 65 of 65 steps, 597 tests in 225 suites, the Python tests real (the extension's node among them), and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 13 minutes from cold: 65 of 65 steps, 597 tests in 225 suites; 836 files, none with a CR.
+  - Its first run stopped two minutes in, after clippy: C: had filled, and WSL wouldn't start.
+  - With the owner's word, `cargo clean --profile dev` freed 301.6 GiB, and WSL's debug build went.
+  - It then ran again, alone, and passed.
 
 ## Follow-ups and known gaps
 
