@@ -47,6 +47,12 @@ pub const DEFAULT_PORT: u16 = 8210;
 /// wheelhouse = "wheels"           # install from these wheels alone, offline
 /// call_timeout_s = 120            # how long a node may run
 /// idle_s = 300                    # how long an idle worker is kept
+///
+/// [security]                      # with accounts (oscope-server account add): P49
+/// certificate = "tls/cert.pem"    # TLS; made in data_root/tls on the network if not given
+/// key = "tls/key.pem"
+/// session_idle_minutes = 480      # a session unused this long ends
+/// lease_idle_minutes = 10         # control, its holder idle this long, goes
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -66,6 +72,36 @@ pub struct Config {
     pub jobs: Jobs,
     /// Python extensions.
     pub python: PythonConfig,
+    /// Accounts' sessions, the control lease and TLS (P49).
+    pub security: SecurityConfig,
+}
+
+/// Sessions, the control lease and TLS (P49, ADR-0031). The files are
+/// relative to the configuration file's folder.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SecurityConfig {
+    /// The TLS certificate chain, PEM. When it isn't given and the server
+    /// listens on the network, one is made, and kept in `data_root/tls`.
+    pub certificate: Option<PathBuf>,
+    /// Its private key, PEM.
+    pub key: Option<PathBuf>,
+    /// How long a session lasts unused, in minutes: 480.
+    pub session_idle_minutes: u64,
+    /// How long the control lease lasts while its holder is idle, in
+    /// minutes: 10.
+    pub lease_idle_minutes: u64,
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            certificate: None,
+            key: None,
+            session_idle_minutes: 480,
+            lease_idle_minutes: 10,
+        }
+    }
 }
 
 /// Python extensions (ADR-0020). Folders are relative to the file's folder.
@@ -266,11 +302,10 @@ impl Config {
         let folder = path.parent().unwrap_or(Path::new(""));
         config.storage.data_root = folder.join(&config.storage.data_root);
         config.storage.scratch_root = folder.join(&config.storage.scratch_root);
-        let python = &mut config.python;
-        for path in [&mut python.uv, &mut python.sdk, &mut python.wheelhouse]
-            .into_iter()
-            .flatten()
-        {
+        let (python, security) = (&mut config.python, &mut config.security);
+        let paths = [&mut python.uv, &mut python.sdk, &mut python.wheelhouse];
+        let tls = [&mut security.certificate, &mut security.key];
+        for path in paths.into_iter().chain(tls).flatten() {
             *path = folder.join(&*path);
         }
         Ok(config)

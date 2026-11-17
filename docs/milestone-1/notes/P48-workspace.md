@@ -1,6 +1,6 @@
 # P48: The `workspace` Thing: analyses on datasets, results, provenance
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p48-workspace` / [#64](https://github.com/lucaswewa/OScope/pull/64)
 - Size: M · estimated ~2,200 before it started (in `oscope-store`, the inputs' hashes and deleting a result ~60; in `oscope-workflows`, the analysis job, its outputs, provenance, re-runs and comparison ~380; the `workspace` Thing with P44's annotation routes moved to it ~350; tests ~660; `ex-workspace` and `ex-checkpoint-f` ~550; and a tenth on top); one pull request, at the owner's standing choice · measured **2,842** hand-written lines added (code 1,030: `oscope-workflows` 611, `oscope-api` 364, `oscope-store` 55; tests 1,129; examples 636; glue 47), and 258 removed. The annotation routes and their test, moved from `projects`, count again where they are now, about 85 lines of code and 140 of tests. **That is 2,242 over M's 600, and 29 % over the estimate,** most of it tests: the mutants' reading added the raw mosaic, the stack, the mask's pixels and an extension's node
 

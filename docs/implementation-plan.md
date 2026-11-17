@@ -850,7 +850,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P45 | Stain analysis | P44 | M | — | Done |
 | P46 | Cell detection and counting | P45 | L | — | Done |
 | P47 | Reports, and report extensions | P46 | L | 0030 | Done |
-| P48 | The `workspace` Thing: analyses on datasets, results, provenance | P47 | M | — | In review |
+| P48 | The `workspace` Thing: analyses on datasets, results, provenance | P47 | M | — | Done |
 
 **Checkpoint F:** count cells and quantify DAB on a stitched slide, then produce a PDF report.
 
@@ -858,7 +858,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
-| P49 | Accounts, sessions, control lease, TLS | P48 | L | 0031 | Planned |
+| P49 | Accounts, sessions, control lease, TLS | P48 | L | 0031 | In review |
 | P50 | Instrument status and health | P49 | M | — | Planned |
 | P51 | Power actions | P50 | S | 0032 | Planned |
 | P52 | Settings and configuration migration | P51 | M | — | Planned |
@@ -1108,3 +1108,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-16 | P46 was estimated at about 2,750 lines before it started (in `oscope-imaging`, an adaptive threshold, the distance transform and labelling moved from the pipeline, a seeded watershed, each object's measures and outline, ~550; the pipeline's nodes ~200; in `oscope-workflows`, the counting job over a stored slide, tile by tile with a halo, its table, outlines and annotation layer, ~400; a stub Python extension ~80; tests ~900; `ex-count-cells` and its page ~550; glue and `ex-checkpoint-d`'s wait ~70): about three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P54 |
 | 2026-11-16 | P47 was estimated at about 2,600 lines before it started: the report crate, with its model, Typst and minijinja renderers, charts and templates; the report generator kind in both SDKs and the loader; the job and OScope's generator; the `projects` Thing's templates; tests; and `ex-report`. Nearly three times L's 900. One pull request, with the overrun explained, as the owner decided for P24–P54. Typst's tree comes with one licence exception and eight advisories ignored, as the owner chose (ADR-0030) |
 | 2026-11-16 | P48 was estimated at about 2,200 lines before it started (in `oscope-store`, the inputs' hashes in the provenance and deleting a result ~60; in `oscope-workflows`, the analysis job over a stored image or a region of it, its outputs kept as a result, its provenance, made again and compared ~380; the `workspace` Thing, with P44's annotation routes moved to it ~350; tests ~660; `ex-workspace` and its page, and `ex-checkpoint-f` ~550; and about a tenth on top): more than three times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
+| 2026-11-16 | P49 was estimated at about 2,200 lines before it started (in `oscope-api`, accounts with argon2, sessions, the lease, the authenticator and authoriser, and the `auth` Thing ~720; in `oscope-server`, the account commands, TLS with a made or given certificate, and the network's rules ~280; tests, among them one made from the Thing Descriptions ~610; `ex-two-clients` and its page ~280; and about a tenth on top): more than twice L's 900. One pull request, TLS within it, with the overrun explained, as the owner decided for P24–P54 |

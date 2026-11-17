@@ -14,10 +14,12 @@ use teta_wot::http::axum::middleware;
 use teta_wot::http::axum::routing::get;
 use teta_wot::http::axum::{Json, Router};
 use teta_wot::prelude::FromConfig;
+use teta_wot::server::tls::{TlsListener, server_config};
 use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuilder};
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
 
+use crate::auth::{AuthThing, Guard, LeaseCheck, Security};
 use crate::calibration::{CalibrationThing, Calibrations};
 use crate::capture::CaptureThing;
 use crate::devices::{
@@ -70,6 +72,9 @@ pub enum ApiError {
         /// What is wrong.
         reason: String,
     },
+    /// The TLS certificate or its key can't be used (P49).
+    #[error("TLS: {0}")]
+    Tls(String),
     /// A Thing Description can't be made.
     #[error("the Thing Description of `{thing}`: {reason}")]
     Description {
@@ -150,6 +155,21 @@ impl ApiBuilder {
     /// OpenAPI document stay public.
     pub fn authenticator(mut self, authenticator: impl Authenticator) -> Self {
         self.things = self.things.authenticator(authenticator);
+        self
+    }
+
+    /// Turns on `security` (P49, ADR-0031): every request but logging in
+    /// needs a session's token or the local one, and every one that changes
+    /// state needs the control lease, but the `auth` Thing's, which serves
+    /// them.
+    pub fn security(mut self, security: Security) -> Self {
+        let security = Arc::new(security);
+        self.things = self
+            .things
+            .authenticator(Guard(Arc::clone(&security)))
+            .authorizer(LeaseCheck(Arc::clone(&security)))
+            .service(security)
+            .thing("auth", AuthThing::default());
         self
     }
 
@@ -368,6 +388,21 @@ impl Api {
         shutdown: impl Future<Output = ()> + Send + 'static,
     ) -> Result<(), ApiError> {
         Ok(self.server.serve_with(listener, shutdown).await?)
+    }
+
+    /// As [`serve`](Self::serve), over TLS (P49): `certificate`, a PEM
+    /// chain, and its `key`, PEM, with HTTP/2 for clients that negotiate it.
+    pub async fn serve_tls(
+        self,
+        listener: TcpListener,
+        certificate: &[u8],
+        key: &[u8],
+        shutdown: impl Future<Output = ()> + Send + 'static,
+    ) -> Result<(), ApiError> {
+        let config = server_config(certificate, key).map_err(|e| ApiError::Tls(e.to_string()))?;
+        let listener =
+            TlsListener::new(listener, config).map_err(|e| ApiError::Tls(e.to_string()))?;
+        Ok(self.server.serve_with_listener(listener, shutdown).await?)
     }
 
     /// The `teta-wot` server underneath, for tests with its test client.

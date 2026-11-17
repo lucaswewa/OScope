@@ -254,3 +254,122 @@ fn ext_pack_names_the_package_and_packs_the_same_bytes_each_time() {
     );
     assert!(!out.exists());
 }
+
+/// Runs `oscope-server` with `args`, `input` on its stdin.
+fn run_with(args: &[&str], input: &str) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_oscope-server"))
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("oscope-server runs");
+    let mut stdin = child.stdin.take().unwrap();
+    stdin.write_all(input.as_bytes()).unwrap();
+    drop(stdin);
+    child.wait_with_output().unwrap()
+}
+
+#[test]
+fn accounts_are_added_listed_changed_and_removed_from_the_command_line() {
+    let folder = tempfile::tempdir().unwrap();
+    let data = folder.path().join("data");
+    let data = data.to_str().unwrap();
+    let account = |args: &[&str], input: &str| {
+        let mut all = vec!["--data-root", data, "account"];
+        all.extend_from_slice(args);
+        run_with(&all, input)
+    };
+    let text = |output: &Output| String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    let added = account(&["add", "alice"], "alice's password\n");
+    assert!(added.status.success(), "{added:?}");
+    assert_eq!(text(&added), "added alice");
+    // Its password, stdin's line without its end.
+    let file = std::path::Path::new(data).join("accounts.json");
+    let kept = oscope_api::auth::Accounts::open(&file).unwrap();
+    assert!(kept.verify("alice", "alice's password"));
+    assert_eq!(text(&account(&["list"], "")), "alice");
+    let changed = account(&["passwd", "alice"], "a new password\n");
+    assert_eq!(text(&changed), "changed alice's password");
+    // Refused, saying why: a name, a short password, one that isn't.
+    for (args, input) in [
+        (&["add", "Alice"][..], "a long password\n"),
+        (&["add", "bob"][..], "short\n"),
+        (&["remove", "bob"][..], ""),
+    ] {
+        let refused = account(args, input);
+        let error = String::from_utf8_lossy(&refused.stderr).to_string();
+        assert!(
+            !refused.status.success() && error.contains("accounts:"),
+            "{args:?}: {error}"
+        );
+    }
+    assert_eq!(text(&account(&["remove", "alice"], "")), "removed alice");
+    assert_eq!(text(&account(&["list"], "")), "");
+}
+
+#[test]
+fn the_network_needs_an_account_and_a_given_certificate_serves_tls() {
+    let folder = tempfile::tempdir().unwrap();
+    let data = folder.path().join("data");
+    // On the network without an account: refused before it listens.
+    let config = folder.path().join("network.toml");
+    std::fs::write(&config, "[server]\naddress = \"0.0.0.0\"\nport = 0\n").unwrap();
+    let args = [
+        "--config",
+        config.to_str().unwrap(),
+        "--data-root",
+        data.to_str().unwrap(),
+    ];
+    let refused = run(&args);
+    let error = String::from_utf8_lossy(&refused.stderr).to_string();
+    assert!(
+        !refused.status.success() && error.contains("needs an account"),
+        "{error}"
+    );
+    // A certificate made once and kept, its key private; served over TLS.
+    let tls = folder.path().join("tls");
+    let localhost = "127.0.0.1".parse().unwrap();
+    let made = oscope_server::certificate(&tls, localhost).unwrap();
+    assert_eq!(oscope_server::certificate(&tls, localhost).unwrap(), made);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(tls.join("key.pem"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
+    let config = folder.path().join("tls.toml");
+    let text = "[security]\ncertificate = \"tls/certificate.pem\"\nkey = \"tls/key.pem\"\n";
+    std::fs::write(&config, text).unwrap();
+    let mut server = Command::new(env!("CARGO_BIN_EXE_oscope-server"))
+        .args(["--config", config.to_str().unwrap(), "--port", "0"])
+        .args(["--data-root", data.to_str().unwrap()])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut line = String::new();
+    BufReader::new(server.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let result = std::panic::catch_unwind(|| {
+        let served = line.trim().rsplit_once("serving on https://");
+        let address = served.map(|(_, a)| a.trim_end_matches('/').to_owned());
+        let address = address.unwrap_or_else(|| panic!("{line}"));
+        // Plain HTTP gets no answer. Asked to close, a plain server would
+        // answer and close, rather than keep the test waiting.
+        let mut stream = TcpStream::connect(&address).unwrap();
+        let request =
+            format!("GET /health HTTP/1.1\r\nhost: {address}\r\nconnection: close\r\n\r\n");
+        stream.write_all(request.as_bytes()).unwrap();
+        let mut answer = Vec::new();
+        let _ = stream.read_to_end(&mut answer);
+        assert!(!answer.starts_with(b"HTTP/1.1 200"), "{answer:?}");
+    });
+    server.kill().unwrap();
+    server.wait().unwrap();
+    result.unwrap();
+}

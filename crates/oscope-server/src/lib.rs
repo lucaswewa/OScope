@@ -15,13 +15,14 @@
 
 use std::future::Future;
 use std::io::Read;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::process::ExitCode;
 use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
+use oscope_api::auth::{Accounts, AuthError, Idle, Security};
 use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
@@ -85,6 +86,32 @@ pub enum Command {
     /// Extensions (ADR-0018).
     #[command(subcommand)]
     Ext(ExtCommand),
+    /// Accounts, in the data root (P49). The password is asked for, or read
+    /// from stdin's first line when stdin isn't a terminal.
+    #[command(subcommand)]
+    Account(AccountCommand),
+}
+
+/// What the server can do with accounts without serving.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum AccountCommand {
+    /// Adds an account.
+    Add {
+        /// Its name: 1 to 64 of a–z, 0–9, '.', '_' and '-'.
+        name: String,
+    },
+    /// Removes an account.
+    Remove {
+        /// Its name.
+        name: String,
+    },
+    /// Changes an account's password.
+    Passwd {
+        /// Its name.
+        name: String,
+    },
+    /// Lists the accounts' names.
+    List,
 }
 
 /// What the server can do with extensions without serving.
@@ -216,6 +243,13 @@ pub enum Error {
     /// The extensions couldn't be read, or a package made.
     #[error("extensions: {0}")]
     Extensions(#[from] ExtError),
+    /// An account couldn't be kept, changed or read (P49).
+    #[error("accounts: {0}")]
+    Accounts(#[from] AuthError),
+    /// The server would listen on the network without an account, or TLS
+    /// couldn't be set up (P49).
+    #[error("{0}")]
+    Security(String),
 }
 
 impl Error {
@@ -245,6 +279,11 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
         Some(Command::Service(command)) => return service(cli, command),
         Some(Command::Ext(ExtCommand::Pack { folder, out })) => {
             return pack(folder, out.as_deref());
+        }
+        Some(Command::Account(command)) => {
+            let accounts = Accounts::open(&cli.config()?.storage.data_root.join(ACCOUNTS))?;
+            account(&accounts, command, &mut std::io::stdout(), password)?;
+            return Ok(Stopped::Asked);
         }
         None => {}
     }
@@ -352,7 +391,17 @@ async fn serve(
     // Recordings a crash cut short are recovered here (ADR-0022).
     let scratch = oscope_store::Scratch::open(&roots.scratch, ScratchPolicy::default())
         .map_err(|e| Error::Scratch(e.to_string()))?;
-    let token = write_token(&roots)?;
+    // Accounts turn security on (P49): on the network, they and TLS must.
+    let accounts = Accounts::open(&roots.data.join(ACCOUNTS))?;
+    let address = SocketAddr::new(config.server.address, config.server.port);
+    let network = !address.ip().is_loopback();
+    if network && accounts.is_empty() {
+        return Err(Error::Security(format!(
+            "listening on {address} needs an account first: oscope-server account add <name>"
+        )));
+    }
+    let tls = tls(&config, &roots.data, network)?;
+    let (token, local) = write_token(&roots)?;
     let ring = ring(cli, &config)?;
     let ring_name = ring.as_ref().map(|r| r.name().to_owned());
     let mut api = Api::builder(&roots)
@@ -366,8 +415,15 @@ async fn serve(
     if let Some(ring) = ring {
         api = api.ring(ring);
     }
+    if !accounts.is_empty() {
+        let minutes = |m: u64| std::time::Duration::from_secs(60 * m);
+        let idle = Idle {
+            session: minutes(config.security.session_idle_minutes),
+            lease: minutes(config.security.lease_idle_minutes),
+        };
+        api = api.security(Security::new(Arc::new(accounts), Some(local), idle));
+    }
     let api = api.build()?;
-    let address = SocketAddr::new(config.server.address, config.server.port);
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .map_err(|source| Error::Listen { address, source })?;
@@ -386,7 +442,8 @@ async fn serve(
             Box::pin(stdin_closed())
         }
         false => {
-            println!("oscope-server {VERSION} serving on http://{bound}/");
+            let scheme = if tls.is_some() { "https" } else { "http" };
+            println!("oscope-server {VERSION} serving on {scheme}://{bound}/");
             Box::pin(std::future::pending())
         }
     };
@@ -399,7 +456,13 @@ async fn serve(
             () = closed => tracing::info!("stdin closed: stopping, as the supervisor asks"),
         }
     };
-    api.serve(listener, shutdown).await?;
+    match tls {
+        Some((certificate, key)) => {
+            api.serve_tls(listener, &certificate, &key, shutdown)
+                .await?
+        }
+        None => api.serve(listener, shutdown).await?,
+    }
     Ok(match restart.is_requested() {
         true => Stopped::Restart,
         false => Stopped::Asked,
@@ -419,6 +482,113 @@ fn jobs(path: &Path, config: &Config) -> Result<JobService, Error> {
 /// The projects of the data root `data`, and their index at `index`.
 fn projects(data: &Path, index: &Path) -> Result<oscope_store::Store, Error> {
     oscope_store::Store::open(data, index).map_err(|e| Error::Projects(e.to_string()))
+}
+
+/// The accounts' file, in the data root (P49).
+pub const ACCOUNTS: &str = "accounts.json";
+
+/// Does `command` to `accounts`, saying what it did on `out`. `password`
+/// gives the password for an account by its name.
+pub fn account(
+    accounts: &Accounts,
+    command: &AccountCommand,
+    out: &mut impl std::io::Write,
+    password: impl Fn(&str) -> Result<String, Error>,
+) -> Result<(), Error> {
+    let said = match command {
+        AccountCommand::Add { name } => {
+            accounts.add(name, &password(name)?)?;
+            writeln!(out, "added {name}")
+        }
+        AccountCommand::Remove { name } => {
+            accounts.remove(name)?;
+            writeln!(out, "removed {name}")
+        }
+        AccountCommand::Passwd { name } => {
+            if !accounts.names().contains(name) {
+                return Err(Error::Security(format!("no account {name}")));
+            }
+            accounts.passwd(name, &password(name)?)?;
+            writeln!(out, "changed {name}'s password")
+        }
+        AccountCommand::List => accounts
+            .names()
+            .iter()
+            .try_for_each(|name| writeln!(out, "{name}")),
+    };
+    said.map_err(|e| Error::Security(e.to_string()))
+}
+
+/// A password for `name`: asked for twice on a terminal, without showing
+/// it; otherwise stdin's first line.
+fn password(name: &str) -> Result<String, Error> {
+    use std::io::IsTerminal;
+    let failed = |e: std::io::Error| Error::Security(format!("reading the password: {e}"));
+    if !std::io::stdin().is_terminal() {
+        let mut line = String::new();
+        std::io::stdin().read_line(&mut line).map_err(failed)?;
+        return Ok(line.trim_end_matches(['\r', '\n']).to_owned());
+    }
+    let first = rpassword::prompt_password(format!("{name}'s password: ")).map_err(failed)?;
+    let again = rpassword::prompt_password("again: ").map_err(failed)?;
+    match first == again {
+        true => Ok(first),
+        false => Err(Error::Security("the two passwords differ".to_owned())),
+    }
+}
+
+/// A TLS certificate chain and its private key, PEM.
+pub type Pem = (Vec<u8>, Vec<u8>);
+
+/// The TLS certificate and key to serve with: the configuration's; on the
+/// network without them, one made and kept in `data_root/tls`; or none.
+fn tls(config: &Config, data: &Path, network: bool) -> Result<Option<Pem>, Error> {
+    let read = |path: &Path| {
+        std::fs::read(path).map_err(|e| Error::Security(format!("{}: {e}", path.display())))
+    };
+    match (&config.security.certificate, &config.security.key) {
+        (Some(certificate), Some(key)) => Ok(Some((read(certificate)?, read(key)?))),
+        (None, None) if network => certificate(&data.join("tls"), config.server.address).map(Some),
+        (None, None) => Ok(None),
+        _ => Err(Error::Security(
+            "[security] takes a certificate and its key, or neither".to_owned(),
+        )),
+    }
+}
+
+/// A self-signed certificate for this computer, made once and kept in
+/// `folder`: `certificate.pem`, and `key.pem`, readable only by this
+/// account. It names `localhost`, the loopback addresses, `address` unless
+/// it is any, and the computer's name if the environment gives it.
+pub fn certificate(folder: &Path, address: IpAddr) -> Result<Pem, Error> {
+    let (certificate, key) = (folder.join("certificate.pem"), folder.join("key.pem"));
+    let failed =
+        |path: &Path, e: std::io::Error| Error::Security(format!("{}: {e}", path.display()));
+    if certificate.is_file() && key.is_file() {
+        let pem = std::fs::read(&certificate).map_err(|e| failed(&certificate, e))?;
+        return Ok((pem, std::fs::read(&key).map_err(|e| failed(&key, e))?));
+    }
+    let mut names = vec![
+        "localhost".to_owned(),
+        "127.0.0.1".to_owned(),
+        "::1".to_owned(),
+    ];
+    if !address.is_unspecified() && !address.is_loopback() {
+        names.push(address.to_string());
+    }
+    let host = std::env::var(if cfg!(windows) {
+        "COMPUTERNAME"
+    } else {
+        "HOSTNAME"
+    });
+    names.extend(host.ok().map(|h| h.to_lowercase()));
+    let made = rcgen::generate_simple_self_signed(names)
+        .map_err(|e| Error::Security(format!("making a certificate: {e}")))?;
+    let (pem, private) = (made.cert.pem(), made.signing_key.serialize_pem());
+    std::fs::create_dir_all(folder).map_err(|e| failed(folder, e))?;
+    std::fs::write(&certificate, &pem).map_err(|e| failed(&certificate, e))?;
+    oscope_shm::write_private(&key, private.as_bytes()).map_err(|e| failed(&key, e))?;
+    Ok((pem.into_bytes(), private.into_bytes()))
 }
 
 /// Packs `folder` into `out`, or `{id}-{version}.omext` here, and prints
@@ -462,8 +632,8 @@ fn stdin_closed() -> impl Future<Output = ()> {
 
 /// Writes a new local token for the desktop app (ADR-0015): 32 random
 /// bytes, in hex, in `{data_root}/run/local.token`, readable by this
-/// account alone. Its absolute path.
-fn write_token(roots: &Roots) -> Result<PathBuf, Error> {
+/// account alone. Its absolute path, and the token.
+fn write_token(roots: &Roots) -> Result<(PathBuf, String), Error> {
     let path = roots.data.join("run").join("local.token");
     let failed = |source| Error::Folder {
         path: path.clone(),
@@ -473,7 +643,7 @@ fn write_token(roots: &Roots) -> Result<PathBuf, Error> {
     let token: [u8; 32] = rand::random();
     let hex: String = token.iter().map(|b| format!("{b:02x}")).collect();
     oscope_shm::write_private(&path, hex.as_bytes()).map_err(failed)?;
-    std::path::absolute(&path).map_err(failed)
+    Ok((std::path::absolute(&path).map_err(failed)?, hex))
 }
 
 /// The preview ring, if the configuration's `[shm]` asks for one: by
