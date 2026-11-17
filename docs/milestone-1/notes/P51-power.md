@@ -1,6 +1,6 @@
 # P51: Power actions
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p51-power` / [#67](https://github.com/lucaswewa/OScope/pull/67)
 - Size: S · not estimated in lines before it started, an oversight; one pull request, at the owner's standing choice · measured **738** hand-written lines added (code 249: `oscope-api` 235, `oscope-server` 14; tests 228; examples 239; glue 22), and 3 removed. **That is 438 over S's 300.** The tests and the example are nearly two thirds of it: each safeguard has its test, and the example walks them all
 
