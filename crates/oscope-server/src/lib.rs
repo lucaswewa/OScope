@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 use oscope_api::auth::{Accounts, AuthError, Idle, Security};
-use oscope_api::devices::{Devices, DevicesConfig};
+use oscope_api::devices::Devices;
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
 use oscope_api::{Api, ApiError, Roots, VERSION};
 use oscope_ext::{Drivers, ExtError, Extensions, OWN_DRIVERS};
@@ -35,7 +35,8 @@ use serde_json::{Value, json};
 mod config;
 
 pub use config::{
-    Config, ConfigError, DEFAULT_PORT, Jobs, Listen, Logging, PythonConfig, Ring, Storage,
+    CONFIG_VERSION, Config, ConfigError, DEFAULT_PORT, Jobs, Listen, Logging, PythonConfig, Ring,
+    Storage, TomlFile, migrate, migrate_file,
 };
 
 /// The exit code that asks a supervisor to start the server again
@@ -90,6 +91,18 @@ pub enum Command {
     /// from stdin's first line when stdin isn't a terminal.
     #[command(subcommand)]
     Account(AccountCommand),
+    /// The configuration file (P52).
+    #[command(subcommand)]
+    Config(ConfigCommand),
+}
+
+/// What the server can do with its configuration file without serving.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum ConfigCommand {
+    /// Rewrites `--config`'s file in the current version, if it is an older
+    /// one's, keeping its comments, and the old file beside it as
+    /// `{name}.v{N}.bak`.
+    Migrate,
 }
 
 /// What the server can do with accounts without serving.
@@ -162,10 +175,10 @@ impl Cli {
             None => Config::default(),
         };
         if self.managed {
-            config.server.port = 0;
+            config.network.port = 0;
         }
         if let Some(port) = self.port {
-            config.server.port = port;
+            config.network.port = port;
         }
         if let Some(root) = &self.data_root {
             config.storage.data_root = root.clone();
@@ -217,6 +230,12 @@ pub enum Error {
     /// The devices couldn't be built from the configuration's `[devices]`.
     #[error("the devices: {0}")]
     Devices(String),
+    /// `config migrate` was given no file.
+    #[error("which configuration file? Give it with --config")]
+    NoConfig,
+    /// The configuration file can't be migrated.
+    #[error("can't migrate the configuration: {0}")]
+    Migrate(String),
     /// The server couldn't listen.
     #[error("can't listen on {address}: {source}")]
     Listen {
@@ -280,6 +299,16 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
         Some(Command::Ext(ExtCommand::Pack { folder, out })) => {
             return pack(folder, out.as_deref());
         }
+        Some(Command::Config(ConfigCommand::Migrate)) => {
+            let path = cli.config.as_deref().ok_or(Error::NoConfig)?;
+            let changed = migrate_file(path).map_err(Error::Migrate)?;
+            let done = match changed.is_empty() {
+                true => format!("already version {CONFIG_VERSION}"),
+                false => changed.join("; "),
+            };
+            println!("{}: {done}", path.display());
+            return Ok(Stopped::Asked);
+        }
         Some(Command::Account(command)) => {
             let accounts = Accounts::open(&cli.config()?.storage.data_root.join(ACCOUNTS))?;
             account(&accounts, command, &mut std::io::stdout(), password)?;
@@ -288,7 +317,7 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
         None => {}
     }
     let config = cli.config()?;
-    let address = SocketAddr::new(config.server.address, config.server.port);
+    let address = SocketAddr::new(config.network.address, config.network.port);
     let runtime =
         tokio::runtime::Runtime::new().map_err(|source| Error::Listen { address, source })?;
     if cli.print_openapi || cli.print_td {
@@ -333,10 +362,7 @@ async fn devices(
     config: &Config,
     drivers: Option<&Drivers>,
 ) -> Result<Arc<Devices>, Error> {
-    let mut devices_config: DevicesConfig =
-        toml::Value::Table(config.devices.clone())
-            .try_into()
-            .map_err(|e: toml::de::Error| Error::Devices(e.to_string()))?;
+    let mut devices_config = config.devices_config().map_err(Error::Devices)?;
     let none = Drivers::default();
     let drivers = drivers.unwrap_or_else(|| {
         let c = &mut devices_config;
@@ -394,7 +420,7 @@ async fn serve(
         .map_err(|e| Error::Scratch(e.to_string()))?;
     // Accounts turn security on (P49): on the network, they and TLS must.
     let accounts = Accounts::open(&roots.data.join(ACCOUNTS))?;
-    let address = SocketAddr::new(config.server.address, config.server.port);
+    let address = SocketAddr::new(config.network.address, config.network.port);
     let network = !address.ip().is_loopback();
     if network && accounts.is_empty() {
         return Err(Error::Security(format!(
@@ -414,6 +440,9 @@ async fn serve(
         .projects(projects)
         .scratch(scratch)
         .power(config.power.dry_run);
+    if let Some(path) = &cli.config {
+        api = api.config_file(Arc::new(TomlFile(path.clone())));
+    }
     if let Some(ring) = ring {
         api = api.ring(ring);
     }
@@ -550,7 +579,7 @@ fn tls(config: &Config, data: &Path, network: bool) -> Result<Option<Pem>, Error
     };
     match (&config.security.certificate, &config.security.key) {
         (Some(certificate), Some(key)) => Ok(Some((read(certificate)?, read(key)?))),
-        (None, None) if network => certificate(&data.join("tls"), config.server.address).map(Some),
+        (None, None) if network => certificate(&data.join("tls"), config.network.address).map(Some),
         (None, None) => Ok(None),
         _ => Err(Error::Security(
             "[security] takes a certificate and its key, or neither".to_owned(),

@@ -50,7 +50,7 @@ const POSITION_WAIT: Duration = Duration::from_millis(50);
 /// illumination = "sim"    # sim, manual or fake
 /// objective = "sim"       # sim, manual or fake
 ///
-/// [devices.simulator]     # see SimulatorConfig
+/// [simulator]             # see SimulatorConfig; [devices.simulator] in version 1
 /// sample = "H&E tissue"
 /// ```
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -311,6 +311,12 @@ const MARK: &str = "[device ";
 pub(crate) fn property_error(error: Error) -> PropertyError {
     let (code, kind) = status(&error);
     PropertyError::failed(anyhow::anyhow!("{MARK}{code} {kind}] {error}"))
+}
+
+/// A property's refusal that isn't a device's (P52): [`statuses`] answers
+/// it with `code`.
+pub(crate) fn property_refused(code: u16, kind: &str, why: String) -> PropertyError {
+    PropertyError::failed(anyhow::anyhow!("{MARK}{code} {kind}] {why}"))
 }
 
 /// A device error, as an action's. The action's request was answered when

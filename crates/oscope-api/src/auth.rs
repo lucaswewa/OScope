@@ -507,7 +507,9 @@ pub(crate) struct LeaseCheck(pub(crate) Arc<Security>);
 
 impl Authorizer for LeaseCheck {
     fn authorize(&self, principal: &Principal, access: &Access<'_>) -> bool {
-        if !access.changes_state || access.thing == Some("auth") {
+        // One's own display preferences aren't the instrument's state (P52).
+        let own = (access.thing, access.affordance) == (Some("settings"), Some("display"));
+        if !access.changes_state || access.thing == Some("auth") || own {
             return true;
         }
         principal.id().is_some_and(|who| self.0.lease.holds(who))

@@ -305,7 +305,9 @@ async fn every_affordance_that_changes_state_refuses_a_caller_without_the_lease(
             };
             let path = path(form);
             let answer = alice.send(Method::PUT, &path, Some(&Value::Null)).await;
-            assert_eq!(answer.status, 403, "{path}: {}", answer.text());
+            // One's own display preferences need no lease (P52).
+            let free = path == "/api/v1/settings/display";
+            assert_eq!(answer.status == 403, !free, "{path}: {}", answer.text());
             checked.push(path);
         }
     }

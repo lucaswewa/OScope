@@ -1,0 +1,46 @@
+# A configuration of version 1, as P01–P51 wrote them, with every section.
+# It has no `version`, which makes it version 1's.
+
+[server]
+# This computer only, on a port of its own.
+address = "127.0.0.1"
+port = 8300
+
+[storage]
+data_root = "data"
+scratch_root = "scratch"
+
+[logging]
+level = "info,oscope_api=debug"
+ring = 1000
+keep_days = 7
+
+[devices]
+camera = "sim"
+stage = "sim"
+
+[devices.simulator]
+# A faster clock, and a sample of its own.
+rate = 2.0
+sample = "my cells"
+backlash = 3.0
+
+[[devices.simulator.samples]]
+name = "my cells"
+kind = "cells"
+seed = 7
+
+[jobs]
+workers = 3
+
+[shm]
+slots = 4
+
+[python]
+call_timeout_s = 30.0
+
+[security]
+session_idle_minutes = 60
+
+[power]
+dry_run = true

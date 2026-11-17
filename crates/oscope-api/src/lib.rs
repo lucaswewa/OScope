@@ -35,6 +35,7 @@ pub mod preview;
 pub mod projects;
 pub mod scan;
 mod server;
+pub mod settings;
 pub mod status;
 pub mod system;
 mod volume;

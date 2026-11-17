@@ -63,3 +63,30 @@ async fn the_lights_and_the_mount_set_what_the_camera_sees() {
     assert_ne!(ten, fifty);
     camera.stop().await.unwrap();
 }
+
+#[tokio::test]
+async fn a_configuration_the_simulator_cannot_be_is_refused_before_it_is_made() {
+    use oscope_sim::{Simulator, SimulatorConfig};
+    assert_eq!(SimulatorConfig::default().check(), Ok(()));
+    type Change = fn(&mut SimulatorConfig);
+    let cases: [(Change, &str); 9] = [
+        (|c| c.rate = 0.0, "a clock rate of 0"),
+        (|c| c.scale = 0.0, "a scale of 0"),
+        (|c| c.backlash = -1.0, "a backlash of -1"),
+        (|c| c.rotation = f64::NAN, "a rotation of NaN"),
+        (|c| c.latency = -1.0, "a stage latency of -1"),
+        (|c| c.lost_steps = [2.0, 5.0], "a chance of 2"),
+        (|c| c.sensor = "eighth".into(), "a sensor `eighth`"),
+        (|c| c.objective = "7x".into(), "7x"),
+        (|c| c.sample = "no such".into(), "a sample `no such`"),
+    ];
+    for (change, why) in cases {
+        let mut config = SimulatorConfig::default();
+        change(&mut config);
+        let refused = config.check().unwrap_err();
+        assert!(refused.contains(why), "{why}: {refused}");
+        // Making it is refused the same way, before anything is made.
+        let made = Simulator::new(&config, std::path::Path::new(".")).await;
+        assert_eq!(made.err(), Some(refused));
+    }
+}
