@@ -2,7 +2,7 @@
 
 - Status: In review
 - Branch / PR: `m1/p54-packaging` / [#70](https://github.com/lucaswewa/OScope/pull/70)
-- Size: M · estimated ~720 before it started (the .deb ~200; the zip ~145; the notices ~70; the release workflow ~110; the example and the zip's check ~105; tests ~15; glue ~10; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured SIZE
+- Size: M · estimated ~720 before it started (the .deb ~200; the zip ~145; the notices ~70; the release workflow ~110; the example and the zip's check ~105; tests ~15; glue ~10; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured **506** hand-written lines added (code 234: the packaging scripts, the maintainer scripts and the notices' template; examples 97: `test-deb.sh` and `test-zip.ps1`; tests 19; glue 156: the release workflow's 97, the configurations, the polkit rule and the unit), and 3 removed. typst-assets' NOTICE, copied unchanged, and the READMEs aren't counted. **That is within M's 600, and 30 % under the estimate**
 
 ## Summary
 
@@ -87,11 +87,31 @@ None is relevant. The packages: the zip is 27 MB, and the .deb 23 MB. The server
 
 ### What the mutants' reading found
 
-MUTANTS
+Six mutants of the .deb, listed in advance from its scripts:
+
+- no polkit rule;
+- no account;
+- the configuration not the account's to write;
+- the data folder not its own;
+- purging that takes the data too;
+- the configuration in another file.
+
+Each was made in a copy of `packaging/`, and its .deb tried with `test-deb.sh` in a clean `ubuntu:24.04`. **All six are caught.** The last fails the .deb's build, its conffile missing, before any container.
+
+**Not mutated:**
+
+- the zip's scripts: their check, `test-zip.ps1`, doesn't install the service, which needs an administrator;
+- the release workflow, which runs only on a tag.
 
 ### Two cores
 
-TWOCORE
+`scripts/two-core.sh`, five times each, side by side, on two CPUs each:
+
+| Target | Passed | Time |
+|---|---|---|
+| `oscope-server:config` | 5 of 5 | 0.3 s |
+
+The examples run in Docker or Windows' service manager, not on the replays.
 
 ## Tests
 
@@ -101,7 +121,11 @@ TWOCORE
 | `packaging/linux/test-deb.sh` | example | Installed in a clean Ubuntu: the account, its folders and whose they are, the unit, the polkit rule in both forms; its server answers as `oscope`; purged, the program and configuration go and the data stays |
 | `packaging/windows/test-zip.ps1` | example | Unpacked: its files; the server's version; it serves with the zip's configuration, on a port the system picks, keeping its data beside it |
 
-REPLAYS
+**The local replays,** the merge gate (ADR-0038), each run alone on `fdd25ec`. The commit since adds only these lines and the measurements above, and fixes a README's section name.
+
+- **Windows:** `scripts/ci-local.sh`, in 5 minutes: 69 of 69 steps, 627 tests in 235 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
+  - **Its first two runs each failed one step,** on a timing flake under their load: `ex-live-recipe`'s smoke run, then `oscope-hal`'s conformance suite. See the follow-ups.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 9 minutes: 69 of 69 steps, 626 tests in 235 suites; 902 files, none with a CR.
 
 ## Follow-ups and known gaps
 
@@ -111,6 +135,11 @@ REPLAYS
   - the .deb under a running systemd, and the polkit rule letting the service reboot, which needs a machine that may be rebooted.
 
   Both are in P44–P54's manual checklist.
+- **Two timing flakes in the replays' load,** neither this phase's code:
+  - `ex-live-recipe`'s live recipe took 202.7 ms against its budget of 200 (P49's follow-up, again);
+  - `oscope-hal`'s `a_scripted_failure_fails_the_suite`, where the fake camera dropped frames before the scripted failure came (P09b).
+
+  Each should wait for its condition, or allow for the load.
 - **lintian** isn't run on the .deb.
 - **CUDA packages,** and stripping the binaries, are for M2.
 

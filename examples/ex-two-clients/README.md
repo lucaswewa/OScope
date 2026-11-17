@@ -42,7 +42,7 @@ oscope-server account remove alice
 ```
 
 With an account, the server asks for logins:
-- **Listening on the network** (`[server] address = "0.0.0.0"`) needs an account, and serves over TLS. Its certificate comes from `[security] certificate` and `key`; without them, a self-signed one is made once in `data_root/tls`.
+- **Listening on the network** (`[network] address = "0.0.0.0"`, `[server]` in a version-1 file, P52) needs an account, and serves over TLS. Its certificate comes from `[security] certificate` and `key`; without them, a self-signed one is made once in `data_root/tls`.
 - **The desktop app** proves itself with the local token (ADR-0015). It can always take control, with `take_control`.
 
 ## Its checks
