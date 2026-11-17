@@ -1,6 +1,6 @@
 # P52: Settings and configuration migration
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p52-settings` / [#68](https://github.com/lucaswewa/OScope/pull/68)
 - Size: M · estimated ~1,550 before it started (the `settings` Thing ~350; the lease's exemption and the builder ~20; the simulator's checks ~30; the file's version, migration, writing and `config migrate` ~260; tests ~460; `ex-settings` ~280; glue ~30; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured **1,627** hand-written lines added (code 772: `oscope-api` 419, `oscope-server` 301, `oscope-sim` 52; tests 597; examples 230; glue 28), and 58 removed. **That is 1,027 over M's 600, and 5 % over the estimate**
 
