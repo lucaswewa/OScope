@@ -119,7 +119,7 @@ Before the settle wait, `oscope-api:status` passed 5 of 8: see the mutants. Afte
 **The local replays,** the merge gate (ADR-0038), each run alone on `55c8f24`. The commit since adds only these lines and the measurements above.
 
 - **Windows:** `scripts/ci-local.sh`, in 14 minutes: 67 of 67 steps, 607 tests in 229 suites, the Python tests real, and every example's `--smoke`. No CUDA path changed, so the CUDA tests didn't run.
-- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 10 minutes: 67 of 67 steps, 607 tests in 229 suites, NVML absent and the GPU offline; 853 files, none with a CR.
+- **Linux:** `scripts/ci-clone.sh` on a fresh WSL clone, in 10 minutes: 67 of 67 steps, 607 tests in 229 suites; 853 files, none with a CR.
 
 ## Follow-ups and known gaps
 
