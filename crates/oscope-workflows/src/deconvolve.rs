@@ -144,6 +144,7 @@ pub fn deconvolve_acquisition(
             extension: None,
         }],
         inputs: vec![Input::Acquisition(id)],
+        hashes: Default::default(),
         software: format!("OScope {}", env!("CARGO_PKG_VERSION")),
     };
     let draft = store.result(

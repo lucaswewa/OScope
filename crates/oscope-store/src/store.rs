@@ -16,7 +16,7 @@ use serde_json::{Map, Value};
 use crate::index::{Index, RecordRow};
 use crate::records::{Record, RecordKind};
 use crate::{
-    Acquisition, ImageInfo, ImageReader, ImageWriter, Project, Provenance, Report, Result,
+    Acquisition, ImageInfo, ImageReader, ImageWriter, Input, Project, Provenance, Report, Result,
     ResultRecord, StoreError, io, thumbnail,
 };
 
@@ -357,6 +357,40 @@ impl Store {
         fs::remove_dir_all(&going).map_err(io(&going))
     }
 
+    /// Deletes result `id` of `project`, with its folder, which is renamed
+    /// out of the way first: refused while another result was made from it
+    /// (P48).
+    pub fn delete_result(&self, project: ProjectId, id: ResultId) -> Result<()> {
+        let _lock = self.lock()?;
+        let contents = self.contents(project)?;
+        if !contents.results.iter().any(|r| r.id == id) {
+            return Err(StoreError::NotFound {
+                kind: "result",
+                id: id.to_string(),
+            });
+        }
+        let made: Vec<&str> = contents
+            .results
+            .iter()
+            .filter(|r| r.provenance.inputs.contains(&Input::Result(id)))
+            .map(|r| r.name.as_str())
+            .collect();
+        if !made.is_empty() {
+            return Err(StoreError::Refused(format!(
+                "result {id} is what {} was made from: delete that first",
+                made.join(", ")
+            )));
+        }
+        let results = self.folder(project).join(RecordKind::Result.folder());
+        let (folder, going) = (
+            results.join(id.to_string()),
+            results.join(format!("{DELETING}{id}")),
+        );
+        fs::rename(&folder, &going).map_err(io(&folder))?;
+        self.index().remove_record(&id.to_string())?;
+        fs::remove_dir_all(&going).map_err(io(&going))
+    }
+
     /// A page of the projects `query` finds, the most recently changed
     /// first.
     pub fn list(&self, query: &Query) -> Result<Page> {
@@ -540,6 +574,12 @@ impl Store {
             };
             for kind in RecordKind::ALL {
                 for place in folders(&folder.join(kind.folder()))? {
+                    // A record half deleted is deleted.
+                    let name = place.file_name().and_then(|n| n.to_str());
+                    if name.is_some_and(|n| n.starts_with(DELETING)) {
+                        fs::remove_dir_all(&place).map_err(io(&place))?;
+                        continue;
+                    }
                     let document = place.join(format!("{}.json", kind.name()));
                     if !document.is_file() {
                         continue;

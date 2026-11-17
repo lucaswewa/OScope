@@ -132,9 +132,9 @@ async fn walk(address: SocketAddr, region: (f64, f64), check: bool) -> anyhow::R
     ];
     for (layer, feature) in shapes {
         let input = json!({"project": project, "kind": "result", "record": result, "layer": layer, "feature": feature});
-        invoke(address, "projects/annotate", input).await?;
+        invoke(address, "workspace/annotate", input).await?;
     }
-    let base = format!("/api/v1/projects/measurements/{project}/results/{result}");
+    let base = format!("/api/v1/workspace/measurements/{project}/results/{result}");
     let started = Instant::now();
     let measured = get(address, &base).await?.json()?;
     let took = started.elapsed();
@@ -185,7 +185,7 @@ async fn held(
     (project, result): (&str, &str),
     (px, py): (f64, f64),
 ) -> anyhow::Result<()> {
-    let base = format!("/api/v1/projects/measurements/{project}/results/{result}");
+    let base = format!("/api/v1/workspace/measurements/{project}/results/{result}");
     let find = |name: &str| {
         let found = measured
             .as_array()
@@ -253,7 +253,7 @@ async fn held(
     // The point removed: four left.
     let point = find_id(measured, "points")?;
     let input = json!({"project": project, "kind": "result", "record": result, "layer": "points", "feature": point});
-    invoke(address, "projects/remove_annotation", input).await?;
+    invoke(address, "workspace/remove_annotation", input).await?;
     let left_now = get(address, &base).await?.json()?;
     ensure!(
         left_now.as_array().map(Vec::len) == Some(4),

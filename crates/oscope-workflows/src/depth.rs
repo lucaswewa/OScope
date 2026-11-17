@@ -219,6 +219,7 @@ pub fn depth_from_focus(
             extension: None,
         }],
         inputs: vec![Input::Acquisition(id)],
+        hashes: Default::default(),
         software: format!("OScope {}", env!("CARGO_PKG_VERSION")),
     };
     let save = |what: &str, image: &Image, sample: SampleType, names: &[&str]| {

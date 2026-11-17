@@ -32,6 +32,7 @@ fn provenance(inputs: Vec<Input>, node: &str) -> Provenance {
             extension: None,
         }],
         inputs,
+        hashes: Default::default(),
         software: "OScope 0.1.0".to_owned(),
     }
 }

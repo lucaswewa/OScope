@@ -32,6 +32,7 @@ use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
 use crate::system::{System, VERSION};
+use crate::workspace::WorkspaceThing;
 use crate::{data, media, mosaic, pages, volume, zoom};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
@@ -245,14 +246,16 @@ impl ApiBuilder {
     }
 
     /// Serves the projects in `store` as the `projects` Thing (ADR-0021),
-    /// and their files at `/api/v1/data/{project}/{path}` (P30).
+    /// their files at `/api/v1/data/{project}/{path}` (P30), and analyses
+    /// on them as the `workspace` Thing (P48).
     pub fn projects(mut self, store: oscope_store::Store) -> Self {
         let store = Arc::new(store);
         self.store = Some(Arc::clone(&store));
         self.things = self
             .things
             .service(store)
-            .thing("projects", ProjectsThing::default());
+            .thing("projects", ProjectsThing::default())
+            .thing("workspace", WorkspaceThing::default());
         self
     }
 

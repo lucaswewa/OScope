@@ -11,9 +11,8 @@
 //! `volume.deconvolve` (P43); and the one that separates an image's
 //! stains, `stain.separate` (P45); and the one that counts its cells,
 //! `cells.count` (P46); and the one that makes reports, `report.make`,
-//! through templates it keeps and checks (P47). Acquisitions and results carry annotations in
-//! µm, in layers, kept and removed here, and measured: lengths, areas and
-//! their pixels' statistics, as JSON or CSV (P44).
+//! through templates it keeps and checks (P47). Annotations, which P44
+//! put here, are the `workspace` Thing's (P48).
 
 use std::sync::{Arc, OnceLock};
 
@@ -23,8 +22,8 @@ use oscope_ext::Extensions;
 use oscope_jobs::JobService;
 use oscope_report::{ReportError, Template, Templates};
 use oscope_store::{
-    Annotations, CHUNK, Change, Contents, Feature, Measurement, NewProject, Page, Project,
-    Query as Search, RecordKind, Scratch, Store, StoreError, measure, measurements_csv,
+    Change, Contents, NewProject, Page, Project, Query as Search, RecordKind, Scratch, Store,
+    StoreError,
 };
 use oscope_workflows::cells::{COUNT, count_jobs};
 use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
@@ -62,13 +61,13 @@ fn status(error: &StoreError) -> (u16, &'static str) {
     }
 }
 
-fn action_error(error: StoreError) -> ActionError {
+pub(crate) fn action_error(error: StoreError) -> ActionError {
     let (status, kind) = status(&error);
     ActionError::handled(format!("{kind} ({status}): {error}"))
 }
 
 /// Problem details, for an endpoint.
-fn failed(error: &StoreError) -> Response {
+pub(crate) fn failed(error: &StoreError) -> Response {
     let (code, kind) = status(error);
     let code = StatusCode::from_u16(code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
     let body = json!({"title": kind, "status": code.as_u16(), "detail": error.to_string()});
@@ -76,7 +75,7 @@ fn failed(error: &StoreError) -> Response {
 }
 
 /// The project a path names, or why not.
-fn project_id(params: &PathParams) -> Result<ProjectId, StoreError> {
+pub(crate) fn project_id(params: &PathParams) -> Result<ProjectId, StoreError> {
     params.parse::<ProjectId>("id").ok_or_else(|| {
         let text = params.get("id").unwrap_or_default();
         StoreError::Refused(format!("{text:?} isn't a project's ID"))
@@ -96,7 +95,7 @@ fn template_failed(error: &ReportError) -> Response {
 
 /// The record a path names: its project, its kind by its folder's name,
 /// `acquisitions` or `results`, and its ID.
-fn record(params: &PathParams) -> Result<(ProjectId, RecordKind, String), StoreError> {
+pub(crate) fn record(params: &PathParams) -> Result<(ProjectId, RecordKind, String), StoreError> {
     let project = project_id(params)?;
     let folder = params.get("kind").unwrap_or_default();
     let kind = [RecordKind::Acquisition, RecordKind::Result]
@@ -114,11 +113,11 @@ fn record(params: &PathParams) -> Result<(ProjectId, RecordKind, String), StoreE
 #[derive(Debug, Deserialize)]
 pub struct MeasureQuery {
     /// One layer's, or with none, every layer's.
-    layer: Option<String>,
+    pub(crate) layer: Option<String>,
     /// A stack's plane: its first by default.
-    plane: Option<u32>,
+    pub(crate) plane: Option<u32>,
     /// `csv` for CSV, and JSON otherwise.
-    format: Option<String>,
+    pub(crate) format: Option<String>,
 }
 
 /// The projects: one slide or experiment each, holding its acquisitions,
@@ -275,95 +274,6 @@ impl ProjectsThing {
 
     /// A record's annotations.
     ///
-    /// A project's acquisition's or result's, `kind` being `acquisitions` or
-    /// `results`: its layers by name, each a GeoJSON FeatureCollection, in
-    /// µm from the image's top-left corner.
-    #[endpoint(get, "annotations/{id}/{kind}/{record}")]
-    async fn annotations(&self, params: PathParams) -> Response {
-        let read = match record(&params) {
-            Ok((project, kind, id)) => {
-                let read = self.blocking(move |store| store.annotations(project, kind, &id));
-                read.await
-            }
-            Err(error) => Err(error),
-        };
-        match read {
-            Ok(annotations) => Json::<Annotations>(annotations).into_response(),
-            Err(error) => failed(&error),
-        }
-    }
-
-    /// What a record's annotations measure.
-    ///
-    /// In µm: lengths, areas, centres, and the statistics of a polygon's
-    /// pixels, a raw image's by the colours of its filters. `?layer=…` for one layer's, `&plane=…` for a stack's plane, and
-    /// `&format=csv` for CSV.
-    #[endpoint(get, "measurements/{id}/{kind}/{record}")]
-    async fn measurements(
-        &self,
-        params: PathParams,
-        Query(query): Query<MeasureQuery>,
-    ) -> Response {
-        let (project, kind, id) = match record(&params) {
-            Ok(record) => record,
-            Err(error) => return failed(&error),
-        };
-        let (layer, plane) = (query.layer, query.plane.unwrap_or(0));
-        let measured = self.blocking(move |store| {
-            measure(store, project, kind, &id, layer.as_deref(), plane, CHUNK)
-        });
-        match (measured.await, query.format.as_deref()) {
-            (Ok(measured), Some("csv")) => {
-                let disposition = "attachment; filename=\"measurements.csv\"";
-                let headers = [
-                    (header::CONTENT_TYPE, "text/csv; charset=utf-8"),
-                    (header::CONTENT_DISPOSITION, disposition),
-                ];
-                (headers, measurements_csv(&measured)).into_response()
-            }
-            (Ok(measured), _) => Json::<Vec<Measurement>>(measured).into_response(),
-            (Err(error), _) => failed(&error),
-        }
-    }
-
-    /// Keeps an annotation.
-    ///
-    /// On a project's acquisition or result, in layer `layer`, made if need
-    /// be: a GeoJSON Feature in µm, which replaces the one with its `id`, or
-    /// with none is new. The feature as kept, with its ID.
-    #[action]
-    async fn annotate(
-        &self,
-        project: ProjectId,
-        kind: RecordKind,
-        record: String,
-        layer: String,
-        feature: Feature,
-    ) -> Result<Feature, ActionError> {
-        let kept =
-            self.blocking(move |store| store.annotate(project, kind, &record, &layer, feature));
-        kept.await.map_err(action_error)
-    }
-
-    /// Removes an annotation, or a layer.
-    ///
-    /// Feature `feature` of layer `layer` of a project's acquisition or
-    /// result, or with no `feature`, the whole layer.
-    #[action]
-    async fn remove_annotation(
-        &self,
-        project: ProjectId,
-        kind: RecordKind,
-        record: String,
-        layer: String,
-        #[param(default)] feature: Option<String>,
-    ) -> Result<(), ActionError> {
-        let removed = self.blocking(move |store| {
-            store.remove_annotation(project, kind, &record, &layer, feature.as_deref())
-        });
-        removed.await.map_err(action_error)
-    }
-
     /// The report templates' names, OScope's own first.
     #[endpoint(get, "templates")]
     async fn templates(&self) -> Response {

@@ -611,6 +611,7 @@ pub fn stitch(
             extension: None,
         }],
         inputs: vec![Input::Acquisition(id)],
+        hashes: Default::default(),
         software: format!("OScope {}", env!("CARGO_PKG_VERSION")),
     };
     let name = format!("{acquisition_name} stitched");

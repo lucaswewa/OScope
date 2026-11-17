@@ -158,6 +158,14 @@ impl Index {
         remove.commit().map_err(failed)
     }
 
+    /// Removes record `id`.
+    pub fn remove_record(&self, id: &str) -> Result<()> {
+        self.0
+            .execute("DELETE FROM store_records WHERE id = ?1", [id])
+            .map(drop)
+            .map_err(failed)
+    }
+
     /// Adds a record, or replaces it.
     pub fn put_record(&self, row: &RecordRow) -> Result<()> {
         insert_record(&self.0, row)

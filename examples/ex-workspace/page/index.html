@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workspace</title>
+  <style>
+    :root { color-scheme: light dark; font: 15px system-ui, sans-serif; }
+    body { margin: 0; padding: 12px 16px; }
+    h1 { font-size: 1.2em; margin: 0 0 8px; }
+    .scroll { overflow-x: auto; }
+    table { border-collapse: collapse; font-size: 0.9em; }
+    th, td { padding: 4px 8px; text-align: left; border-bottom: 1px solid #8884; vertical-align: top; }
+  </style>
+</head>
+<body>
+  <h1>Workspace <span id="message">: looking for results…</span></h1>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Result</th><th>Made</th><th>Nodes</th><th>Input's hash</th><th>Files</th><th>Against the first analysis</th></tr></thead>
+      <tbody id="results"></tbody>
+    </table>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

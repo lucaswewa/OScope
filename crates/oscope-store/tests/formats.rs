@@ -328,6 +328,7 @@ fn exports_refuse_what_they_cannot_find() {
         recipe: Value::Null,
         nodes: Vec::new(),
         inputs: Vec::new(),
+        hashes: Default::default(),
         software: "a test".to_owned(),
     };
     let draft = store.result(project, "numbers", provenance, None).unwrap();

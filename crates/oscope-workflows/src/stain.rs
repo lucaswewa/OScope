@@ -151,6 +151,18 @@ impl Colour {
         .collect()
     }
 
+    /// A tile's samples, from 0 to 1 of full scale, and how many channels
+    /// they have: grey's one, or else RGB's three (P48).
+    pub(crate) fn samples(
+        &self,
+        (x, y, w, h): (u64, u64, u64, u64),
+    ) -> Result<(Vec<f32>, usize), StoreError> {
+        match self.grey {
+            true => Ok((self.reader.read(0, 0, (x, y), (w, h))?.to_unit(), 1)),
+            false => Ok((self.rgb((x, y, w, h))?, 3)),
+        }
+    }
+
     /// A tile's RGB, from 0 to 1 of full scale.
     pub(crate) fn rgb(&self, (x, y, w, h): (u64, u64, u64, u64)) -> Result<Vec<f32>, StoreError> {
         let Some(pattern) = self.pattern else {
@@ -270,6 +282,7 @@ pub fn separate(
             extension: None,
         }],
         inputs: vec![source],
+        hashes: Default::default(),
         software: format!("OScope {}", env!("CARGO_PKG_VERSION")),
     };
     let (w, h) = colour.size;
