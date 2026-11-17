@@ -61,7 +61,7 @@ objective = "fake"
 EOF
 
 mkdir -p "$units"
-grep -v -E '^(User|Group|SupplementaryGroups|StateDirectory|StateDirectoryMode|NoNewPrivileges|ProtectSystem|ProtectHome|PrivateTmp)=' \
+grep -v -E '^(User|Group|SupplementaryGroups|StateDirectory|StateDirectoryMode|ReadWritePaths|NoNewPrivileges|ProtectSystem|ProtectHome|PrivateTmp)=' \
     "$here/oscope.service" |
     sed -e "s|^ExecStart=.*|ExecStart=$server --config $work/oscope.toml|" \
         -e 's|^WantedBy=.*|WantedBy=default.target|' >"$units/$unit"
