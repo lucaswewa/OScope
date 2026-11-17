@@ -20,6 +20,9 @@ ignore = [
     { id = "RUSTSEC-2024-0320", reason = "yaml-rust, unmaintained: through syntect" },
     { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.38: only through citationberg, Typst's CSL bibliography styles, which OScope's reports don't use; citationberg pins 0.38" },
     { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.38: as RUSTSEC-2026-0194" },
+    # chrono (P53, the owner's choice): unmaintained, not vulnerable; a move to
+    # jiff or time is planned, teta-wot first.
+    { id = "RUSTSEC-2026-0543", reason = "chrono, unmaintained: the timestamps of OScope's crates and of teta-wot's core and HTTP crates; a move to jiff or time is planned" },
 ]
 
 [licenses]

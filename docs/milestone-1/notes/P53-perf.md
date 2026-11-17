@@ -104,6 +104,11 @@ REPLAYS
 - **The nightly soak's schedule** is off until the owner turns it on.
 - **Before turning it on, run it once by hand,** for its four hours. At the pace measured here, it may fail on memory's slow growth once warm: some 10 KB a scan and stitch on Windows, and 7 KB on Linux. Its source isn't found yet; the caches checked are bounded.
 - **The full report,** `cargo xtask perf --cuda` with the 10-minute recording, wasn't run in this phase: the quick one was. The recording's 10 minutes were measured in P29.
+- **Moving off `chrono`:**
+  - RUSTSEC-2026-0543, published while this phase was in its replays, marks it unmaintained, not vulnerable. `cargo deny` failed on every branch.
+  - At the owner's choice, `deny.toml` ignores it, with its reason, until the move.
+  - The move is to `jiff` or `time`: teta-wot's core and HTTP crates first, then OScope's nine.
+- **The replays' examples build ran out of memory again,** as in P51. A low-level crate changed, so some 70 examples relinked at once. The rerun passed. `scripts/ci-local.sh` could cap that build's jobs.
 - **Logs and the job history on disk** grow with use, as they should. Logs are pruned by day (P05); the job history isn't pruned yet.
 
 ## Clean room
