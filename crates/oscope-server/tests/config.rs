@@ -181,6 +181,25 @@ fn the_sample_configuration_loads() {
     assert_eq!(config.version, Some(CONFIG_VERSION));
 }
 
+#[test]
+fn the_packaged_configurations_load() {
+    let packaging = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packaging");
+    // The .deb's: absolute folders, in the service's own state folder.
+    let linux = Config::load(&packaging.join("linux/oscope.toml")).unwrap();
+    assert_eq!(linux.version, Some(CONFIG_VERSION));
+    assert_eq!(linux.network, Config::default().network);
+    // On Windows, the test's, an absolute folder takes the file's drive.
+    assert!(linux.storage.data_root.ends_with("var/lib/oscope/data"));
+    assert_eq!(linux.shm.enabled, Some(true));
+    // The zip's: folders beside the configuration, in C:\ProgramData\OScope.
+    let windows = Config::load(&packaging.join("windows/oscope.toml")).unwrap();
+    assert_eq!(windows.version, Some(CONFIG_VERSION));
+    assert_eq!(windows.network, Config::default().network);
+    let folder = packaging.join("windows");
+    assert_eq!(windows.storage.data_root, folder.join("data"));
+    assert_eq!(windows.storage.scratch_root, folder.join("scratch"));
+}
+
 /// The version-1 fixture `name`, copied into `folder` as `oscope.toml`.
 fn fixture(folder: &Path, name: &str) -> PathBuf {
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/v1");

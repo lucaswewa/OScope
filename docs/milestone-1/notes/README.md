@@ -72,4 +72,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P50 | Instrument status and health | Done | [P50-status.md](P50-status.md) |
 | P51 | Power actions | Done | [P51-power.md](P51-power.md) |
 | P52 | Settings and configuration migration | Done | [P52-settings.md](P52-settings.md) |
-| P53 | Performance budgets and nightly soak | In review | [P53-perf.md](P53-perf.md) |
+| P53 | Performance budgets and nightly soak | Done | [P53-perf.md](P53-perf.md) |
+| P54 | Packaging, release workflow, M1 retrospective | In review | [P54-packaging.md](P54-packaging.md) |

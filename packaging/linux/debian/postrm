@@ -1,0 +1,14 @@
+#!/bin/sh
+# OScope's .deb (P54), once removed. Purged, its configuration goes too. Its
+# data, /var/lib/oscope, and its account stay: projects are the instrument's
+# results, and files there are the account's.
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+if [ "$1" = purge ]; then
+    rm -rf /etc/oscope
+    echo "oscope: its data and its account stay: /var/lib/oscope, and the user oscope"
+fi
+exit 0

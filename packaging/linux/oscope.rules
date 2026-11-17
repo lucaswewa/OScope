@@ -1,0 +1,14 @@
+// OScope's server, as the oscope account, may reboot and power off the host:
+// its power actions (ADR-0032), and nothing else. Ubuntu 24.04's polkit reads
+// this; 22.04's reads oscope.pkla.
+polkit.addRule(function (action, subject) {
+    var allowed = [
+        "org.freedesktop.login1.reboot",
+        "org.freedesktop.login1.reboot-multiple-sessions",
+        "org.freedesktop.login1.power-off",
+        "org.freedesktop.login1.power-off-multiple-sessions",
+    ];
+    if (subject.user == "oscope" && allowed.indexOf(action.id) >= 0) {
+        return polkit.Result.YES;
+    }
+});

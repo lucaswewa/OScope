@@ -862,8 +862,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P50 | Instrument status and health | P49 | M | — | Done |
 | P51 | Power actions | P50 | S | 0032 | Done |
 | P52 | Settings and configuration migration | P51 | M | — | Done |
-| P53 | Performance budgets and nightly soak | P52 | M | — | In review |
-| P54 | Packaging, release workflow, M1 retrospective | P53 | M | 0033 | Planned |
+| P53 | Performance budgets and nightly soak | P52 | M | — | Done |
+| P54 | Packaging, release workflow, M1 retrospective | P53 | M | 0033 | In review |
 
 ## 8. Milestone 2 outline: the web and desktop app
 
@@ -1114,3 +1114,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-16 | P52 was estimated at about 1,550 lines before it started (the `settings` Thing: each account's display preferences and their defaults, as teta-wot settings; the configuration file's system and simulator settings behind a trait the server implements; their validation; export and import ~350; the control lease's exemption for one's own display, and the builder ~20; in `oscope-sim`, the simulator's checks taken out of its construction ~30; in `oscope-server`, the file's version and its migration from version 1, keeping comments and order, loading through it, writing with a backup, `config migrate`, and `[server]` renamed `[network]` ~260; tests with version-1 fixtures ~460; `ex-settings` and its page ~280; glue ~30; and about a tenth on top): more than twice M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
 | 2026-11-17 | P53 was estimated at about 1,050 lines before it started (`cargo xtask` and its commands ~70; `perf`: §5.20's benchmarks run and read ~170, and their HTML report ~120; a `perf:` line in each benchmark ~40; the soak, against the release server: its configuration, a preview client, scans and stitches, memory and handles sampled on each platform ~260, and its leak detector, by Theil–Sen's slope, ~50; tests ~200; the nightly workflow, its schedule off ~35; glue ~20; and about a tenth on top): nearly twice M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
 | 2026-11-17 | RUSTSEC-2026-0543 marks `chrono` unmaintained, not vulnerable, so `cargo deny` failed on every branch. At the owner's choice, `deny.toml` ignores it, with its reason, and a move to `jiff` or `time` is planned: teta-wot's core and HTTP crates first, then OScope's nine crates. P53's notes record it |
+| 2026-11-17 | P54 was estimated at about 720 lines before it started (the .deb, built by a script with `dpkg-deb`, its maintainer scripts, the polkit rule in both of Ubuntu's forms, and the unit's changes ~200; the Windows zip, its configuration and its install and uninstall scripts ~145; the notices with cargo-about ~70; the release workflow ~110; the example, the .deb installed in clean Ubuntu containers, and a check of the zip ~105; tests ~15; glue ~10; and about a tenth on top): a little over M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |

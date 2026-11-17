@@ -1,6 +1,6 @@
 # P53: Performance budgets and nightly soak
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p53-perf` / [#69](https://github.com/lucaswewa/OScope/pull/69)
 - Size: M · estimated ~1,050 before it started (`cargo xtask` ~70; `perf`'s benchmarks ~170 and report ~120; the benchmarks' `perf:` lines ~40; the soak ~260 and its detector ~50; tests ~200; the workflow ~35; glue ~20; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured **1,408** hand-written lines added (code 680: `xtask` 637, `oscope-store` 24, `oscope-jobs` 19; tests 639, the soak's file of 471 among them; examples 32, the benchmarks' `perf:` lines; glue 57, the workflow's 41 and `deny.toml`'s 3 among them), and 13 removed. **That is 808 over M's 600, and 34 % over the estimate:** the soak and its tests came to 471 lines against some 310 estimated, and the two fixes it led to, with their tests, to some 120 not foreseen
 

@@ -1,6 +1,7 @@
-# OScope's server as a systemd service (ADR-0015).
+# OScope's server as a systemd service (ADR-0015). The .deb installs it (P54,
+# ADR-0033: packaging/README.md).
 #
-# To install, as root:
+# To install it by hand, as root:
 #   useradd --system --home-dir /var/lib/oscope --shell /usr/sbin/nologin oscope
 #   install -m 755 oscope-server /usr/bin/
 #   install -D -m 644 oscope.toml /etc/oscope/oscope.toml
@@ -29,8 +30,10 @@ TimeoutStopSec=30
 Restart=on-failure
 RestartForceExitStatus=75
 RestartSec=2
-# Its own folder, /var/lib/oscope, writable; the rest of the system not.
+# Its own folder, /var/lib/oscope, writable, and its configuration's, which
+# the settings Thing changes (P52); the rest of the system not.
 StateDirectory=oscope
+ReadWritePaths=/etc/oscope
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true

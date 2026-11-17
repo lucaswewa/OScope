@@ -1,0 +1,17 @@
+# cargo-about's configuration (P54, ADR-0033): the licences of the crates in
+# the server's packages, which are deny.toml's, for the two platforms it is
+# built for. Tests' and builds' crates aren't shipped.
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Unlicense",
+]
+targets = ["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"]
+ignore-dev-dependencies = true
+ignore-build-dependencies = true
