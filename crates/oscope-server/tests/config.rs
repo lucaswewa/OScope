@@ -28,6 +28,7 @@ fn the_defaults_listen_on_this_computer_only_at_8210() {
         config.logging.keep_days,
     );
     assert_eq!(logging, ("info", 50_000, 30));
+    assert!(!config.power.dry_run, "power acts by default");
 
     // An empty file means the defaults, with folders beside it.
     let folder = tempfile::tempdir().unwrap();
@@ -64,6 +65,9 @@ sdk = "sdk"
 wheelhouse = "wheels"
 call_timeout_s = 30
 idle_s = 0.5
+
+[power]
+dry_run = true
 "#,
         scratch.display()
     );
@@ -87,6 +91,7 @@ idle_s = 0.5
     );
     let times = (python.call_timeout, python.idle);
     assert_eq!(times, (Duration::from_secs(30), Duration::from_millis(500)));
+    assert!(config.power.dry_run);
 }
 
 #[test]

@@ -69,4 +69,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | P47 | Reports, and report extensions | Done | [P47-reports.md](P47-reports.md) |
 | P48 | The `workspace` Thing: analyses on datasets, results, provenance | Done | [P48-workspace.md](P48-workspace.md) |
 | P49 | Accounts, sessions, control lease, TLS | Done | [P49-auth.md](P49-auth.md) |
-| P50 | Instrument status and health | In review | [P50-status.md](P50-status.md) |
+| P50 | Instrument status and health | Done | [P50-status.md](P50-status.md) |
+| P51 | Power actions | In review | [P51-power.md](P51-power.md) |

@@ -1,6 +1,6 @@
 # P50: Instrument status and health
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p50-status` / [#66](https://github.com/lucaswewa/OScope/pull/66)
 - Size: M · estimated ~1,450 before it started (in `oscope-sim`, the faults ~80; the GPU through NVML ~80; the disk monitor ~60; the `status` Thing ~300; the fault actions ~50; tests ~400; `ex-status` ~300; glue ~30; a tenth on top); one pull request, at the owner's standing choice · measured **1,035** hand-written lines added (code 503: `oscope-api` 443, `oscope-sim` 60; tests 297; examples 212; glue 23), and 3 removed. **That is 435 over M's 600, and 29 % under the estimate**
 

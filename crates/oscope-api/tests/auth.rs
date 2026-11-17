@@ -40,9 +40,11 @@ async fn server(data: &Path, idle: Idle, devices: bool) -> TestClient {
     let store = Store::open(data, &data.join("index.sqlite")).unwrap();
     let jobs = JobService::open(&data.join("jobs.sqlite"), JobsConfig::default()).unwrap();
     let security = Security::new(accounts(data), Some(DESKTOP.to_owned()), idle);
+    // Power in a dry run (P51): its actions need the lease too.
     let mut api = Api::builder(&roots)
         .projects(store)
         .jobs(jobs)
+        .power(true)
         .security(security);
     if devices {
         let made = Devices::from_config(&DevicesConfig::default(), data).await;

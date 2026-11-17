@@ -53,6 +53,9 @@ pub const DEFAULT_PORT: u16 = 8210;
 /// key = "tls/key.pem"
 /// session_idle_minutes = 480      # a session unused this long ends
 /// lease_idle_minutes = 10         # control, its holder idle this long, goes
+///
+/// [power]                         # P51
+/// dry_run = false                 # true: power actions only say what they'd do
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -74,6 +77,17 @@ pub struct Config {
     pub python: PythonConfig,
     /// Accounts' sessions, the control lease and TLS (P49).
     pub security: SecurityConfig,
+    /// The power actions (P51).
+    pub power: PowerSection,
+}
+
+/// The power actions (P51, ADR-0032).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct PowerSection {
+    /// Only say what restarting, rebooting or shutting down would do: false
+    /// by default.
+    pub dry_run: bool,
 }
 
 /// Sessions, the control lease and TLS (P49, ADR-0031). The files are

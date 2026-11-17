@@ -37,6 +37,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0029](0029-volumes-and-3d-data-on-the-media-plane.md) | Volumes and 3D data on the media plane | Accepted | P41 |
 | [0030](0030-reports.md) | Reports: the model, Typst and minijinja, templates and report generators | Accepted | P47 |
 | [0031](0031-authentication-and-the-control-lease.md) | Authentication and the control lease: accounts, sessions, the lease and TLS | Accepted | P49 |
+| [0032](0032-power-actions-and-their-privileges.md) | Power actions and their privileges | Accepted | P51 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |

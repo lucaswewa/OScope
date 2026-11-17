@@ -305,6 +305,7 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
             .jobs(jobs)
             .extensions(extensions)
             .projects(projects)
+            .power(true)
             .build()?;
         let base = format!("http://{address}/");
         match cli.print_openapi {
@@ -411,7 +412,8 @@ async fn serve(
         .jobs(jobs)
         .extensions(extensions)
         .projects(projects)
-        .scratch(scratch);
+        .scratch(scratch)
+        .power(config.power.dry_run);
     if let Some(ring) = ring {
         api = api.ring(ring);
     }
