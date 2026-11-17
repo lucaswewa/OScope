@@ -24,12 +24,13 @@ sudo apt install ./oscope_0.1.0_amd64.deb
 **Building it,** on Ubuntu, from a release build:
 
 ```sh
+cargo install cargo-about --version 0.9.3 --locked --features cli  # once
 cargo build --release --locked -p oscope-server
 bash packaging/notices/make.sh
 bash packaging/linux/build-deb.sh target/release/oscope-server target/notices
 ```
 
-- `packaging/notices/make.sh` needs cargo-about 0.9.3: `cargo install cargo-about --version 0.9.3 --locked --features cli`.
+- `make.sh` needs cargo-about, which the first line installs, once. Without it, `make.sh` says so.
 - A .deb built on Ubuntu 24.04 needs 24.04's C library. The release workflow builds it on 22.04, so that it installs on both.
 
 ### Its example: the .deb in clean Ubuntu containers
@@ -100,11 +101,14 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 **Building it,** from a release build:
 
 ```powershell
+cargo install cargo-about --version 0.9.3 --locked --features cli  # once
 cargo build --release --locked -p oscope-server
 bash packaging/notices/make.sh
 powershell -File packaging\windows\package.ps1 -Server target\release\oscope-server.exe -Notices target\notices
 powershell -ExecutionPolicy Bypass -File packaging\windows\test-zip.ps1 target\zip\oscope-0.1.0-windows-x86_64.zip
 ```
+
+- **`bash` in PowerShell is often WSL's,** unless Git's comes first in `PATH`. Then `make.sh` runs under Linux, whose cargo needs cargo-about as well: install it there too, or run `make.sh` from Git Bash. The notices are the same either way, since they cover both platforms.
 
 [`windows/test-zip.ps1`](windows/test-zip.ps1) checks the zip without installing the service, which needs an administrator:
 

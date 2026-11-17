@@ -36,6 +36,7 @@ Records aligned to 4,096 bytes let a later writer bypass the page cache without 
 **3. Writing:**
 
 - **Segments** are 4 GiB by default, about 7 s at the design rate. Each is preallocated (`fs4`: `fallocate` on Linux, the allocation size on Windows), written in order through the page cache, and closed when the next record wouldn't fit: its footer is written and the preallocation trimmed. The last is synchronised to the disk when the recording ends.
+- **A file system that can't preallocate,** as WSL's `/mnt/c` can't, has each segment's length set alone, with a warning as a recording's first segment opens: their space isn't reserved, and the check of the free space before each segment is the only guard. Found in the manual tests of P44–P54.
 - **Before a segment,** the writer checks the disk's free space: a segment that would leave less than the policy's reserve is refused, and the recording ends there.
 - **Rolling,** if asked: the oldest closed segments are deleted to stay within a number of bytes, at least two segments. The 10-minute run of §5.20 records this way: 348 GB in all, at most 100 GB at once.
 
@@ -74,7 +75,7 @@ Records aligned to 4,096 bytes let a later writer bypass the page cache without 
 - **Measured on the owner's PC:** see P29's notes for the rates and the 10-minute run.
 - **A recording's frames are an acquisition's planes,** on NGFF's `z` axis. Time-lapses and scans, whose frames are times or tiles, may want axes of their own (P36, P39).
 - **The page cache** holds what is written until the disk takes it: over minutes, the disk's sustained rate decides, not the cache. A writer that bypasses the cache can come later without changing the format.
-- **A segment reserves 4 GiB** as it opens.
+- **A segment reserves 4 GiB** as it opens, where the file system can preallocate.
 - **One OScope per scratch root.** The locks keep recordings in progress safe, but two servers would recover each other's crashed recordings.
 
 ## Alternatives considered
