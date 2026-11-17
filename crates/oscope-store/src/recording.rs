@@ -6,8 +6,9 @@
 //!     000000.frames, 000001.frames, …
 //! ```
 //!
-//! A recording's frames go to segment files, each preallocated, then trimmed
-//! when it closes. A segment holds, in little-endian numbers:
+//! A recording's frames go to segment files, each preallocated where the file
+//! system can, then trimmed when it closes. A segment holds, in little-endian
+//! numbers:
 //!
 //! - **a header** of 4,096 bytes: `OSCOPE.FRAMES`, the format's version, the
 //!   segment's number and the recording's ID;
@@ -23,7 +24,7 @@
 
 use std::collections::VecDeque;
 use std::fs::{self, File, OpenOptions, TryLockError};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
@@ -218,6 +219,23 @@ fn close(segment: Segment, sync: bool) -> Result<Closed> {
     })
 }
 
+/// Preallocates `file` to `bytes`, and says whether its space is reserved.
+/// Where the file system can't preallocate, as WSL's `/mnt/c` can't, it sets
+/// the file's length alone, as `fs4` does where there is no way to: the free
+/// space checked before each segment is then the only guard.
+fn preallocate(file: &File, bytes: u64) -> std::io::Result<bool> {
+    or_set_len(file.allocate(bytes), file, bytes)
+}
+
+/// What [`preallocate`] makes of `allocated`, preallocating's answer.
+fn or_set_len(allocated: std::io::Result<()>, file: &File, bytes: u64) -> std::io::Result<bool> {
+    match allocated {
+        Ok(()) => Ok(true),
+        Err(e) if e.kind() == ErrorKind::Unsupported => file.set_len(bytes).map(|()| false),
+        Err(e) => Err(e),
+    }
+}
+
 /// Writes a recording's frames, in order, then [`finish`](Self::finish)es
 /// it. One dropped unfinished is a recording a crash cut short, recovered
 /// when the scratch space next opens.
@@ -373,9 +391,15 @@ impl RecordingWriter {
         header[16..20].copy_from_slice(&FORMAT.to_le_bytes());
         header[20..24].copy_from_slice(&number.to_le_bytes());
         header[24..40].copy_from_slice(self.recording.id.0.as_bytes());
-        file.allocate(allocation)
-            .and_then(|()| file.write_all(&header))
+        let reserved = preallocate(&file, allocation)
+            .and_then(|reserved| file.write_all(&header).map(|()| reserved))
             .map_err(io(&path))?;
+        if !reserved && number == 0 {
+            tracing::warn!(
+                "{}: the scratch disk can't preallocate segments, so their space isn't reserved",
+                self.folder.display()
+            );
+        }
         self.next += 1;
         self.open = Some(Segment {
             file,
@@ -660,4 +684,45 @@ pub(crate) fn recover(folder: &Path) -> Result<Recording> {
     recording.recovered = true;
     write(&folder.join(DOCUMENT), &recording)?;
     Ok(recording)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+    use std::io::{Error, ErrorKind};
+
+    use super::or_set_len;
+
+    /// An empty segment file, in a folder of its own.
+    fn segment() -> (tempfile::TempDir, File) {
+        let folder = tempfile::tempdir().unwrap();
+        let file = File::create(folder.path().join("000000.frames")).unwrap();
+        (folder, file)
+    }
+
+    /// What `fallocate` answers on WSL's `/mnt/c`: on Linux, its own error,
+    /// EOPNOTSUPP (95).
+    fn unsupported() -> Error {
+        if cfg!(target_os = "linux") {
+            Error::from_raw_os_error(95)
+        } else {
+            ErrorKind::Unsupported.into()
+        }
+    }
+
+    #[test]
+    fn a_file_system_that_cant_preallocate_gets_the_length_alone() {
+        let (_folder, file) = segment();
+        assert!(!or_set_len(Err(unsupported()), &file, 65_536).unwrap());
+        assert_eq!(file.metadata().unwrap().len(), 65_536);
+    }
+
+    #[test]
+    fn other_answers_pass_through() {
+        let (_folder, file) = segment();
+        let full = or_set_len(Err(ErrorKind::StorageFull.into()), &file, 65_536);
+        assert_eq!(full.unwrap_err().kind(), ErrorKind::StorageFull);
+        assert!(or_set_len(Ok(()), &file, 65_536).unwrap());
+        assert_eq!(file.metadata().unwrap().len(), 0, "nothing more is done");
+    }
 }
