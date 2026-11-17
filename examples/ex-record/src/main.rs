@@ -252,6 +252,13 @@ async fn run() -> anyhow::Result<()> {
         stats.bytes as f64 / 1e6 / stats.seconds,
         recording.dropped
     );
+    // What `cargo xtask perf` reads (P53).
+    println!(
+        "perf: record.mb_per_s {:.1}",
+        stats.bytes as f64 / 1e6 / stats.seconds
+    );
+    println!("perf: record.dropped {}", recording.dropped);
+    println!("perf: record.seconds {:.0}", stats.seconds);
     if recording.dropped > 0 && source.contains("CPU") {
         println!(
             "  The simulator renders about 10 frames a second on the CPU, below the design rate: \

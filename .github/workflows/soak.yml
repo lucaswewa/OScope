@@ -1,0 +1,41 @@
+name: Soak
+
+# The nightly soak (P53, plan §5.21): the server's release build, the
+# simulator with its scaled sensor, a preview client, and scans and stitches
+# one after another, for four hours on the CPU. It fails on a leak of memory
+# or handles, or on dropped previews, and keeps its report, soak.json.
+#
+# Its schedule is off, to save CI minutes, until the owner turns it on:
+# uncomment `schedule`. Until then it runs when started by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: How long it soaks, in minutes
+        default: "240"
+  # schedule:
+  #   - cron: "23 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    name: Soak (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: The soak
+        run: cargo xtask soak --minutes "${{ inputs.minutes || '240' }}"
+      - name: Its report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: soak
+          path: target/soak/

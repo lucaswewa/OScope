@@ -419,6 +419,9 @@ fn bench(count: usize) -> anyhow::Result<()> {
         report.rms_px,
         report.peak_bytes >> 20
     );
+    // What `cargo xtask perf` reads (P53).
+    println!("perf: stitch.tiles_per_s {:.2}", tiles.len() as f64 / took);
+    println!("perf: stitch.peak_mb {}", report.peak_bytes >> 20);
     // The bound over many writers, which the tests' small mosaics can't
     // show: level 1's quarters waiting in far bands would break it.
     let budget = u64::from(options.memory_mb) << 20;

@@ -116,6 +116,7 @@ async fn compute_jobs_share_the_workers_and_the_gpu_budget() {
     let config = JobsConfig {
         workers: 2,
         gpu_mib: Some(1000),
+        ..JobsConfig::default()
     };
     let service = open(&folder, config);
     // How many run at once, at most, for jobs needing `gpu_mib` each.

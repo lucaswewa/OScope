@@ -158,6 +158,13 @@ fn case(
         ms(cpu),
         gpu.map_or("".to_owned(), |(_, time)| ms(time)),
     );
+    // What `cargo xtask perf` reads (P53): the 2048² pair.
+    if size == 2048 {
+        println!("perf: register.cpu_ms {:.2}", cpu.as_secs_f64() * 1e3);
+        if let Some((_, time)) = gpu {
+            println!("perf: register.gpu_ms {:.2}", time.as_secs_f64() * 1e3);
+        }
+    }
     let error = (found.dx - expected.0)
         .abs()
         .max((found.dy - expected.1).abs());

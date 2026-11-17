@@ -506,6 +506,7 @@ fn jobs(path: &Path, config: &Config) -> Result<JobService, Error> {
     let jobs = JobsConfig {
         workers: config.jobs.workers,
         gpu_mib: config.jobs.gpu_mib,
+        ..JobsConfig::default()
     };
     JobService::open(path, jobs).map_err(|e| Error::Jobs(e.to_string()))
 }
