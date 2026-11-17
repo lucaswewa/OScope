@@ -1,7 +1,9 @@
 # OScope's configuration for the systemd service: absolute folders, in the
 # service's own state folder, the only one it may write.
 
-[server]
+version = 2
+
+[network]
 address = "127.0.0.1"
 port = 8210
 

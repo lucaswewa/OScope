@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use oscope_core::{Point2, Um};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::cells::CellCulture;
 use crate::colour_target::ColourTargetSample;
@@ -19,7 +19,7 @@ use crate::tissue::HeTissue;
 use crate::world::{Slide, World};
 
 /// What a sample is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SampleKind {
     /// [`HeTissue`] under the coverslip.
@@ -61,7 +61,7 @@ impl SampleKind {
 }
 
 /// What an imported file's values are: see [`ImportLight`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Imaging {
     /// Brightfield: the light each pixel passes.
@@ -97,7 +97,7 @@ pub enum Imaging {
 /// light = "fluorescent"
 /// dye = "green"             # dapi, green, orange or far-red
 /// ```
-#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SampleEntry {
     /// Its name, which loads it.

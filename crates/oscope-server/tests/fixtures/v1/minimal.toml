@@ -1,0 +1,4 @@
+# A configuration of version 1 with one section, as the packaging's tests
+# wrote them.
+[server]
+port = 8301

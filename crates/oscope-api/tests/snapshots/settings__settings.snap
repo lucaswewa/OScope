@@ -1,0 +1,508 @@
+---
+source: crates/oscope-api/tests/settings.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Settings",
+  "properties": {
+    "accounts": {
+      "description": "Each account's own display preferences, by its name.",
+      "title": "Each account's own display preferences, by its name.",
+      "writeOnly": false,
+      "readOnly": true,
+      "default": {},
+      "type": "object",
+      "forms": [
+        {
+          "href": "/api/v1/settings/accounts",
+          "op": [
+            "readproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/settings/accounts",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://testserver/api/v1/settings/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true,
+      "additionalProperties": {
+        "additionalProperties": false,
+        "description": "How things are shown: an account's own, or the defaults.",
+        "properties": {
+          "theme": {
+            "default": "system",
+            "description": "Light, dark, or as the computer is.",
+            "oneOf": [
+              {
+                "const": "system",
+                "description": "As the computer is.",
+                "type": "string"
+              },
+              {
+                "const": "light",
+                "description": "Light.",
+                "type": "string"
+              },
+              {
+                "const": "dark",
+                "description": "Dark.",
+                "type": "string"
+              }
+            ]
+          },
+          "units": {
+            "default": "um",
+            "description": "The unit of lengths and positions.",
+            "oneOf": [
+              {
+                "const": "um",
+                "description": "Micrometres.",
+                "type": "string"
+              },
+              {
+                "const": "mm",
+                "description": "Millimetres.",
+                "type": "string"
+              }
+            ]
+          },
+          "scale_bar": {
+            "default": true,
+            "description": "Whether images have a scale bar.",
+            "type": "boolean"
+          },
+          "colormap": {
+            "default": "grey",
+            "description": "How one-channel images are coloured.",
+            "oneOf": [
+              {
+                "const": "grey",
+                "description": "Black to white.",
+                "type": "string"
+              },
+              {
+                "const": "viridis",
+                "description": "Viridis.",
+                "type": "string"
+              },
+              {
+                "const": "magma",
+                "description": "Magma.",
+                "type": "string"
+              },
+              {
+                "const": "inferno",
+                "description": "Inferno.",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "display": {
+      "description": "Writing them needs no control lease.",
+      "title": "Your display preferences: your own, or else the defaults.",
+      "writeOnly": false,
+      "readOnly": false,
+      "type": "object",
+      "properties": {
+        "theme": {
+          "description": "Light, dark, or as the computer is.",
+          "oneOf": [
+            {
+              "description": "As the computer is.",
+              "const": "system",
+              "type": "string"
+            },
+            {
+              "description": "Light.",
+              "const": "light",
+              "type": "string"
+            },
+            {
+              "description": "Dark.",
+              "const": "dark",
+              "type": "string"
+            }
+          ],
+          "default": "system"
+        },
+        "units": {
+          "description": "The unit of lengths and positions.",
+          "oneOf": [
+            {
+              "description": "Micrometres.",
+              "const": "um",
+              "type": "string"
+            },
+            {
+              "description": "Millimetres.",
+              "const": "mm",
+              "type": "string"
+            }
+          ],
+          "default": "um"
+        },
+        "scale_bar": {
+          "description": "Whether images have a scale bar.",
+          "default": true,
+          "type": "boolean"
+        },
+        "colormap": {
+          "description": "How one-channel images are coloured.",
+          "oneOf": [
+            {
+              "description": "Black to white.",
+              "const": "grey",
+              "type": "string"
+            },
+            {
+              "description": "Viridis.",
+              "const": "viridis",
+              "type": "string"
+            },
+            {
+              "description": "Magma.",
+              "const": "magma",
+              "type": "string"
+            },
+            {
+              "description": "Inferno.",
+              "const": "inferno",
+              "type": "string"
+            }
+          ],
+          "default": "grey"
+        }
+      },
+      "forms": [
+        {
+          "href": "/api/v1/settings/display",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "display_defaults": {
+      "description": "Display preferences, for accounts without their own.",
+      "title": "Display preferences, for accounts without their own.",
+      "writeOnly": false,
+      "readOnly": false,
+      "default": {
+        "theme": "system",
+        "units": "um",
+        "scale_bar": true,
+        "colormap": "grey"
+      },
+      "type": "object",
+      "properties": {
+        "theme": {
+          "description": "Light, dark, or as the computer is.",
+          "oneOf": [
+            {
+              "description": "As the computer is.",
+              "const": "system",
+              "type": "string"
+            },
+            {
+              "description": "Light.",
+              "const": "light",
+              "type": "string"
+            },
+            {
+              "description": "Dark.",
+              "const": "dark",
+              "type": "string"
+            }
+          ],
+          "default": "system"
+        },
+        "units": {
+          "description": "The unit of lengths and positions.",
+          "oneOf": [
+            {
+              "description": "Micrometres.",
+              "const": "um",
+              "type": "string"
+            },
+            {
+              "description": "Millimetres.",
+              "const": "mm",
+              "type": "string"
+            }
+          ],
+          "default": "um"
+        },
+        "scale_bar": {
+          "description": "Whether images have a scale bar.",
+          "default": true,
+          "type": "boolean"
+        },
+        "colormap": {
+          "description": "How one-channel images are coloured.",
+          "oneOf": [
+            {
+              "description": "Black to white.",
+              "const": "grey",
+              "type": "string"
+            },
+            {
+              "description": "Viridis.",
+              "const": "viridis",
+              "type": "string"
+            },
+            {
+              "description": "Magma.",
+              "const": "magma",
+              "type": "string"
+            },
+            {
+              "description": "Inferno.",
+              "const": "inferno",
+              "type": "string"
+            }
+          ],
+          "default": "grey"
+        }
+      },
+      "forms": [
+        {
+          "href": "/api/v1/settings/display_defaults",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/settings/display_defaults",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://testserver/api/v1/settings/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true,
+      "additionalProperties": false
+    },
+    "document": {
+      "description": "All the settings, as one document, which `import` takes.",
+      "title": "All the settings, as one document, which `import` takes.",
+      "writeOnly": false,
+      "readOnly": true,
+      "forms": [
+        {
+          "href": "/api/v1/settings/document",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "restart_needed": {
+      "description": "A restart takes the change up.",
+      "title": "Whether the configuration file changed since the start.",
+      "writeOnly": false,
+      "readOnly": true,
+      "default": false,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/settings/restart_needed",
+          "op": [
+            "readproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/settings/restart_needed",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://testserver/api/v1/settings/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true
+    },
+    "simulator": {
+      "description": "What the next start reads, whole: a key left out is its default.\nNull when the server has no file.",
+      "title": "The simulator's settings in the configuration file.",
+      "writeOnly": false,
+      "readOnly": false,
+      "forms": [
+        {
+          "href": "/api/v1/settings/simulator",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        }
+      ]
+    },
+    "system": {
+      "description": "What the next start reads: the data and scratch roots, the address\nand the port. Null when the server has no file.",
+      "title": "The system's settings in the configuration file.",
+      "writeOnly": false,
+      "readOnly": false,
+      "oneOf": [
+        {
+          "description": "The system's settings in the configuration file: what the server starts\nwith next.",
+          "type": "object",
+          "properties": {
+            "data_root": {
+              "description": "Projects and their data. A relative folder is from the file's.",
+              "type": "string"
+            },
+            "scratch_root": {
+              "description": "Fast scratch space, for frame logs and caches.",
+              "type": "string"
+            },
+            "address": {
+              "description": "The address to listen on: 127.0.0.1 is this computer only.",
+              "format": "ip",
+              "type": "string"
+            },
+            "port": {
+              "description": "The port: 0 lets the system choose.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "data_root",
+            "scratch_root",
+            "address",
+            "port"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/settings/system",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "import": {
+      "description": "Each part it has is checked before any is changed: what it imported.",
+      "title": "Imports a settings document, as `document` gives one.",
+      "forms": [
+        {
+          "href": "/api/v1/settings/import",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "import_input",
+        "type": "object",
+        "properties": {
+          "document": {}
+        },
+        "required": [
+          "document"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "import_output",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "synchronous": false
+    }
+  },
+  "description": "Settings: the system's, the simulator's, and how things are shown.",
+  "forms": [
+    {
+      "href": "/api/v1/settings/properties",
+      "op": [
+        "readallproperties",
+        "writemultipleproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/settings/properties",
+      "op": [
+        "observeallproperties",
+        "unobserveallproperties"
+      ],
+      "subprotocol": "sse"
+    },
+    {
+      "href": "/api/v1/settings/actions",
+      "op": [
+        "queryallactions"
+      ]
+    }
+  ],
+  "base": "http://testserver/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Function"
+}

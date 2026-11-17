@@ -34,6 +34,7 @@ use crate::power::{PowerConfig, PowerThing};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
+use crate::settings::{ConfigFile, SettingsFile, SettingsThing};
 use crate::status::StatusThing;
 use crate::system::{System, VERSION};
 use crate::workspace::WorkspaceThing;
@@ -167,6 +168,13 @@ impl ApiBuilder {
             .things
             .service(Arc::new(PowerConfig { dry_run }))
             .thing("power", PowerThing::default());
+        self
+    }
+
+    /// Gives the `settings` Thing the configuration `file` the server
+    /// started with (P52): its system and simulator settings.
+    pub fn config_file(mut self, file: Arc<dyn ConfigFile>) -> Self {
+        self.things = self.things.service(Arc::new(SettingsFile(file)));
         self
     }
 
@@ -353,7 +361,8 @@ impl Api {
             .service(Arc::clone(&restart))
             .service(Arc::new(roots.clone()))
             .thing("system", System::from_config(roots.clone()))
-            .thing("status", StatusThing::default());
+            .thing("status", StatusThing::default())
+            .thing("settings", SettingsThing::default());
         ApiBuilder {
             things,
             pages: Vec::new(),

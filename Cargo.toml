@@ -49,6 +49,7 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
 fs4 = "1.1.0"
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
 toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
+toml_edit = { version = "0.22.27", default-features = false, features = ["parse", "display"] }
 # New in P06.
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 rayon = "1.12.0"

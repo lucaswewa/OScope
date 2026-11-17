@@ -5,7 +5,10 @@
 #
 # Relative folders are relative to this file's folder.
 
-[server]
+# The file's version (P52): a file without one is version 1's, and still read.
+version = 2
+
+[network]
 # 127.0.0.1: only this computer can connect.
 address = "127.0.0.1"
 port = 8210

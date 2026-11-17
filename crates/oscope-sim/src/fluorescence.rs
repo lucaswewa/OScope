@@ -13,7 +13,7 @@
 //! *Nature Protocols*, 2011).
 
 use oscope_core::Um;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::optics::Optics;
 
@@ -54,7 +54,7 @@ impl Excitation {
 
 /// A fluorescent dye, by the peaks of its excitation and emission spectra.
 /// In a configuration: `dapi`, `green`, `orange` or `far-red`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Dye {
     /// A DNA stain like DAPI: excited at 358 nm, emitting at 461 nm.

@@ -118,7 +118,9 @@ oscope-server service uninstall
 [`configs/oscope.toml`](../../configs/oscope.toml) is a sample. Every key is optional:
 
 ```toml
-[server]
+version = 2                       # the file's version (P52)
+
+[network]
 address = "127.0.0.1"             # only this computer can connect
 port = 8210
 
@@ -132,6 +134,9 @@ ring = 50000                      # records kept in memory, for queries and the 
 keep_days = 30                    # days of daily files kept, in data_root/logs
 
 [devices]                         # each device's driver (P16)
+
+[simulator]                       # the simulator's settings (P16)
+sample = "H&E tissue"
 
 [jobs]                            # the job service (P20)
 workers = 2                       # compute jobs at once
@@ -153,6 +158,10 @@ idle_s = 300                      # how long an idle worker is kept
 
 - **Relative folders** are relative to the file's own folder.
 - **An unknown key** is refused, with its line.
+- **Versions (P52):**
+  - A file without `version` is version 1's, as P01–P51 wrote them: `[server]` for `[network]`, and `[devices.simulator]` for `[simulator]`. It is still read, migrated as it is read.
+  - `oscope-server --config FILE config migrate` rewrites it as version 2's. It keeps the file's comments, and the old file beside it as `FILE.v1.bak`.
+  - **The `settings` Thing** changes the file too. It writes only what changed, and keeps the file before as `FILE.bak`.
 
 ```sh
 cargo run -p oscope-server -- --config configs/oscope.toml --port 8211

@@ -25,6 +25,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread", "sync"] }
 toml.workspace = true
+toml_edit.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]

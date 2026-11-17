@@ -1,6 +1,6 @@
 //! The simulator as devices (P16): lights and an objective mount that set
 //! what the simulated camera sees, and the whole simulator built from the
-//! configuration's `[devices.simulator]`.
+//! configuration's `[simulator]`.
 
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,7 +12,7 @@ use oscope_hal::{
     ManualObjectiveMount, Objective, ObjectiveCatalogue, ObjectiveMount,
     ObjectiveMountCapabilities,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::camera::{SimCamera, SimCameraConfig};
 use crate::catalogue::{SampleCatalogue, SampleEntry, SlideLoader};
@@ -205,10 +205,11 @@ impl ObjectiveMount for SimMount {
     }
 }
 
-/// The simulator's part of the configuration, `[devices.simulator]`:
+/// The simulator's part of the configuration, `[simulator]` (version 1's
+/// `[devices.simulator]`):
 ///
 /// ```toml
-/// [devices.simulator]
+/// [simulator]
 /// rate = 1.0              # the clock: 1 is real time
 /// sensor = "full"         # the MIChrome 20's, or "quarter": 1368 × 912
 /// objective = "10x"       # fitted at start
@@ -225,13 +226,13 @@ impl ObjectiveMount for SimMount {
 /// vignetting = 0.0        # the optics' falloff, 1 / (1 + s r²)²: s
 /// response = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]   # the sensor's colour
 ///
-/// [[devices.simulator.samples]]   # beyond the built-in ones
+/// [[simulator.samples]]   # beyond the built-in ones
 /// name = "my section"
 /// kind = "image"
 /// path = "section.png"
 /// um_per_pixel = 0.25
 /// ```
-#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct SimulatorConfig {
     /// The clock's rate: 1 is real time.
@@ -325,18 +326,15 @@ pub struct SimFaults {
     pub scratch_full: AtomicBool,
 }
 
-impl Simulator {
-    /// The simulator `config` describes, with imports' paths taken from
-    /// `base`, the configuration's folder. It fits the starting objective
-    /// and loads the starting sample, if any.
-    pub async fn new(config: &SimulatorConfig, base: &Path) -> std::result::Result<Self, String> {
-        let rate = if config.rate == 1.0 {
-            Rate::RealTime
-        } else if config.rate > 0.0 && config.rate.is_finite() {
-            Rate::Scaled(config.rate)
-        } else {
+impl SimulatorConfig {
+    /// Checks it as [`Simulator::new`] does, without making the simulator
+    /// (P52): the clock's rate, the truths, the stage's latency and lost
+    /// steps, the sensor, the objective, and the sample's name.
+    pub fn check(&self) -> std::result::Result<(), String> {
+        let config = self;
+        if !(config.rate > 0.0 && config.rate.is_finite()) {
             return Err(format!("a clock rate of {}", config.rate));
-        };
+        }
         let response = config.response.iter().flatten();
         let truth = [
             config.rotation,
@@ -374,6 +372,37 @@ impl Simulator {
                  size of at least 0, are needed"
             ));
         }
+        if !["full", "quarter"].contains(&config.sensor.as_str()) {
+            let sensor = &config.sensor;
+            return Err(format!("a sensor `{sensor}`: `full` or `quarter`"));
+        }
+        let catalogue = ObjectiveCatalogue::mitutoyo();
+        catalogue
+            .get(&config.objective)
+            .map_err(|e| e.to_string())?;
+        let builtin = SampleCatalogue::builtin().samples;
+        let mut names = builtin.iter().chain(&config.samples).map(|s| &s.name);
+        if !config.sample.is_empty() && !names.any(|name| *name == config.sample) {
+            let sample = &config.sample;
+            return Err(format!(
+                "a sample `{sample}`: not built in, nor among `samples`"
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl Simulator {
+    /// The simulator `config` describes, with imports' paths taken from
+    /// `base`, the configuration's folder. It fits the starting objective
+    /// and loads the starting sample, if any.
+    pub async fn new(config: &SimulatorConfig, base: &Path) -> std::result::Result<Self, String> {
+        config.check()?;
+        let rate = match config.rate == 1.0 {
+            true => Rate::RealTime,
+            false => Rate::Scaled(config.rate),
+        };
+        let [chance, size] = config.lost_steps;
         let clock = Arc::new(SimClock::new(rate));
         let mut stage_config = SimStageConfig {
             backlash: Um(config.backlash),

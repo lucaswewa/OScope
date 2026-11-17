@@ -176,6 +176,9 @@ fn it_serves_from_its_configuration_and_creates_its_folders() {
         assert!(data.is_dir() && folder.path().join("scratch").is_dir());
         // Power in a dry run, as the configuration says (P51).
         assert_eq!(get(&address, "/api/v1/power/dry_run").1, "true");
+        // The settings Thing has the file: its port, not the command line's.
+        let (_, system) = get(&address, "/api/v1/settings/system");
+        assert!(system.contains("\"port\":8210"), "{system}");
         // Its logs: teta-wot's serving record, in today's daily file.
         let (status, body) = get(&address, "/api/v1/logs/records?text=serving");
         assert_eq!(status, "HTTP/1.1 200 OK");
@@ -208,6 +211,25 @@ nodes = ["hello.greet"]
 requires-python = ">=3.12"
 entry = "hello"
 "#;
+
+#[test]
+fn config_migrate_rewrites_an_old_file_once() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("oscope.toml");
+    std::fs::write(&path, "# Mine.\n[server]\nport = 8300\n").unwrap();
+    let file = path.to_str().unwrap();
+    let output = run(&["--config", file, "config", "migrate"]);
+    let said = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "{output:?}");
+    assert!(said.contains("[server] is now [network]"), "{said}");
+    let new = std::fs::read_to_string(&path).unwrap();
+    assert!(new.starts_with("version = 2\n"), "{new}");
+    assert!(new.contains("# Mine.\n[network]\nport = 8300\n"), "{new}");
+    let again = run(&["--config", file, "config", "migrate"]);
+    let said = String::from_utf8_lossy(&again.stdout);
+    assert!(said.contains("already version 2"), "{said}");
+    assert!(!run(&["config", "migrate"]).status.success());
+}
 
 #[test]
 fn ext_pack_names_the_package_and_packs_the_same_bytes_each_time() {
