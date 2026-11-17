@@ -145,7 +145,8 @@ fn get(address: &str, path: &str) -> (String, String) {
 fn it_serves_from_its_configuration_and_creates_its_folders() {
     let folder = tempfile::tempdir().unwrap();
     let config = folder.path().join("oscope.toml");
-    std::fs::write(&config, "[storage]\nscratch_root = \"scratch\"\n").unwrap();
+    let text = "[storage]\nscratch_root = \"scratch\"\n\n[power]\ndry_run = true\n";
+    std::fs::write(&config, text).unwrap();
     let data = folder.path().join("data");
     let mut server = Command::new(env!("CARGO_BIN_EXE_oscope-server"))
         .args(["--config", config.to_str().unwrap(), "--port", "0"])
@@ -173,6 +174,8 @@ fn it_serves_from_its_configuration_and_creates_its_folders() {
             std::path::absolute(&data).unwrap().display().to_string()
         );
         assert!(data.is_dir() && folder.path().join("scratch").is_dir());
+        // Power in a dry run, as the configuration says (P51).
+        assert_eq!(get(&address, "/api/v1/power/dry_run").1, "true");
         // Its logs: teta-wot's serving record, in today's daily file.
         let (status, body) = get(&address, "/api/v1/logs/records?text=serving");
         assert_eq!(status, "HTTP/1.1 200 OK");

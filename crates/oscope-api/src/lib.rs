@@ -30,6 +30,7 @@ pub mod logs;
 mod media;
 pub mod mosaic;
 mod pages;
+pub mod power;
 pub mod preview;
 pub mod projects;
 pub mod scan;

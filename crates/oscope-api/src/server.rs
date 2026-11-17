@@ -30,6 +30,7 @@ use crate::focus::{AutofocusThing, ExposureThing};
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::mosaic::{LiveMosaicThing, Mosaics};
+use crate::power::{PowerConfig, PowerThing};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
@@ -157,6 +158,21 @@ impl ApiBuilder {
     pub fn authenticator(mut self, authenticator: impl Authenticator) -> Self {
         self.things = self.things.authenticator(authenticator);
         self
+    }
+
+    /// Serves the `power` Thing (P51, ADR-0032): the service restarted, the
+    /// host rebooted or shut down; with `dry_run`, only said.
+    pub fn power(mut self, dry_run: bool) -> Self {
+        self.things = self
+            .things
+            .service(Arc::new(PowerConfig { dry_run }))
+            .thing("power", PowerThing::default());
+        self
+    }
+
+    /// The server's restart request, as [`Api::restart`] gives it.
+    pub fn restart(&self) -> Arc<Restart> {
+        Arc::clone(&self.restart)
     }
 
     /// Turns on `security` (P49, ADR-0031): every request but logging in

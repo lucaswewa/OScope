@@ -859,8 +859,8 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | ID | Phase | Depends on | Size | ADRs | Status |
 |---|---|---|---|---|---|
 | P49 | Accounts, sessions, control lease, TLS | P48 | L | 0031 | Done |
-| P50 | Instrument status and health | P49 | M | — | In review |
-| P51 | Power actions | P50 | S | 0032 | Planned |
+| P50 | Instrument status and health | P49 | M | — | Done |
+| P51 | Power actions | P50 | S | 0032 | In review |
 | P52 | Settings and configuration migration | P51 | M | — | Planned |
 | P53 | Performance budgets and nightly soak | P52 | M | — | Planned |
 | P54 | Packaging, release workflow, M1 retrospective | P53 | M | 0033 | Planned |
@@ -1110,3 +1110,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-16 | P48 was estimated at about 2,200 lines before it started (in `oscope-store`, the inputs' hashes in the provenance and deleting a result ~60; in `oscope-workflows`, the analysis job over a stored image or a region of it, its outputs kept as a result, its provenance, made again and compared ~380; the `workspace` Thing, with P44's annotation routes moved to it ~350; tests ~660; `ex-workspace` and its page, and `ex-checkpoint-f` ~550; and about a tenth on top): more than three times M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
 | 2026-11-16 | P49 was estimated at about 2,200 lines before it started (in `oscope-api`, accounts with argon2, sessions, the lease, the authenticator and authoriser, and the `auth` Thing ~720; in `oscope-server`, the account commands, TLS with a made or given certificate, and the network's rules ~280; tests, among them one made from the Thing Descriptions ~610; `ex-two-clients` and its page ~280; and about a tenth on top): more than twice L's 900. One pull request, TLS within it, with the overrun explained, as the owner decided for P24–P54 |
 | 2026-11-16 | P50 was estimated at about 1,450 lines before it started (in `oscope-sim`, the faults: a camera unplugged, a stage alarm, a scratch disk full ~80; the GPU through NVML ~80; the disk monitor ~60; the `status` Thing with its reporters, roll-up and event ~300; the `simulation` Thing's fault actions ~50; tests ~400; `ex-status` and its page ~300; glue ~30; and about a tenth on top): more than twice M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
+| 2026-11-16 | P51 was not estimated in lines before it started, an oversight: its spec's S stood. It measured 738 hand-written lines added (its notes): 438 over S's 300. One pull request, with the overrun explained, as the owner decided for P24–P54 |

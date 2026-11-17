@@ -89,6 +89,11 @@ fn exited(child: &mut Child) -> Option<i32> {
 
 /// One HTTP/1.1 request to the server on `port`: its status.
 fn http(port: u64, method: &str, path: &str) -> u16 {
+    request(port, method, path)[9..12].parse().unwrap()
+}
+
+/// One HTTP/1.1 request to the server on `port`: its answer.
+fn request(port: u64, method: &str, path: &str) -> String {
     let mut stream = TcpStream::connect(("127.0.0.1", port as u16)).unwrap();
     let request = format!(
         "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
@@ -97,7 +102,7 @@ fn http(port: u64, method: &str, path: &str) -> u16 {
     stream.write_all(request.as_bytes()).unwrap();
     let mut answer = String::new();
     stream.read_to_string(&mut answer).unwrap();
-    answer[9..12].parse().unwrap()
+    answer
 }
 
 /// The ring's name, from the ready line.
@@ -115,6 +120,9 @@ fn managed_it_says_where_it_is_and_stops_when_stdin_closes() {
     let port = ready["port"].as_u64().unwrap();
     assert!(port > 0);
     assert_eq!(http(port, "GET", "/health"), 200);
+    // Power acts, by default (P51); this test only reads that.
+    let power = request(port, "GET", "/api/v1/power/dry_run");
+    assert!(power.ends_with("\r\n\r\nfalse"), "{power}");
 
     // The token: 32 random bytes in hex, in the data root, its owner's alone.
     let token = PathBuf::from(ready["token"].as_str().unwrap());
