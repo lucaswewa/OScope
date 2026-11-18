@@ -1,8 +1,9 @@
 // A server of a test's own (ADR-0040): the workspace's `oscope-server`, with
-// its own data root, on a port the system picks, serving the built app. Each
-// test has one, so tests run side by side and none sees another's state.
+// its own configuration, data and scratch space, on a port the system picks,
+// serving the built app. Each test has one, so tests run side by side and
+// none sees another's state.
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -10,6 +11,19 @@ import { fileURLToPath } from "node:url";
 
 /** The `web/` folder. */
 export const web = fileURLToPath(new URL("../..", import.meta.url));
+
+/**
+ * The server's configuration, relative to its folder. Without one, the
+ * scratch space is the working folder's: every test's server would share it,
+ * and each clears it as it starts. Power actions only say what they would do.
+ */
+const CONFIG = `[storage]
+data_root = "data"
+scratch_root = "scratch"
+
+[power]
+dry_run = true
+`;
 
 /** The server's program: `OSCOPE_SERVER_BIN`, or the workspace's debug build. */
 function program(): string {
@@ -24,13 +38,18 @@ export class Server {
   url = "";
   /** The version it says it is. */
   version = "";
+  /** Its folder: its configuration, with `data` and `scratch` beside it. */
+  readonly folder = mkdtempSync(join(tmpdir(), "oscope-e2e-"));
   private port = 0;
   private child: ChildProcess | undefined;
-  private readonly dataRoot = mkdtempSync(join(tmpdir(), "oscope-e2e-"));
+
+  constructor() {
+    writeFileSync(join(this.folder, "oscope.toml"), CONFIG);
+  }
 
   /** Starts it: on a port the system picks, or the one it had before. */
   async start(): Promise<void> {
-    const args = ["--port", String(this.port), "--data-root", this.dataRoot];
+    const args = ["--config", join(this.folder, "oscope.toml"), "--port", String(this.port)];
     const child = spawn(program(), [...args, "--web", join(web, "dist")], {
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -64,9 +83,9 @@ export class Server {
     await gone;
   }
 
-  /** Stops it, and removes its data. */
+  /** Stops it, and removes its folder. */
   async dispose(): Promise<void> {
     await this.stop();
-    rmSync(this.dataRoot, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+    rmSync(this.folder, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
   }
 }

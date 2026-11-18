@@ -34,7 +34,13 @@
 - **end to end:** in `tests/e2e/`, each test with a server of its own;
 - **visual:** screenshots against baselines, in both themes (from W0.2).
 
-**3. An end-to-end test starts its own `oscope-server`:** the workspace's debug build, with a data root of its own, on a port the system picks, serving the built app with `--web`. Tests then run side by side, and none sees another's state. The server's log is shown only if it doesn't come up.
+**3. An end-to-end test starts its own `oscope-server`:** the workspace's debug build, on a port the system picks, serving the built app with `--web`. Tests then run side by side, and none sees another's state.
+- **Its configuration is the test's own,** in a folder of the test's:
+  - its data and its scratch space are there. A server given only `--data-root` keeps its scratch space in the working folder, which every test's server would share, and each clears it as it starts;
+  - its power actions only say what they would do: no test can turn the computer off.
+- **A test of the tests' own footing** checks both.
+- **The server's log** is shown only if it doesn't come up.
+- **A run of the suite has its own folder** for what Playwright writes, `test-results/<date>-<time>-<process>/`. Playwright clears its folder as a run starts, so runs side by side can't share one. A run with no failure removes its folder: only failures' traces stay.
 
 **4. Browsers:** Chromium runs every end-to-end test. Firefox and WebKit run those tagged `@main`, the main path. WebKit stands in for the Linux desktop app's webview until W9.1 runs the tests in it.
 
@@ -65,6 +71,7 @@
   - The end-to-end tests need the server built and three browsers installed. In WSL, the browsers' system libraries are installed as root, once.
   - The advisories' check needs the network, as `cargo-deny`'s does.
   - A replay installs the packages afresh each time.
+  - Failures' folders in `test-results/` stay until someone deletes them, and Playwright's `--last-failed` finds no earlier run.
 - **To watch:**
   - Advisories listed for tools: three on the day this was written, none of them with a fix old enough to take.
   - Vite's packages for other platforms are in the lock file, and are checked from it, though only one platform's are installed.

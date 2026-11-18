@@ -36,7 +36,7 @@ Each is an npm script, run from `web/`. The replays and CI run them all ([ADR-00
 | `npm run advisories` | npm's advisories, after a build |
 | `npm run test:e2e` | Playwright, on the built app: Chromium for every test, Firefox and WebKit for those tagged `@main` |
 
-**The end-to-end tests** start a server of their own for each test, with its own data and a port the system picks. Before them:
+**The end-to-end tests** start a server of their own for each test: its configuration, data and scratch space in a folder of the test's, on a port the system picks, with power actions that only say what they would do. Before them:
 
 ```sh
 cargo build -p oscope-server                       # the server they start, or name another with OSCOPE_SERVER_BIN
@@ -45,6 +45,8 @@ npx playwright install chromium firefox webkit     # the browsers, once
 ```
 
 On Linux, the browsers need system libraries too, installed once as root: `npx playwright install-deps chromium firefox webkit`.
+
+**A failure's trace** is in the run's own folder, `test-results/<date>-<time>-<process>/`: the failure says where, and how to open it. Each run has a folder of its own so that several can go at once, as `scripts/two-core.sh web:e2e` runs them. A run with no failure removes its folder; delete the others once read.
 
 **Screenshots for a phase's notes** are taken by its end-to-end test when `OSCOPE_SHOTS` is set, into `docs/milestone-2/notes/shots/`:
 
