@@ -37,5 +37,11 @@ export const router = createRouter({
       name: "gallery-data",
       component: () => import("@/features/dev/DataPage.vue"),
     },
+    {
+      // Forms drawn from JSON Schemas: the gallery's own, and the server's.
+      path: "/dev/gallery/forms",
+      name: "gallery-forms",
+      component: () => import("@/features/dev/FormsPage.vue"),
+    },
   ],
 });

@@ -69,7 +69,7 @@ The look is in tokens, CSS custom properties in [`src/ui/tokens/tokens.css`](src
 
 ## Its components
 
-The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042](../docs/adr/0042-the-component-library-on-reka-ui.md)). Open `#/dev/gallery/inputs` to try every control, in each of its states, `#/dev/gallery/overlays` for dialogs, menus, notices and the rest, and `#/dev/gallery/data` for tabs, panes, a table of 100,000 rows, a tree and the rest of a page's pieces.
+The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042](../docs/adr/0042-the-component-library-on-reka-ui.md)). Open `#/dev/gallery/inputs` to try every control, in each of its states, `#/dev/gallery/overlays` for dialogs, menus, notices and the rest, `#/dev/gallery/data` for tabs, panes, a table of 100,000 rows, a tree and the rest of a page's pieces, and `#/dev/gallery/forms` for forms drawn from JSON Schemas, every one the server publishes among them.
 
 - **A tab imports the app's components,** never reka-ui: `import Button from "@/ui/Button.vue"`.
 - **Every control takes** `id`, `label`, `disabled`, `readonly` and `invalid`, and its value as `v-model`. Read-only is reached by the keyboard and changed by nothing; switched off is passed by.
@@ -79,6 +79,8 @@ The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042
 - **A `Splitter` and a `DataTable` take the height their page gives them.** A table with none grows to hold every row, and draws only as many as the window can show.
 - **What a page keeps between visits,** a pane's size, a column's width, is kept with `kept(key, fallback, valid)` from [`src/host/kept.ts`](src/host/kept.ts): what was kept is used only if `valid` takes it.
 - **A card's or a section's title** is a heading at the third level unless told: a page whose own come straight under its title says `:level="2"`.
+- **A form from a JSON Schema** is `<SchemaForm :schema="…" label="…" v-model="value" @faults="…" />`, from `src/ui/schema-form/`. It draws the part of JSON Schema the server's schemas use; anything else is JSON to edit, with the reason. A 422's body, passed as `refused`, puts the server's refusals on the fields they name until those change. The contract test in `tests/e2e/forms.spec.ts` fails when the server publishes a construct the forms don't draw.
+- **A prop or a model that may be a boolean, and may be left out, says `default: undefined`:** Vue makes a missing one `false`.
 - **A notice** is raised from anywhere with `notify({ level, text })` from [`src/ui/toasts.ts`](src/ui/toasts.ts). What failed stays until it is sent away.
 - **A component's tests** are beside it, mounted with [`src/ui/test-kit.ts`](src/ui/test-kit.ts). Keys that need a real page (anything that opens, or is measured) are tested end to end, on the gallery.
 - **A unit test fails if the console is told anything,** a Vue warning above all, and everything it mounted is unmounted after it ([`tests/setup/unit.ts`](tests/setup/unit.ts)). A test that means to make a warning takes it with `heard()`.

@@ -45,7 +45,10 @@ export function draw(component: Component, props: Props = {}, slots: Slots = {})
 export function drawModel<T>(component: Component, value: T, props: Props = {}, slots: Slots = {}) {
   const changes: T[] = [];
   const held = { value };
-  const drawn = draw(
+  // A component may say its value as it starts, before it is drawn: that
+  // value comes back to it once it is.
+  let drawn: ReturnType<typeof draw> | undefined = undefined;
+  drawn = draw(
     component,
     {
       ...props,
@@ -53,11 +56,12 @@ export function drawModel<T>(component: Component, value: T, props: Props = {}, 
       "onUpdate:modelValue": (now: T) => {
         changes.push(now);
         held.value = now;
-        void drawn.set({ modelValue: now });
+        void drawn?.set({ modelValue: now });
       },
     },
     slots,
   );
+  if (held.value !== value) void drawn.set({ modelValue: held.value });
   return { ...drawn, changes, held };
 }
 

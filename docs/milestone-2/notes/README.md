@@ -14,7 +14,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W0.3 | Components I: actions and inputs | Done | [W0.3-components-inputs.md](W0.3-components-inputs.md) |
 | W0.4 | Components II: overlays and feedback | Done | [W0.4-components-overlays.md](W0.4-components-overlays.md) |
 | W0.5 | Components III: layout and data | Done | [W0.5-components-data.md](W0.5-components-data.md) |
-| W0.6 | Forms from JSON Schema | Planned | — |
+| W0.6 | Forms from JSON Schema | In review | [W0.6-schema-forms.md](W0.6-schema-forms.md) |
 | W0.7 | Charts | Planned | — |
 | W1.1 | Generated API types and the typed client | Planned | — |
 | W1.2 | Things, live properties and events | Planned | — |

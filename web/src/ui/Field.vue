@@ -14,6 +14,8 @@ const props = defineProps<{
   hint?: string;
   /** What is wrong. Shown in the hint's place, and the control is then in error. */
   error?: string;
+  /** The label is said, and not shown: where the words beside the control already show it. */
+  quiet?: boolean;
 }>();
 
 const id = useId();
@@ -30,7 +32,7 @@ provideField({
 
 <template>
   <div class="field">
-    <label :id="labelId" class="label" :for="id">{{ label }}</label>
+    <label :id="labelId" class="label" :class="{ quiet }" :for="id">{{ label }}</label>
     <slot />
     <p v-if="error" :id="noteId" class="note error">{{ error }}</p>
     <p v-else-if="hint" :id="noteId" class="note">{{ hint }}</p>
@@ -48,6 +50,16 @@ provideField({
 
 .label {
   font-weight: var(--font-weight-strong);
+}
+
+/* Said by a screen reader, and not drawn. */
+.quiet {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .note {
