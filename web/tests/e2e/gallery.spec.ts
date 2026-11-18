@@ -16,14 +16,19 @@ test("the gallery follows the theme and the accent, and the browser keeps them @
   const body = page.locator("body");
   const scheme = page.getByRole("status");
   const accent = page.locator('[data-token="accent"]');
+  const title = page.getByRole("heading", { level: 1 });
 
-  // As the computer is: light, then dark, with nothing reloaded.
+  // As the computer is: light, then dark, with nothing reloaded. A title is
+  // in the accent's text colour in light and plain in dark: one token, a
+  // choice by scheme inside another.
   await expect(root).not.toHaveAttribute("data-theme");
   await expect(body).toHaveCSS("background-color", light);
+  await expect(title).toHaveCSS("color", "rgb(180, 29, 115)");
   await expect(scheme).toHaveAttribute("data-scheme", "light");
   await shot(page, "W0.2-gallery-light");
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(body).toHaveCSS("background-color", dark);
+  await expect(title).toHaveCSS("color", "rgb(232, 232, 232)");
   await expect(scheme).toHaveAttribute("data-scheme", "dark");
   await shot(page, "W0.2-gallery-dark");
 
