@@ -49,5 +49,11 @@ export const router = createRouter({
       name: "gallery-charts",
       component: () => import("@/features/dev/ChartsPage.vue"),
     },
+    {
+      // Calls through the typed client: an action followed, and failures as one model.
+      path: "/dev/gallery/api",
+      name: "gallery-api",
+      component: () => import("@/features/dev/ApiPage.vue"),
+    },
   ],
 });

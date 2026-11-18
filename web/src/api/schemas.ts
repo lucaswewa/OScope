@@ -1,7 +1,9 @@
 // The schemas the server publishes (W0.6): each Thing's properties, its
 // actions' inputs and outputs, and its events' data, from the Thing
 // Descriptions in its directory; each pipeline node's parameters; and each
-// scan pattern's that has its own. The addresses are relative, as in `system.ts`.
+// scan pattern's that has its own. They are read with the typed client
+// (client.ts), relative to the page.
+import { call, server } from "./client.ts";
 
 export interface Published {
   /** Unique: `camera/set_mode/input`. */
@@ -73,18 +75,13 @@ export function publishedIn(descriptions: unknown[]): Published[] {
   return found;
 }
 
-async function read(path: string, signal: AbortSignal): Promise<unknown> {
-  const answer = await fetch(path, { signal });
-  if (!answer.ok) throw new Error(`${path}: ${answer.status}`);
-  return answer.json();
-}
-
 /** Every schema the server publishes, its Things' first. */
 export async function published(signal: AbortSignal): Promise<Published[]> {
-  const [things, nodes, patterns] = await Promise.all([
-    read("api/v1/directory/things", signal),
-    read("api/v1/preview/nodes", signal),
-    read("api/v1/scan/patterns", signal),
+  const { api } = server;
+  const [things, nodes, patterns]: unknown[] = await Promise.all([
+    call((stop) => api.GET("/api/v1/directory/things", { signal: stop }), { signal }),
+    call((stop) => api.GET("/api/v1/preview/nodes", { signal: stop }), { signal }),
+    call((stop) => api.GET("/api/v1/scan/patterns", { signal: stop }), { signal }),
   ]);
   const found = publishedIn(Array.isArray(things) ? things : []);
   for (const node of Array.isArray(nodes) ? nodes.filter(isRecord) : []) {

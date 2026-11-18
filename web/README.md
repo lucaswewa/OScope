@@ -28,6 +28,7 @@ Each is an npm script, run from `web/`. The replays and CI run them all ([ADR-00
 
 | Script | Checks |
 |---|---|
+| `npm run api:check` | The API's types, `src/api/generated/openapi.ts`, against the server's description of its API, after `cargo build -p oscope-server`. `npm run api:types` writes them again |
 | `npm run typecheck` | The types: the app's, and the configurations', scripts' and tests' |
 | `npm run lint` | ESLint, with the layers' rules, and Prettier's formatting. `lint:fix` applies both |
 | `npm run test:unit` | Vitest: the app's logic, and the workspace's tools in `tests/tools/` |
@@ -98,6 +99,18 @@ The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042
 - **`host/`:** the platform: storage, dialogs, windows. The desktop app replaces it.
 - **`features/<tab>/`:** a tab, made of the three above.
 - **`app/`:** the shell: the routes, the navigation, the words.
+
+## Calling the server
+
+Calls go through `src/api/`, typed from the server's own description of its API ([ADR-0043](../docs/adr/0043-generated-api-types-and-the-typed-client.md)). Open `#/dev/gallery/api` to call an action and follow it, and to see how the server's failures read.
+
+- **The types** are in `src/api/generated/openapi.ts`, made by `npm run api:types` from `oscope-server --print-openapi`. After a change to the server's API, run it: the type check then fails wherever the app used the old shape. `npm run api:check` fails while the file is stale, and the replays and CI run it.
+- **A call** is `call((signal) => server.api.GET("/api/v1/system/version", { signal }), { signal, timeout })`: its value, or an `ApiError`. Its path, parameters and body are checked against the description. It has a time limit, 10 s unless told, and stops when its caller aborts.
+- **An action** is `act("/api/v1/stage/move_to", { x, y, z }, { seen })`: started, followed through `action_invocations/{id}` to its end, and its output given. `start`, `follow` and `cancel` take its steps one at a time. Aborting cancels it on the server too.
+- **A job** that an action hands back as a `JobRef` is followed to its results by `finished(ref, { seen })`.
+- **An `ApiError`** says how a call failed: its `failure` (refused by a device or by the server's checks, missing, out of time…), a device's `refusal` and its `status` (ADR-0034), the `fields` a 422 refused, and the server's `body`, for a form's `refused`.
+- **The media plane,** which the description lacks, has wrappers written by hand in `src/api/media.ts`: deep-zoom tiles, volumes' slices and bricks, a project's files, and the logs' live tail. `tests/e2e/contract.spec.ts` checks each, and the client, against a real server.
+- **The error model's tests** read the server's own answers, recorded into `src/api/recorded-answers.json` by `node scripts/record-answers.mjs`, after `npm run build`, with `oscope-server` built.
 
 ## Adding a package
 

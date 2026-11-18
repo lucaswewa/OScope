@@ -67,6 +67,8 @@ export default tseslint.config(
       "playwright-report/",
       // Generated: data recorded from the simulated instrument (scripts/record-charts.mjs).
       "src/features/dev/charts/recorded.ts",
+      // Generated: the API's types (scripts/api-types.mjs, ADR-0043).
+      "src/api/generated/",
     ],
   },
   js.configs.recommended,
