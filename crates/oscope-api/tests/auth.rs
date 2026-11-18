@@ -354,19 +354,38 @@ async fn tls_serves_https_and_refuses_plain_http() {
         .with_root_certificates(trusted)
         .with_no_client_auth();
     let connector = tokio_rustls::TlsConnector::from(Arc::new(config));
-    let tcp = tokio::net::TcpStream::connect(address).await.unwrap();
-    let name = tokio_rustls::rustls::pki_types::ServerName::try_from("localhost").unwrap();
-    let mut tls = connector.connect(name, tcp).await.unwrap();
-    tls.write_all(request).await.unwrap();
-    let mut answer = String::new();
-    tls.read_to_string(&mut answer).await.unwrap_or_default();
+    let answer = within("the answer over TLS", async {
+        let tcp = tokio::net::TcpStream::connect(address).await.unwrap();
+        let name = tokio_rustls::rustls::pki_types::ServerName::try_from("localhost").unwrap();
+        let mut tls = connector.connect(name, tcp).await.unwrap();
+        tls.write_all(request).await.unwrap();
+        // A socket that can't take the request at once leaves it in rustls's
+        // buffer, and reading doesn't send it: only a flush does.
+        tls.flush().await.unwrap();
+        let mut answer = String::new();
+        tls.read_to_string(&mut answer).await.unwrap_or_default();
+        answer
+    })
+    .await;
     assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
     // Plain HTTP gets no answer.
-    let mut plain = tokio::net::TcpStream::connect(address).await.unwrap();
-    plain.write_all(request).await.unwrap();
-    let mut bytes = Vec::new();
-    let _ = plain.read_to_end(&mut bytes).await;
+    let bytes = within("the end of the plain connection", async {
+        let mut plain = tokio::net::TcpStream::connect(address).await.unwrap();
+        plain.write_all(request).await.unwrap();
+        let mut bytes = Vec::new();
+        let _ = plain.read_to_end(&mut bytes).await;
+        bytes
+    })
+    .await;
     assert!(!bytes.starts_with(b"HTTP/1.1 200"), "{bytes:?}");
     let _ = stop.send(());
-    serving.await.unwrap().unwrap();
+    within("the server's stop", serving).await.unwrap().unwrap();
+}
+
+/// `step`, given 30 s: one that stalls fails the test, saying which, rather
+/// than holding up the run for ever.
+async fn within<T>(step: &str, future: impl Future<Output = T>) -> T {
+    tokio::time::timeout(Duration::from_secs(30), future)
+        .await
+        .unwrap_or_else(|_| panic!("{step} didn't come within 30 s"))
 }
