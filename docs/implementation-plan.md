@@ -892,7 +892,7 @@ The workspace, the look, and the components every tab is made of.
 |---|---|---|---|---|---|
 | [W0.1](milestone-2/phases.md#w0-1) | The web workspace and its checks | — | 900 | 0039, 0040 | Done |
 | [W0.2](milestone-2/phases.md#w0-2) | Design tokens, themes and icons | W0.1 | 1,100 | 0041 | Done |
-| [W0.3](milestone-2/phases.md#w0-3) | Components I: actions and inputs | W0.2 | 2,000 | 0042 | Planned |
+| [W0.3](milestone-2/phases.md#w0-3) | Components I: actions and inputs | W0.2 | 2,000 | 0042 | In review |
 | [W0.4](milestone-2/phases.md#w0-4) | Components II: overlays and feedback | W0.3 | 1,500 | — | Planned |
 | [W0.5](milestone-2/phases.md#w0-5) | Components III: layout and data | W0.4 | 2,000 | — | Planned |
 | [W0.6](milestone-2/phases.md#w0-6) | Forms from JSON Schema | W0.5 | 1,500 | — | Planned |

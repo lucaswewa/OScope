@@ -67,6 +67,18 @@ The look is in tokens, CSS custom properties in [`src/ui/tokens/tokens.css`](src
 - **What may be written on what** is in [`src/ui/tokens/pairs.ts`](src/ui/tokens/pairs.ts). A test computes each pair's contrast, in both schemes and with every accent. Text on a background that isn't a pair there isn't promised to read: add the pair.
 - **An icon** is `<Icon name="…" />`, from the registry in [`src/ui/icons.ts`](src/ui/icons.ts). To use one the registry lacks, import its file from Material Symbols there, under the name the app will know it by.
 
+## Its components
+
+The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042](../docs/adr/0042-the-component-library-on-reka-ui.md)). Open `#/dev/gallery/inputs` to try every one, in each of its states.
+
+- **A tab imports the app's components,** never reka-ui: `import Button from "@/ui/Button.vue"`.
+- **Every control takes** `id`, `label`, `disabled`, `readonly` and `invalid`, and its value as `v-model`. Read-only is reached by the keyboard and changed by nothing; switched off is passed by.
+- **A `Field` names its control:** `<Field label="Sample ID" hint="…"><TextField v-model="name" /></Field>`. Nothing else is wired.
+- **A control's own words** are in [`src/ui/words/en.ts`](src/ui/words/en.ts); a page's are the app's, in `src/app/locales/`.
+- **A style for what is drawn at the page's root,** a list or a tooltip, goes in `src/ui/styles/`, not in the component's scoped style, which doesn't reach it.
+- **A component's tests** are beside it, mounted with [`src/ui/test-kit.ts`](src/ui/test-kit.ts). Keys that need a real page (anything that opens, or is measured) are tested end to end, on the gallery.
+- **A new page of the gallery** gets an axe check and baselines: see `tests/e2e/inputs.spec.ts`.
+
 ## Its layers
 
 `src/` has five, and lint keeps what each may import ([ADR-0039](../docs/adr/0039-the-web-app-its-layers-state-and-routing.md)):

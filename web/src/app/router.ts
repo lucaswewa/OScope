@@ -19,5 +19,11 @@ export const router = createRouter({
       name: "gallery",
       component: () => import("@/features/dev/GalleryPage.vue"),
     },
+    {
+      // Every control, in each of its states.
+      path: "/dev/gallery/inputs",
+      name: "gallery-inputs",
+      component: () => import("@/features/dev/InputsPage.vue"),
+    },
   ],
 });

@@ -1,8 +1,7 @@
-import { expect, shot, test } from "./fixtures.ts";
+import { expectAccessible } from "./axe.ts";
+import { choose, expect, inScheme, shot, surface, test } from "./fixtures.ts";
 
-// The page's surface, as the tokens give it to each scheme.
-const light = "rgb(255, 255, 255)";
-const dark = "rgb(31, 31, 31)";
+const { light, dark } = surface;
 
 test("the gallery follows the theme and the accent, and the browser keeps them @main", async ({
   page,
@@ -33,7 +32,7 @@ test("the gallery follows the theme and the accent, and the browser keeps them @
   await shot(page, "W0.2-gallery-dark");
 
   // A theme that is chosen holds against the computer's.
-  await page.getByLabel("Theme").selectOption("light");
+  await choose(page, "Theme", "Light");
   await expect(root).toHaveAttribute("data-theme", "light");
   await expect(body).toHaveCSS("background-color", light);
   await expect(scheme).toHaveAttribute("data-scheme", "light");
@@ -41,7 +40,7 @@ test("the gallery follows the theme and the accent, and the browser keeps them @
   // The accent, and what is made from it: a browser that couldn't mix colours
   // or pick by scheme would leave the tint with no colour at all.
   await expect(accent).toHaveCSS("background-color", "rgb(206, 34, 131)");
-  await page.getByLabel("Accent colour").selectOption("fern");
+  await choose(page, "Accent colour", "Fern green");
   await expect(root).toHaveAttribute("data-accent", "fern");
   await expect(accent).toHaveCSS("background-color", "rgb(79, 121, 66)");
   await expect(page.locator('[data-token="accent-tint"]')).not.toHaveCSS(
@@ -53,7 +52,7 @@ test("the gallery follows the theme and the accent, and the browser keeps them @
   await page.reload();
   await expect(root).toHaveAttribute("data-theme", "light");
   await expect(root).toHaveAttribute("data-accent", "fern");
-  await expect(page.getByLabel("Theme")).toHaveValue("light");
+  await expect(page.getByRole("combobox", { name: "Theme" })).toHaveText("Light");
   await expect(accent).toHaveCSS("background-color", "rgb(79, 121, 66)");
 
   // The icons are in the bundle: no image was fetched to draw them, and no font.
@@ -63,10 +62,19 @@ test("the gallery follows the theme and the accent, and the browser keeps them @
 
 test("the gallery looks as its baselines do, in both themes @visual", async ({ page, server }) => {
   test.skip(!process.env.OSCOPE_VISUAL, "the baselines are one computer's: OSCOPE_VISUAL=1 there");
+  await page.goto(`${server.url}/#/dev/gallery`);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   for (const scheme of ["light", "dark"] as const) {
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.goto(`${server.url}/#/dev/gallery`);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await inScheme(page, scheme);
     await expect(page).toHaveScreenshot(`gallery-${scheme}.png`, { fullPage: true });
+  }
+});
+
+test("the gallery passes axe, in both themes", async ({ page, server }) => {
+  await page.goto(`${server.url}/#/dev/gallery`);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  for (const scheme of ["light", "dark"] as const) {
+    await inScheme(page, scheme);
+    await expectAccessible(page);
   }
 });

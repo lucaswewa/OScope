@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 
-import { useDisplay } from "@/features/display/display";
+import GalleryHeader from "@/features/dev/GalleryHeader.vue";
 import Icon from "@/ui/Icon.vue";
 import { icons, type IconName } from "@/ui/icons";
 import { pairs } from "@/ui/tokens/pairs";
-import { accents, themes } from "@/ui/tokens/theme";
 import sheet from "@/ui/tokens/tokens.css?raw";
 
 /**
@@ -13,7 +12,6 @@ import sheet from "@/ui/tokens/tokens.css?raw";
  * reading it, so that a new token appears here without being listed.
  */
 const { t } = useI18n();
-const display = useDisplay();
 
 const names = [...new Set([...sheet.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((found) => found[1]!))];
 const named = (...starts: string[]): string[] =>
@@ -32,31 +30,7 @@ const drawn = Object.keys(icons) as IconName[];
 
 <template>
   <main class="gallery">
-    <header>
-      <h1>{{ t("gallery.title") }}</h1>
-      <p>{{ t("gallery.intro") }}</p>
-      <div class="choices">
-        <label>
-          {{ t("display.theme") }}
-          <select v-model="display.theme">
-            <option v-for="theme in themes" :key="theme" :value="theme">
-              {{ t(`display.themes.${theme}`) }}
-            </option>
-          </select>
-        </label>
-        <label>
-          {{ t("display.accent") }}
-          <select v-model="display.accent">
-            <option v-for="accent in accents" :key="accent" :value="accent">
-              {{ t(`display.accents.${accent}`) }}
-            </option>
-          </select>
-        </label>
-        <p role="status" :data-scheme="display.scheme">
-          {{ t("gallery.scheme", { scheme: t(`gallery.schemes.${display.scheme}`) }) }}
-        </p>
-      </div>
-    </header>
+    <GalleryHeader :title="t('gallery.title')" :intro="t('gallery.intro')" />
 
     <section>
       <h2>{{ t("gallery.surfaces") }}</h2>
@@ -158,33 +132,9 @@ const drawn = Object.keys(icons) as IconName[];
   padding: var(--space-6);
 }
 
-header,
 section {
   display: grid;
   gap: var(--space-3);
-}
-
-.choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  align-items: center;
-}
-
-label {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  font-weight: var(--font-weight-strong);
-}
-
-select {
-  block-size: var(--size-control-compact);
-  padding-inline: var(--space-2);
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-field);
-  background: var(--surface-field);
-  font-weight: var(--font-weight-regular);
 }
 
 ul {
