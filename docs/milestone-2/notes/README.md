@@ -11,7 +11,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 |---|---|---|---|
 | W0.1 | The web workspace and its checks | Done | [W0.1-web-workspace.md](W0.1-web-workspace.md) |
 | W0.2 | Design tokens, themes and icons | Done | [W0.2-tokens-themes-icons.md](W0.2-tokens-themes-icons.md) |
-| W0.3 | Components I: actions and inputs | In review | [W0.3-components-inputs.md](W0.3-components-inputs.md) |
+| W0.3 | Components I: actions and inputs | Done | [W0.3-components-inputs.md](W0.3-components-inputs.md) |
 | W0.4 | Components II: overlays and feedback | Planned | — |
 | W0.5 | Components III: layout and data | Planned | — |
 | W0.6 | Forms from JSON Schema | Planned | — |
