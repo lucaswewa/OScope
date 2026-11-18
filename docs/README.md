@@ -3,10 +3,12 @@
 | Document | What it is |
 |---|---|
 | [Goals](goal.md) | What OScope sets out to do, in the project owner's words |
-| [Implementation plan](implementation-plan.md) | Scope, the decisions made while planning, the architecture for all three milestones, the Milestone 1 phase overview, outlines of Milestones 2 and 3, risks and points for review |
+| [Implementation plan](implementation-plan.md) | Scope, the decisions made while planning, the architecture for all three milestones, the phase overviews of Milestones 1 and 2, an outline of Milestone 3, risks and points for review |
 | [Milestone 1 phase specifications](milestone-1/phases.md) | The goal, scope, example, "done when" and tests for each phase: U01–U06 (upstream `teta-wot`), and P00–P54 with P02b |
 | [Architecture decision records](adr/README.md) | One record per significant decision, numbered across the project |
 | [Milestone 1 implementation notes](milestone-1/notes/README.md) | One file per phase: what was built, how to try it, deviations and follow-ups |
+| [Milestone 2 phase specifications](milestone-2/phases.md) | The goal, scope, try-it, "done when" and tests for each phase of the app: W0.1–W10.4 |
+| [Milestone 2 implementation notes](milestone-2/notes/README.md) | One file per phase, with its screenshots |
 | [Manual tests of P16–P23](milestone-1/manual-tests-P16-P23.md) | A checklist for trying each phase from P16 to P23 by hand, from its example |
 | [Manual tests of P24–P34](milestone-1/manual-tests-P24-P34.md) | A checklist for trying each phase from P24 to P34 by hand, from its example, and Checkpoints B and C |
 | [Manual tests of P35–P43](milestone-1/manual-tests-P35-P43.md) | A checklist for trying each phase from P35 to P43 by hand, from its example, and Checkpoints D and E |

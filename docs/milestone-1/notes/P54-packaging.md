@@ -1,6 +1,6 @@
 # P54: Packaging, release workflow, M1 retrospective
 
-- Status: In review
+- Status: Done
 - Branch / PR: `m1/p54-packaging` / [#70](https://github.com/lucaswewa/OScope/pull/70)
 - Size: M · estimated ~720 before it started (the .deb ~200; the zip ~145; the notices ~70; the release workflow ~110; the example and the zip's check ~105; tests ~15; glue ~10; a tenth on top; plan's change log); one pull request, at the owner's standing choice · measured **506** hand-written lines added (code 234: the packaging scripts, the maintainer scripts and the notices' template; examples 97: `test-deb.sh` and `test-zip.ps1`; tests 19; glue 156: the release workflow's 97, the configurations, the polkit rule and the unit), and 3 removed. typst-assets' NOTICE, copied unchanged, and the READMEs aren't counted. **That is within M's 600, and 30 % under the estimate**
 
