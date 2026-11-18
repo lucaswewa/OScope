@@ -6,7 +6,7 @@ test("the first page shows the server's version, loses it, and finds it again @m
 }) => {
   await page.goto(server.url);
   await expect(page.getByRole("heading", { name: "OScope" })).toBeVisible();
-  const status = page.getByRole("status");
+  const status = page.getByRole("main").getByRole("status");
   await expect(status).toHaveText(`Server ${server.version}`);
   await shot(page, "W0.1-connected");
 

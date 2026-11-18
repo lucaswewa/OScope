@@ -1,13 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import Checkbox from "@/ui/Checkbox.vue";
 import RadioGroup from "@/ui/RadioGroup.vue";
 import Switch from "@/ui/Switch.vue";
 import { draw, drawModel } from "@/ui/test-kit";
-
-afterEach(() => {
-  document.body.innerHTML = "";
-});
 
 const label = { default: () => "Invert x" };
 

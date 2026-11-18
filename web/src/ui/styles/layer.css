@@ -1,0 +1,77 @@
+/*
+ * What is drawn over the page (ADR-0042): the dimming behind a dialog, a
+ * dialog, a popover. Each is drawn at the page's root, out of its
+ * component's reach, so its style is here.
+ *
+ * Every layer has the same height above the page: the one opened last is
+ * drawn last, and so lies on top. A list opened from a dialog is over it.
+ */
+.ui-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--scrim);
+}
+
+.ui-dialog {
+  position: fixed;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  z-index: 100;
+  display: grid;
+  gap: var(--space-3);
+  inline-size: min(50rem, calc(100vw - 2 * var(--space-4)));
+  max-block-size: calc(100vh - 2 * var(--space-4));
+  padding: var(--space-6);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-dialog);
+  color: var(--text);
+  transform: translate(-50%, -50%);
+}
+
+.ui-dialog.narrow {
+  inline-size: min(25rem, calc(100vw - 2 * var(--space-4)));
+}
+
+/* At the top, at the end: where a dialog's close button is looked for. */
+.ui-dialog-close {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+}
+
+.ui-dialog-title {
+  margin: 0;
+  padding-inline-end: var(--size-control);
+  color: var(--text-title);
+  font-size: var(--font-size-title-3);
+  font-weight: var(--font-weight-light);
+  line-height: var(--line-height-title);
+}
+
+.ui-dialog-text {
+  margin: 0;
+}
+
+/* The buttons at the foot, the one that goes on last. */
+.ui-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: end;
+  margin-block-start: var(--space-2);
+}
+
+.ui-popover {
+  z-index: 100;
+  max-inline-size: 24rem;
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-popup);
+  color: var(--text);
+}

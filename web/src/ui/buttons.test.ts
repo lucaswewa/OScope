@@ -1,14 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import Button from "@/ui/Button.vue";
 import IconButton from "@/ui/IconButton.vue";
 import { draw, drawModel } from "@/ui/test-kit";
 import ToggleButton from "@/ui/ToggleButton.vue";
 import ToggleGroup from "@/ui/ToggleGroup.vue";
-
-afterEach(() => {
-  document.body.innerHTML = "";
-});
 
 describe("a button", () => {
   it("is an outlined button unless told otherwise, and never submits a form by accident", () => {
@@ -75,6 +71,21 @@ describe("an icon button", () => {
     expect(button.text()).toBe("");
     expect(button.findAll("svg")).toHaveLength(1);
     expect(button.classes()).toEqual(expect.arrayContaining(["bare", "icon-button"]));
+  });
+
+  it("passes a press, and whatever a page puts on it, to its button", async () => {
+    let presses = 0;
+    const page = { onClick: () => presses++, class: "mine", "data-kind": "close" };
+    const drawn = draw(IconButton, { icon: "close", label: "Close", ...page });
+    const button = drawn.wrapper.get("button");
+    expect(button.classes()).toEqual(expect.arrayContaining(["mine", "icon-button"]));
+    expect(button.attributes("data-kind")).toBe("close");
+    await button.trigger("click");
+    expect(presses).toBe(1);
+
+    await drawn.set({ disabled: true });
+    (button.element as HTMLButtonElement).click();
+    expect(presses).toBe(1);
   });
 
   it("is busy as a button is, with no icon under the ring", async () => {

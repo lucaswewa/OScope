@@ -4,6 +4,8 @@
  */
 export default {
   busy: "Working…",
+  close: "Close",
+  dismiss: "Dismiss",
   number: {
     needed: "A number is needed.",
     notANumber: "This isn't a number.",
@@ -16,5 +18,16 @@ export default {
   combobox: {
     nothing: "Nothing matches.",
     open: "Show the choices",
+  },
+  confirm: {
+    cancel: "Cancel",
+    type: "Type {word} to go on",
+  },
+  toasts: {
+    region: "Notifications ({hotkey})",
+    notice: "Notification",
+  },
+  tag: {
+    remove: "Remove {tag}",
   },
 };

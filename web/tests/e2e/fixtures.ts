@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { Server, web } from "./server.ts";
 
 /** Each test's own server, started before it and gone after it. */
-export const test = base.extend<{ server: Server }>({
+export const test = base.extend<{ server: Server; thrown: void }>({
   // Playwright reads the fixtures a fixture needs from this pattern: none.
   // eslint-disable-next-line no-empty-pattern
   server: async ({}, use) => {
@@ -13,6 +13,17 @@ export const test = base.extend<{ server: Server }>({
     await use(server);
     await server.dispose();
   },
+  // An error the page didn't catch fails the test it happened in, whatever
+  // the test was looking at.
+  thrown: [
+    async ({ page }, use) => {
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await use();
+      expect(errors, "what the page threw").toEqual([]);
+    },
+    { auto: true },
+  ],
 });
 
 export { expect };

@@ -69,14 +69,17 @@ The look is in tokens, CSS custom properties in [`src/ui/tokens/tokens.css`](src
 
 ## Its components
 
-The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042](../docs/adr/0042-the-component-library-on-reka-ui.md)). Open `#/dev/gallery/inputs` to try every one, in each of its states.
+The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042](../docs/adr/0042-the-component-library-on-reka-ui.md)). Open `#/dev/gallery/inputs` to try every control, in each of its states, and `#/dev/gallery/overlays` for dialogs, menus, notices and the rest.
 
 - **A tab imports the app's components,** never reka-ui: `import Button from "@/ui/Button.vue"`.
 - **Every control takes** `id`, `label`, `disabled`, `readonly` and `invalid`, and its value as `v-model`. Read-only is reached by the keyboard and changed by nothing; switched off is passed by.
 - **A `Field` names its control:** `<Field label="Sample ID" hint="…"><TextField v-model="name" /></Field>`. Nothing else is wired.
 - **A control's own words** are in [`src/ui/words/en.ts`](src/ui/words/en.ts); a page's are the app's, in `src/app/locales/`.
-- **A style for what is drawn at the page's root,** a list or a tooltip, goes in `src/ui/styles/`, not in the component's scoped style, which doesn't reach it.
+- **A style for what is drawn at the page's root,** a list, a tooltip, a dialog, goes in `src/ui/styles/`, not in the component's scoped style, which doesn't reach it.
+- **A notice** is raised from anywhere with `notify({ level, text })` from [`src/ui/toasts.ts`](src/ui/toasts.ts). What failed stays until it is sent away.
 - **A component's tests** are beside it, mounted with [`src/ui/test-kit.ts`](src/ui/test-kit.ts). Keys that need a real page (anything that opens, or is measured) are tested end to end, on the gallery.
+- **A unit test fails if the console is told anything,** a Vue warning above all, and everything it mounted is unmounted after it ([`tests/setup/unit.ts`](tests/setup/unit.ts)). A test that means to make a warning takes it with `heard()`.
+- **An end-to-end test fails if the page throws** an error it didn't catch.
 - **A new page of the gallery** gets an axe check and baselines: see `tests/e2e/inputs.spec.ts`.
 
 ## Its layers

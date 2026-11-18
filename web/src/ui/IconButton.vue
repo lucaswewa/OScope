@@ -8,6 +8,10 @@ import Tooltip from "./Tooltip.vue";
  * A button that is an icon alone (ADR-0042). It must say what it does:
  * `label` is its name to a screen reader, and its tooltip to everyone else.
  */
+// What a page puts on it, a `@click` above all, is the button's. Left to
+// itself it would go to the tooltip around the button, which draws nothing
+// of its own, and be lost without a word.
+defineOptions({ inheritAttrs: false });
 withDefaults(
   defineProps<{
     icon: IconName;
@@ -25,6 +29,7 @@ withDefaults(
 <template>
   <Tooltip :text="label">
     <Button
+      v-bind="$attrs"
       class="icon-button"
       :variant="variant"
       :tone="tone"

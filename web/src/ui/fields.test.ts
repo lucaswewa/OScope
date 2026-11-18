@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { h } from "vue";
 
 import Checkbox from "@/ui/Checkbox.vue";
@@ -9,10 +9,6 @@ import Slider from "@/ui/Slider.vue";
 import { draw, drawModel } from "@/ui/test-kit";
 import TextArea from "@/ui/TextArea.vue";
 import TextField from "@/ui/TextField.vue";
-
-afterEach(() => {
-  document.body.innerHTML = "";
-});
 
 describe("a text field", () => {
   it("holds what is typed, at each key", async () => {
@@ -114,7 +110,7 @@ describe("a field", () => {
     (input.element as HTMLInputElement).focus();
     await input.setValue("-3");
     await input.trigger("keydown", { key: "Enter" });
-    const reason = drawn.wrapper.get("[role='alert']");
+    const reason = drawn.wrapper.get(".reason");
     const hint = drawn.wrapper.get(".note");
     expect(input.attributes("aria-describedby")).toBe(
       `${reason.attributes("id")} ${hint.attributes("id")}`,

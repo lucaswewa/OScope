@@ -64,7 +64,13 @@ export default defineConfig({
       {
         // The app's own code and components, in a page's environment.
         extends: true,
-        test: { name: "unit", environment: "happy-dom", include: ["src/**/*.test.ts"] },
+        test: {
+          name: "unit",
+          environment: "happy-dom",
+          include: ["src/**/*.test.ts"],
+          // Unmounted after each test; a warning on the console fails it.
+          setupFiles: ["tests/setup/unit.ts"],
+        },
       },
       {
         // The workspace's tools: the lint rules and the package checks.

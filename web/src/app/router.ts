@@ -25,5 +25,11 @@ export const router = createRouter({
       name: "gallery-inputs",
       component: () => import("@/features/dev/InputsPage.vue"),
     },
+    {
+      // What appears over the page, and what says something happened.
+      path: "/dev/gallery/overlays",
+      name: "gallery-overlays",
+      component: () => import("@/features/dev/OverlaysPage.vue"),
+    },
   ],
 });

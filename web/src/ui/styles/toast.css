@@ -1,0 +1,82 @@
+/*
+ * Notifications (ADR-0042): at the page's foot, at its end, above everything
+ * else. Each is a raised surface with a stripe of its level's colour.
+ */
+/* The region the notices are in: as large as they are, at the page's foot. */
+.ui-toasts-region {
+  position: fixed;
+  inset-block-end: var(--space-4);
+  inset-inline-end: var(--space-4);
+  z-index: 200;
+}
+
+.ui-toasts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  inline-size: min(22rem, calc(100vw - 2 * var(--space-4)));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-toast {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-block-size: var(--space-12);
+  padding-inline: var(--space-3) var(--space-1);
+  border: 1px solid var(--border);
+  border-inline-start: var(--space-1) solid var(--info);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-popup);
+  color: var(--text);
+}
+
+.ui-toast.info > svg {
+  color: var(--info);
+}
+
+.ui-toast.success {
+  border-inline-start-color: var(--success);
+}
+
+.ui-toast.success > svg {
+  color: var(--success);
+}
+
+.ui-toast.warning {
+  border-inline-start-color: var(--warning);
+}
+
+.ui-toast.warning > svg {
+  color: var(--warning);
+}
+
+.ui-toast.danger {
+  border-inline-start-color: var(--danger);
+}
+
+.ui-toast.danger > svg {
+  color: var(--danger);
+}
+
+.ui-toast-text {
+  flex: 1;
+  padding-block: var(--space-2);
+}
+
+.ui-toast-text {
+  margin: 0;
+}
+
+/* What a screen reader is told, and nobody sees. */
+.ui-toasts-said {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
