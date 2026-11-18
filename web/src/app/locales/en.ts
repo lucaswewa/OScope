@@ -38,6 +38,7 @@ export default {
     overlays: "Overlays",
     data: "Data",
     forms: "Forms",
+    charts: "Charts",
     title: "The tokens",
     intro: "What the app's look is made of: every component is built from these.",
     scheme: "The scheme in use is {scheme}.",
@@ -241,6 +242,48 @@ export default {
       paused: "Paused",
       failed: "Failed",
       fixed: "simulated",
+    },
+  },
+  charts: {
+    title: "Charts",
+    intro:
+      "Lines, areas, histograms and points, drawn by the app: read them with the cursor, zoom and pan them, and find their numbers below each.",
+    recorded:
+      "Recorded from the simulated instrument on {date}: the {sample}, through {width} × {height} pixels of the sensor's middle.",
+    value: "Value (ADU)",
+    histogram: {
+      title: "A live histogram",
+      chart: "The histogram of each frame of a burst, ten a second",
+      series: "Frame {frame}",
+      y: "Pixels",
+      tools: "The histogram's tools",
+      pause: "Pause",
+      log: "Log scale",
+    },
+    cumulative: {
+      title: "The pixels below each value",
+      chart: "The share of the frame's pixels at or below each value",
+      series: "Pixels at or below",
+      y: "Share of the pixels (%)",
+    },
+    profile: {
+      title: "A line profile",
+      chart: "A profile across the frame's middle, with the spread of the rows around it",
+      series: "Mean of 16 rows",
+      x: "Position (µm)",
+    },
+    focus: {
+      title: "A focus curve",
+      chart: "The focus run's sweeps: its measure, {measure}, at each height",
+      coarse: "Coarse sweep",
+      fine: "Fine sweep",
+      x: "Height (µm)",
+      y: "{measure}",
+      measures: {
+        brenner: "Brenner's gradient",
+        tenengrad: "Tenengrad",
+        laplacian: "The Laplacian's variance",
+      },
     },
   },
   forms: {

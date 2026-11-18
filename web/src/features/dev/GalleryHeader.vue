@@ -22,6 +22,7 @@ const pages = [
   { to: "/dev/gallery/overlays", name: "overlays" },
   { to: "/dev/gallery/data", name: "data" },
   { to: "/dev/gallery/forms", name: "forms" },
+  { to: "/dev/gallery/charts", name: "charts" },
 ] as const;
 const themeChoices = computed(() =>
   themes.map((value) => ({ value, label: t(`display.themes.${value}`) })),

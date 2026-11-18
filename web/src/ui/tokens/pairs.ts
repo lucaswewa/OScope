@@ -40,4 +40,5 @@ export const pairs: readonly Pair[] = [
   ...line("danger", "surface-field"),
   ...line("focus-color", ...surfaces),
   ...line("accent-text", "border"),
+  ...[1, 2, 3, 4, 5, 6].flatMap((n) => line(`chart-${n}`, ...grounds)),
 ];

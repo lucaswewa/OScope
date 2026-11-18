@@ -896,7 +896,7 @@ The workspace, the look, and the components every tab is made of.
 | [W0.4](milestone-2/phases.md#w0-4) | Components II: overlays and feedback | W0.3 | 1,500 | — | Done |
 | [W0.5](milestone-2/phases.md#w0-5) | Components III: layout and data | W0.4 | 2,000 | — | Done |
 | [W0.6](milestone-2/phases.md#w0-6) | Forms from JSON Schema | W0.5 | 1,500 | — | Done |
-| [W0.7](milestone-2/phases.md#w0-7) | Charts | W0.5 | 1,200 | — | Planned |
+| [W0.7](milestone-2/phases.md#w0-7) | Charts | W0.5 | 1,200 | — | In review |
 
 ### Stage W1: Client plumbing
 
