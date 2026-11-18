@@ -904,7 +904,7 @@ How the app talks to the server: typed calls, live state, the connection and the
 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
-| [W1.1](milestone-2/phases.md#w1-1) | Generated API types and the typed client | W0.1 | 1,300 | 0043 | Planned |
+| [W1.1](milestone-2/phases.md#w1-1) | Generated API types and the typed client | W0.1 | 1,300 | 0043 | In review |
 | [W1.2](milestone-2/phases.md#w1-2) | Things, live properties and events | W1.1 | 1,500 | 0044 | Planned |
 | [W1.3](milestone-2/phases.md#w1-3) | Connection, login and the control lease | W1.2 | 1,900 | 0045 | Planned |
 | [W1.4](milestone-2/phases.md#w1-4) | The host adapter | W1.3 | 800 | 0046 | Planned |

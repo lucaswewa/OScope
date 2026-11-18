@@ -154,6 +154,8 @@ step "server --version" cargo run -q -p oscope-server --locked -- --version
 web() { (cd web && "$@"); }
 if command -v npm > /dev/null; then
   step "web install" web npm ci
+  # The API's committed types are the server's description of its API (ADR-0043).
+  step "web api types" web npm run -s api:check
   step "web typecheck" web npm run -s typecheck
   step "web lint" web npm run -s lint
   step "web unit tests" web npm run -s test:unit

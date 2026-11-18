@@ -48,6 +48,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0040](0040-testing-the-app.md) | Testing the app: unit, contract, end to end and visual | Accepted | W0.1 |
 | [0041](0041-design-tokens-and-themes.md) | Design tokens and themes | Accepted | W0.2 |
 | [0042](0042-the-component-library-on-reka-ui.md) | The component library on reka-ui | Accepted | W0.3 |
+| [0043](0043-generated-api-types-and-the-typed-client.md) | Generated API types and the typed client | Accepted | W1.1 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 
