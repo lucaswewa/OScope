@@ -161,7 +161,9 @@ if command -v npm > /dev/null; then
   step "web licences" web npm run -s licences
   step "web advisories" web npm run -s advisories
   step "web browsers" web npx playwright install chromium firefox webkit
-  step "web end to end" web npm run -s test:e2e
+  # With the visual tests, whose baselines are this computer's: OSCOPE_VISUAL=
+  # in the environment, empty, leaves them out.
+  step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e
 else
   failed=$((failed + 1))
   echo "FAIL  web: Node isn't installed, for the app's checks (CLAUDE.md)"

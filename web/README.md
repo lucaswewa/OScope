@@ -54,6 +54,19 @@ On Linux, the browsers need system libraries too, installed once as root: `npx p
 OSCOPE_SHOTS=1 npx playwright test --project chromium
 ```
 
+**The visual tests** compare a page with its baselines, in `tests/e2e/baselines/`: one picture for each system, since each draws text its own way ([ADR-0041](../docs/adr/0041-design-tokens-and-themes.md)).
+
+- **They run only with `OSCOPE_VISUAL=1`,** on the computer the baselines were made on. The replays and `scripts/two-core.sh web:e2e` set it. Without it they are skipped.
+- **After a change that is meant to be seen,** [`scripts/baselines.sh`](../scripts/baselines.sh) makes them again, on Windows and under WSL ([`scripts/README.md`](../scripts/README.md#the-visual-tests-baselines-baselinessh)).
+
+## Its look
+
+The look is in tokens, CSS custom properties in [`src/ui/tokens/tokens.css`](src/ui/tokens/tokens.css) ([ADR-0041](../docs/adr/0041-design-tokens-and-themes.md), [`look.md`](../docs/milestone-2/look.md)). Open `#/dev/gallery` to see them all, and to change the theme and the accent.
+
+- **A colour is written only in the tokens.** A component names a role: `var(--surface-pane)`, `var(--text-muted)`. A test refuses a colour anywhere else in `src/`.
+- **What may be written on what** is in [`src/ui/tokens/pairs.ts`](src/ui/tokens/pairs.ts). A test computes each pair's contrast, in both schemes and with every accent. Text on a background that isn't a pair there isn't promised to read: add the pair.
+- **An icon** is `<Icon name="…" />`, from the registry in [`src/ui/icons.ts`](src/ui/icons.ts). To use one the registry lacks, import its file from Material Symbols there, under the name the app will know it by.
+
 ## Its layers
 
 `src/` has five, and lint keeps what each may import ([ADR-0039](../docs/adr/0039-the-web-app-its-layers-state-and-routing.md)):

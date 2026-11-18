@@ -24,28 +24,15 @@ const server = useServerVersion(serverVersion);
 </template>
 
 <style scoped>
-/* W0.2 brings the tokens: until then, the page is plain. */
 .home {
   display: grid;
   place-content: center;
-  gap: 0.5rem;
-  min-height: 100vh;
-  margin: 0;
-  font-family: system-ui, sans-serif;
+  gap: var(--space-2);
+  min-block-size: 100vh;
   text-align: center;
 }
 
-.home h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 600;
-}
-
-.home p {
-  margin: 0;
-}
-
 .home p[data-state="unreachable"] {
-  color: #b3261e;
+  color: var(--danger);
 }
 </style>

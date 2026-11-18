@@ -74,10 +74,11 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
   - Keep platform-specific code in small `cfg` blocks, each with an equivalent for the other platform or a clear error.
   - On the owner's Windows PC, check Linux locally under WSL (`Ubuntu-24.04`), with a Linux-side `CARGO_TARGET_DIR` so the Windows and Linux builds don't share a target folder.
 - **Line endings are LF** (`.gitattributes`). Scripts that write files must not produce CRLF.
-- **The GPU, hardware and Python.** CI has no GPU or hardware. Tests that need one of these run only when its environment variable is set, and are skipped otherwise:
+- **The GPU, hardware, Python and pictures.** CI has no GPU or hardware. Tests that need one of these run only when its environment variable is set, and are skipped otherwise:
   - `OSCOPE_CUDA=1`: CUDA tests, on the owner's machine before merging any phase that touches a CUDA path;
   - `OSCOPE_GRBL_PORT`, `OSCOPE_TUCSEN=1`: hardware tests, from M3;
   - `OSCOPE_PYTHON=1`: tests of Python extensions, which need uv. CI sets it on Ubuntu, and the local replays wherever uv is installed.
+  - `OSCOPE_VISUAL=1`: the app's visual tests, whose baselines are the owner's PC's, for Windows and for WSL ([ADR-0041](docs/adr/0041-design-tokens-and-themes.md)). The replays and `two-core.sh` set it; GitHub's CI doesn't. `scripts/baselines.sh` makes the baselines again, on each system.
 
   Every driver also has a fake at its protocol or SDK boundary.
 - **Tests:**

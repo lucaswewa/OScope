@@ -91,7 +91,7 @@ scripts/two-core.sh --repeat 10 oscope-api:preview
 ```
 
 - **A target** is a test suite, `PACKAGE:TEST` for its `tests/TEST.rs` or `PACKAGE:lib` for its unit tests, or an example by its name, for its `--smoke`.
-- **The app's tests** are `web:unit` and `web:e2e`. The end-to-end tests run with one worker, as Playwright chooses on a two-core runner: it counts the computer's CPUs, not the pair it is held to.
+- **The app's tests** are `web:unit` and `web:e2e`. The end-to-end tests run with one worker, as Playwright chooses on a two-core runner: it counts the computer's CPUs, not the pair it is held to. The visual tests run among them.
 - **Its runs go side by side,** eight at a time on their own pairs of CPUs, as `ci-local.sh`'s do: a target's five copies run together.
 - **`--repeat N`** runs each N times, and `--jobs N` N at a time. Logs go to `target/two-core/<date-time>/`, or to `--logs DIR`.
 
@@ -103,3 +103,16 @@ ex-core-tour                             5 of 5 passed, 0.2-0.3 s
 ```
 
 **Which suites:** those a change adds or edits, and those that run code it changes. A suite whose code behaves as before needn't run: one whose simulator only gained settings, their defaults the old behaviour, for instance.
+
+## The visual tests' baselines: `baselines.sh`
+
+The app's visual tests compare a page with a picture of it, a baseline, in `web/tests/e2e/baselines/` ([ADR-0041](../docs/adr/0041-design-tokens-and-themes.md)). A baseline is one system's picture: Windows and Linux each have their own. After a change that is meant to be seen, make them again on both, and look at each before committing it:
+
+```sh
+scripts/baselines.sh                                                       # this system's: Windows', in Git Bash
+MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu-24.04 -- bash /mnt/c/repos/OScope/scripts/baselines.sh    # Linux's, from the same checkout
+```
+
+- **It needs** what the end-to-end tests need: the packages, the built app, the browsers and a server ([`web/README.md`](../web/README.md)).
+- **Under WSL** it runs in the Windows checkout, with its packages and its built app. The server is the one the Linux replay built, in `~/target/oscope-ci`, or the one `OSCOPE_SERVER_BIN` names.
+- **Its arguments** go to Playwright: a test's file, to make only that test's baselines.
