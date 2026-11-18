@@ -21,5 +21,5 @@ if [ -z "${OSCOPE_SERVER_BIN:-}" ] && [ -z "${CARGO_TARGET_DIR:-}" ] \
   && grep -qi microsoft /proc/version 2> /dev/null && [ -x "$replayed" ]; then
   export OSCOPE_SERVER_BIN=$replayed
 fi
-OSCOPE_VISUAL=1 npx playwright test --project chromium --grep @visual --update-snapshots "$@"
+OSCOPE_VISUAL=1 npx --no-install playwright test --project chromium --grep @visual --update-snapshots "$@"
 git status --short tests/e2e/baselines

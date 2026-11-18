@@ -41,7 +41,7 @@ Each is an npm script, run from `web/`. The replays and CI run them all ([ADR-00
 ```sh
 cargo build -p oscope-server                       # the server they start, or name another with OSCOPE_SERVER_BIN
 npm run build                                      # the app they open
-npx playwright install chromium firefox webkit     # the browsers, once
+npx --no-install playwright install chromium firefox webkit   # the browsers, once
 ```
 
 On Linux, the browsers need system libraries too, installed once as root: `npx playwright install-deps chromium firefox webkit`.
