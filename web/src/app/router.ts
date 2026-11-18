@@ -31,5 +31,11 @@ export const router = createRouter({
       name: "gallery-overlays",
       component: () => import("@/features/dev/OverlaysPage.vue"),
     },
+    {
+      // Tabs, panes, a table of 100,000 rows, a tree, and the rest.
+      path: "/dev/gallery/data",
+      name: "gallery-data",
+      component: () => import("@/features/dev/DataPage.vue"),
+    },
   ],
 });

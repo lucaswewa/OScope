@@ -30,4 +30,13 @@ export default {
   tag: {
     remove: "Remove {tag}",
   },
+  table: {
+    nothing: "Nothing to show.",
+  },
+  pages: {
+    label: "Pages",
+    previous: "The page before",
+    next: "The page after",
+    page: "Page {page}",
+  },
 };
