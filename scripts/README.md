@@ -53,6 +53,13 @@ tests: 504 passed, in 186 suites
 steps: 53 passed, 0 failed
 ```
 
+**Not under a running dev server.** Its web install is `npm ci`, which deletes `web/node_modules` first. On Windows, a Vite dev server running from the same checkout holds the bundler's native module: the install fails, after it has deleted the rest from under the dev server. Stop the dev server first, or replay a worktree of the commit, sharing the build folder:
+
+```sh
+git worktree add --detach ../OScope-replay HEAD
+CARGO_TARGET_DIR="$PWD/target" ../OScope-replay/scripts/ci-local.sh
+```
+
 ### `ci-clone.sh`: a commit, as CI sees it
 
 ```sh
