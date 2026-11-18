@@ -9,7 +9,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 
 | Phase | Title | Status | Notes |
 |---|---|---|---|
-| W0.1 | The web workspace and its checks | In review | [W0.1-web-workspace.md](W0.1-web-workspace.md) |
+| W0.1 | The web workspace and its checks | Done | [W0.1-web-workspace.md](W0.1-web-workspace.md) |
 | W0.2 | Design tokens, themes and icons | Planned | — |
 | W0.3 | Components I: actions and inputs | Planned | — |
 | W0.4 | Components II: overlays and feedback | Planned | — |
