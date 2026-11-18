@@ -10,15 +10,16 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
 
 **Where to start.** The documentation index is [`docs/README.md`](docs/README.md).
 
-- **The plan** is [`docs/implementation-plan.md`](docs/implementation-plan.md). Its §7 table shows every phase's status.
-- **The phase specs** are in [`docs/milestone-1/phases.md`](docs/milestone-1/phases.md).
+- **The plan** is [`docs/implementation-plan.md`](docs/implementation-plan.md). Its §7 and §8 tables show every phase's status, Milestone 1's and Milestone 2's.
+- **The phase specs** are in [`docs/milestone-1/phases.md`](docs/milestone-1/phases.md) and [`docs/milestone-2/phases.md`](docs/milestone-2/phases.md).
 - **Decisions** are the ADRs, indexed in [`docs/adr/README.md`](docs/adr/README.md).
 
 ## Delivering a phase
 
-- **Phases follow the plan's order:** P00, then the upstream phases U01–U06, then P01 onwards. P02b runs whenever the owner is at the instrument, before P03.
+- **Phases follow the plan's order:** P00, then the upstream phases U01–U06, then P01 onwards. P02b runs whenever the owner is at the instrument, before P03. Milestone 2 follows, from W0.1, in plan §8's order.
 - **One branch and one pull request per phase.**
-  - OScope phases: the branch `m1/pNN-short-name` and the PR title `PNN: <title>`.
+  - Milestone 1's phases: the branch `m1/pNN-short-name` and the PR title `PNN: <title>`.
+  - Milestone 2's phases: the branch `m2/w3.2-short-name` and the PR title `W3.2: <title>`, for the second phase of stage W3.
   - Upstream phases: the branch `u/uNN-short-name` in the owner's `teta-wot` clone, a sibling folder of this repository, with the PR title `UNN: <title>` on `lucaswewa/teta-wot`.
 - **The owner approves every pull request before it is merged.**
   - Never merge without that approval.
@@ -26,19 +27,23 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
   - Push only phase branches. Never push to `main`, and never create a tag, without the owner's word.
 - **Each pull request contains:**
   - the code and its tests;
-  - its examples, each with a README saying how to try it;
-  - the phase's notes, `docs/milestone-1/notes/PNN-short-name.md`, from [the template](docs/milestone-1/notes/template.md);
+  - its examples, each with a README saying how to try it. A Milestone 2 phase is tried in the app itself: its notes say how, with screenshots of both themes;
+  - the phase's notes, from the milestone's template: `docs/milestone-1/notes/PNN-short-name.md` ([template](docs/milestone-1/notes/template.md)), or `docs/milestone-2/notes/W3.2-short-name.md` ([template](docs/milestone-2/notes/template.md));
   - any new ADRs, marked *Accepted* (approving the PR accepts them), with their rows in the ADR index;
-  - the phase marked *In review* in plan §7 and in the notes index.
+  - the phase marked *In review* in the plan's table, §7 or §8, and in the notes index.
 
-  The next phase's PR marks the previous one *Done*: in plan §7, in the notes index, and on its notes' Status line.
+  The next phase's PR marks the previous one *Done*: in the plan's table, in the notes index, and on its notes' Status line.
 - **Upstream phases** put their code, tests, example, CHANGELOG entry (*Unreleased*) and guide pages in `teta-wot`. Their notes go here, as `docs/milestone-1/notes/UNN-short-name.md`, in a small OScope PR of their own.
 - **The size budget** counts every hand-written changed line: source, tests, examples, HTML, CSS, comments and blank lines. Lock files, generated files, vendored code and docs don't count.
   - The budgets are S ≤ 300, M ≤ 600 and L ≤ 900.
   - Estimate code, tests, examples and glue separately before starting. Tests are often a third of the lines or more.
   - If the estimate is near or over the budget, ask the owner whether to split the phase. A split updates `phases.md`, plan §7 and the plan's change log.
   - Report the measured size honestly in the notes and the PR.
-- **Spec-first phases** open their notes with a behaviour spec, with literature sources, before any code. They are listed in plan §6.
+- **Milestone 2 is sized by estimates,** not by those budgets ([its specs say how](docs/milestone-2/phases.md#how-milestone-2s-phases-work)):
+  - Each spec has a first estimate.
+  - Before a phase's code, write a second estimate in five parts: code, tests, styles, the try-it's page and end-to-end test, and glue. It goes in the plan's change log, in a commit of its own.
+  - Ask the owner before the code when the second estimate is over 2,500 lines, or a third over the first.
+- **Spec-first phases** open their notes with a behaviour spec, with literature sources, before any code. Milestone 1's are listed in plan §6, and Milestone 2's are marked in its specs.
 - **Changes outside a phase,** this file included, still go through a branch and an approved PR.
 
 ## Rules

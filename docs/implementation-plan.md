@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | Status | Approved 2026-11-10; a living document, updated as phases land (Appendix C) |
-| Covers | The whole product: architecture for milestones 1–3, Milestone 1 phase by phase, and outlines of Milestones 2 and 3 |
+| Covers | The whole product: architecture for milestones 1–3, Milestones 1 and 2 phase by phase, and an outline of Milestone 3 |
 | Inputs | [`goal.md`](goal.md), the planning Q&A (recorded in [§3](#3-decisions-made-while-planning)), a study of `teta-wot` v0.1.0, and of `microscope` (ideas and look only, [D1](#3-decisions-made-while-planning)) |
-| Companion | [milestone-1/phases.md](milestone-1/phases.md): the specification of every Milestone 1 phase |
+| Companions | [milestone-1/phases.md](milestone-1/phases.md) and [milestone-2/phases.md](milestone-2/phases.md): the specification of every phase of Milestones 1 and 2 |
 
 ## Contents
 
@@ -16,7 +16,7 @@
 5. [Architecture](#5-architecture)
 6. [How phases work](#6-how-phases-work)
 7. [Milestone 1 phase overview](#7-milestone-1-phase-overview)
-8. [Milestone 2 outline: the web and desktop app](#8-milestone-2-outline-the-web-and-desktop-app)
+8. [Milestone 2 phase overview](#8-milestone-2-phase-overview)
 9. [Milestone 3 outline: real hardware and performance](#9-milestone-3-outline-real-hardware-and-performance)
 10. [Planned ADRs](#10-planned-adrs)
 11. [Documentation conventions](#11-documentation-conventions)
@@ -692,7 +692,9 @@ These are targets on the owner's laptop (RTX 3070 Ti laptop GPU). Each is measur
   - User-facing changes go into `teta-wot`'s CHANGELOG (*Unreleased*) and guide. The phase notes, with their design decisions, go into OScope as `docs/milestone-1/notes/UNN-short-name.md`.
   - Only phase branches are pushed; v0.2.0 is tagged after the owner approves U06.
 
-**Order.** P00 comes first, then U01–U06 one at a time, then P01 onwards. P02b runs whenever the owner is at the instrument, before P03.
+**Order.** P00 comes first, then U01–U06 one at a time, then P01 onwards. P02b runs whenever the owner is at the instrument, before P03. Milestone 2 follows, from W0.1, in [§8](#8-milestone-2-phase-overview)'s order.
+
+**Milestone 2's phases** keep these rules, with their own IDs, estimates in place of the size budgets, and the app itself in place of examples: [milestone-2/phases.md](milestone-2/phases.md#how-milestone-2s-phases-work) says how.
 
 **Approval and merge.** One phase at a time:
 
@@ -863,25 +865,174 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 | P51 | Power actions | P50 | S | 0032 | Done |
 | P52 | Settings and configuration migration | P51 | M | — | Done |
 | P53 | Performance budgets and nightly soak | P52 | M | — | Done |
-| P54 | Packaging, release workflow, M1 retrospective | P53 | M | 0033 | In review |
+| P54 | Packaging, release workflow, M1 retrospective | P53 | M | 0033 | Done |
 
-## 8. Milestone 2 outline: the web and desktop app
+## 8. Milestone 2 phase overview
 
-Specified phase by phase when M1 reaches Checkpoint E. About 40–45 phases, simulated hardware throughout.
+The full specs are in [milestone-2/phases.md](milestone-2/phases.md). Milestone 2 is the app: one Vue 3 codebase in `web/`, built for the browser and, in `desktop/`, for Tauri 2, on the simulated instrument throughout. It was specified on 2026-11-17, as 57 phases in 11 stages, where the outline before it foresaw 40 to 45. Status runs Planned → In progress → In review → Done.
 
-| Stage | Scope |
-|---|---|
-| **W0 Foundations** | `web/`: Vue 3, TypeScript, Vite, Pinia, Vue Router (hash routing), reka-ui used only inside `src/ui/`, Material Symbols as bundled SVGs, vue-i18n, ESLint rules for a Tauri-ready app, Vitest and Playwright. Design tokens recreating `microscope`'s look (D1) in light, dark and system themes, with accent colours. A component library on reka-ui, including what `microscope` lacked: tabs, data tables, splitters, trees, context menus |
-| **W1 Client plumbing** | The WoT client from Thing Descriptions, generated OpenAPI types checked in CI, the connection model (local or remote), login and the control lease, a `HostAdapter` (browser and Tauri), and the preview client: a binary WebSocket in a Web Worker, `createImageBitmap`, WebGL rendering at the display's refresh rate |
-| **W2 Shell** | The NavRail: Control and Live View, Scan Workflow, Workspace, Gallery, Settings, Jobs, Logging, About, Power, and the instrument status indicator |
-| **W3 Control and Live View** | Camera controls (exposure, gain, pixel format, binning, ROI), stage controls (position, moving, move, jog, click-to-move, keyboard), and the live viewer: zoom with full-resolution ROI, overlay layers (crosshair, ROI, line profile, false colour, saturation, histogram, scale bar), and the free-roam mosaic |
-| **W4 Operations** | Jobs (queue, progress, logs, cancel, reorder), Logging (live tail, filters), About, Power, status details |
-| **W5 Scan Workflow** | Histo, snake, raster, z-scan, tiled z-stack and multi-position; plan preview over an overview image; live mosaic; progress |
-| **W6 Gallery** | Project cards, acquisition and result browser, metadata, the OpenSeadragon deep-zoom viewer with display controls, downloads |
-| **W7 Workspace** | The node-graph editor (Vue Flow, MIT) with node forms from JSON Schema; running recipes; results; annotations and measurements; cell counting and stain analysis views; the VTK.js 3D viewer (surfaces, volumes, slices); reports |
-| **W8 Settings** | System, display, camera, stage, calibration management and the calibration wizard, simulated samples (settings, load, unload, import), extensions, accounts |
-| **W9 Desktop** | Tauri 2 in `desktop/`: the Tauri `HostAdapter`, sidecar management, the shared-memory preview path, tiles read from disk through a custom protocol, installers (MSI/NSIS and .deb) bundling the service |
-| **W10 Quality** | End-to-end workflows, visual baselines in both themes, accessibility (axe), front-end performance budgets, M2 retrospective |
+**What differs from Milestone 1** ([the specs say how](milestone-2/phases.md#how-milestone-2s-phases-work)):
+
+- **IDs** name the stage and the phase in it, as W3.2. Branches are `m2/w3.2-short-name`.
+- **Estimates stand where S, M and L did.** Each spec has a first one, below. A second, in five parts, goes in [Appendix C](#appendix-c-change-log) before the phase's code. The owner is asked first when the second is over 2,500 lines, or a third over the first. The first estimates total about 83,000 lines.
+- **Each phase is tried in the app itself,** against the simulated instrument. Its notes carry screenshots of both themes.
+- **Server work** that the app needs is in the phase that needs it:
+  - W0.1, serving the app;
+  - W1.3, the origins a browser may call from;
+  - W6.3, uploads;
+  - W7.1, the `pipeline` Thing;
+  - W8.2, the look's corrections;
+  - W8.6, accounts over the API.
+
+### Stage W0: Foundations
+
+The workspace, the look, and the components every tab is made of.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W0.1](milestone-2/phases.md#w0-1) | The web workspace and its checks | — | 900 | 0039, 0040 | Planned |
+| [W0.2](milestone-2/phases.md#w0-2) | Design tokens, themes and icons | W0.1 | 1,100 | 0041 | Planned |
+| [W0.3](milestone-2/phases.md#w0-3) | Components I: actions and inputs | W0.2 | 2,000 | 0042 | Planned |
+| [W0.4](milestone-2/phases.md#w0-4) | Components II: overlays and feedback | W0.3 | 1,500 | — | Planned |
+| [W0.5](milestone-2/phases.md#w0-5) | Components III: layout and data | W0.4 | 2,000 | — | Planned |
+| [W0.6](milestone-2/phases.md#w0-6) | Forms from JSON Schema | W0.5 | 1,500 | — | Planned |
+| [W0.7](milestone-2/phases.md#w0-7) | Charts | W0.5 | 1,200 | — | Planned |
+
+### Stage W1: Client plumbing
+
+How the app talks to the server: typed calls, live state, the connection and the lease, the platform, and the preview stream.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W1.1](milestone-2/phases.md#w1-1) | Generated API types and the typed client | W0.1 | 1,300 | 0043 | Planned |
+| [W1.2](milestone-2/phases.md#w1-2) | Things, live properties and events | W1.1 | 1,500 | 0044 | Planned |
+| [W1.3](milestone-2/phases.md#w1-3) | Connection, login and the control lease | W1.2 | 1,900 | 0045 | Planned |
+| [W1.4](milestone-2/phases.md#w1-4) | The host adapter | W1.3 | 800 | 0046 | Planned |
+| [W1.5](milestone-2/phases.md#w1-5) | The preview client | W1.3 | 1,800 | 0047 | Planned |
+
+### Stage W2: Shell
+
+The rail, the routes, and what the rail says of the instrument.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W2.1](milestone-2/phases.md#w2-1) | The shell and navigation | W0.5, W1.4 | 1,400 | 0048 | Planned |
+| [W2.2](milestone-2/phases.md#w2-2) | Status, connection and lease in the shell | W2.1 | 1,100 | — | Planned |
+
+### Stage W3: Control and Live View (ends with Checkpoint G)
+
+The camera, the stage, the lights, the live image and what is drawn over it.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W3.1](milestone-2/phases.md#w3-1) | The live viewer | W1.5, W2.2 | 1,500 | 0049 | Planned |
+| [W3.2](milestone-2/phases.md#w3-2) | Camera controls | W3.1 | 1,400 | — | Planned |
+| [W3.3](milestone-2/phases.md#w3-3) | Stage controls | W3.1 | 1,700 | — | Planned |
+| [W3.4](milestone-2/phases.md#w3-4) | Illumination and the objective | W3.2 | 900 | — | Planned |
+| [W3.5](milestone-2/phases.md#w3-5) | Overlays I: crosshair, ROI, grid and profile | W3.1, W0.7 | 1,600 | — | Planned |
+| [W3.6](milestone-2/phases.md#w3-6) | Overlays II: histogram, saturation, false colour and the look | W3.5 | 1,600 | — | Planned |
+| [W3.7](milestone-2/phases.md#w3-7) | Autofocus, capture and the live recipe | W3.6 | 1,400 | — | Planned |
+| [W3.8](milestone-2/phases.md#w3-8) | The free-roam mosaic and the tile viewer | W3.3 | 1,500 | 0050 | Planned |
+
+**Checkpoint G:** a live microscope in the app: jog, zoom to full resolution, watch the histogram and the saturation, autofocus, capture, and build a mosaic by jogging.
+
+### Stage W4: Operations (ends with Checkpoint H)
+
+Jobs, logs, power, and the instrument's state in full.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W4.1](milestone-2/phases.md#w4-1) | Jobs | W2.2 | 1,500 | — | Planned |
+| [W4.2](milestone-2/phases.md#w4-2) | Logging | W2.2 | 1,300 | — | Planned |
+| [W4.3](milestone-2/phases.md#w4-3) | About, Power and the status in full | W4.1 | 1,600 | — | Planned |
+
+**Checkpoint H:** queue and steer jobs, search and follow the log, inject and clear a fault, and restart the service.
+
+### Stage W5: Scan Workflow (ends with Checkpoint I)
+
+A scan planned over a picture of the slide, run, and watched.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W5.1](milestone-2/phases.md#w5-1) | Scan plans | W3.8, W0.6 | 1,800 | — | Planned |
+| [W5.2](milestone-2/phases.md#w5-2) | Running a scan | W5.1, W4.1 | 1,500 | — | Planned |
+| [W5.3](milestone-2/phases.md#w5-3) | The histo scan | W5.2 | 1,200 | — | Planned |
+| [W5.4](milestone-2/phases.md#w5-4) | Z-scans, stacks and positions | W5.2 | 1,200 | — | Planned |
+
+**Checkpoint I:** an overview, a histo scan with its live mosaic, and its stitch.
+
+### Stage W6: Gallery (ends with Checkpoint J)
+
+Projects as cards, what each holds, and its images at any zoom.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W6.1](milestone-2/phases.md#w6-1) | Projects | W2.2 | 1,500 | — | Planned |
+| [W6.2](milestone-2/phases.md#w6-2) | A project's records | W6.1 | 1,400 | — | Planned |
+| [W6.3](milestone-2/phases.md#w6-3) | Imports, exports and uploads | W6.2, W4.1 | 1,500 | 0051 | Planned |
+| [W6.4](milestone-2/phases.md#w6-4) | The deep-zoom viewer | W6.2, W3.8 | 1,600 | — | Planned |
+
+**Checkpoint J:** find the scanned slide, read its records, view it at every zoom, export and import.
+
+### Stage W7: Workspace (ends with Checkpoint K)
+
+Recipes drawn as graphs, analyses with their provenance, annotations, cells and stains, 3D, and reports.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W7.1](milestone-2/phases.md#w7-1) | Recipes over the API | W1.1 | 1,200 | 0052 | Planned |
+| [W7.2](milestone-2/phases.md#w7-2) | The graph editor: the canvas | W7.1, W2.2 | 2,000 | 0053 | Planned |
+| [W7.3](milestone-2/phases.md#w7-3) | The graph editor: parameters and the library | W7.2, W0.6 | 1,600 | — | Planned |
+| [W7.4](milestone-2/phases.md#w7-4) | Analyses and results | W7.3, W6.2 | 1,500 | — | Planned |
+| [W7.5](milestone-2/phases.md#w7-5) | Annotations and measurements | W6.4 | 1,800 | — | Planned |
+| [W7.6](milestone-2/phases.md#w7-6) | Cells and stains | W7.4, W7.5 | 1,600 | — | Planned |
+| [W7.7](milestone-2/phases.md#w7-7) | 3D: surfaces | W7.4 | 1,600 | 0054 | Planned |
+| [W7.8](milestone-2/phases.md#w7-8) | 3D: volumes and slices | W7.7 | 1,700 | — | Planned |
+| [W7.9](milestone-2/phases.md#w7-9) | Reports | W7.4 | 1,300 | — | Planned |
+
+**Checkpoint K:** a recipe drawn and run live; cells counted and DAB measured; annotations; a surface and a volume; the PDF report.
+
+### Stage W8: Settings (ends with Checkpoint L)
+
+The instrument's settings, its calibration, the simulator's samples, extensions and accounts.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W8.1](milestone-2/phases.md#w8-1) | System, display and devices | W2.2 | 1,800 | — | Planned |
+| [W8.2](milestone-2/phases.md#w8-2) | Calibration sets | W8.1, W4.1 | 1,600 | — | Planned |
+| [W8.3](milestone-2/phases.md#w8-3) | The calibration wizard | W8.2, W3.3 | 1,500 | — | Planned |
+| [W8.4](milestone-2/phases.md#w8-4) | Simulated samples | W8.1, W6.3 | 1,400 | — | Planned |
+| [W8.5](milestone-2/phases.md#w8-5) | Extensions and their panels | W8.1, W0.6 | 1,700 | — | Planned |
+| [W8.6](milestone-2/phases.md#w8-6) | Accounts | W8.1, W1.3 | 1,400 | 0055 | Planned |
+
+**Checkpoint L:** an objective calibrated by the wizard, one's own sample, an extension's panel, and an account.
+
+### Stage W9: Desktop (ends with Checkpoint M)
+
+The same app in Tauri 2, with the server as its sidecar and the fast path for frames and tiles.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W9.1](milestone-2/phases.md#w9-1) | The Tauri shell | W2.2 | 1,300 | 0056 | Planned |
+| [W9.2](milestone-2/phases.md#w9-2) | The sidecar | W9.1 | 1,400 | — | Planned |
+| [W9.3](milestone-2/phases.md#w9-3) | The shared-memory preview | W9.2, W1.5 | 1,600 | 0057 | Planned |
+| [W9.4](milestone-2/phases.md#w9-4) | Tiles from disk | W9.2, W6.4 | 1,100 | — | Planned |
+| [W9.5](milestone-2/phases.md#w9-5) | Installers | W9.4 | 1,400 | 0058 | Planned |
+
+**Checkpoint M:** the desktop app installed, starting its own server, with its live view through shared memory and its tiles from disk.
+
+### Stage W10: Quality
+
+The app tested as a whole, measured, packaged, and looked back on.
+
+| ID | Phase | Depends on | Estimate | ADRs | Status |
+|---|---|---|---|---|---|
+| [W10.1](milestone-2/phases.md#w10-1) | Workflows end to end | W8.6 | 1,500 | — | Planned |
+| [W10.2](milestone-2/phases.md#w10-2) | Visual baselines and accessibility | W10.1 | 1,200 | — | Planned |
+| [W10.3](milestone-2/phases.md#w10-3) | Front-end budgets | W10.1 | 1,100 | 0059 | Planned |
+| [W10.4](milestone-2/phases.md#w10-4) | The app in the packages, and the look back | W10.3, W9.5 | 1,000 | — | Planned |
+
+**Milestone 2** ends with W10.4, as 0.2.0.
 
 ## 9. Milestone 3 outline: real hardware and performance
 
@@ -938,6 +1089,34 @@ ADRs are numbered across the project. Upstream phases record their design decisi
 | 0032 | Power actions and their privileges | P51 |
 | 0033 | Packaging and release | P54 |
 
+**Milestone 1 added five** that weren't planned, 0034 to 0038: they are in [the index](adr/README.md).
+
+**Milestone 2's:**
+
+| ADR | Title | Phase |
+|---|---|---|
+| 0039 | The web app: its layers, state and routing | W0.1 |
+| 0040 | Testing the app: unit, contract, end to end and visual | W0.1 |
+| 0041 | Design tokens and themes | W0.2 |
+| 0042 | The component library on reka-ui | W0.3 |
+| 0043 | Generated API types and the typed client | W1.1 |
+| 0044 | Things in the app: live properties and events | W1.2 |
+| 0045 | The app's connection, its sessions, and media under security | W1.3 |
+| 0046 | The host adapter | W1.4 |
+| 0047 | The preview client: a worker and WebGL | W1.5 |
+| 0048 | The shell, and the lease's read-only mode | W2.1 |
+| 0049 | The live viewer and its overlays | W3.1 |
+| 0050 | The tile viewer | W3.8 |
+| 0051 | Uploads | W6.3 |
+| 0052 | Recipes over the API: the `pipeline` Thing | W7.1 |
+| 0053 | The graph editor | W7.2 |
+| 0054 | 3D in the app | W7.7 |
+| 0055 | Accounts over the API | W8.6 |
+| 0056 | The desktop app: Tauri, its permissions and the sidecar | W9.1 |
+| 0057 | The desktop fast path: frames and tiles | W9.3 |
+| 0058 | Installers | W9.5 |
+| 0059 | Front-end budgets | W10.3 |
+
 ## 11. Documentation conventions
 
 ```text
@@ -950,7 +1129,10 @@ docs/
 ├─ milestone-1/
 │  ├─ phases.md                phase specifications
 │  └─ notes/                   README.md, template.md, PNN-short-name.md, UNN-short-name.md   (P00)
-├─ milestone-2/                phases.md and notes/, written near the end of M1
+├─ milestone-2/
+│  ├─ phases.md                phase specifications
+│  ├─ look.md                  the app's look, in our own words   (W0.2)
+│  └─ notes/                   README.md, template.md, W3.2-short-name.md, and shots/ for their screenshots
 └─ milestone-3/                phases.md and notes/, written near the end of M2
 ```
 
@@ -975,6 +1157,13 @@ docs/
 | **Deep zoom on demand is slow on cold regions,** or while a scan runs | A sluggish viewer | Tiles aligned to chunks, a chunk cache, coarse levels rendered eagerly, low priority with a thread cap, HTTP/2; budgets measured in P40; the static DZI export as a fallback |
 | **Licences** (the CUDA EULA, the Tucsen SDK, JS libraries) | Shipping something we may not | `cargo-deny`, licence checks per phase, users install the SDK, P07 records the CUDA list |
 | **`teta-wot`'s licence metadata is inconsistent:** its LICENSE file says MIT, but Cargo.toml and the guide say it has no licence | Confusion for an MIT product depending on it | Fixed in U01 |
+| **Milestone 2's scope:** 57 phases, about 83,000 lines by their first estimates | A long milestone | Seven checkpoints give usable increments. Each phase has a second estimate before its code, and the owner is asked when one runs over. The cut line is W5.4 (z-scans and positions), W7.8 (volumes), W7.9's template editor and W9.4 (tiles from disk), which can move to M2.5 |
+| **Two webviews in the desktop app:** WebView2 on Windows, and WebKitGTK on Ubuntu, which lags the browsers | The desktop app fails where the browser works | WebKit runs the main path's tests from W0.1, and both shells do from W9.1 |
+| **The app's tests under the replays' load** | Replays that take much longer, or fail for no fault | Each end-to-end test has a server of its own and waits for conditions; touched suites run five times on two cores; the visual baselines are made on one system |
+| **The server changes while the app is built:** the `pipeline` Thing, uploads, accounts over the API | The API moves under the app | The generated types fail the type check wherever a change reaches. Each change is in the phase that needs it, with its Rust tests |
+| **VTK.js and Vue Flow are large** | A slow first load | Each is a chunk of its own, loaded when its tab first opens; W10.3 budgets every chunk |
+| **npm's packages:** hundreds, each with a licence and an age | A licence OScope can't ship, or a version too new | W0.1's script checks every installed package; a licence outside ADR-0002's list goes to the owner |
+| **GitHub Actions is still blocked** by its billing | No CI on pull requests | The local replays stay the merge gate (ADR-0038), and gain the web checks in W0.1 |
 
 ## 13. Points for your review
 
@@ -997,6 +1186,23 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 13 | **Fluorescence and confocal modes** exist only in the simulator | OK | — |
 | 14 | **goal.md stays** at `docs/goal.md`; P00 rewrites the root README | OK | — |
 | — | **Owner's note:** the simulated hardware needs its own clock, so moves take real time and the live image moves accordingly | Added | D30; §5.10; P10, P11, P12, P17, P31 |
+
+**Milestone 2's points,** from its specification on 2026-11-17. Each has what the specs assume; the owner's answers go here.
+
+| # | Point | Assumed |
+|---|---|---|
+| 15 | **57 phases,** where the outline said 40 to 45, and about 83,000 lines | Kept, with §12's cut line |
+| 16 | **IDs by stage,** as W3.2, and branches `m2/w3.2-short-name` | Yes |
+| 17 | **Estimates in place of S, M and L,** with the owner asked when a second estimate is over 2,500 lines or a third over the first | Yes: CLAUDE.md says so from this change |
+| 18 | **Each phase is tried in the app,** and its notes' screenshots are committed, some 100 to 300 kB each | Committed; they could go on the pull request instead |
+| 19 | **Server work inside six of M2's phases** (§8) | Yes |
+| 20 | **Media under security** by the token and `fetch`, with no cookies and no tokens in URLs | Yes: ADR-0045, at W1.3 |
+| 21 | **Browsers:** Chromium for every test; Firefox and WebKit for the main path; both desktop webviews from W9.1 | Yes |
+| 22 | **Charts and forms from JSON Schema are written here,** with no dependency | Yes; uPlot and Ajv, both MIT, are the alternatives |
+| 23 | **WSL gains** Node 24 and Playwright's browsers at W0.1, and WebKitGTK at W9.1 | Asked again as each is installed |
+| 24 | **CUDA in the installers** | Decided at W9.5 |
+| 25 | **A checklist for the owner's own run** at each checkpoint, G to M | Yes |
+| 26 | **Milestone 2 ends as 0.2.0** | Yes, by `docs/releasing.md` |
 
 ## 14. Appendices
 
@@ -1115,3 +1321,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-17 | P53 was estimated at about 1,050 lines before it started (`cargo xtask` and its commands ~70; `perf`: §5.20's benchmarks run and read ~170, and their HTML report ~120; a `perf:` line in each benchmark ~40; the soak, against the release server: its configuration, a preview client, scans and stitches, memory and handles sampled on each platform ~260, and its leak detector, by Theil–Sen's slope, ~50; tests ~200; the nightly workflow, its schedule off ~35; glue ~20; and about a tenth on top): nearly twice M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
 | 2026-11-17 | RUSTSEC-2026-0543 marks `chrono` unmaintained, not vulnerable, so `cargo deny` failed on every branch. At the owner's choice, `deny.toml` ignores it, with its reason, and a move to `jiff` or `time` is planned: teta-wot's core and HTTP crates first, then OScope's nine crates. P53's notes record it |
 | 2026-11-17 | P54 was estimated at about 720 lines before it started (the .deb, built by a script with `dpkg-deb`, its maintainer scripts, the polkit rule in both of Ubuntu's forms, and the unit's changes ~200; the Windows zip, its configuration and its install and uninstall scripts ~145; the notices with cargo-about ~70; the release workflow ~110; the example, the .deb installed in clean Ubuntu containers, and a check of the zip ~105; tests ~15; glue ~10; and about a tenth on top): a little over M's 600. One pull request, with the overrun explained, as the owner decided for P24–P54 |
+| 2026-11-17 | **Milestone 2 specified** ([milestone-2/phases.md](milestone-2/phases.md), §8): 57 phases in 11 stages, W0.1 to W10.4, where the outline foresaw 40 to 45. IDs name the stage. First estimates, about 83,000 lines in all, stand where S, M and L did, by Milestone 1's look back; a second estimate comes here before each phase's code, and the owner is asked when it is over 2,500 lines or a third over the first. Each phase is tried in the app, with screenshots in its notes. Checkpoints G to M. ADRs 0039 to 0059 planned (§10). Server work named in W0.1, W1.3, W6.3, W7.1, W8.2 and W8.6. Risks and points 15 to 26 added (§12, §13). P54 marked Done |
