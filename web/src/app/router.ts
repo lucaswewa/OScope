@@ -43,5 +43,11 @@ export const router = createRouter({
       name: "gallery-forms",
       component: () => import("@/features/dev/FormsPage.vue"),
     },
+    {
+      // Charts drawn by the app, from data recorded from the simulated instrument.
+      path: "/dev/gallery/charts",
+      name: "gallery-charts",
+      component: () => import("@/features/dev/ChartsPage.vue"),
+    },
   ],
 });

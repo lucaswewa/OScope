@@ -74,4 +74,26 @@ export default {
     remove: "Remove {name}",
     empty: "Nothing to fill in.",
   },
+  chart: {
+    kinds: {
+      line: "a line",
+      area: "an area",
+      histogram: "a histogram",
+      points: "points",
+    },
+    shows:
+      "It shows {kinds} of {series}, along {x} from {xFrom} to {xTo}, and {y} from {yFrom} to {yTo}. The numbers are in the table below it.",
+    at: "{axis} {value}",
+    bin: "{axis} from {from} to {to}",
+    value: "{name} {value}",
+    offScale: "{name} not on this scale",
+    showAll: "Show all",
+    numbers: "The numbers",
+    table: "The numbers of {title}",
+    series: "Series",
+    from: "From",
+    to: "To",
+    low: "{name}, low",
+    high: "{name}, high",
+  },
 };

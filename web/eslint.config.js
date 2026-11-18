@@ -58,7 +58,17 @@ const platform = {
 };
 
 export default tseslint.config(
-  { ignores: ["dist/", ".bundle/", "node_modules/", "test-results/", "playwright-report/"] },
+  {
+    ignores: [
+      "dist/",
+      ".bundle/",
+      "node_modules/",
+      "test-results/",
+      "playwright-report/",
+      // Generated: data recorded from the simulated instrument (scripts/record-charts.mjs).
+      "src/features/dev/charts/recorded.ts",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...vue.configs["flat/essential"],

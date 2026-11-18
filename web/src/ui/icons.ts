@@ -35,6 +35,8 @@ import power from "@material-symbols/svg-300/outlined/power_settings_new.svg?raw
 import home from "@material-symbols/svg-300/outlined/home.svg?raw";
 import folder from "@material-symbols/svg-300/outlined/folder.svg?raw";
 import file from "@material-symbols/svg-300/outlined/draft.svg?raw";
+import pause from "@material-symbols/svg-300/outlined/pause.svg?raw";
+import play from "@material-symbols/svg-300/outlined/play_arrow.svg?raw";
 import light from "@material-symbols/svg-300/outlined/light_mode.svg?raw";
 import dark from "@material-symbols/svg-300/outlined/dark_mode.svg?raw";
 import computer from "@material-symbols/svg-300/outlined/contrast.svg?raw";
@@ -86,6 +88,8 @@ export const icons = {
   home: pathOf(home),
   folder: pathOf(folder),
   file: pathOf(file),
+  pause: pathOf(pause),
+  play: pathOf(play),
   light: pathOf(light),
   dark: pathOf(dark),
   system: pathOf(computer),

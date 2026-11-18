@@ -6,3 +6,5 @@ test-results/
 playwright-report/
 # Documentation keeps the repository's Markdown style, not Prettier's.
 *.md
+# Generated: data recorded from the simulated instrument (scripts/record-charts.mjs).
+src/features/dev/charts/recorded.ts
