@@ -63,15 +63,16 @@ for name in "${targets[@]}"; do
       command="npm run -s test:unit"
       ;;
     web:e2e)
-      # Against this build's server and app. One worker, as Playwright
-      # chooses on two cores: it counts the computer's CPUs, not the pair.
+      # Against this build's server and app, the visual tests among them.
+      # One worker, as Playwright chooses on two cores: it counts the
+      # computer's CPUs, not the pair.
       if ! { cargo build --locked --package oscope-server && (cd web && npm run -s build); }         > "$logs/build.log" 2>&1; then
         echo "FAIL  can't build $name: $logs/build.log"
         tail -n 20 "$logs/build.log" | sed 's/^/      /'
         exit 1
       fi
       folder=$root/web
-      command="npm run -s test:e2e -- --workers=1"
+      command="env OSCOPE_VISUAL=1 npm run -s test:e2e -- --workers=1"
       ;;
     web:*)
       echo "unknown web suite: $name (web:unit or web:e2e)" >&2

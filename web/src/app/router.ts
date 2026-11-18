@@ -13,5 +13,11 @@ export const router = createRouter({
       name: "home",
       component: () => import("@/features/home/HomePage.vue"),
     },
+    {
+      // The tokens, shown: for whoever builds or checks a component.
+      path: "/dev/gallery",
+      name: "gallery",
+      component: () => import("@/features/dev/GalleryPage.vue"),
+    },
   ],
 });

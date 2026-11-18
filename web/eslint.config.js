@@ -70,6 +70,12 @@ export default tseslint.config(
     // TypeScript checks names; in scripts and configurations, Node provides them.
     rules: { "no-undef": "off" },
   },
+  {
+    // The app's own components are named for what they are: Icon, Button. In
+    // a template, the capital sets them apart from HTML's elements.
+    files: ["src/ui/**/*.vue"],
+    rules: { "vue/multi-word-component-names": "off" },
+  },
   ...Object.entries(layers).map(([layer, forbidden]) => ({
     files: [`src/${layer}/**`],
     rules: layerRule(layer, forbidden),

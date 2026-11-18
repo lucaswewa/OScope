@@ -20,12 +20,21 @@ const run = (process.env.OSCOPE_E2E_RUN ??= `${day}-${time}-${process.pid}`);
 export default defineConfig({
   testDir: "tests/e2e",
   outputDir: `test-results/${run}`,
+  // A visual test's baselines, one for each browser and system that draws them.
+  snapshotPathTemplate: "{testDir}/baselines/{arg}-{projectName}-{platform}{ext}",
   fullyParallel: true,
   forbidOnly: true,
   reporter: [["list"], ["./tests/e2e/tidy.ts"]],
   timeout: 60_000,
-  // Each check waits for its condition, up to this long: never for a time.
-  expect: { timeout: 15_000 },
+  expect: {
+    // Each check waits for its condition, up to this long: never for a time.
+    timeout: 15_000,
+    // A baseline is its own computer's picture, so a pixel may be off by a
+    // level or two and no more: a token a shade out is then caught.
+    // Playwright's own allowance, for other computers' rendering, lets a grey
+    // through that is 50 levels out.
+    toHaveScreenshot: { threshold: 0.01 },
+  },
   use: {
     viewport: { width: 1280, height: 800 },
     trace: "retain-on-failure",
