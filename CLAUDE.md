@@ -82,7 +82,8 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
   Every driver also has a fake at its protocol or SDK boundary.
 - **Tests:**
   - Wait for a condition, never a fixed time.
-  - Give each test its own data root and build directory, and a port the system picks: suites run side by side, several copies at once.
+  - Give each test its own data root, scratch space and build directory, and a port the system picks: suites run side by side, several copies at once.
+    - A test that starts `oscope-server` gives it a configuration of its own, with `scratch_root` and `[power] dry_run = true`. `--data-root` alone leaves the scratch space in the working folder, which every test would share.
   - Keep what a test writes small, unless its size is what it tests: recordings preallocate their segments.
   - Test with the default samples and over real distances, not only with samples chosen to make tests quick.
   - For anything that supervises, recovers or detects, break the code on purpose once and check that the test fails; say so in the notes.
