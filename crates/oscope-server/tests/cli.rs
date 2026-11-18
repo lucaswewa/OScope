@@ -195,6 +195,106 @@ fn it_serves_from_its_configuration_and_creates_its_folders() {
     result.unwrap();
 }
 
+/// Writes a test's own configuration in `folder`: the server's data and its
+/// scratch space there, and power in a dry run. Without it, the scratch space
+/// is the working folder's, which every test's server would share, and each
+/// clears it as it starts.
+fn own_config(folder: &std::path::Path) -> String {
+    let config = folder.join("oscope.toml");
+    let text = "[storage]\ndata_root = \"data\"\nscratch_root = \"scratch\"\n\n\
+                [power]\ndry_run = true\n";
+    std::fs::write(&config, text).unwrap();
+    config.to_str().unwrap().to_owned()
+}
+
+/// Starts the server on a port the system picks, with `args`, and gives it
+/// with the address its first line says it serves on.
+fn serve(args: &[&str]) -> (std::process::Child, Option<String>) {
+    let mut server = Command::new(env!("CARGO_BIN_EXE_oscope-server"))
+        .args(["--port", "0"])
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut line = String::new();
+    BufReader::new(server.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let served = line.trim().rsplit_once("serving on http://");
+    let address = served.map(|(_, a)| a.trim_end_matches('/').to_owned());
+    (server, address)
+}
+
+#[test]
+fn it_serves_the_web_app_s_folder_beside_the_api() {
+    let folder = tempfile::tempdir().unwrap();
+    let app = folder.path().join("dist");
+    std::fs::create_dir_all(app.join("assets")).unwrap();
+    std::fs::write(
+        app.join("index.html"),
+        "<!doctype html><title>OScope</title>",
+    )
+    .unwrap();
+    std::fs::write(app.join("assets/app.js"), "export const app = 1;").unwrap();
+    // A file beside the app's folder, which nothing may serve.
+    std::fs::write(folder.path().join("secret.txt"), "not the app's").unwrap();
+    let config = own_config(folder.path());
+    let (mut server, address) = serve(&["--config", &config, "--web", app.to_str().unwrap()]);
+    let result = std::panic::catch_unwind(|| {
+        let address = address.expect("the serving line");
+        // Its files in the test's folder: none in the working folder's.
+        for own in ["data", "scratch"] {
+            assert!(folder.path().join(own).is_dir(), "{own}");
+        }
+        // The app at the root, and its files by their paths.
+        let (status, body) = get(&address, "/");
+        assert_eq!(status, "HTTP/1.1 200 OK");
+        assert!(body.contains("<title>OScope</title>"), "{body}");
+        let (status, body) = get(&address, "/assets/app.js");
+        assert_eq!(status, "HTTP/1.1 200 OK");
+        assert_eq!(body, "export const app = 1;");
+        // The API, at the same origin.
+        assert_eq!(get(&address, "/health").0, "HTTP/1.1 200 OK");
+        assert_eq!(get(&address, "/api/v1/system/version").0, "HTTP/1.1 200 OK");
+        // Nothing outside the folder, however the path is written.
+        for path in [
+            "/../secret.txt",
+            "/assets/../../secret.txt",
+            "/%2e%2e/secret.txt",
+        ] {
+            let (status, body) = get(&address, path);
+            assert!(!status.contains("200"), "{path}: {status}");
+            assert!(!body.contains("not the app's"), "{path}");
+        }
+        assert_eq!(get(&address, "/missing.js").0, "HTTP/1.1 404 Not Found");
+    });
+    server.kill().unwrap();
+    server.wait().unwrap();
+    result.unwrap();
+}
+
+#[test]
+fn a_web_folder_that_would_hide_the_api_or_is_missing_is_refused() {
+    let folder = tempfile::tempdir().unwrap();
+    let config = own_config(folder.path());
+    // A file named as one of the API's own paths.
+    let hiding = folder.path().join("hiding");
+    std::fs::create_dir_all(&hiding).unwrap();
+    std::fs::write(hiding.join("health"), "ok").unwrap();
+    let missing = folder.path().join("never-built");
+    for (web, says) in [(&hiding, "health"), (&missing, "never-built")] {
+        let web = web.to_str().unwrap();
+        let output = run(&["--config", &config, "--port", "0", "--web", web]);
+        assert_eq!(output.status.code(), Some(1), "{web}");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("the pages in") && stderr.contains(says),
+            "{stderr}"
+        );
+    }
+}
+
 /// A Python extension's manifest.
 const MANIFEST: &str = r#"id = "org.example.hello"
 name = "Hello"

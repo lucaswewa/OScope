@@ -149,6 +149,23 @@ else
   echo "      cargo install cargo-deny --version 0.20.2 --locked"
 fi
 step "server --version" cargo run -q -p oscope-server --locked -- --version
+# The web app (W0.1, ADR-0040): its checks, then its end-to-end tests, which
+# start the server just built, each test its own.
+web() { (cd web && "$@"); }
+if command -v npm > /dev/null; then
+  step "web install" web npm ci
+  step "web typecheck" web npm run -s typecheck
+  step "web lint" web npm run -s lint
+  step "web unit tests" web npm run -s test:unit
+  step "web build" web npm run -s build
+  step "web licences" web npm run -s licences
+  step "web advisories" web npm run -s advisories
+  step "web browsers" web npx playwright install chromium firefox webkit
+  step "web end to end" web npm run -s test:e2e
+else
+  failed=$((failed + 1))
+  echo "FAIL  web: Node isn't installed, for the app's checks (CLAUDE.md)"
+fi
 # Every example with a binary, headless (examples/README.md): built
 # together, then their smoke runs side by side, from the repository's root.
 examples=()

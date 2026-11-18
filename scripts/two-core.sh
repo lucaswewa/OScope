@@ -8,7 +8,8 @@
 #
 #   TARGET      a test suite, as PACKAGE:TEST (oscope-workflows:stitch, for
 #               its tests/stitch.rs), or PACKAGE:lib for its unit tests; or
-#               an example, by its name (ex-stitch), for its --smoke
+#               an example, by its name (ex-stitch), for its --smoke; or the
+#               app's tests, as web:unit or web:e2e
 #   --repeat N  how many times each runs [default: 5]
 #   --jobs N    how many runs at once, each on a pair of CPUs
 #               [default: 8, or as many pairs as there are]
@@ -57,6 +58,25 @@ slots=$(pinned_slots "$jobs")
 : > "$logs/runs.tsv"
 for name in "${targets[@]}"; do
   case "$name" in
+    web:unit)
+      folder=$root/web
+      command="npm run -s test:unit"
+      ;;
+    web:e2e)
+      # Against this build's server and app. One worker, as Playwright
+      # chooses on two cores: it counts the computer's CPUs, not the pair.
+      if ! { cargo build --locked --package oscope-server && (cd web && npm run -s build); }         > "$logs/build.log" 2>&1; then
+        echo "FAIL  can't build $name: $logs/build.log"
+        tail -n 20 "$logs/build.log" | sed 's/^/      /'
+        exit 1
+      fi
+      folder=$root/web
+      command="npm run -s test:e2e -- --workers=1"
+      ;;
+    web:*)
+      echo "unknown web suite: $name (web:unit or web:e2e)" >&2
+      exit 2
+      ;;
     *:*)
       package=${name%%:*}
       suite=${name#*:}

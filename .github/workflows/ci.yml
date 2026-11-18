@@ -75,6 +75,37 @@ jobs:
         run: cargo deny --locked check
       - name: The server's version
         run: cargo run -p oscope-server --locked -- --version
+      # The web app (W0.1, ADR-0040): its checks, then its end-to-end tests,
+      # each against a server of its own, the one this job has just built.
+      # The steps run in bash, which stops at the first command that fails.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: "The web app: its packages"
+        working-directory: web
+        run: npm ci
+      - name: "The web app: types, lint, unit tests and the build"
+        working-directory: web
+        shell: bash
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run test:unit
+          npm run build
+      - name: "The web app: licences and advisories"
+        working-directory: web
+        shell: bash
+        run: |
+          npm run licences
+          npm run advisories
+      - name: "The web app: Playwright's browsers"
+        working-directory: web
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: "The web app: end to end"
+        working-directory: web
+        run: npm run test:e2e
       # Every example with a binary, headless (examples/README.md).
       - name: The examples' --smoke runs
         if: env.RUN_EXAMPLES == 'true'

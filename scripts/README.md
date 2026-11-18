@@ -16,6 +16,11 @@ Two scripts run the checks that CI runs on every pull request ([`.github/workflo
 | docs | `cargo doc --workspace --no-deps --locked`, with `RUSTDOCFLAGS="-D warnings"` |
 | deny | `cargo deny --locked check` |
 | server --version | `cargo run -p oscope-server --locked -- --version` |
+| web install | `npm ci` in `web/`: the app's packages, from its lock file. The step fails if Node isn't installed |
+| web typecheck, lint, unit tests, build | `npm run typecheck`, `lint`, `test:unit` and `build` in `web/` ([`web/README.md`](../web/README.md)) |
+| web licences, advisories | `npm run licences` and `advisories`: every package, by its tier ([ADR-0040](../docs/adr/0040-testing-the-app.md)). The advisories need the network |
+| web browsers | `npx playwright install chromium firefox webkit`: quick once they are there. On Linux their system libraries are installed once, as root: `npx playwright install-deps chromium firefox webkit` |
+| web end to end | `npm run test:e2e`: the built app in three browsers, each test with the server just built, on a port of its own |
 | examples build | `cargo build --locked`, every example with a binary |
 | *each example* --smoke | the example's binary, with `--smoke`, from the repository's root: always here, though GitHub CI skips them while its `RUN_EXAMPLES` is `"false"` |
 | CUDA tests, with `--cuda` | `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` |
@@ -86,6 +91,7 @@ scripts/two-core.sh --repeat 10 oscope-api:preview
 ```
 
 - **A target** is a test suite, `PACKAGE:TEST` for its `tests/TEST.rs` or `PACKAGE:lib` for its unit tests, or an example by its name, for its `--smoke`.
+- **The app's tests** are `web:unit` and `web:e2e`. The end-to-end tests run with one worker, as Playwright chooses on a two-core runner: it counts the computer's CPUs, not the pair it is held to.
 - **Its runs go side by side,** eight at a time on their own pairs of CPUs, as `ci-local.sh`'s do: a target's five copies run together.
 - **`--repeat N`** runs each N times, and `--jobs N` N at a time. Logs go to `target/two-core/<date-time>/`, or to `--logs DIR`.
 
