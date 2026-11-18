@@ -50,6 +50,7 @@ Or open `http://127.0.0.1:8210/docs` for the OpenAPI document's pages. Ctrl-C st
 | `--config FILE` | Reads the configuration from a TOML file. Without it, the defaults |
 | `--port N` | Listens on port `N` in place of the configuration's. 0 lets the system choose, and the serving line says which |
 | `--data-root FOLDER` | Uses another data root, relative to where you run the program |
+| `--web FOLDER` | Serves the web app's built files, `web/dist`, at `/`, beside the API, in place of the configuration's `[web] root`. A folder that isn't there, or holds a file named as one of the API's paths, is refused |
 | `--print-openapi` | Prints the OpenAPI document and exits |
 | `--print-td` | Prints each Thing's Thing Description, by name, and exits |
 | `--managed` | Runs under a supervisor, such as the desktop app, by the sidecar contract below |
@@ -147,6 +148,9 @@ enabled = true                    # by default only with --managed
 name = "preview"                  # by default; preview-{pid} with --managed
 slots = 3
 slot_bytes = 8388608              # the largest preview
+
+[web]                             # the web app (W0.1)
+root = "web/dist"                 # its built files, served at /; no app when not given
 
 [python]                          # Python extensions (P26)
 uv = "C:/tools/uv.exe"            # found when not given: OSCOPE_UV, then PATH, then ~/.local/bin

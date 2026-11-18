@@ -27,3 +27,8 @@ keep_days = 30
 
 # The devices. Kept, but not read until the device Things (P16).
 [devices]
+
+# The web app's built files, served at / beside the API (W0.1). Without it,
+# the server serves no app: `npm --prefix web run build` makes them.
+# [web]
+# root = "../web/dist"

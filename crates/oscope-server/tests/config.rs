@@ -158,6 +158,40 @@ fn the_command_line_overrides_the_file() {
 }
 
 #[test]
+fn the_web_app_s_folder_is_the_file_s_or_the_command_line_s() {
+    // None by default: a server without the app.
+    assert_eq!(Config::default().web.root, None);
+    // In the file, relative to the file's folder, as its other folders are.
+    let folder = tempfile::tempdir().unwrap();
+    let path = write(
+        folder.path(),
+        "version = 2
+[web]
+root = \"app/dist\"
+",
+    );
+    let file = path.to_str().unwrap();
+    let config = Config::load(&path).unwrap();
+    assert_eq!(config.web.root, Some(folder.path().join("app/dist")));
+    // On the command line, in its place, relative to where it is run.
+    let args = ["oscope-server", "--config", file, "--web", "built"];
+    let config = Cli::try_parse_from(args).unwrap().config().unwrap();
+    assert_eq!(config.web.root, Some(PathBuf::from("built")));
+    // An unknown key in the section is refused, as anywhere else.
+    let wrong = write(
+        folder.path(),
+        "version = 2
+[web]
+folder = \"x\"
+",
+    );
+    assert!(matches!(
+        Config::load(&wrong).unwrap_err(),
+        ConfigError::Invalid { .. }
+    ));
+}
+
+#[test]
 fn the_command_line_refuses_what_it_cannot_do() {
     for args in [
         &["--port", "70000"][..],

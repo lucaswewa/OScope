@@ -44,6 +44,8 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |
 | [0037](0037-importers-exporters-and-the-abi-s-third-version.md) | Importers, exporters, and the ABI's third version | Accepted | P30 |
 | [0038](0038-local-ci-replays-side-by-side.md) | Local CI replays, side by side on two CPUs | Accepted | — |
+| [0039](0039-the-web-app-its-layers-state-and-routing.md) | The web app: its layers, state and routing | Accepted | W0.1 |
+| [0040](0040-testing-the-app.md) | Testing the app: unit, contract, end to end and visual | Accepted | W0.1 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

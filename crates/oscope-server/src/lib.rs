@@ -36,7 +36,7 @@ mod config;
 
 pub use config::{
     CONFIG_VERSION, Config, ConfigError, DEFAULT_PORT, Jobs, Listen, Logging, PythonConfig, Ring,
-    Storage, TomlFile, migrate, migrate_file,
+    Storage, TomlFile, Web, migrate, migrate_file,
 };
 
 /// The exit code that asks a supervisor to start the server again
@@ -60,6 +60,10 @@ pub struct Cli {
     /// The data root, in place of the configuration's.
     #[arg(long, value_name = "FOLDER")]
     pub data_root: Option<PathBuf>,
+    /// The web app's built files, in place of the configuration's: served
+    /// at `/`, beside the API.
+    #[arg(long, value_name = "FOLDER")]
+    pub web: Option<PathBuf>,
     /// Print the OpenAPI document and exit.
     #[arg(long, conflicts_with = "print_td")]
     pub print_openapi: bool,
@@ -182,6 +186,9 @@ impl Cli {
         }
         if let Some(root) = &self.data_root {
             config.storage.data_root = root.clone();
+        }
+        if let Some(folder) = &self.web {
+            config.web.root = Some(folder.clone());
         }
         Ok(config)
     }
@@ -445,6 +452,10 @@ async fn serve(
     }
     if let Some(ring) = ring {
         api = api.ring(ring);
+    }
+    // The web app, at the API's own origin (W0.1).
+    if let Some(folder) = &config.web.root {
+        api = api.pages(folder);
     }
     if !accounts.is_empty() {
         let minutes = |m: u64| std::time::Duration::from_secs(60 * m);

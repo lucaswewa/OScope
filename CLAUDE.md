@@ -56,6 +56,11 @@ It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-
   - Their licences must allow MIT distribution: MIT, Apache-2.0, BSD, ISC, Zlib, Unicode, or public domain. MPL-2.0 only as an unmodified development dependency.
   - Use only versions at least two weeks old. For npm: `npm install --before=<date two weeks ago>`. For crates: check the release date.
   - `cargo-deny` enforces licences from P01.
+  - **npm packages come in two tiers** ([ADR-0040](docs/adr/0040-testing-the-app.md)), which `npm run licences` and `npm run advisories` enforce:
+    - what the app's bundle holds: that list, with 0BSD and MIT-0, and no advisory;
+    - development tools: also Python-2.0, BlueOak-1.0.0 and CC-BY data files, and only the advisories listed in `web/advisories.json`, each with its reason.
+
+    Anything else goes to the owner.
 - **Unsafe code** is forbidden, except in these crates:
   - `oscope-compute` (CUDA);
   - `oscope-shm` (shared memory);
@@ -103,10 +108,19 @@ cargo deny check
 OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda
 ```
 
+From W0.1 onwards, the app's too, in `web/` ([`web/README.md`](web/README.md)):
+
+```sh
+npm ci
+npm run typecheck && npm run lint && npm run test:unit && npm run build
+npm run licences && npm run advisories
+npm run test:e2e    # after `cargo build -p oscope-server`: each test starts its own server
+```
+
 `scripts/ci-local.sh` runs all of CI's checks, every example's `--smoke` among them, and `--cuda` adds the CUDA tests. It runs the suites and smoke runs eight at a time, each on two CPUs of its own. `scripts/ci-clone.sh` runs them on a fresh clone of a commit; on Windows, run it under WSL ([`scripts/README.md`](scripts/README.md)).
 
 - **The replays are the merge gate** ([ADR-0038](docs/adr/0038-local-ci-replays-side-by-side.md)): both pass, each run alone, on the commit merged, or on one that only docs follow. GitHub Actions isn't waited for.
-- **Two cores, five times:** the suites and smoke runs a change touches, and only those, run five times each, side by side, on two CPUs each: `scripts/two-core.sh PACKAGE:TEST… EXAMPLE…`.
+- **Two cores, five times:** the suites and smoke runs a change touches, and only those, run five times each, side by side, on two CPUs each: `scripts/two-core.sh PACKAGE:TEST… EXAMPLE…`, with `web:unit` and `web:e2e` for the app's.
 - **Disk:** check `df -h` first. The replays need some 20 GB free, and build output grows by the phase: `cargo clean --profile dev` clears it, with the owner's word.
 
 Docs-only phases check that their relative links and anchors resolve.

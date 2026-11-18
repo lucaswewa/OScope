@@ -70,6 +70,9 @@ pub const CONFIG_VERSION: i64 = 2;
 ///
 /// [power]                         # P51
 /// dry_run = false                 # true: power actions only say what they'd do
+///
+/// [web]                           # the web app (W0.1)
+/// root = "web/dist"               # its built files, served at /; none when not given
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -99,6 +102,17 @@ pub struct Config {
     pub security: SecurityConfig,
     /// The power actions (P51).
     pub power: PowerSection,
+    /// The web app's files (W0.1).
+    pub web: Web,
+}
+
+/// The web app, served as the API's pages (W0.1, ADR-0006).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Web {
+    /// The folder of its built files, `web/dist`, served at `/` beside the
+    /// API, so that both share an origin. Without it, no app is served.
+    pub root: Option<PathBuf>,
 }
 
 /// The power actions (P51, ADR-0032).
@@ -366,7 +380,8 @@ impl Config {
         let (python, security) = (&mut config.python, &mut config.security);
         let paths = [&mut python.uv, &mut python.sdk, &mut python.wheelhouse];
         let tls = [&mut security.certificate, &mut security.key];
-        for path in paths.into_iter().chain(tls).flatten() {
+        let web = [&mut config.web.root];
+        for path in paths.into_iter().chain(tls).chain(web).flatten() {
             *path = folder.join(&*path);
         }
         Ok(config)
