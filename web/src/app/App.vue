@@ -1,3 +1,9 @@
+<script setup lang="ts">
+import Provider from "@/ui/Provider.vue";
+</script>
+
 <template>
-  <RouterView />
+  <Provider>
+    <RouterView />
+  </Provider>
 </template>

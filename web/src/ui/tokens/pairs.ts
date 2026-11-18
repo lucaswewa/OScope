@@ -36,5 +36,6 @@ export const pairs: readonly Pair[] = [
   ...text("danger", ...grounds, "danger-tint"),
   ...text("danger-on", "danger-fill", "danger-fill-hover", "danger-fill-pressed"),
   ...line("border-control", ...grounds, "surface-field"),
+  ...line("danger", "surface-field"),
   ...line("focus-color", ...surfaces),
 ];

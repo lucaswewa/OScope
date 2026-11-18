@@ -1,0 +1,14 @@
+/*
+ * A tooltip (ADR-0042): small text on the theme turned over. It is drawn at
+ * the page's root, out of its component's reach, so its style is here.
+ */
+.ui-tooltip {
+  z-index: 50;
+  max-inline-size: 20rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-title);
+}
