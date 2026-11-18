@@ -20,6 +20,7 @@ const pages = [
   { to: "/dev/gallery", name: "tokens" },
   { to: "/dev/gallery/inputs", name: "inputs" },
   { to: "/dev/gallery/overlays", name: "overlays" },
+  { to: "/dev/gallery/data", name: "data" },
 ] as const;
 const themeChoices = computed(() =>
   themes.map((value) => ({ value, label: t(`display.themes.${value}`) })),
