@@ -160,7 +160,10 @@ if command -v npm > /dev/null; then
   step "web build" web npm run -s build
   step "web licences" web npm run -s licences
   step "web advisories" web npm run -s advisories
-  step "web browsers" web npx playwright install chromium firefox webkit
+  # The browsers of the Playwright the lock file names, and never another:
+  # with the packages missing, a bare npx would fetch the newest from the
+  # registry, whose install then removes the builds the tests need.
+  step "web browsers" web npx --no-install playwright install chromium firefox webkit
   # With the visual tests, whose baselines are this computer's: OSCOPE_VISUAL=
   # in the environment, empty, leaves them out.
   step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e

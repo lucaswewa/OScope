@@ -24,6 +24,9 @@ import Icon from "./Icon.vue";
  * opens it; the arrows, Home, End and a typed letter move through it; Enter
  * chooses; Escape closes it with the choice as it was.
  */
+// What a page puts on the list is its field's: the library's root draws
+// nothing of its own, and would lose it.
+defineOptions({ inheritAttrs: false });
 const props = defineProps<
   ControlProps & {
     options: readonly { value: string; label: string; disabled?: boolean }[];
@@ -56,6 +59,7 @@ function show(now: boolean): void {
 <template>
   <SelectRoot v-model="chosen" :open="open" :disabled="disabled" @update:open="show">
     <SelectTrigger
+      v-bind="$attrs"
       :id="control.id.value"
       class="ui-field select"
       :class="{ compact }"

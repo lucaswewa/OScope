@@ -13,7 +13,7 @@ test("the gallery follows the theme and the accent, and the browser keeps them @
   await page.goto(`${server.url}/#/dev/gallery`);
   const root = page.locator("html");
   const body = page.locator("body");
-  const scheme = page.getByRole("status");
+  const scheme = page.getByRole("main").getByRole("status");
   const accent = page.locator('[data-token="accent"]');
   const title = page.getByRole("heading", { level: 1 });
 

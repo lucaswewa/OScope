@@ -7,7 +7,7 @@
  * style is here and not in the component.
  */
 .ui-list {
-  z-index: 40;
+  z-index: 100;
 
   /* As wide as its field at least, and no taller than the room it has. */
   min-inline-size: var(--reka-select-trigger-width, var(--reka-combobox-trigger-width));

@@ -5,6 +5,7 @@ import { h, type Component } from "vue";
 import { createI18n } from "vue-i18n";
 
 import Provider from "./Provider.vue";
+import type { Clock } from "./toasts";
 import ui from "./words/en";
 
 type Props = Record<string, unknown>;
@@ -58,4 +59,38 @@ export function drawModel<T>(component: Component, value: T, props: Props = {}, 
     slots,
   );
   return { ...drawn, changes, held };
+}
+
+/** A clock a test turns by hand: its timers run only when it is moved on. */
+export function handClock() {
+  let now = 0;
+  let next = 1;
+  const timers = new Map<number, { at: number; run: () => void }>();
+  const clock: Clock = {
+    set(run, ms) {
+      const id = next++;
+      timers.set(id, { at: now + ms, run });
+      return id;
+    },
+    clear: (timer) => void timers.delete(timer as number),
+    now: () => now,
+  };
+  return {
+    clock,
+    /** Moves time on by `ms`, running each timer that falls due, in turn. */
+    pass(ms: number): void {
+      const until = now + ms;
+      for (;;) {
+        const due = [...timers].filter(([, timer]) => timer.at <= until);
+        if (due.length === 0) break;
+        const [id, timer] = due.sort((a, b) => a[1].at - b[1].at)[0]!;
+        timers.delete(id);
+        now = timer.at;
+        timer.run();
+      }
+      now = until;
+    },
+    /** How many timers wait to run. */
+    running: () => timers.size,
+  };
 }

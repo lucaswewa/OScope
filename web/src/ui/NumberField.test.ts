@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import NumberField from "@/ui/NumberField.vue";
 import { drawModel } from "@/ui/test-kit";
@@ -17,15 +17,11 @@ function field(value: number | null, props: Record<string, unknown> = {}) {
     },
     key: (key: string) => input.trigger("keydown", { key }),
     wheel: (deltaY: number) => input.trigger("wheel", { deltaY }),
-    reason: () => drawn.wrapper.find('[role="alert"]'),
+    reason: () => drawn.wrapper.find(".reason"),
   };
 }
 
 describe("a number field", () => {
-  afterEach(() => {
-    document.body.innerHTML = "";
-  });
-
   it("takes what is typed on Enter, and on leaving, but not at each key", async () => {
     const x = field(1250, { min: -5000, max: 5000 });
     await x.type("12");

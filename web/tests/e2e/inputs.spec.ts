@@ -131,13 +131,13 @@ test("text, numbers and sliders work from the keyboard @main", async ({ page, se
   await x.fill("12,5");
   await expect(now("x")).toHaveText("Now: 1250");
   await keys.press("Enter");
-  await expect(page.getByRole("alert")).toHaveText("This isn't a number.");
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("This isn't a number.");
   await expect(x).toHaveAttribute("aria-invalid", "true");
   await expect(x).toHaveAccessibleDescription("This isn't a number.");
   await expect(now("x")).toHaveText("Now: 1250");
   await keys.press("Escape");
   await expect(x).toHaveValue("1250");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
 
   // Taken on Enter; then the arrows, the page keys, and the range's ends.
   await x.fill("300");
@@ -162,7 +162,7 @@ test("text, numbers and sliders work from the keyboard @main", async ({ page, se
   await expect(overlap).toHaveValue("0.50");
   await overlap.fill("0.9");
   await keys.press("Tab");
-  await expect(page.getByRole("alert")).toHaveText("At most 0.7.");
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("At most 0.7.");
   await expect(now("overlap")).toHaveText("Now: 0.5");
   await expect(overlap).toHaveAccessibleDescription("At most 0.7. From 0.1 to 0.7.");
 

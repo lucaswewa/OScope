@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import Slider from "@/ui/Slider.vue";
 import { drawModel } from "@/ui/test-kit";
-
-afterEach(() => {
-  document.body.innerHTML = "";
-});
 
 /** A slider holding `value`, its thumb, and where it said it was let go. */
 function slider(value: number, props: Record<string, unknown> = {}) {
@@ -50,7 +46,7 @@ describe("a slider", () => {
     await number.setValue("500");
     await number.trigger("keydown", { key: "Enter" });
     expect(exposure.changes).toEqual([50]);
-    expect(exposure.wrapper.get("[role='alert']").text()).toBe("At most 200.");
+    expect(exposure.wrapper.get(".reason").text()).toBe("At most 200.");
   });
 
   it("stays where it is while read-only or switched off", async () => {

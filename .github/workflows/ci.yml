@@ -102,7 +102,7 @@ jobs:
           npm run advisories
       - name: "The web app: Playwright's browsers"
         working-directory: web
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx --no-install playwright install --with-deps chromium firefox webkit
       - name: "The web app: end to end"
         working-directory: web
         run: npm run test:e2e

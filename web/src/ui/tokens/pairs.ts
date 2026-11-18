@@ -25,6 +25,7 @@ const surfaces = [...grounds, "surface-rail", "surface-field", "surface-open", "
 
 export const pairs: readonly Pair[] = [
   ...text("text", ...surfaces, "accent-tint"),
+  ...text("text", "info-tint", "success-tint", "warning-tint", "danger-tint"),
   ...text("text-muted", ...surfaces),
   ...text("text-title", ...grounds),
   ...text("text-inverse", "surface-inverse"),
@@ -38,4 +39,5 @@ export const pairs: readonly Pair[] = [
   ...line("border-control", ...grounds, "surface-field"),
   ...line("danger", "surface-field"),
   ...line("focus-color", ...surfaces),
+  ...line("accent-text", "border"),
 ];
