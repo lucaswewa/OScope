@@ -19,7 +19,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W1.1 | Generated API types and the typed client | Done | [W1.1-api-types.md](W1.1-api-types.md) |
 | W1.2 | Things, live properties and events | Done | [W1.2-live-things.md](W1.2-live-things.md) |
 | W1.3 | Connection, login and the control lease | Done | [W1.3-connection.md](W1.3-connection.md) |
-| W1.4 | The host adapter | In review | [W1.4-host-adapter.md](W1.4-host-adapter.md) |
+| W1.4 | The host adapter | Done | [W1.4-host-adapter.md](W1.4-host-adapter.md) |
 | W1.5 | The preview client | Planned | — |
 | W2.1 | The shell and navigation | Planned | — |
 | W2.2 | Status, connection and lease in the shell | Planned | — |
