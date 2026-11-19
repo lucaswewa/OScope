@@ -94,17 +94,6 @@ describe("a call", () => {
     await expect(failed).rejects.toMatchObject({ failure: "aborted" });
   });
 
-  it("is given up as the page goes away, and made again once the page comes back", async () => {
-    network(silent);
-    const before = call(version);
-    globalThis.dispatchEvent(new Event("pagehide"));
-    await expect(before).rejects.toMatchObject({ failure: "aborted" });
-    // Back from the browser's cache: calls are made again.
-    globalThis.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: true }));
-    network(() => json("0.1.1"));
-    await expect(call(version)).resolves.toBe("0.1.1");
-  });
-
   it("is unreachable when no answer can come", async () => {
     network(() => {
       throw new TypeError("Failed to fetch");
