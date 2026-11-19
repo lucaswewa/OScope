@@ -79,5 +79,11 @@ export const router = createRouter({
       name: "gallery-host",
       component: () => import("@/features/dev/HostPage.vue"),
     },
+    {
+      // The live preview: a worker's frames, drawn with WebGL2 (W1.5).
+      path: "/dev/gallery/preview",
+      name: "gallery-preview",
+      component: () => import("@/features/dev/PreviewPage.vue"),
+    },
   ],
 });

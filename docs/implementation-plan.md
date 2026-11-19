@@ -908,7 +908,7 @@ How the app talks to the server: typed calls, live state, the connection and the
 | [W1.2](milestone-2/phases.md#w1-2) | Things, live properties and events | W1.1 | 1,500 | 0044 | Done |
 | [W1.3](milestone-2/phases.md#w1-3) | Connection, login and the control lease | W1.2 | 1,900 | 0045 | Done |
 | [W1.4](milestone-2/phases.md#w1-4) | The host adapter | W1.3 | 800 | 0046 | Done |
-| [W1.5](milestone-2/phases.md#w1-5) | The preview client | W1.3 | 1,800 | 0047 | Planned |
+| [W1.5](milestone-2/phases.md#w1-5) | The preview client | W1.3 | 1,800 | 0047 | In review |
 
 ### Stage W2: Shell
 

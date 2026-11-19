@@ -18,6 +18,8 @@
   --surface-open: light-dark(#ededed, #2e2e2e);
   --surface-hover: light-dark(#e3e3e3, #373737);
   --surface-inverse: light-dark(#1a1a1a, #e8e8e8);
+  /* Behind a camera's image: black in either scheme, as the live view's WebGL clears it. */
+  --surface-image: #000000;
 
   /*
    * Text. A title takes the accent's colour where the scheme is light.
