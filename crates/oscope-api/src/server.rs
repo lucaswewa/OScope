@@ -30,6 +30,7 @@ use crate::focus::{AutofocusThing, ExposureThing};
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::mosaic::{LiveMosaicThing, Mosaics};
+use crate::origins::{self, Origins};
 use crate::power::{PowerConfig, PowerThing};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
@@ -103,6 +104,7 @@ pub struct ApiBuilder {
     mosaics: Option<Arc<Mosaics>>,
     roots: Roots,
     jobs: Option<Jobs>,
+    origins: Origins,
 }
 
 /// The job service, kept for deep zoom; `Debug` names it only.
@@ -195,6 +197,13 @@ impl ApiBuilder {
             .authorizer(LeaseCheck(Arc::clone(&security)))
             .service(security)
             .thing("auth", AuthThing::default());
+        self
+    }
+
+    /// Lets pages at `origins`, besides the server's own, call it from a
+    /// browser (W1.3, ADR-0045): a request from any other origin is refused.
+    pub fn origins(mut self, origins: Origins) -> Self {
+        self.origins = origins;
         self
     }
 
@@ -334,7 +343,8 @@ impl ApiBuilder {
         let things = self
             .things
             .thing("logs", Logs::new(self.logs))
-            .layer(middleware::from_fn(statuses));
+            .layer(middleware::from_fn(statuses))
+            .layer(middleware::from_fn_with_state(self.origins, origins::check));
         let server = things.merge(routes).build()?;
         Ok(Api {
             server,
@@ -372,6 +382,7 @@ impl Api {
             mosaics: None,
             roots: roots.clone(),
             jobs: None,
+            origins: Origins::default(),
         }
     }
 

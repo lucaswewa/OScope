@@ -34,6 +34,16 @@ export class Server {
   constructor(readonly base = ".") {
     // fetch is looked up at each call, so that a test can stand in for it.
     this.api = createClient<paths>({ baseUrl: base, fetch: (request) => fetch(request) });
+    this.api.use({
+      onRequest: ({ request }) => {
+        if (session.token) request.headers.set("authorization", `Bearer ${session.token}`);
+        return request;
+      },
+      onResponse: ({ request, response }) => {
+        heard(request.method, response.status);
+        return response;
+      },
+    });
   }
 
   /** The address of one of its paths, `/api/v1/…`. */
@@ -53,10 +63,30 @@ export class Server {
 export const server = new Server();
 
 /**
- * The session, once logged in (W1.3): under security, its token is the
- * first message of each Thing's WebSocket (ADR-0031).
+ * The session, once logged in (W1.3, ADR-0031): its token goes with each
+ * call, in its `Authorization` header, and as the first message of each
+ * Thing's WebSocket. No cookie, and never in an address.
  */
 export const session: { token?: string | undefined } = {};
+
+/** When the app last changed something on the server, on `performance.now()`'s clock: 0 before. */
+export const activity = { last: 0 };
+
+const unauthorised = new Set<() => void>();
+
+/** Told each 401: a session that has ended, or none where the server wants one. */
+export function onUnauthorised(listener: () => void): () => void {
+  unauthorised.add(listener);
+  return () => {
+    unauthorised.delete(listener);
+  };
+}
+
+/** What an answer says of the session, and of the app's last change. */
+function heard(method: string, status: number): void {
+  if (status === 401) for (const listener of unauthorised) listener();
+  else if (status < 300 && method !== "GET" && method !== "HEAD") activity.last = performance.now();
+}
 
 /** Waits `ms` between calls, unless `signal` aborts first. */
 export function pause(ms: number, signal?: AbortSignal): Promise<void> {
@@ -131,8 +161,12 @@ export async function fetched<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const { signal, why } = bounded(limits);
+  // Under security, media come with the token too, and are shown as blobs (ADR-0045).
+  const headers = new Headers(init.headers);
+  if (session.token) headers.set("authorization", `Bearer ${session.token}`);
   try {
-    const response = await fetch(address, { ...init, signal });
+    const response = await fetch(address, { ...init, headers, signal });
+    heard(init.method ?? "GET", response.status);
     if (!response.ok) {
       throw answerError(response.status, await bodyOf(response), response.statusText);
     }

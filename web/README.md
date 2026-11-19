@@ -116,6 +116,12 @@ Calls go through `src/api/`, typed from the server's own description of its API 
   - **`stale`** says the server hasn't confirmed it for 5 s.
   - **`write`** shows the value at once. If the server refuses it, the last value comes back, with the reason in `refused`.
   - **`useEvent` and `useAction`** do the same for events and actions. Each Thing has one store, `thingStore`, and one WebSocket, opened again with back-off.
+- **The connection, the session and the control lease** are in `src/api/connection/` ([ADR-0045](../docs/adr/0045-the-app-s-connection-sessions-and-media-under-security.md)). Open `#/dev/gallery/connection` to see them.
+  - **`useConnection()`** watches `/health`. Its states are connecting, connected, reconnecting, refused, and a server whose version the app doesn't know.
+  - **With accounts, every page asks for a login** (`#/login`), then goes back to where it was. The token goes with every call, never in an address, and the tab keeps it through a reload. A session the server ends goes back to the login.
+  - **`useCanControl()` is what every control asks:** always yes without accounts, and with them, yes while this app holds the lease. `useLease()` takes it, asks for it, hands it over and gives it up, and warns a minute before it lapses.
+- **Media under security** are fetched with the token, and shown as blobs: `fetched` adds it, as `call` does. `src/api/transfer.ts` moves files with their progress: `receive` a download, `send` an upload.
+- **The server lets a browser in from its own origin only,** and from those its `[network] origins` lists. The dev server's proxy keeps the browser's `Host`, so its requests count as the server's own.
 
 ## Adding a package
 

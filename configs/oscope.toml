@@ -12,6 +12,9 @@ version = 2
 # 127.0.0.1: only this computer can connect.
 address = "127.0.0.1"
 port = 8210
+# The origins, besides its own, whose pages a browser may call it from: the
+# desktop app's, or a dev server that doesn't pass its own on (ADR-0045).
+# origins = ["tauri://localhost"]
 
 [storage]
 data_root = "../.oscope/data"

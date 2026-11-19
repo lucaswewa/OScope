@@ -9,6 +9,10 @@ const props = defineProps<
     /** The smaller size, where several share a row. */
     compact?: boolean;
     placeholder?: string;
+    /** A secret, a password: not shown, and filled in by the browser's keeper of them. */
+    secret?: boolean;
+    /** What the browser may fill it with: `username`, `current-password`… */
+    autocomplete?: string;
   }
 >();
 const text = defineModel<string>({ default: "" });
@@ -21,7 +25,8 @@ const control = useControl(props);
     v-model="text"
     class="ui-field"
     :class="{ compact }"
-    type="text"
+    :type="secret ? 'password' : 'text'"
+    :autocomplete="autocomplete"
     :placeholder="placeholder"
     :disabled="disabled"
     :readonly="readonly"

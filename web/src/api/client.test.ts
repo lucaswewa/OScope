@@ -4,7 +4,7 @@
 // contract tests (tests/e2e/contract.spec.ts) call a real server.
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { call, fetched, pause, Server } from "./client.ts";
+import { activity, call, fetched, onUnauthorised, pause, Server, session } from "./client.ts";
 
 /** Stands in for the network: each request goes to `answer`; those made are kept. */
 function network(answer: (request: Request) => Response | Promise<Response>): Request[] {
@@ -17,12 +17,12 @@ function network(answer: (request: Request) => Response | Promise<Response>): Re
   return made;
 }
 
-/** No answer, until the request is aborted. */
+/** No answer, until the request is aborted: at once if it already is, as fetch does. */
 const silent = (request: Request) =>
   new Promise<Response>((_, failed) => {
-    request.signal.addEventListener("abort", () =>
-      failed(new DOMException("aborted", "AbortError")),
-    );
+    const abort = () => failed(new DOMException("aborted", "AbortError"));
+    if (request.signal.aborted) abort();
+    else request.signal.addEventListener("abort", abort);
   });
 
 const json = (value: unknown, status = 200, type = "application/json") =>
@@ -33,6 +33,7 @@ const version = (signal: AbortSignal) => elsewhere.api.GET("/api/v1/system/versi
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  delete session.token;
 });
 
 describe("a call", () => {
@@ -158,5 +159,52 @@ describe("a pause between calls", () => {
     caller.abort();
     await expect(waiting).rejects.toMatchObject({ failure: "aborted" });
     await expect(pause(60_000, caller.signal)).rejects.toMatchObject({ failure: "aborted" });
+  });
+});
+
+describe("the session's part in each call (W1.3)", () => {
+  it("sends its token with every call, and with each fetch of a route outside the description", async () => {
+    session.token = "t1";
+    const made = network(() => json("0.1.1"));
+    await call(version);
+    await fetched(elsewhere.address("/api/v1/media/ping"), (answer) => answer.text());
+    expect(made.map((request) => request.headers.get("authorization"))).toEqual([
+      "Bearer t1",
+      "Bearer t1",
+    ]);
+  });
+
+  it("sends none without a session", async () => {
+    const made = network(() => json("0.1.1"));
+    await call(version);
+    expect(made[0]!.headers.get("authorization")).toBeNull();
+  });
+
+  it("tells its listeners each 401, until they stop listening", async () => {
+    let heard = 0;
+    const stop = onUnauthorised(() => heard++);
+    network(() => json({ detail: "a token is needed" }, 401));
+    await call(version).catch(() => {});
+    await fetched(elsewhere.address("/api/v1/media/ping"), (answer) => answer.text()).catch(
+      () => {},
+    );
+    stop();
+    await call(version).catch(() => {});
+    expect(heard).toBe(2);
+  });
+
+  it("notes each change the app made: a call that isn't a read, answered well", async () => {
+    activity.last = 0;
+    network(() => json(null));
+    await call(version);
+    expect(activity.last).toBe(0);
+    await call((signal) => elsewhere.api.PUT("/api/v1/camera/gain", { body: 1, signal }));
+    expect(activity.last).toBeGreaterThan(0);
+    const before = activity.last;
+    network(() => json({ detail: "busy", status: 409, title: "busy" }, 409));
+    await call((signal) => elsewhere.api.PUT("/api/v1/camera/gain", { body: 2, signal })).catch(
+      () => {},
+    );
+    expect(activity.last).toBe(before);
   });
 });

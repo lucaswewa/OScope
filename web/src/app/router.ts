@@ -14,6 +14,12 @@ export const router = createRouter({
       component: () => import("@/features/home/HomePage.vue"),
     },
     {
+      // The login, when the server has accounts (W1.3).
+      path: "/login",
+      name: "login",
+      component: () => import("@/features/login/LoginPage.vue"),
+    },
+    {
       // The tokens, shown: for whoever builds or checks a component.
       path: "/dev/gallery",
       name: "gallery",
@@ -60,6 +66,12 @@ export const router = createRouter({
       path: "/dev/gallery/things",
       name: "gallery-things",
       component: () => import("@/features/dev/ThingsPage.vue"),
+    },
+    {
+      // The connection, the session and the control lease (W1.3).
+      path: "/dev/gallery/connection",
+      name: "gallery-connection",
+      component: () => import("@/features/dev/ConnectionPage.vue"),
     },
   ],
 });

@@ -25,6 +25,7 @@ use clap::{Parser, Subcommand};
 use oscope_api::auth::{Accounts, AuthError, Idle, Security};
 use oscope_api::devices::Devices;
 use oscope_api::logs::{self, LogConfig, LogError, LogStore};
+use oscope_api::origins::Origins;
 use oscope_api::{Api, ApiError, Roots, VERSION};
 use oscope_ext::{Drivers, ExtError, Extensions, OWN_DRIVERS};
 use oscope_jobs::{JobService, JobsConfig};
@@ -336,12 +337,21 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
         let projects = projects(&roots.data, Path::new(":memory:"))?;
         // No extension is read either.
         let extensions = Extensions::empty(roots.data.join("extensions"));
+        // Security on, so that the `auth` Thing is described too: an app
+        // calls it whenever the server has accounts (W1.3). Opening the
+        // accounts only reads them, and accounts aren't described.
+        let none = Accounts::open(&roots.data.join(ACCOUNTS))?;
+        let idle = Idle {
+            session: std::time::Duration::from_secs(60),
+            lease: std::time::Duration::from_secs(60),
+        };
         let api = Api::builder(&roots)
             .devices(devices)
             .jobs(jobs)
             .extensions(extensions)
             .projects(projects)
             .power(true)
+            .security(Security::new(Arc::new(none), None, idle))
             .build()?;
         let base = format!("http://{address}/");
         match cli.print_openapi {
@@ -457,6 +467,8 @@ async fn serve(
     if let Some(folder) = &config.web.root {
         api = api.pages(folder);
     }
+    // The origins whose pages may call it, besides its own (W1.3, ADR-0045).
+    api = api.origins(Origins::new(config.network.origins.clone()));
     if !accounts.is_empty() {
         let minutes = |m: u64| std::time::Duration::from_secs(60 * m);
         let idle = Idle {
