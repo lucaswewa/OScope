@@ -97,12 +97,15 @@ function build(gl: WebGL2RenderingContext) {
 function webgl(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): Renderer {
   let parts = build(gl);
   let rect: PixelRect | undefined;
+  /** The magnifying filter set: changed only when it must be, a cost on software GL. */
+  let filter: number = gl.LINEAR;
   // A lost context comes back if asked to: then its program is made again,
   // and the next frame fills its texture.
   const lost = (event: Event) => event.preventDefault();
   const restored = () => {
     parts = build(gl);
     rect = undefined;
+    filter = gl.LINEAR;
   };
   canvas.addEventListener("webglcontextlost", lost);
   canvas.addEventListener("webglcontextrestored", restored);
@@ -124,12 +127,11 @@ function webgl(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): Renderer 
       gl.clear(gl.COLOR_BUFFER_BIT);
       if (!rect) return;
       const at = placed(view, rect, size);
-      gl.bindTexture(gl.TEXTURE_2D, parts.texture);
-      gl.texParameteri(
-        gl.TEXTURE_2D,
-        gl.TEXTURE_MAG_FILTER,
-        squares(view) ? gl.NEAREST : gl.LINEAR,
-      );
+      const wanted = squares(view) ? gl.NEAREST : gl.LINEAR;
+      if (wanted !== filter) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, wanted);
+        filter = wanted;
+      }
       // From the canvas's pixels to clip space: x from -1 at the left, y
       // from 1 at the top, the image's first row at its top.
       gl.uniform4f(

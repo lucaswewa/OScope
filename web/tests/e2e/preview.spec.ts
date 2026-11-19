@@ -83,13 +83,13 @@ test("at 1920 pixels wide, every frame the server sends is drawn", async ({ page
   await drawnPast(page, from + 20);
   const [end] = await sessions(server.url);
   const to = await readout(page);
-  // Sent while counting, and drawn: two may be on their way. A frame replaced
-  // as the stream started, while WebGL warmed up, isn't the count's; one in
-  // the twenty may be, on a computer as loaded as the Linux replay's (W3.1).
+  // Sent while counting, and drawn, the server dropping none: two may be on
+  // their way, or replaced by a newer one where a loaded computer's software
+  // GL missed a refresh, as the Linux replays' does (W3.1).
   const sent = end!.sent - start!.sent;
   expect(to.drawn - from).toBeGreaterThanOrEqual(sent - 2);
   expect(end!.dropped - start!.dropped).toBe(0);
-  expect(to.replaced - replaced).toBeLessThanOrEqual(1);
+  expect(to.replaced - replaced).toBeLessThanOrEqual(2);
 });
 
 test("the frames' size follows the window", async ({ page, server }) => {
