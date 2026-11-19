@@ -51,6 +51,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0043](0043-generated-api-types-and-the-typed-client.md) | Generated API types and the typed client | Accepted | W1.1 |
 | [0044](0044-things-in-the-app-live-properties-and-events.md) | Things in the app: live properties and events | Accepted | W1.2 |
 | [0045](0045-the-app-s-connection-sessions-and-media-under-security.md) | The app's connection, its sessions, and media under security | Accepted | W1.3 |
+| [0046](0046-the-host-adapter.md) | The host adapter | Accepted | W1.4 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

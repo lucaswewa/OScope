@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
 
-import { read, write } from "@/host/storage";
+import { host } from "@/host/host";
 import {
   accents,
   apply,
@@ -12,14 +12,14 @@ import {
   type Theme,
 } from "@/ui/tokens/theme";
 
-/** The name the browser keeps the choices under. W8.1 keeps them with the account. */
+/** The name the host keeps the choices under. W8.1 keeps them with the account. */
 const KEY = "oscope.display";
 
-/** What the browser kept, as far as it is something the app offers. */
+/** What the host kept, as far as it is something the app offers. */
 function kept(): { theme: Theme; accent: Accent } {
   let saved: unknown;
   try {
-    saved = JSON.parse(read(KEY) ?? "null");
+    saved = JSON.parse(host().kept.read(KEY) ?? "null");
   } catch {
     saved = null;
   }
@@ -32,7 +32,7 @@ function kept(): { theme: Theme; accent: Accent } {
 
 /**
  * How the app looks (ADR-0041): the theme and the accent. A change reaches
- * the page at once, and the browser keeps it for the next visit.
+ * the page at once, and the host keeps it for the next visit.
  */
 export const useDisplay = defineStore("display", () => {
   const theme = ref<Theme>("system");
@@ -55,13 +55,13 @@ export const useDisplay = defineStore("display", () => {
     () => {
       if (!page) return;
       apply(page, theme.value, accent.value);
-      write(KEY, JSON.stringify({ theme: theme.value, accent: accent.value }));
+      host().kept.write(KEY, JSON.stringify({ theme: theme.value, accent: accent.value }));
     },
     { flush: "sync" },
   );
 
   /**
-   * Takes up what the browser kept and puts it on `root`, the page's root;
+   * Takes up what the host kept and puts it on `root`, the page's root;
    * from then on each change is applied and kept, and `computer`, the
    * computer's wish for a dark scheme, is followed.
    */

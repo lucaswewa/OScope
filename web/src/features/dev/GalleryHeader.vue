@@ -26,6 +26,7 @@ const pages = [
   { to: "/dev/gallery/api", name: "api" },
   { to: "/dev/gallery/things", name: "things" },
   { to: "/dev/gallery/connection", name: "connection" },
+  { to: "/dev/gallery/host", name: "host" },
 ] as const;
 const themeChoices = computed(() =>
   themes.map((value) => ({ value, label: t(`display.themes.${value}`) })),

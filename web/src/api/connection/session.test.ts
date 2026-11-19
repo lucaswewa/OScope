@@ -94,6 +94,26 @@ describe("the session", () => {
     expect([sessions.state, sessions.ended, session.token]).toEqual(["out", true, undefined]);
   });
 
+  it("isn't ended by a 401 answering a call sent before its login", async () => {
+    let answer = (): void => {};
+    const late = new Promise<void>((done) => (answer = done));
+    const sent = standInNetwork({
+      "GET /api/v1/projects/list": async () => {
+        await late;
+        return problem(401, "Unauthorized", "a session's token is needed");
+      },
+      "POST /api/v1/auth/login": () => ({ token: "t1", name: "alice" }),
+    });
+    const sessions = useSession();
+    const before = call((signal) => server.api.GET("/api/v1/projects/list", { signal }));
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    await sessions.login("alice", "alice's password");
+    answer();
+    await expect(before).rejects.toMatchObject({ failure: "unauthorised" });
+    expect(sent[0]!.headers.get("authorization")).toBeNull();
+    expect([sessions.state, sessions.ended, session.token]).toEqual(["in", false, "t1"]);
+  });
+
   it("takes up a token kept from before, if the server still knows it", async () => {
     tokens.add("kept");
     expect(await useSession().resume("kept")).toBe("in");

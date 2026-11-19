@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 
+import type { Store } from "@/host/adapter";
+import { browserHost } from "@/host/browser";
+import { installHost } from "@/host/host";
 import { kept } from "@/host/kept";
 
 const isPair = (value: unknown): value is [number, number] =>
@@ -45,5 +48,25 @@ describe("a value the browser keeps", () => {
     await nextTick();
     expect(sizes.value).toEqual([55, 45]);
     vi.unstubAllGlobals();
+  });
+
+  it("is kept by the host the app has: the desktop app's, once it installs its own", async () => {
+    const values = new Map([["oscope.test.kept", "[10,90]"]]);
+    const store: Store = {
+      read: (key) => values.get(key),
+      write: (key, value) =>
+        void (value === undefined ? values.delete(key) : values.set(key, value)),
+    };
+    installHost({ ...browserHost(window), platform: "desktop", kept: store });
+    try {
+      const sizes = kept("oscope.test.kept", [70, 30] as [number, number], isPair);
+      expect(sizes.value).toEqual([10, 90]);
+      sizes.value = [20, 80];
+      await nextTick();
+      expect(values.get("oscope.test.kept")).toBe("[20,80]");
+      expect(localStorage.getItem("oscope.test.kept")).toBeNull();
+    } finally {
+      installHost(undefined);
+    }
   });
 });

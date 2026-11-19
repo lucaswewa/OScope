@@ -1,5 +1,6 @@
 // The lint rules that keep the app's layers and its two doors to the platform
-// (ADR-0039). Each is tried on a few lines that break it, and on the place
+// (ADR-0039), the host adapter named for each of the platform's calls
+// (ADR-0046). Each is tried on a few lines that break it, and on the place
 // where the same lines are allowed.
 import { fileURLToPath } from "node:url";
 
@@ -32,7 +33,7 @@ describe("the layers", () => {
       "src/api/ may not import from ui/",
     ],
     [
-      "src/host/storage.ts",
+      "src/host/browser.ts",
       'import { x } from "@/features/home/x";',
       "src/host/ may not import from features/",
     ],
@@ -62,9 +63,9 @@ describe("the layers", () => {
   it("lets a feature use the server's client, the platform and the components", async () => {
     const code = [
       'import { serverVersion } from "@/api/system";',
-      'import { storage } from "@/host/storage";',
+      'import { host } from "@/host/host";',
       'import Button from "@/ui/Button.vue";',
-      "export { Button, serverVersion, storage };",
+      "export { Button, host, serverVersion };",
       "",
     ].join("\n");
     expect(await broken("src/features/home/x.ts", code)).toEqual([]);
@@ -78,8 +79,17 @@ describe("the platform's two doors", () => {
     ['new EventSource("api/v1/stage/moved");', "Only src/api/ talks to the server"],
     ['localStorage.setItem("theme", "dark");', "Only src/host/ keeps state"],
     ['sessionStorage.getItem("token");', "Only src/host/ keeps state"],
-    ['window.open("docs");', "window.open is the platform's"],
-    ["window.localStorage.clear();", "window.localStorage is the platform's"],
+    ['localStorage.setItem("theme", "dark");', "use host().kept or host().session"],
+    ['window.open("docs");', "window.open is the platform's: use host().openOutside"],
+    ['open("docs");', "open is the platform's: use host().openOutside"],
+    ["window.localStorage.clear();", "window.localStorage is the platform's: use host().kept"],
+    ['await navigator.clipboard.writeText("x");', "use host().copy"],
+    ['document.execCommand("copy");', "document.execCommand is the platform's: use host().copy"],
+    ['new Notification("done");', "Notification is the platform's: use host().notify"],
+    ["await showSaveFilePicker();", "use host().files.save"],
+    ['document.title = "OScope";', "document.title is the platform's: use host().window.title"],
+    ["await document.body.requestFullscreen();", "use host().window.enterFullScreen"],
+    ["await document.exitFullscreen();", "use host().window.leaveFullScreen"],
     ['const server = "http://127.0.0.1:8210/";\nexport { server };', "No absolute URLs"],
     ['const stream = "wss://example.org/preview";\nexport { stream };', "No absolute URLs"],
   ];
@@ -93,8 +103,17 @@ describe("the platform's two doors", () => {
   it("opens the network to src/api/ and the platform to src/host/", async () => {
     const network = 'export const answer = await fetch("api/v1/system/version");\n';
     expect(await broken("src/api/system.ts", network)).toEqual([]);
-    const state = 'localStorage.setItem("theme", "dark");\nexport {};\n';
-    expect(await broken("src/host/storage.ts", state)).toEqual([]);
+    const platform = [
+      'localStorage.setItem("theme", "dark");',
+      'await navigator.clipboard.writeText("x");',
+      'new Notification("done");',
+      'document.title = "OScope";',
+      "await document.body.requestFullscreen();",
+      'open("docs");',
+      "export {};",
+      "",
+    ].join("\n");
+    expect(await broken("src/host/browser.ts", platform)).toEqual([]);
   });
 
   it("holds a Vue component to the same rules", async () => {
