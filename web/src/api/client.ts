@@ -119,11 +119,24 @@ export function pause(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/**
+ * Given up as the page goes away (W3.1): WebKit reports a request still on
+ * its way then as one that access control refused, an error of the page.
+ * Made anew if the page comes back from the browser's cache.
+ */
+let leaving = new AbortController();
+globalThis.addEventListener?.("pagehide", () => leaving.abort());
+globalThis.addEventListener?.("pageshow", (event) => {
+  if ((event as PageTransitionEvent).persisted) leaving = new AbortController();
+});
+
 /** The signal a call is made with, and why it ended, if it did. */
 function bounded(limits: Limits) {
   const timer = AbortSignal.timeout(limits.timeout ?? TIME_LIMIT);
-  const signal = limits.signal ? AbortSignal.any([limits.signal, timer]) : timer;
-  const why = () => (limits.signal?.aborted ? "aborted" : timer.aborted ? "timeout" : undefined);
+  const gone = leaving.signal;
+  const signal = AbortSignal.any([timer, gone, ...(limits.signal ? [limits.signal] : [])]);
+  const why = () =>
+    limits.signal?.aborted || gone.aborted ? "aborted" : timer.aborted ? "timeout" : undefined;
   return { signal, why };
 }
 
