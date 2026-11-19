@@ -215,6 +215,8 @@ test("the viewer's chrome looks as its baselines do, the frame hidden @visual", 
   await button(page, "Stop").click();
   await expect(readout(page, "state")).toHaveText("Not streaming");
   await expect(readout(page, "rate")).toHaveText("0.0 fps");
+  // The rail's indicator says the stage is homed: a moment after it was.
+  await expect(said(page, "indicator")).toHaveAccessibleName("The instrument: OK");
   await page.mouse.move(5, 5);
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);
