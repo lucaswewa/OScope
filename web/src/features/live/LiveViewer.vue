@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, shallowRef } from "vue";
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { usePreview } from "@/api/preview/use";
@@ -8,6 +8,9 @@ import { useProperty } from "@/api/things/use";
 import { keyStep, written } from "@/features/control/stage/stage";
 import { useChoices } from "@/features/control/stage/choices";
 import { usePointing } from "@/features/control/stage/usePointing";
+import OverlayMeasures from "@/features/live/overlays/OverlayMeasures.vue";
+import OverlayLayer from "@/features/live/overlays/OverlayLayer.vue";
+import { useOverlays } from "@/features/live/overlays/overlays";
 import { useStreaming } from "@/features/live/streaming";
 import {
   fromCentre,
@@ -59,6 +62,17 @@ const pointer = shallowRef<[number, number]>();
 let held: [number, number] | undefined;
 
 const pointing = usePointing();
+const overlays = useOverlays();
+// The statistics follow what is drawn: the ROI's, and the line's profile (W3.5).
+watch(
+  () => [overlays.roi, overlays.line] as const,
+  ([roi, line]) => preview.measure(roi || line ? { roi, profile: line } : undefined),
+  { immediate: true },
+);
+/** Switches a drawing tool on, or off again. */
+function draw(tool: "roi" | "line"): void {
+  overlays.tool = overlays.tool === tool ? "none" : tool;
+}
 const choices = useChoices();
 const locked = useDisabled({});
 /** A drag of the stage: where it began, in the sensor's pixels and on the page. */
@@ -291,6 +305,25 @@ const scaleLabel = computed(() => {
         <ToolbarButton icon="download" @click="save">{{ t("live.save") }}</ToolbarButton>
       </ControlScope>
     </Toolbar>
+    <!-- The overlays change nothing on the instrument: free in the read-only mode. -->
+    <ControlScope :locked="false">
+      <Toolbar class="tools" :label="t('live.overlays.tools')">
+        <ToolbarButton
+          v-for="layer in ['crosshair', 'grid', 'scale'] as const"
+          :key="layer"
+          :pressed="overlays.layers[layer]"
+          @click="overlays.layers[layer] = !overlays.layers[layer]"
+        >
+          {{ t(`live.overlays.layers.${layer}`) }}
+        </ToolbarButton>
+        <ToolbarButton :pressed="overlays.tool === 'roi'" @click="draw('roi')">
+          {{ t("live.overlays.drawRoi") }}
+        </ToolbarButton>
+        <ToolbarButton :pressed="overlays.tool === 'line'" @click="draw('line')">
+          {{ t("live.overlays.drawLine") }}
+        </ToolbarButton>
+      </Toolbar>
+    </ControlScope>
     <div class="stage">
       <canvas
         ref="canvas"
@@ -319,7 +352,13 @@ const scaleLabel = computed(() => {
       >
         <span class="chip">{{ t(`live.said.${state}`) }}</span>
       </p>
-      <figure v-if="bar" class="scale" data-said="scale">
+      <OverlayLayer
+        v-if="preview.view.value && preview.extent.value"
+        :view="preview.view.value"
+        :extent="preview.extent.value"
+        :size="preview.size()"
+      />
+      <figure v-if="bar && overlays.layers.scale" class="scale" data-said="scale">
         <span class="line" :style="{ inlineSize: `${bar.width}px` }" />
         <figcaption>{{ scaleLabel }}</figcaption>
       </figure>
@@ -330,13 +369,14 @@ const scaleLabel = computed(() => {
         <dd>{{ one.value }}</dd>
       </div>
     </dl>
+    <OverlayMeasures :stats="preview.stats.value" />
   </section>
 </template>
 
 <style scoped>
 .live {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   block-size: 100%;
   background: var(--surface-page);
 }

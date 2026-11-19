@@ -929,7 +929,7 @@ The camera, the stage, the lights, the live image and what is drawn over it.
 | [W3.2](milestone-2/phases.md#w3-2) | Camera controls | W3.1 | 1,400 | — | Done |
 | [W3.3](milestone-2/phases.md#w3-3) | Stage controls | W3.1 | 1,700 | — | Done |
 | [W3.4](milestone-2/phases.md#w3-4) | Illumination and the objective | W3.2 | 900 | — | Done |
-| [W3.5](milestone-2/phases.md#w3-5) | Overlays I: crosshair, ROI, grid and profile | W3.1, W0.7 | 1,600 | — | Planned |
+| [W3.5](milestone-2/phases.md#w3-5) | Overlays I: crosshair, ROI, grid and profile | W3.1, W0.7 | 1,600 | — | In review |
 | [W3.6](milestone-2/phases.md#w3-6) | Overlays II: histogram, saturation, false colour and the look | W3.5 | 1,600 | — | Planned |
 | [W3.7](milestone-2/phases.md#w3-7) | Autofocus, capture and the live recipe | W3.6 | 1,400 | — | Planned |
 | [W3.8](milestone-2/phases.md#w3-8) | The free-roam mosaic and the tile viewer | W3.3 | 1,500 | 0050 | Planned |
