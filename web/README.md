@@ -111,6 +111,11 @@ Calls go through `src/api/`, typed from the server's own description of its API 
 - **An `ApiError`** says how a call failed: its `failure` (refused by a device or by the server's checks, missing, out of time…), a device's `refusal` and its `status` (ADR-0034), the `fields` a 422 refused, and the server's `body`, for a form's `refused`.
 - **The media plane,** which the description lacks, has wrappers written by hand in `src/api/media.ts`: deep-zoom tiles, volumes' slices and bricks, a project's files, and the logs' live tail. `tests/e2e/contract.spec.ts` checks each, and the client, against a real server.
 - **The error model's tests** read the server's own answers, recorded into `src/api/recorded-answers.json` by `node scripts/record-answers.mjs`, after `npm run build`, with `oscope-server` built.
+- **A Thing's state, live,** is `useProperty("/api/v1/stage/position")` in a component ([ADR-0044](../docs/adr/0044-things-in-the-app-live-properties-and-events.md)), from `src/api/things/`. Open `#/dev/gallery/things` to see the stage followed.
+  - **Its value** is kept by its Thing's WebSocket if the property can be observed. Otherwise it is read every second, or as often as asked (`{ every: 250 }`), and again at each of its Thing's events.
+  - **`stale`** says the server hasn't confirmed it for 5 s.
+  - **`write`** shows the value at once. If the server refuses it, the last value comes back, with the reason in `refused`.
+  - **`useEvent` and `useAction`** do the same for events and actions. Each Thing has one store, `thingStore`, and one WebSocket, opened again with back-off.
 
 ## Adding a package
 

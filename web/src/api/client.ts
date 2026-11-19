@@ -40,10 +40,23 @@ export class Server {
   address(path: string): string {
     return this.base.replace(/\/+$/, "") + path;
   }
+
+  /** A WebSocket's address on it: `ws:`, or `wss:` where its pages are `https:`. */
+  socketAddress(path: string): string {
+    const url = new URL(this.address(path), globalThis.location?.href);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    return url.href;
+  }
 }
 
 /** The server that serves the app. */
 export const server = new Server();
+
+/**
+ * The session, once logged in (W1.3): under security, its token is the
+ * first message of each Thing's WebSocket (ADR-0031).
+ */
+export const session: { token?: string | undefined } = {};
 
 /** Waits `ms` between calls, unless `signal` aborts first. */
 export function pause(ms: number, signal?: AbortSignal): Promise<void> {
