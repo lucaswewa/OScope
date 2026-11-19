@@ -32,6 +32,7 @@ Each step's output goes to a log file, and each suite's and smoke run's to its o
 The test suites, and then the smoke runs, go eight at a time, each limited to two CPUs of its own, as on CI's two-core runners. Slot k gets CPUs 2k and 2k+1: on the owner's PC, an i9-12900, CPUs 0–15 are its eight performance cores' threads. `--jobs N` runs N at a time, at most one for each pair of CPUs there is. On Windows the limit is set through PowerShell; on Linux, with `taskset`.
 
 - **The longest go first,** by the last run's times, kept in `target/ci-times.tsv`, so that none is left to run alone at the end.
+- **The first eight start a second apart** (`PINNED_STAGGER`, in seconds), the rest as slots free: started together, eight browsers and servers twice ran Windows out of sockets' buffers, a page refused with `ERR_NO_BUFFER_SPACE`.
 - **The suites are quiet** but for any that fails, which shows the end of its log; the smoke runs each show a line.
 - **Disk:** suites that record preallocate their segments, several at once. Keep some 20 GB free.
 
