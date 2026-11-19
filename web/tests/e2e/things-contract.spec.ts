@@ -7,6 +7,7 @@ import { act } from "../../src/api/actions.ts";
 import { call, Server } from "../../src/api/client.ts";
 import { thingStore, type Told } from "../../src/api/things/store.ts";
 import { expect, test } from "./fixtures.ts";
+import { fast } from "./sim.ts";
 
 test.beforeEach(() => {
   setActivePinia(createPinia());
@@ -35,8 +36,14 @@ test("a property its socket can't keep is followed by reading it", async ({ serv
   const on = new Server(server.url);
   const stage = thingStore("stage", on);
   const stop = stage.follow("position", 200);
-  await act("/api/v1/stage/home", {}, { on: new Server(server.url), timeout: 30_000 });
-  await act("/api/v1/stage/move_to", { x: 3000, y: 2000, z: 100 }, { on: new Server(server.url) });
+  await fast(server.url, async () => {
+    await act("/api/v1/stage/home", {}, { on: new Server(server.url), timeout: 30_000 });
+    await act(
+      "/api/v1/stage/move_to",
+      { x: 3000, y: 2000, z: 100 },
+      { on: new Server(server.url) },
+    );
+  });
   await expect
     .poll(() => {
       const kept = stage.kept.get("position")?.value as { position: { x: number } } | undefined;
@@ -56,9 +63,11 @@ test("events come in the order they happened", async ({ server }) => {
   const stop = stage.on("moved", (one) => told.push(one));
   await expect.poll(() => stage.open).toBe(true);
   const other = new Server(server.url);
-  await act("/api/v1/stage/home", {}, { on: other, timeout: 30_000 });
   const targets = [1000, 2000, 3000];
-  for (const x of targets) await act("/api/v1/stage/move_to", { x, y: 0, z: 0 }, { on: other });
+  await fast(server.url, async () => {
+    await act("/api/v1/stage/home", {}, { on: other, timeout: 30_000 });
+    for (const x of targets) await act("/api/v1/stage/move_to", { x, y: 0, z: 0 }, { on: other });
+  });
   await expect.poll(() => told.length).toBeGreaterThanOrEqual(targets.length + 1);
   const xs = told.slice(-3).map((one) => (one.data as { position: { x: number } }).position.x);
   // Each within a few µm of its target, as the simulated stage stops.

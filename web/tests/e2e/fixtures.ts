@@ -14,11 +14,17 @@ export const test = base.extend<{ server: Server; thrown: void }>({
     await server.dispose();
   },
   // An error the page didn't catch fails the test it happened in, whatever
-  // the test was looking at.
+  // the test was looking at. WebKit reports a request that a reload cuts off
+  // as one access control refused, an error of the page, though the page
+  // threw nothing: those are let be (W3.1).
   thrown: [
-    async ({ page }, use) => {
+    async ({ page, browserName }, use) => {
       const errors: string[] = [];
-      page.on("pageerror", (error) => errors.push(error.message));
+      const cutByReload = (message: string) =>
+        browserName === "webkit" && message.endsWith("due to access control checks.");
+      page.on("pageerror", (error) => {
+        if (!cutByReload(error.message)) errors.push(error.message);
+      });
       await use();
       expect(errors, "what the page threw").toEqual([]);
     },

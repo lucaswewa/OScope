@@ -2,12 +2,14 @@
 import { useI18n } from "vue-i18n";
 
 import StageSample from "@/features/control/StageSample.vue";
+import LiveViewer from "@/features/live/LiveViewer.vue";
 import { kept } from "@/host/kept";
 import Splitter from "@/ui/Splitter.vue";
 
 /**
  * Control and Live View (W2.1's frame for W3): the control pane and the
- * view, side by side, with a handle between them whose place is kept.
+ * live image (W3.1), side by side, with a handle between them whose place
+ * is kept.
  */
 const { t } = useI18n();
 
@@ -28,7 +30,7 @@ const sizes = kept("oscope.control.panes", [33, 67] as [number, number], isPair)
       </template>
       <template #second>
         <section class="view" :aria-label="t('control.view')">
-          <p class="note">{{ t("control.comesView") }}</p>
+          <LiveViewer />
         </section>
       </template>
     </Splitter>
@@ -58,8 +60,6 @@ const sizes = kept("oscope.control.panes", [33, 67] as [number, number], isPair)
 }
 
 .view {
-  display: grid;
-  place-items: center;
   block-size: 100%;
   background: var(--surface-page);
 }

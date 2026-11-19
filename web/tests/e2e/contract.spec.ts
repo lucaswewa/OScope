@@ -19,6 +19,7 @@ import {
   type TailMessage,
 } from "../../src/api/media.ts";
 import { expect, test } from "./fixtures.ts";
+import { fast } from "./sim.ts";
 
 /** What a call threw. */
 async function thrown(promise: Promise<unknown>): Promise<ApiError> {
@@ -35,7 +36,9 @@ test("an action is followed to completion, to a failure, and cancelled", async (
   // Before homing, the stage refuses to move.
   const refused = await thrown(act("/api/v1/stage/move_to", { x: 0, y: 0, z: 0 }, { on }));
   expect([refused.failure, refused.refusal, refused.status]).toEqual(["refused", "alarm", 409]);
-  const homed = await act("/api/v1/stage/home", {}, { on, timeout: 30_000 });
+  const homed = await fast(server.url, () =>
+    act("/api/v1/stage/home", {}, { on, timeout: 30_000 }),
+  );
   expect(Object.keys(homed.position).sort()).toEqual(["x", "y", "z"]);
   // A slow move, stopped by its caller: cancelled on the server too.
   const caller = new AbortController();

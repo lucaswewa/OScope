@@ -1,5 +1,5 @@
 // The shell's status (W2.2): the instrument's indicator following the stage
-// homed, and a fault injected and cleared; the page in place of the tabs
+// homed on the fast clock (W3.1), and a fault injected and cleared; the page in place of the tabs
 // while the server is gone; another's request for the lease, handed over
 // from its notice, between two browsers; the notices kept after they go;
 // axe; and the baselines.
@@ -10,20 +10,12 @@ import { Server as Api } from "../../src/api/client.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
 import { Server } from "./server.ts";
+import { homed } from "./sim.ts";
 
 const heading = (page: Page) => page.getByRole("heading", { level: 1 });
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
 const indicator = (page: Page) => said(page, "indicator");
 const notices = (page: Page) => page.getByRole("button", { name: /^The notices/ });
-
-/**
- * The simulator's clock fifty times as fast as the real one, for the whole
- * test: homing takes a third of a second, not sixteen. Nothing here streams.
- */
-const FAST = `
-[simulator]
-rate = 50
-`;
 
 /** The instrument's state, as the indicator says it to a screen reader. */
 const stateIs = (page: Page, state: string) =>
@@ -31,49 +23,35 @@ const stateIs = (page: Page, state: string) =>
 
 test("the indicator follows the stage homed, and a fault injected and cleared @main", async ({
   page,
+  server,
 }) => {
-  const server = new Server(FAST);
-  await server.start();
-  try {
-    const on = new Api(server.url);
-    await page.goto(`${server.url}/#/control`);
-    // The stage waits to be homed: nothing can be acquired.
-    await stateIs(page, "Fault");
-    await expect(indicator(page)).toHaveAttribute("data-tone", "danger");
-    await indicator(page).click();
-    const panel = said(page, "status");
-    await expect(panel).toContainText("stage: in alarm");
-    await expect(panel.getByRole("listitem").filter({ hasText: "The stage" })).toContainText(
-      "Fault",
-    );
-    await page.keyboard.press("Escape");
-    await expect(panel).toBeHidden();
+  const on = new Api(server.url);
+  await page.goto(`${server.url}/#/control`);
+  // The stage waits to be homed: nothing can be acquired.
+  await stateIs(page, "Fault");
+  await expect(indicator(page)).toHaveAttribute("data-tone", "danger");
+  await indicator(page).click();
+  const panel = said(page, "status");
+  await expect(panel).toContainText("stage: in alarm");
+  await expect(panel.getByRole("listitem").filter({ hasText: "The stage" })).toContainText("Fault");
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
 
-    await act("/api/v1/stage/home", {}, { on, timeout: 30_000 });
-    await stateIs(page, "OK");
-    await expect(indicator(page)).toHaveAttribute("data-tone", "success");
+  await homed(server.url);
+  await stateIs(page, "OK");
+  await expect(indicator(page)).toHaveAttribute("data-tone", "success");
 
-    await act(
-      "/api/v1/simulation/inject_fault",
-      { fault: "camera_unplugged", active: true },
-      { on },
-    );
-    await stateIs(page, "Fault");
-    await indicator(page).click();
-    await expect(panel.getByRole("listitem").filter({ hasText: "The camera" })).toContainText(
-      "Offline: disconnected",
-    );
-    await page.keyboard.press("Escape");
-
-    await act(
-      "/api/v1/simulation/inject_fault",
-      { fault: "camera_unplugged", active: false },
-      { on },
-    );
-    await stateIs(page, "OK");
-  } finally {
-    await server.dispose();
-  }
+  const unplugged = (active: boolean) =>
+    act("/api/v1/simulation/inject_fault", { fault: "camera_unplugged", active }, { on });
+  await unplugged(true);
+  await stateIs(page, "Fault");
+  await indicator(page).click();
+  await expect(panel.getByRole("listitem").filter({ hasText: "The camera" })).toContainText(
+    "Offline: disconnected",
+  );
+  await page.keyboard.press("Escape");
+  await unplugged(false);
+  await stateIs(page, "OK");
 });
 
 test("the tabs give way to a page while the server is gone, and come back with it @main", async ({

@@ -49,6 +49,13 @@ import logging from "@material-symbols/svg-300/outlined/receipt_long.svg?raw";
 import keyboard from "@material-symbols/svg-300/outlined/keyboard.svg?raw";
 import lock from "@material-symbols/svg-300/outlined/lock.svg?raw";
 import notifications from "@material-symbols/svg-300/outlined/notifications.svg?raw";
+import stop from "@material-symbols/svg-300/outlined/stop.svg?raw";
+import zoomIn from "@material-symbols/svg-300/outlined/zoom_in.svg?raw";
+import zoomOut from "@material-symbols/svg-300/outlined/zoom_out.svg?raw";
+import fit from "@material-symbols/svg-300/outlined/fit_screen.svg?raw";
+import actual from "@material-symbols/svg-300/outlined/1x_mobiledata.svg?raw";
+import fullScreen from "@material-symbols/svg-300/outlined/fullscreen.svg?raw";
+import leaveFullScreen from "@material-symbols/svg-300/outlined/fullscreen_exit.svg?raw";
 
 /** The box every Material Symbols file draws in. */
 export const BOX = "0 -960 960 960";
@@ -103,6 +110,13 @@ export const icons = {
   keyboard: pathOf(keyboard),
   lock: pathOf(lock),
   notifications: pathOf(notifications),
+  stop: pathOf(stop),
+  zoomIn: pathOf(zoomIn),
+  zoomOut: pathOf(zoomOut),
+  fit: pathOf(fit),
+  actual: pathOf(actual),
+  fullScreen: pathOf(fullScreen),
+  leaveFullScreen: pathOf(leaveFullScreen),
   home: pathOf(home),
   folder: pathOf(folder),
   file: pathOf(file),

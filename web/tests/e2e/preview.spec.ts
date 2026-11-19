@@ -5,37 +5,13 @@
 // frames; axe, and the baselines.
 import type { Page } from "@playwright/test";
 
-import { act } from "../../src/api/actions.ts";
-import { call, Server as Api } from "../../src/api/client.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
+import { aRegion, onTissue } from "./sim.ts";
 
 const PAGE = "/#/dev/gallery/preview";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
-
-/**
- * The camera given a 1920 × 1272 region, which keeps its rate. A debug
- * server renders a whole 20 MP sensor on the CPU, and many of them at once,
- * as the end-to-end tests run, starve the browsers: a region is an eighth
- * of that work.
- */
-async function aRegion(url: string): Promise<void> {
-  const roi = { x: 1776, y: 1176, width: 1920, height: 1272 };
-  await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: roi, signal }));
-}
-
-/**
- * The stage homed, then over the default slide's tissue, as P17's example
- * has it, not empty glass, for the tests that look at what is drawn; and
- * the camera's region. Homing takes some 16 s: the others stay on glass.
- */
-async function onTissue(url: string): Promise<void> {
-  const on = new Api(url);
-  await act("/api/v1/stage/home", {}, { on });
-  await act("/api/v1/stage/move_to", { x: 40_000, y: 12_000, z: 5_000, speed: 25_000 }, { on });
-  await aRegion(url);
-}
 
 /** The camera started from the page, as its user would. */
 async function streaming(page: Page): Promise<void> {
@@ -55,6 +31,13 @@ async function readout(page: Page) {
     region: number(/Sensor pixels\s+(\d+) ×/),
   };
 }
+
+/**
+ * How long the server's count of sessions may take to follow: a session
+ * whose socket wasn't closed cleanly lingers 15 s (W1.5), which a loaded
+ * computer meets (W3.1).
+ */
+const LINGER = { timeout: 60_000 };
 
 /** The server's preview sessions, as its `preview` Thing lists them. */
 async function sessions(url: string): Promise<Array<{ sent: number; dropped: number }>> {
@@ -96,14 +79,17 @@ test("at 1920 pixels wide, every frame the server sends is drawn", async ({ page
   await drawnPast(page, 2);
   expect((await readout(page)).width).toBe(1920);
   const [start] = await sessions(server.url);
-  const from = (await readout(page)).drawn;
+  const { drawn: from, replaced } = await readout(page);
   await drawnPast(page, from + 20);
   const [end] = await sessions(server.url);
   const to = await readout(page);
-  // Sent while counting, and drawn: two may be on their way.
+  // Sent while counting, and drawn, the server dropping none: two may be on
+  // their way, or replaced by a newer one where a loaded computer's software
+  // GL missed a refresh, as the Linux replays' does (W3.1).
   const sent = end!.sent - start!.sent;
   expect(to.drawn - from).toBeGreaterThanOrEqual(sent - 2);
-  expect([end!.dropped - start!.dropped, to.replaced]).toEqual([0, 0]);
+  expect(end!.dropped - start!.dropped).toBe(0);
+  expect(to.replaced - replaced).toBeLessThanOrEqual(2);
 });
 
 test("the frames' size follows the window", async ({ page, server }) => {
@@ -146,7 +132,7 @@ test("it rests while the page is hidden, and goes on when it is shown", async ({
   await page.goto(server.url + PAGE);
   await streaming(page);
   await drawnPast(page, 1);
-  await expect.poll(async () => (await sessions(server.url)).length).toBe(1);
+  await expect.poll(async () => (await sessions(server.url)).length, LINGER).toBe(1);
   const turn = (state: "hidden" | "visible") =>
     page.evaluate((now) => {
       Object.defineProperty(document, "visibilityState", { value: now, configurable: true });
@@ -154,10 +140,10 @@ test("it rests while the page is hidden, and goes on when it is shown", async ({
     }, state);
   await turn("hidden");
   await expect(said(page, "readout")).toContainText("resting while the page is hidden");
-  await expect.poll(async () => (await sessions(server.url)).length).toBe(0);
+  await expect.poll(async () => (await sessions(server.url)).length, LINGER).toBe(0);
   await turn("visible");
   await drawnPast(page, (await readout(page)).drawn);
-  await expect.poll(async () => (await sessions(server.url)).length).toBe(1);
+  await expect.poll(async () => (await sessions(server.url)).length, LINGER).toBe(1);
 });
 
 test("statistics come with the frames when asked for", async ({ page, server }) => {

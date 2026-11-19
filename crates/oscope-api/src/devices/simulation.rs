@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use teta_wot::prelude::*;
 
-use super::Link;
+use super::{Link, property_refused};
 
 /// A sample in the catalogue.
 /// A fault to inject into the simulator (P50).
@@ -49,6 +49,9 @@ pub struct TileCacheStats {
     /// The bytes they hold.
     pub bytes: usize,
 }
+
+/// The fastest the clock may be written to run.
+const MOST_RATE: f64 = 1_000.0;
 
 /// The simulator: its sample catalogue, the slide on the stage, and
 /// whether fluorescence is seen through a confocal's pinhole.
@@ -112,7 +115,9 @@ impl SimulationThing {
 
     /// How fast the simulator's clock runs.
     ///
-    /// 1 is real time; 0, stepped by tests.
+    /// 1 is real time; 0, stepped by tests. It may be written, above 0 and
+    /// up to 1,000: the app's end-to-end tests run it fast while the stage
+    /// homes and moves (W3.1).
     #[property]
     async fn rate(&self) -> Result<f64, PropertyError> {
         Ok(match self.simulator_property()?.clock.rate() {
@@ -120,6 +125,21 @@ impl SimulationThing {
             Rate::Scaled(k) => k,
             Rate::Stepped => 0.0,
         })
+    }
+
+    #[setter(rate)]
+    async fn set_rate(&self, value: f64) -> Result<(), PropertyError> {
+        if !(value > 0.0 && value <= MOST_RATE) {
+            let why = format!("the rate must be above 0 and at most {MOST_RATE}, and was {value}");
+            return Err(property_refused(400, "out of range", why));
+        }
+        let rate = if value == 1.0 {
+            Rate::RealTime
+        } else {
+            Rate::Scaled(value)
+        };
+        self.simulator_property()?.clock.set_rate(rate);
+        Ok(())
     }
 
     /// How the camera's cache of rendered tiles has done.

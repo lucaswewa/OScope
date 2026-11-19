@@ -4363,10 +4363,20 @@ export interface paths {
          * How fast the simulator's clock runs.
          * @description ## How fast the simulator's clock runs.
          *
-         *     1 is real time; 0, stepped by tests.
+         *     1 is real time; 0, stepped by tests. It may be written, above 0 and
+         *     up to 1,000: the app's end-to-end tests run it fast while the stage
+         *     homes and moves (W3.1).
          */
         get: operations["get_property_api_v1_simulation_rate_get"];
-        put?: never;
+        /**
+         * Set How fast the simulator's clock runs.
+         * @description ## How fast the simulator's clock runs.
+         *
+         *     1 is real time; 0, stepped by tests. It may be written, above 0 and
+         *     up to 1,000: the app's end-to-end tests run it fast while the stage
+         *     homes and moves (W3.1).
+         */
+        put: operations["set_property_api_v1_simulation_rate_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -19582,6 +19592,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["simulation_rate_value"];
+                };
+            };
+        };
+    };
+    set_property_api_v1_simulation_rate_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["simulation_rate_value"];
+            };
+        };
+        responses: {
+            /** @description Property set successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

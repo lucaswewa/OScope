@@ -176,6 +176,32 @@ async fn driver_errors_answer_with_their_statuses() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn the_simulators_clock_runs_as_fast_as_written_within_its_range() {
+    let folder = tempfile::tempdir().unwrap();
+    let (client, devices) = sim_server(folder.path(), 1.0).await;
+    let rate = || async { client.get("/api/v1/simulation/rate").await.json() };
+    assert_eq!(rate().await, json!(1.0));
+    for (written, read) in [(50.0, json!(50.0)), (1.0, json!(1.0)), (0.5, json!(0.5))] {
+        let answer = client
+            .put_json("/api/v1/simulation/rate", &json!(written))
+            .await;
+        assert_eq!(answer.status, 201, "{written}: {}", answer.text());
+        assert_eq!(rate().await, read);
+    }
+    let simulator = devices.simulator.as_ref().unwrap();
+    assert_eq!(simulator.clock.rate(), oscope_sim::Rate::Scaled(0.5));
+    // Stepped, or faster than the limit, it is refused, and stays as it was.
+    for written in [0.0, -2.0, 1_001.0] {
+        let answer = client
+            .put_json("/api/v1/simulation/rate", &json!(written))
+            .await;
+        assert_eq!(answer.status, 400, "{written}: {}", answer.text());
+        assert!(answer.text().contains("out of range"), "{}", answer.text());
+    }
+    assert_eq!(rate().await, json!(0.5));
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn the_simulation_lists_loads_unloads_and_imports_samples() {
     let folder = tempfile::tempdir().unwrap();
     let (client, _) = sim_server(folder.path(), 1.0).await;
