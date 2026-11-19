@@ -26,7 +26,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W3.1 | The live viewer | Done | [W3.1-live-viewer.md](W3.1-live-viewer.md) |
 | W3.2 | Camera controls | Done | [W3.2-camera-controls.md](W3.2-camera-controls.md) |
 | W3.3 | Stage controls | Done | [W3.3-stage-controls.md](W3.3-stage-controls.md) |
-| W3.4 | Illumination and the objective | Planned | — |
+| W3.4 | Illumination and the objective | In review | [W3.4-illumination.md](W3.4-illumination.md) |
 | W3.5 | Overlays I: crosshair, ROI, grid and profile | Planned | — |
 | W3.6 | Overlays II: histogram, saturation, false colour and the look | Planned | — |
 | W3.7 | Autofocus, capture and the live recipe | Planned | — |

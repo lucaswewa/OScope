@@ -2,6 +2,8 @@
 import { useI18n } from "vue-i18n";
 
 import CameraPane from "@/features/control/camera/CameraPane.vue";
+import LightsPane from "@/features/control/lights/LightsPane.vue";
+import ObjectivePane from "@/features/control/objective/ObjectivePane.vue";
 import StageHalt from "@/features/control/stage/StageHalt.vue";
 import StagePane from "@/features/control/stage/StagePane.vue";
 import LiveViewer from "@/features/live/LiveViewer.vue";
@@ -27,7 +29,8 @@ const sizes = kept("oscope.control.panes", [33, 67] as [number, number], isPair)
         <section class="pane" :aria-label="t('control.pane')">
           <h1>{{ t("tabs.control.title") }}</h1>
           <CameraPane />
-          <p class="note">{{ t("control.comesPane") }}</p>
+          <LightsPane />
+          <ObjectivePane />
           <StagePane />
           <StageHalt />
         </section>
@@ -66,10 +69,5 @@ const sizes = kept("oscope.control.panes", [33, 67] as [number, number], isPair)
 .view {
   block-size: 100%;
   background: var(--surface-page);
-}
-
-.note {
-  margin: 0;
-  color: var(--text-muted);
 }
 </style>

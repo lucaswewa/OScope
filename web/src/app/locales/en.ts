@@ -46,7 +46,26 @@ export default {
     handle: "Between the controls and the view",
     pane: "The controls",
     view: "The view",
-    comesPane: "The lights come here in W3.4.",
+  },
+  lights: {
+    title: "The lights",
+    intensity: "Intensity of {name}",
+    differ: "Not as saved: {names}.",
+    putBack: "Put the saved lights back",
+  },
+  objective: {
+    title: "The objective",
+    fitted: "Fitted",
+    choice: "{name}, NA {na}",
+    about: "{model}, NA {na}, working distance {distance} mm",
+    none: "No objective is said to be fitted.",
+    offer: "The {name} is fitted.",
+    offerWhy: "Check that it is the one in the light path: two small moves measure the pixel.",
+    needsStream: "Its check reads the live frames: start streaming first.",
+    check: "Check the objective",
+    plausible: "The {objective} checks out: {measured} µm a pixel, for {expected} expected.",
+    implausible:
+      "This isn't the {objective}: {measured} µm a pixel, for {expected} expected. The nearest is the {nearest}.",
   },
   stage: {
     title: "The stage",

@@ -13,6 +13,7 @@ import { Server as Api } from "../../src/api/client.ts";
 import { finished, type JobRef } from "../../src/api/jobs.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
+import { found, greys } from "./pixels.ts";
 import { clockAt, fast, FAST, homed, overTissue } from "./sim.ts";
 
 const pane = (page: Page) => page.locator('[data-said="stage"]');
@@ -229,66 +230,6 @@ test("without a calibration, pointing says what it lacks", async ({ page, server
   expect(await invoked(server.url, "move_by")).toBe(0);
 });
 
-/** A square of the screenshot `png`, as greys, `side` CSS pixels about `at`. */
-async function greys(
-  page: Page,
-  png: Buffer,
-  at: [number, number],
-  side: number,
-): Promise<number[]> {
-  return page.evaluate(
-    async ({ base64, x, y, side }) => {
-      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-      const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
-      const drawn = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d")!;
-      drawn.drawImage(bitmap, 0, 0);
-      const { data } = drawn.getImageData(x, y, side, side);
-      return Array.from(
-        { length: side * side },
-        (_, i) => data[4 * i]! + data[4 * i + 1]! + data[4 * i + 2]!,
-      );
-    },
-    {
-      base64: png.toString("base64"),
-      x: Math.round(at[0] - side / 2),
-      y: Math.round(at[1] - side / 2),
-      side,
-    },
-  );
-}
-
-/**
- * Where the patch `wanted` (`side` square) is best found in `area` (`side + 2 · reach`
- * square), by normalised cross-correlation: its offset from the area's middle, and how well.
- */
-function found(wanted: number[], area: number[], side: number, reach: number) {
-  const span = side + 2 * reach;
-  const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / values.length;
-  const w = mean(wanted);
-  const wd = wanted.map((v) => v - w);
-  const wn = Math.sqrt(wd.reduce((sum, v) => sum + v * v, 0));
-  let best = { dx: 0, dy: 0, score: -Infinity };
-  for (let dy = -reach; dy <= reach; dy++) {
-    for (let dx = -reach; dx <= reach; dx++) {
-      const patch: number[] = [];
-      for (let row = 0; row < side; row++) {
-        const start = (row + reach + dy) * span + reach + dx;
-        patch.push(...area.slice(start, start + side));
-      }
-      const p = mean(patch);
-      let dot = 0;
-      let pn = 0;
-      patch.forEach((v, i) => {
-        dot += (v - p) * wd[i]!;
-        pn += (v - p) ** 2;
-      });
-      const score = dot / (wn * Math.sqrt(pn) || 1);
-      if (score > best.score) best = { dx, dy, score };
-    }
-  }
-  return best;
-}
-
 /** The pixel of the active calibration's image, in µm, and its fit's error, in pixels. */
 async function calibration(url: string): Promise<{ pixel: number; residual: number }> {
   const active = (await (await fetch(`${url}/api/v1/calibration/active`)).json()) as {
@@ -396,7 +337,7 @@ test("the stage's controls have no violation axe can find, in either theme", asy
 test("the stage's controls look as their baselines do @visual", async ({ page, server }) => {
   test.skip(!process.env.OSCOPE_VISUAL, "the baselines are one computer's: OSCOPE_VISUAL=1 there");
   // Tall enough for the whole pane: scrolled, Halt would stand over it.
-  await page.setViewportSize({ width: 1280, height: 2000 });
+  await page.setViewportSize({ width: 1280, height: 3000 });
   await homed(server.url);
   await control(page, server.url);
   await expect(said(page, "stage-state")).toHaveText("Idle");
