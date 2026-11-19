@@ -33,6 +33,9 @@ pin() {
 # run_pinned SLOTS LOGS LIST [quiet]: runs each line of the file LIST,
 # "label<TAB>folder<TAB>command and its arguments", SLOTS at a time, each in
 # its folder and pinned to a slot of its own, its output in a log in LOGS.
+# The first SLOTS start a second apart (PINNED_STAGGER, in seconds): started
+# together, eight browsers and servers once ran Windows out of sockets'
+# buffers (ERR_NO_BUFFER_SPACE). The rest start as slots free.
 # Prints a line for each as it ends, or with quiet only for those that fail,
 # and the end of the log of each that fails. Sets PINNED_FAILED to how many
 # failed, and adds "label<TAB>exit code<TAB>milliseconds" to PINNED_RESULTS.
@@ -77,6 +80,10 @@ run_pinned() {
     label_of[$pid]=$label
     start_of[$pid]=${EPOCHREALTIME//[.,]/}
     log_of[$pid]=$log
+    # The first runs, a second apart; not after the last.
+    if [ "$n" -lt "$slots" ] && [ "$n" -lt $((${#lines[@]} - 1)) ]; then
+      sleep "${PINNED_STAGGER:-1}"
+    fi
   done
 }
 
