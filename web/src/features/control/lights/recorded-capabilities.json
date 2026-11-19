@@ -1,0 +1,35 @@
+{
+  "model": "simulated",
+  "channels": [
+    {
+      "name": "transmitted",
+      "kind": "transmitted",
+      "dimmable": true
+    },
+    {
+      "name": "reflected",
+      "kind": "reflected",
+      "dimmable": true
+    },
+    {
+      "name": "violet 405",
+      "kind": "other",
+      "dimmable": true
+    },
+    {
+      "name": "blue 488",
+      "kind": "other",
+      "dimmable": true
+    },
+    {
+      "name": "green 561",
+      "kind": "other",
+      "dimmable": true
+    },
+    {
+      "name": "red 640",
+      "kind": "other",
+      "dimmable": true
+    }
+  ]
+}

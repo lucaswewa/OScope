@@ -1,5 +1,5 @@
 // The camera's fields (W3.2), from the simulated camera's recorded
-// capabilities (scripts/record-camera.mjs): the ranges and steps, the modes
+// capabilities (scripts/record-capabilities.mjs): the ranges and steps, the modes
 // and the formats each gives, the region's grid, the triggers; a format's
 // key; and the settings that differ from those saved.
 import { describe, expect, it } from "vitest";

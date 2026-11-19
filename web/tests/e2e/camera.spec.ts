@@ -149,7 +149,7 @@ test("the camera's controls have no violation axe can find, in either theme", as
 test("the camera's controls look as their baselines do @visual", async ({ page, server }) => {
   test.skip(!process.env.OSCOPE_VISUAL, "the baselines are one computer's: OSCOPE_VISUAL=1 there");
   // Tall enough for the whole pane: scrolled, the stage's Halt would stand over it (W3.3).
-  await page.setViewportSize({ width: 1280, height: 2000 });
+  await page.setViewportSize({ width: 1280, height: 3000 });
   await control(page, server.url);
   await expect(field(page, "Exposure")).not.toHaveValue("");
   await page.mouse.move(5, 5);
