@@ -916,7 +916,7 @@ The rail, the routes, and what the rail says of the instrument.
 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
-| [W2.1](milestone-2/phases.md#w2-1) | The shell and navigation | W0.5, W1.4 | 1,400 | 0048 | Planned |
+| [W2.1](milestone-2/phases.md#w2-1) | The shell and navigation | W0.5, W1.4 | 1,400 | 0048 | In review |
 | [W2.2](milestone-2/phases.md#w2-2) | Status, connection and lease in the shell | W2.1 | 1,100 | — | Planned |
 
 ### Stage W3: Control and Live View (ends with Checkpoint G)

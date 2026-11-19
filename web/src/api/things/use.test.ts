@@ -13,7 +13,7 @@ import {
   standInSockets,
 } from "../../../tests/setup/stand-ins.ts";
 import { Server, type Schema } from "../client.ts";
-import { partsOf, useAction, useEvent, useProperty } from "./use.ts";
+import { onActionFailed, partsOf, useAction, useEvent, useProperty } from "./use.ts";
 
 let on: Server;
 let made: Request[];
@@ -154,6 +154,37 @@ describe("an action in a component", () => {
     expect(await home.run({})).toBeUndefined();
     expect(home.error.value).toMatchObject({ refusal: "alarm", status: 409 });
     scope.stop();
+  });
+
+  it("tells its listeners of a refusal, in the server's words, and of nothing it left", async () => {
+    const told: Array<[string, string]> = [];
+    const stop = onActionFailed((error, path) => told.push([path, error.message]));
+    // Left while it runs, it is followed no more: that isn't a failure.
+    looks = Array(100).fill("running");
+    const left = effectScope();
+    const going = left.run(() => useAction("/api/v1/stage/home", { on }))!;
+    const running = going.run({});
+    await until(() => going.running.value);
+    left.stop();
+    await running;
+    expect(told).toEqual([]);
+    // Refused: told, in the server's words.
+    standInNetwork({
+      "POST /api/v1/stage/home": () =>
+        new Response(JSON.stringify(invocation("pending")), { status: 201 }),
+      "GET /api/v1/action_invocations/an-invocation": () => ({
+        ...invocation("error"),
+        error: { detail: "alarm (409): the stage is in alarm" },
+      }),
+    });
+    const scope = effectScope();
+    const home = scope.run(() => useAction("/api/v1/stage/home", { on }))!;
+    await home.run({});
+    expect(told).toEqual([
+      ["/api/v1/stage/home", expect.stringContaining("the stage is in alarm")],
+    ]);
+    scope.stop();
+    stop();
   });
 
   it("isn't cancelled when its component goes: it is only no longer followed", async () => {

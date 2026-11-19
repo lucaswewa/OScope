@@ -49,7 +49,7 @@ function typed(now: number | null): void {
       :min="min"
       :max="max"
       :step="step"
-      :disabled="disabled"
+      :disabled="control.disabled.value"
       @update:model-value="drag"
       @value-commit="(now: number[]) => now[0] !== undefined && emit('commit', now[0])"
     >
@@ -74,7 +74,7 @@ function typed(now: number | null): void {
         :step="step"
         :unit="unit"
         :digits="digits"
-        :disabled="disabled"
+        :disabled="control.disabled.value"
         :readonly="readonly"
         compact
         @update:model-value="typed"

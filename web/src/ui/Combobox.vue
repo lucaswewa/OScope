@@ -53,7 +53,7 @@ function show(now: boolean): void {
     <ComboboxRoot
       v-model="chosen"
       :open="open"
-      :disabled="disabled"
+      :disabled="control.disabled.value"
       open-on-click
       @update:open="show"
     >

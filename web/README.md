@@ -109,6 +109,13 @@ The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042
 
 Lint refuses the browser's own calls outside `host/`, and names the one to use. Open `#/dev/gallery/host` to try them; a test installs a platform of its own with `installHost`.
 
+**The shell** ([ADR-0048](../docs/adr/0048-the-shell-and-the-lease-s-read-only-mode.md)) is `src/app/AppShell.vue`:
+
+- **A tab** is an entry of [`src/app/tabs.ts`](src/app/tabs.ts): its name, icon and page, a route of the shell's. Its words are under `tabs.<name>`.
+- **Every control in a tab is locked** while another holds the control lease. A control that changes nothing on the instrument, such as the theme, goes inside `<ControlScope :locked="false">`.
+- **A shortcut** is `addShortcut({ key, label, run })` from [`src/app/shortcuts.ts`](src/app/shortcuts.ts): `?` lists them, and the digits 1 to 9 are the tabs'.
+- **An action the server refuses** is raised as a notice by the shell: a page needn't tell it again.
+
 ## Calling the server
 
 Calls go through `src/api/`, typed from the server's own description of its API ([ADR-0043](../docs/adr/0043-generated-api-types-and-the-typed-client.md)). Open `#/dev/gallery/api` to call an action and follow it, and to see how the server's failures read.

@@ -20,12 +20,16 @@ function change(now: boolean | "indeterminate"): void {
 </script>
 
 <template>
-  <label class="checkbox" :class="{ off: disabled, fixed: readonly }" :for="control.id.value">
+  <label
+    class="checkbox"
+    :class="{ off: control.disabled.value, fixed: readonly }"
+    :for="control.id.value"
+  >
     <CheckboxRoot
       :id="control.id.value"
       class="box"
       :model-value="indeterminate ? 'indeterminate' : ticked"
-      :disabled="disabled"
+      :disabled="control.disabled.value"
       :aria-label="label"
       :aria-readonly="readonly || undefined"
       :aria-invalid="control.invalid.value || undefined"
