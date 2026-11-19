@@ -55,5 +55,11 @@ export const router = createRouter({
       name: "gallery-api",
       component: () => import("@/features/dev/ApiPage.vue"),
     },
+    {
+      // Live Things: the stage's state, kept by the server.
+      path: "/dev/gallery/things",
+      name: "gallery-things",
+      component: () => import("@/features/dev/ThingsPage.vue"),
+    },
   ],
 });

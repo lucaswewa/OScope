@@ -325,13 +325,6 @@ export type TailMessage =
   | { skipped: number }
   | { error: string };
 
-/** A WebSocket's address, from an HTTP one relative to the page. */
-function socketAddress(address: string): string {
-  const url = new URL(address, globalThis.location?.href);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return url.href;
-}
-
 /**
  * The logs' live tail: each message, to `told`, until `signal` aborts or
  * the server ends it. `ask` changes the query; the tail then starts again
@@ -341,8 +334,7 @@ export function logTail(
   told: (message: TailMessage) => void,
   options: { on?: Server; signal?: AbortSignal; query?: LogQuery } = {},
 ): { ask: (query: LogQuery) => void; ended: Promise<void> } {
-  const address = socketAddress((options.on ?? server).address("/api/v1/media/logs"));
-  const socket = new WebSocket(address);
+  const socket = new WebSocket((options.on ?? server).socketAddress("/api/v1/media/logs"));
   const ask = (query: LogQuery) => socket.send(JSON.stringify(query));
   const ended = new Promise<void>((done, failed) => {
     socket.addEventListener("open", () => {

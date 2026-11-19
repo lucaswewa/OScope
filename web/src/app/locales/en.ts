@@ -40,6 +40,7 @@ export default {
     forms: "Forms",
     charts: "Charts",
     api: "API",
+    things: "Things",
     title: "The tokens",
     intro: "What the app's look is made of: every component is built from these.",
     scheme: "The scheme in use is {scheme}.",
@@ -338,6 +339,35 @@ export default {
       status: "Status",
       field: "Field {at}",
       whole: "the whole body",
+    },
+  },
+  things: {
+    title: "Live Things",
+    intro:
+      "The stage's state, read once and then kept by the server. Move the stage from another client, and the page follows; stop the server, and the values are marked stale until it returns.",
+    stage: "The stage",
+    socket: {
+      open: "Its socket is open: the server tells what changes.",
+      closed: "Its socket is closed, and opening again.",
+    },
+    position: "Position",
+    status: "Status",
+    moving: "Moving",
+    speed: "Speed",
+    at: "x {x}, y {y}, z {z} µm",
+    yes: { true: "yes", false: "no" },
+    default: "the stage's own default",
+    unread: "not read yet",
+    stale: "stale",
+    moved: "Its moves, as it tells them",
+    none: "No move yet.",
+    write: {
+      title: "A write",
+      intro:
+        "A value written shows at once. If the device refuses it, the last value comes back, with the reason at the field: the camera's gain goes from 0 to 240.",
+      now: "The camera's gain is {gain}.",
+      gain: "Gain, in the camera's units",
+      go: "Write",
     },
   },
   forms: {

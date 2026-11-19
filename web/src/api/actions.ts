@@ -42,6 +42,12 @@ export interface Following extends Limits {
   on?: Server | undefined;
   /** Told the invocation as it starts, and each time its status changes. */
   seen?: (invocation: Invocation) => void;
+  /**
+   * Whether the caller's abort cancels the invocation on the server, as it
+   * does unless told: `false` only stops following it, for a page that is
+   * left while its action runs on.
+   */
+  cancelling?: boolean;
 }
 
 const ENDED = new Set<string>(["completed", "error", "cancelled"]);
@@ -103,7 +109,7 @@ export async function follow(started: Invocation, options: Following = {}): Prom
       invocation = now;
     }
   } catch (thrown) {
-    if (options.signal?.aborted && !ENDED.has(invocation.status)) {
+    if (options.signal?.aborted && options.cancelling !== false && !ENDED.has(invocation.status)) {
       // Not with the caller's signal, which has aborted: on a time limit of its own.
       await cancel(invocation.id, { on }).catch(() => undefined);
     }
