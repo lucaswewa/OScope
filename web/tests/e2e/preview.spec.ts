@@ -32,6 +32,13 @@ async function readout(page: Page) {
   };
 }
 
+/**
+ * How long the server's count of sessions may take to follow: a session
+ * whose socket wasn't closed cleanly lingers 15 s (W1.5), which a loaded
+ * computer meets (W3.1).
+ */
+const LINGER = { timeout: 60_000 };
+
 /** The server's preview sessions, as its `preview` Thing lists them. */
 async function sessions(url: string): Promise<Array<{ sent: number; dropped: number }>> {
   return (await fetch(`${url}/api/v1/preview/sessions`)).json();
@@ -125,7 +132,7 @@ test("it rests while the page is hidden, and goes on when it is shown", async ({
   await page.goto(server.url + PAGE);
   await streaming(page);
   await drawnPast(page, 1);
-  await expect.poll(async () => (await sessions(server.url)).length).toBe(1);
+  await expect.poll(async () => (await sessions(server.url)).length, LINGER).toBe(1);
   const turn = (state: "hidden" | "visible") =>
     page.evaluate((now) => {
       Object.defineProperty(document, "visibilityState", { value: now, configurable: true });
@@ -133,10 +140,10 @@ test("it rests while the page is hidden, and goes on when it is shown", async ({
     }, state);
   await turn("hidden");
   await expect(said(page, "readout")).toContainText("resting while the page is hidden");
-  await expect.poll(async () => (await sessions(server.url)).length).toBe(0);
+  await expect.poll(async () => (await sessions(server.url)).length, LINGER).toBe(0);
   await turn("visible");
   await drawnPast(page, (await readout(page)).drawn);
-  await expect.poll(async () => (await sessions(server.url)).length).toBe(1);
+  await expect.poll(async () => (await sessions(server.url)).length, LINGER).toBe(1);
 });
 
 test("statistics come with the frames when asked for", async ({ page, server }) => {

@@ -111,12 +111,12 @@ test("zooming in asks for the region shown, and that region comes back", async (
   const centre: [number, number] = [EXTENT.x + EXTENT.width / 2, EXTENT.y + EXTENT.height / 2];
   const asked = roiFor({ centre, scale: 1 }, EXTENT, await canvasSize(page))!;
   expect(asked.width).toBeLessThan(EXTENT.width);
-  await expect.poll(async () => isAsked(await frameOf(page), asked)).toBe(true);
+  await expect.poll(async () => isAsked(await frameOf(page), asked), FIRST_FRAME).toBe(true);
   // The scale bar is shorter at the sample, zoomed in.
   await expect(said(page, "scale")).not.toHaveText(whole);
   // Fitted again, the whole region comes back.
   await page.keyboard.press("0");
-  await expect(readout(page, "frame")).toHaveText(region(EXTENT));
+  await expect(readout(page, "frame")).toHaveText(region(EXTENT), FIRST_FRAME);
   await expect(said(page, "scale")).toHaveText(whole);
 });
 
