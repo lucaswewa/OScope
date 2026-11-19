@@ -3,7 +3,11 @@ import { computed, onBeforeUnmount, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { usePreview } from "@/api/preview/use";
+import { sensorAt } from "@/api/preview/view";
 import { useProperty } from "@/api/things/use";
+import { keyStep, written } from "@/features/control/stage/stage";
+import { useChoices } from "@/features/control/stage/choices";
+import { usePointing } from "@/features/control/stage/usePointing";
 import { useStreaming } from "@/features/live/streaming";
 import {
   fromCentre,
@@ -15,6 +19,7 @@ import {
   wheelFactor,
 } from "@/features/live/viewer";
 import { host } from "@/host/host";
+import { useDisabled } from "@/ui/control";
 import ControlScope from "@/ui/ControlScope.vue";
 import Toolbar from "@/ui/Toolbar.vue";
 import ToolbarButton from "@/ui/ToolbarButton.vue";
@@ -26,6 +31,12 @@ import ToolbarButton from "@/ui/ToolbarButton.vue";
  * pixels squares past one to one. Streaming starts and stops here. Its
  * state, rate and latency, the zoom and the place under the pointer are
  * read out, with a scale bar. Full screen, and the view saved as a PNG.
+ *
+ * The stage (W3.3): on the focused image, the arrows step or jog it along
+ * x and y, and Page Up and Page Down along z, by the pane's step. With the
+ * active calibration, a double click brings the place to the centre, a
+ * drag pans the stage when the stage's pane says so, and the place under
+ * the pointer is read out in the stage's coordinates.
  */
 const { t } = useI18n();
 const root = ref<HTMLElement>();
@@ -47,6 +58,16 @@ const pointer = shallowRef<[number, number]>();
 /** Where a drag last was, in device pixels. */
 let held: [number, number] | undefined;
 
+const pointing = usePointing();
+const choices = useChoices();
+const locked = useDisabled({});
+/** A drag of the stage: where it began, in the sensor's pixels and on the page. */
+let dragged: { from: [number, number]; client: [number, number] } | undefined;
+/** How far the image is drawn aside while the stage is dragged, in CSS pixels. */
+const aside = shallowRef<[number, number]>();
+/** How far a drag must go to move the stage, in CSS pixels: a click doesn't. */
+const DRAG = 4;
+
 function at(event: MouseEvent): [number, number] {
   const box = canvas.value!.getBoundingClientRect();
   return onCanvas([event.clientX - box.left, event.clientY - box.top], box, preview.size());
@@ -61,26 +82,66 @@ function wheel(event: WheelEvent): void {
 }
 function down(event: PointerEvent): void {
   if (event.button !== 0) return;
-  held = at(event);
   canvas.value?.setPointerCapture(event.pointerId);
+  const view = preview.view.value;
+  if (choices.drags && view && !locked.value) {
+    dragged = {
+      from: sensorAt(view, at(event), preview.size()),
+      client: [event.clientX, event.clientY],
+    };
+  } else {
+    held = at(event);
+  }
 }
 function move(event: PointerEvent): void {
   const here = at(event);
   pointer.value = here;
+  if (dragged) aside.value = [event.clientX - dragged.client[0], event.clientY - dragged.client[1]];
   if (!held) return;
   preview.panBy([here[0] - held[0], here[1] - held[1]]);
   held = here;
 }
 function up(): void {
+  const drag = dragged;
+  const by = aside.value;
+  cancel();
+  const view = preview.view.value;
+  if (!drag || !by || !view || Math.hypot(...by) < DRAG) return;
+  // From the drag's own length: the image drawn aside has moved the canvas's box.
+  const [dx, dy] = onCanvas(by, canvas.value!.getBoundingClientRect(), preview.size());
+  pointing.bring(drag.from, [drag.from[0] + dx / view.scale, drag.from[1] + dy / view.scale]);
+}
+function cancel(): void {
   held = undefined;
+  dragged = undefined;
+  aside.value = undefined;
 }
 function left(): void {
-  if (!held) pointer.value = undefined;
+  if (!held && !dragged) pointer.value = undefined;
+}
+/** A double click brings the place to the view's centre. */
+function centre(event: MouseEvent): void {
+  const view = preview.view.value;
+  if (locked.value || pointing.lacking() || !view) return;
+  pointing.bring(sensorAt(view, at(event), preview.size()), view.centre);
 }
 
-/** The keys on the image: + and − zoom, 0 fits, 1 shows one to one, F fills the screen. */
+/**
+ * The keys on the image: + and − zoom, 0 fits, 1 shows one to one, F fills
+ * the screen; the arrows, Page Up and Page Down move the stage (W3.3).
+ */
 function key(event: KeyboardEvent): void {
   if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const towards = keyStep(event.key);
+  if (towards) {
+    // The arrows and the page keys are the stage's here, not the page's.
+    event.preventDefault();
+    const size = choices.size(towards.axis);
+    if (locked.value) return;
+    if (size !== undefined) void pointing.stage.step(towards, size);
+    else if (!event.repeat) pointing.stage.jog(towards);
+    return;
+  }
   const keys: Record<string, () => void> = {
     "+": () => preview.zoomBy(STEP, middle()),
     "=": () => preview.zoomBy(STEP, middle()),
@@ -94,6 +155,11 @@ function key(event: KeyboardEvent): void {
   // Handled here, the shell's shortcuts leave it alone.
   event.preventDefault();
   run();
+}
+
+/** A jog lasts as long as its key is held. */
+function keyUp(event: KeyboardEvent): void {
+  if (keyStep(event.key)) void pointing.stage.endJog();
 }
 
 async function toggleFull(): Promise<void> {
@@ -120,11 +186,26 @@ const atSample = computed(() => {
   if (!pixel.value || !caps || !um) return undefined;
   return fromCentre(pixel.value, { width: caps.sensor_width, height: caps.sensor_height }, um);
 });
+/** With a calibration, the place under the pointer on the stage: the stage is where the sensor's centre is. */
+const onStage = computed(() => {
+  const caps = capabilities.value.value;
+  if (!pixel.value || !caps) return undefined;
+  const middle: [number, number] = [caps.sensor_width / 2, caps.sensor_height / 2];
+  return pointing.placeOf([pixel.value[0] + 0.5, pixel.value[1] + 0.5], middle);
+});
 const bar = computed(() => {
   const view = preview.view.value;
   return view ? scaleBar(side.value.value, view, ratio(), ROOM) : undefined;
 });
 const one = (value: number) => value.toFixed(1);
+const stageXy = (x: number, y: number) => {
+  const unit = pointing.unit.value;
+  return t("live.stageXy", {
+    x: written(x, unit),
+    y: written(y, unit),
+    unit: t(`stage.units.${unit}`),
+  });
+};
 const readouts = computed(() => {
   const numbers = preview.numbers.value;
   const view = preview.view.value;
@@ -156,13 +237,19 @@ const readouts = computed(() => {
       value: pixel.value ? t("live.xy", { x: pixel.value[0], y: pixel.value[1] }) : none,
       said: "pixel",
     },
-    {
-      term: t("live.sample"),
-      value: atSample.value
-        ? t("live.um", { x: one(atSample.value[0]), y: one(atSample.value[1]) })
-        : none,
-      said: "sample",
-    },
+    pointing.geometry.value
+      ? {
+          term: t("live.onStage"),
+          value: onStage.value ? stageXy(onStage.value.x, onStage.value.y) : none,
+          said: "sample",
+        }
+      : {
+          term: t("live.sample"),
+          value: atSample.value
+            ? t("live.um", { x: one(atSample.value[0]), y: one(atSample.value[1]) })
+            : none,
+          said: "sample",
+        },
   ];
 });
 const scaleLabel = computed(() => {
@@ -212,13 +299,17 @@ const scaleLabel = computed(() => {
         tabindex="0"
         :aria-label="t('live.image')"
         data-said="canvas"
+        :class="{ drags: choices.drags }"
+        :style="aside ? { translate: `${aside[0]}px ${aside[1]}px` } : undefined"
         @wheel.prevent="wheel"
         @pointerdown="down"
         @pointermove="move"
         @pointerup="up"
-        @pointercancel="up"
+        @pointercancel="cancel"
         @pointerleave="left"
         @keydown="key"
+        @keyup="keyUp"
+        @dblclick="centre"
       />
       <p
         v-if="state !== 'live'"
@@ -271,6 +362,11 @@ const scaleLabel = computed(() => {
 
 .canvas:active {
   cursor: grabbing;
+}
+
+/* Dragging moves the stage: the pointer says so. */
+.canvas.drags {
+  cursor: move;
 }
 
 .canvas:focus-visible {

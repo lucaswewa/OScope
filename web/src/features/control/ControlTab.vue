@@ -2,7 +2,8 @@
 import { useI18n } from "vue-i18n";
 
 import CameraPane from "@/features/control/camera/CameraPane.vue";
-import StageSample from "@/features/control/StageSample.vue";
+import StageHalt from "@/features/control/stage/StageHalt.vue";
+import StagePane from "@/features/control/stage/StagePane.vue";
 import LiveViewer from "@/features/live/LiveViewer.vue";
 import { kept } from "@/host/kept";
 import Splitter from "@/ui/Splitter.vue";
@@ -10,7 +11,7 @@ import Splitter from "@/ui/Splitter.vue";
 /**
  * Control and Live View (W2.1's frame for W3): the control pane and the
  * live image (W3.1), side by side, with a handle between them whose place
- * is kept.
+ * is kept. The stage's Halt stays at the pane's foot (W3.3).
  */
 const { t } = useI18n();
 
@@ -27,7 +28,8 @@ const sizes = kept("oscope.control.panes", [33, 67] as [number, number], isPair)
           <h1>{{ t("tabs.control.title") }}</h1>
           <CameraPane />
           <p class="note">{{ t("control.comesPane") }}</p>
-          <StageSample />
+          <StagePane />
+          <StageHalt />
         </section>
       </template>
       <template #second>
