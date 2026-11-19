@@ -72,14 +72,15 @@ test("at 1920 pixels wide, every frame the server sends is drawn", async ({ page
   await drawnPast(page, 2);
   expect((await readout(page)).width).toBe(1920);
   const [start] = await sessions(server.url);
-  const from = (await readout(page)).drawn;
+  const { drawn: from, replaced } = await readout(page);
   await drawnPast(page, from + 20);
   const [end] = await sessions(server.url);
   const to = await readout(page);
-  // Sent while counting, and drawn: two may be on their way.
+  // Sent while counting, and drawn: two may be on their way. A frame replaced
+  // as the stream started, while WebGL warmed up, isn't the count's (W3.1).
   const sent = end!.sent - start!.sent;
   expect(to.drawn - from).toBeGreaterThanOrEqual(sent - 2);
-  expect([end!.dropped - start!.dropped, to.replaced]).toEqual([0, 0]);
+  expect([end!.dropped - start!.dropped, to.replaced - replaced]).toEqual([0, 0]);
 });
 
 test("the frames' size follows the window", async ({ page, server }) => {
