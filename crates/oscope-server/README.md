@@ -124,6 +124,7 @@ version = 2                       # the file's version (P52)
 [network]
 address = "127.0.0.1"             # only this computer can connect
 port = 8210
+origins = ["tauri://localhost"]   # pages elsewhere a browser may call it from (ADR-0045): none by default
 
 [storage]
 data_root = ".oscope/data"        # projects and their data

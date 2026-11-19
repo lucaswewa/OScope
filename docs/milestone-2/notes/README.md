@@ -18,7 +18,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W0.7 | Charts | Done | [W0.7-charts.md](W0.7-charts.md) |
 | W1.1 | Generated API types and the typed client | Done | [W1.1-api-types.md](W1.1-api-types.md) |
 | W1.2 | Things, live properties and events | Done | [W1.2-live-things.md](W1.2-live-things.md) |
-| W1.3 | Connection, login and the control lease | Planned | — |
+| W1.3 | Connection, login and the control lease | In review | [W1.3-connection.md](W1.3-connection.md) |
 | W1.4 | The host adapter | Planned | — |
 | W1.5 | The preview client | Planned | — |
 | W2.1 | The shell and navigation | Planned | — |

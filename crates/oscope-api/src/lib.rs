@@ -29,6 +29,7 @@ pub mod jobs;
 pub mod logs;
 mod media;
 pub mod mosaic;
+pub mod origins;
 mod pages;
 pub mod power;
 pub mod preview;

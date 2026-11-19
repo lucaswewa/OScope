@@ -29,6 +29,7 @@ pub const CONFIG_VERSION: i64 = 2;
 /// [network]                       # [server] in version 1
 /// address = "127.0.0.1"           # this computer only
 /// port = 8210
+/// origins = ["http://127.0.0.1:8280"]  # pages elsewhere that may call it: none by default
 ///
 /// [storage]
 /// data_root = ".oscope/data"      # relative to this file's folder
@@ -258,6 +259,10 @@ pub struct Listen {
     pub address: IpAddr,
     /// The port: [`DEFAULT_PORT`] by default; 0 lets the system choose.
     pub port: u16,
+    /// The origins, besides the server's own, whose pages a browser lets
+    /// call it: the dev server's, or the desktop app's (ADR-0045). A
+    /// request from any other origin is refused. None by default.
+    pub origins: Vec<String>,
 }
 
 impl Default for Listen {
@@ -265,6 +270,7 @@ impl Default for Listen {
         Self {
             address: IpAddr::V4(Ipv4Addr::LOCALHOST),
             port: DEFAULT_PORT,
+            origins: Vec::new(),
         }
     }
 }

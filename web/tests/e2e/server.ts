@@ -2,7 +2,7 @@
 // its own configuration, data and scratch space, on a port the system picks,
 // serving the built app. Each test has one, so tests run side by side and
 // none sees another's state.
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -45,6 +45,20 @@ export class Server {
 
   constructor() {
     writeFileSync(join(this.folder, "oscope.toml"), CONFIG);
+  }
+
+  /**
+   * Adds an account, before the server starts: with one, it has security
+   * (ADR-0031), and every page asks for a login (W1.3).
+   */
+  addAccount(name: string, password: string): void {
+    const config = join(this.folder, "oscope.toml");
+    const run = spawnSync(program(), ["--config", config, "account", "add", name], {
+      input: `${password}
+`,
+      encoding: "utf8",
+    });
+    if (run.status !== 0) throw new Error(`account add ${name}: ${run.stderr || run.error}`);
   }
 
   /** Starts it: on a port the system picks, or the one it had before. */

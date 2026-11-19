@@ -6284,6 +6284,377 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The accounts' names, to hand control over to.
+         * @description ## The accounts' names, to hand control over to.
+         *
+         *     The accounts' names, to hand control over to.
+         */
+        get: operations["get_property_api_v1_auth_accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/acquire_control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of acquire_control.
+         * @description List all the invocations of acquire_control that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_auth_acquire_control_get"];
+        put?: never;
+        /**
+         * Takes control, if no one has it.
+         * @description ## Takes control, if no one has it.
+         *
+         *     Takes control, if no one has it.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_auth_acquire_control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/hand_over_control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of hand_over_control.
+         * @description List all the invocations of hand_over_control that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_auth_hand_over_control_get"];
+        put?: never;
+        /**
+         * Hands control over to `to`, an account or `local`.
+         * @description ## Hands control over to `to`, an account or `local`.
+         *
+         *     Hands control over to `to`, an account or `local`.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_auth_hand_over_control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/lease": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The control lease: who holds it, since when, and who asked for it.
+         * @description ## The control lease: who holds it, since when, and who asked for it.
+         *
+         *     The control lease: who holds it, since when, and who asked for it.
+         */
+        get: operations["get_property_api_v1_auth_lease_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/lease_changed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The lease changed hands, or someone asked for it.
+         * @description ## The lease changed hands, or someone asked for it.
+         *
+         *     Its state now.
+         *
+         *     Server-sent events: each event's data, as JSON in a `data:` line, following this schema:
+         *
+         *     ```json
+         *     {
+         *       "$ref": "#/components/schemas/auth_lease_changed_data"
+         *     }
+         *     ```
+         */
+        get: operations["subscribe_event_api_v1_auth_lease_changed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login
+         * @description Logs in: a session's token.
+         *
+         *     `{"name", "password"}`, answered with `{"token", "name"}`, or 401.
+         *     Send the token as `Authorization: Bearer …`, and on a WebSocket in
+         *     its first message.
+         */
+        post: operations["login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Logout
+         * @description Logs out: ends the caller's session, answered with 204.
+         */
+        post: operations["logout_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who the caller is: `{"name", "control"}`.
+         * @description ## Who the caller is: `{"name", "control"}`.
+         *
+         *     Who the caller is: `{"name", "control"}`.
+         */
+        get: operations["get_property_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/release_control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of release_control.
+         * @description List all the invocations of release_control that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_auth_release_control_get"];
+        put?: never;
+        /**
+         * Gives control up.
+         * @description ## Gives control up.
+         *
+         *     Gives control up.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_auth_release_control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/request_control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of request_control.
+         * @description List all the invocations of request_control that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_auth_request_control_get"];
+        put?: never;
+        /**
+         * Asks for control: its holder sees the request; if no one holds
+         * @description ## Asks for control: its holder sees the request; if no one holds
+         *
+         *     Asks for control: its holder sees the request; if no one holds
+         *     it, the caller has it.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_auth_request_control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/take_control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of take_control.
+         * @description List all the invocations of take_control that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_auth_take_control_get"];
+        put?: never;
+        /**
+         * Takes control, whoever has it: the local desktop app alone may.
+         * @description ## Takes control, whoever has it: the local desktop app alone may.
+         *
+         *     Takes control, whoever has it: the local desktop app alone may.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_auth_take_control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read All Properties
+         * @description Every property of `auth` (`readallproperties`), or their changes (`observeallproperties`).
+         */
+        get: operations["read_all_properties_api_v1_auth_properties_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query All Actions
+         * @description The invocations of each action of `auth`, newest first (`queryallactions`).
+         */
+        get: operations["query_all_actions_api_v1_auth_actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscribe All Events
+         * @description Server-sent events: every event of `auth`, named after it (`subscribeallevents`).
+         */
+        get: operations["subscribe_all_events_api_v1_auth_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Thing Description
+         * @description The W3C Thing Description of `auth`: its properties, actions and events, and how to use them.
+         */
+        get: operations["things_auth_api_v1_auth__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/logs/files/{name}": {
         parameters: {
             query?: never;
@@ -12816,6 +13187,192 @@ export interface components {
             links?: components["schemas"]["LinkElement"][];
             input: components["schemas"]["power_shutdown_input"];
             output?: components["schemas"]["power_shutdown_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        auth_accounts_value: string[];
+        /**
+         * @description Represent the input of an action that never takes parameters.
+         *
+         *     This may be either an empty dictionary or ``None``.
+         */
+        auth_acquire_control_input: Record<string, never> | null;
+        /** @description Who holds control, and who asked for it. */
+        auth_acquire_control_output: {
+            /** @description Its holder: an account, or `local`, the desktop app. */
+            holder?: string | null;
+            /** @description Since when. */
+            since?: string | null;
+            /** @description Who asked for it since, oldest first. */
+            requests: string[];
+            /** @description How long its holder may be idle before it goes, in seconds. */
+            idle_s: number;
+        };
+        auth_acquire_control_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["auth_acquire_control_input"];
+            output?: components["schemas"]["auth_acquire_control_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        auth_hand_over_control_input: {
+            to: string;
+        };
+        /** @description Who holds control, and who asked for it. */
+        auth_hand_over_control_output: {
+            /** @description Its holder: an account, or `local`, the desktop app. */
+            holder?: string | null;
+            /** @description Since when. */
+            since?: string | null;
+            /** @description Who asked for it since, oldest first. */
+            requests: string[];
+            /** @description How long its holder may be idle before it goes, in seconds. */
+            idle_s: number;
+        };
+        auth_hand_over_control_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["auth_hand_over_control_input"];
+            output?: components["schemas"]["auth_hand_over_control_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        /** @description Who holds control, and who asked for it. */
+        auth_lease_value: {
+            /** @description Its holder: an account, or `local`, the desktop app. */
+            holder?: string | null;
+            /** @description Since when. */
+            since?: string | null;
+            /** @description Who asked for it since, oldest first. */
+            requests: string[];
+            /** @description How long its holder may be idle before it goes, in seconds. */
+            idle_s: number;
+        };
+        /** @description Who holds control, and who asked for it. */
+        auth_lease_changed_data: {
+            /** @description Its holder: an account, or `local`, the desktop app. */
+            holder?: string | null;
+            /** @description Since when. */
+            since?: string | null;
+            /** @description Who asked for it since, oldest first. */
+            requests: string[];
+            /** @description How long its holder may be idle before it goes, in seconds. */
+            idle_s: number;
+        };
+        auth_me_value: unknown;
+        /**
+         * @description Represent the input of an action that never takes parameters.
+         *
+         *     This may be either an empty dictionary or ``None``.
+         */
+        auth_release_control_input: Record<string, never> | null;
+        /** @description Who holds control, and who asked for it. */
+        auth_release_control_output: {
+            /** @description Its holder: an account, or `local`, the desktop app. */
+            holder?: string | null;
+            /** @description Since when. */
+            since?: string | null;
+            /** @description Who asked for it since, oldest first. */
+            requests: string[];
+            /** @description How long its holder may be idle before it goes, in seconds. */
+            idle_s: number;
+        };
+        auth_release_control_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["auth_release_control_input"];
+            output?: components["schemas"]["auth_release_control_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        /**
+         * @description Represent the input of an action that never takes parameters.
+         *
+         *     This may be either an empty dictionary or ``None``.
+         */
+        auth_request_control_input: Record<string, never> | null;
+        /** @description Who holds control, and who asked for it. */
+        auth_request_control_output: {
+            /** @description Its holder: an account, or `local`, the desktop app. */
+            holder?: string | null;
+            /** @description Since when. */
+            since?: string | null;
+            /** @description Who asked for it since, oldest first. */
+            requests: string[];
+            /** @description How long its holder may be idle before it goes, in seconds. */
+            idle_s: number;
+        };
+        auth_request_control_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["auth_request_control_input"];
+            output?: components["schemas"]["auth_request_control_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        /**
+         * @description Represent the input of an action that never takes parameters.
+         *
+         *     This may be either an empty dictionary or ``None``.
+         */
+        auth_take_control_input: Record<string, never> | null;
+        /** @description Who holds control, and who asked for it. */
+        auth_take_control_output: {
+            /** @description Its holder: an account, or `local`, the desktop app. */
+            holder?: string | null;
+            /** @description Since when. */
+            since?: string | null;
+            /** @description Who asked for it since, oldest first. */
+            requests: string[];
+            /** @description How long its holder may be idle before it goes, in seconds. */
+            idle_s: number;
+        };
+        auth_take_control_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["auth_take_control_input"];
+            output?: components["schemas"]["auth_take_control_output"] | null;
             log: components["schemas"]["LogRecordModel"][];
             error?: components["schemas"]["ProblemDetails"] | null;
         };
@@ -21686,6 +22243,515 @@ export interface operations {
         };
     };
     things_power_api_v1_power__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThingDescription"];
+                };
+            };
+        };
+    };
+    get_property_api_v1_auth_accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Value of accounts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_accounts_value"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_auth_acquire_control_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of acquire_control. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_auth_acquire_control_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["auth_acquire_control_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_acquire_control_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_acquire_control_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_auth_hand_over_control_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of hand_over_control. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_auth_hand_over_control_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["auth_hand_over_control_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_hand_over_control_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_hand_over_control_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_property_api_v1_auth_lease_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Value of lease */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_lease_value"];
+                };
+            };
+        };
+    };
+    subscribe_event_api_v1_auth_lease_changed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-sent events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
+    login_api_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_property_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Value of me */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_me_value"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_auth_release_control_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of release_control. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_auth_release_control_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["auth_release_control_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_release_control_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_release_control_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_auth_request_control_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of request_control. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_auth_request_control_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["auth_request_control_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_request_control_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_request_control_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_auth_take_control_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of take_control. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_auth_take_control_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["auth_take_control_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_take_control_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["auth_take_control_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_all_properties_api_v1_auth_properties_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
+    query_all_actions_api_v1_auth_actions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["InvocationSummary"][];
+                    };
+                };
+            };
+        };
+    };
+    subscribe_all_events_api_v1_auth_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-sent events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
+    things_auth_api_v1_auth__get: {
         parameters: {
             query?: never;
             header?: never;
