@@ -8,7 +8,8 @@ import type { RailItem } from "./rail";
  * The app's rail (look.md): its tabs, each an icon over a short label, the
  * working ones at the top and the instrument's own at the bottom. It is one
  * toolbar: a single stop for Tab, and the arrow keys, Home and End from tab
- * to tab. The `end` slot, below them, is the instrument's status.
+ * to tab. The `end` slot, below them, is the instrument's status. In a
+ * window too short for them all, the rail scrolls.
  */
 defineProps<{
   /** What the rail is, to a screen reader. */
@@ -40,15 +41,15 @@ defineProps<{
   flex-direction: column;
   inline-size: 5.25rem;
   block-size: 100%;
+  overflow-y: auto;
   border-inline-end: 1px solid var(--border);
   background: var(--surface-rail);
 }
 
 .tabs {
   display: flex;
-  flex: 1;
+  flex: 1 0 auto;
   flex-direction: column;
-  min-block-size: 0;
 }
 
 .group {

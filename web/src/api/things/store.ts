@@ -4,7 +4,7 @@
 // write shows at once, and goes back if the server refuses it, with the
 // reason. A value the server hasn't confirmed for a few seconds is stale.
 import { defineStore } from "pinia";
-import { reactive, shallowRef } from "vue";
+import { reactive, shallowRef, watch } from "vue";
 
 import { call, server, type Server } from "../client.ts";
 import { ApiError } from "../errors.ts";
@@ -108,6 +108,15 @@ export function thingStore(thing: string, on: Server = server) {
       }
     }
 
+    // Each time the socket opens, what it keeps is read again: a change made
+    // while it was closed, or before the server kept it, isn't told (W2.2).
+    watch(socket.open, (open) => {
+      if (!open) return;
+      for (const [name, property] of kept) {
+        if (property.observed && followed.has(name)) void read(name);
+      }
+    });
+
     /** The Thing's socket and the clock, from the first use to the last. */
     function use(): () => void {
       if (users++ === 0) {
@@ -137,6 +146,8 @@ export function thingStore(thing: string, on: Server = server) {
           if (property && observable(property)) {
             entry(name).observed = true;
             socket.observe(name);
+            // A change made before the server keeps it isn't told: read again.
+            if (socket.open.value) void read(name);
           } else {
             timer = setInterval(() => void read(name), every);
           }

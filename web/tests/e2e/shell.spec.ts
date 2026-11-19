@@ -146,6 +146,8 @@ test("the shell looks as its baselines do @visual", async ({ page, server }) => 
   await page.goto(`${server.url}/#/control`);
   await expect(heading(page)).toHaveText("Control and Live View");
   await expect(page.getByRole("button", { name: "Centre", exact: true })).toBeEnabled();
+  // The rail's foot, read (W2.2): the stage waits to be homed.
+  await expect(said(page, "indicator")).toHaveAccessibleName("The instrument: Fault");
   await page.mouse.move(5, 5);
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);

@@ -43,8 +43,9 @@ export class Server {
   private port = 0;
   private child: ChildProcess | undefined;
 
-  constructor() {
-    writeFileSync(join(this.folder, "oscope.toml"), CONFIG);
+  /** A server with its configuration and `more` of it, such as a faster clock for the simulator. */
+  constructor(more = "") {
+    writeFileSync(join(this.folder, "oscope.toml"), CONFIG + more);
   }
 
   /**

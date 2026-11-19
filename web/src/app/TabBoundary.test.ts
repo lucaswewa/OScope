@@ -61,4 +61,28 @@ describe("a tab's boundary", () => {
     expect(wrapper.get(".tab-page").text()).toBe("the tab");
     wrapper.unmount();
   });
+
+  it("tries again, when the server is back, a page that couldn't load, and nothing else", async () => {
+    [breaks, drawn] = [false, 0];
+    const wrapper = mounted();
+    const boundary = wrapper.vm as unknown as {
+      fail(error: unknown, retry?: () => void): void;
+      retry(): void;
+    };
+    let tried = 0;
+    boundary.retry();
+    expect(tried).toBe(0);
+    boundary.fail(new Error("a chunk is missing"), () => tried++);
+    await nextTick();
+    boundary.retry();
+    await nextTick();
+    expect([tried, wrapper.find("[data-said='failed']").exists()]).toEqual([1, false]);
+    // A tab that failed in itself waits for its user.
+    boundary.fail(new Error("the stage's pad broke"));
+    await nextTick();
+    boundary.retry();
+    await nextTick();
+    expect(wrapper.find("[data-said='failed']").exists()).toBe(true);
+    wrapper.unmount();
+  });
 });
