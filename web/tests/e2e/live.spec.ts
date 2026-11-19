@@ -14,15 +14,30 @@ import type { PixelRect } from "../../src/api/preview/message.ts";
 import { roiFor } from "../../src/api/preview/view.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
-import { aRegion, onTissue } from "./sim.ts";
+import { onTissue } from "./sim.ts";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
 const image = (page: Page) => page.getByRole("img", { name: /^The live image/ });
 const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 const readout = (page: Page, name: string) => said(page, name).locator("dd");
 
-/** The camera's region, as `aRegion` gives it. */
-const EXTENT = { x: 1776, y: 1176, width: 1920, height: 1272 };
+/**
+ * The camera's region for these tests: 960 × 648 pixels about the sensor's
+ * centre, on its grid of 12. A quarter of W1.5's 1920 × 1272, which a
+ * Linux replay's software GL couldn't draw beside W1.5's timed test.
+ */
+const EXTENT = { x: 2256, y: 1500, width: 960, height: 648 };
+
+/** The camera given the tests' region, which keeps its rate. */
+async function aRegion(url: string): Promise<void> {
+  await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: EXTENT, signal }));
+}
+
+/** The stage over the tissue, on the fast clock, and the camera given the tests' region. */
+async function overTissue(url: string): Promise<void> {
+  await onTissue(url);
+  await aRegion(url);
+}
 const region = (r: PixelRect) => `x ${r.x}, y ${r.y}, ${r.width} × ${r.height}`;
 
 /** The region the frame readout says. */
@@ -73,7 +88,7 @@ test("the camera's frames are drawn live on Control, and read out @main", async 
   server,
 }) => {
   test.setTimeout(120_000);
-  await onTissue(server.url);
+  await overTissue(server.url);
   // The stage moved on the fast clock, which is back at real time before anything streams.
   const rate = await call((signal) =>
     new Api(server.url).api.GET("/api/v1/simulation/rate", { signal }),
@@ -87,9 +102,9 @@ test("the camera's frames are drawn live on Control, and read out @main", async 
   const box = (await image(page).boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await expect(readout(page, "pixel")).toHaveText(/^x \d+, y \d+$/);
-  // A CSS pixel spans some 2.4 of the sensor's here: within a few of the middle, (2736, 1812).
+  // A CSS pixel spans about a sensor pixel here: within a few of the middle, (2736, 1824).
   const [x, y] = ((await readout(page, "pixel").innerText()).match(/\d+/g) ?? []).map(Number);
-  expect([Math.abs(x! - 2736), Math.abs(y! - 1812)].every((off) => off <= 4)).toBe(true);
+  expect([Math.abs(x! - 2736), Math.abs(y! - 1824)].every((off) => off <= 4)).toBe(true);
   await expect(readout(page, "sample")).toHaveText(/^x -?\d+\.\d, y -?\d+\.\d µm$/);
   await button(page, "Stop").click();
   await expect(readout(page, "state")).toHaveText("Not streaming");
@@ -112,7 +127,8 @@ test("zooming in asks for the region shown, and that region comes back", async (
   const asked = roiFor({ centre, scale: 1 }, EXTENT, await canvasSize(page))!;
   expect(asked.width).toBeLessThan(EXTENT.width);
   await expect.poll(async () => isAsked(await frameOf(page), asked), FIRST_FRAME).toBe(true);
-  // The scale bar is shorter at the sample, zoomed in.
+  // Zoomed in further, the scale bar is shorter at the sample.
+  for (let step = 0; step < 4; step++) await page.keyboard.press("+");
   await expect(said(page, "scale")).not.toHaveText(whole);
   // Fitted again, the whole region comes back.
   await page.keyboard.press("0");
@@ -151,7 +167,7 @@ test("the view is saved as a PNG, the preview as shown, and fills the screen", a
   server,
 }) => {
   test.setTimeout(120_000);
-  await onTissue(server.url);
+  await overTissue(server.url);
   await live(page, server.url);
   const saving = page.waitForEvent("download");
   await button(page, "Save PNG").click();
@@ -194,7 +210,7 @@ test("the viewer's chrome looks as its baselines do, the frame hidden @visual", 
 }) => {
   test.skip(!process.env.OSCOPE_VISUAL, "the baselines are one computer's: OSCOPE_VISUAL=1 there");
   test.setTimeout(120_000);
-  await onTissue(server.url);
+  await overTissue(server.url);
   await live(page, server.url);
   await button(page, "Stop").click();
   await expect(readout(page, "state")).toHaveText("Not streaming");
