@@ -78,7 +78,7 @@ The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042
 - **A control's own words** are in [`src/ui/words/en.ts`](src/ui/words/en.ts); a page's are the app's, in `src/app/locales/`.
 - **A style for what is drawn at the page's root,** a list, a tooltip, a dialog, goes in `src/ui/styles/`, not in the component's scoped style, which doesn't reach it.
 - **A `Splitter` and a `DataTable` take the height their page gives them.** A table with none grows to hold every row, and draws only as many as the window can show.
-- **What a page keeps between visits,** a pane's size, a column's width, is kept with `kept(key, fallback, valid)` from [`src/host/kept.ts`](src/host/kept.ts): what was kept is used only if `valid` takes it.
+- **What a page keeps between visits,** a pane's size, a column's width, is kept with `kept(key, fallback, valid)` from [`src/host/kept.ts`](src/host/kept.ts), by the host: what was kept is used only if `valid` takes it.
 - **A card's or a section's title** is a heading at the third level unless told: a page whose own come straight under its title says `:level="2"`.
 - **A form from a JSON Schema** is `<SchemaForm :schema="…" label="…" v-model="value" @faults="…" />`, from `src/ui/schema-form/`. It draws the part of JSON Schema the server's schemas use; anything else is JSON to edit, with the reason. A 422's body, passed as `refused`, puts the server's refusals on the fields they name until those change. The contract test in `tests/e2e/forms.spec.ts` fails when the server publishes a construct the forms don't draw.
 - **A chart** is `<Chart title="…" :series="[…]" :x="{ title: 'Position (µm)' }" :y="{ title: '…' }" />`, from `src/ui/charts/`: lines, areas, histograms and points, on a canvas coloured from the `--chart-*` tokens, with a table of its numbers behind it. New numbers are new arrays: it draws again when `series` changes. Each drawing is timed on the page's timeline, as `oscope.chart.draw`.
@@ -96,9 +96,18 @@ The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042
 
 - **`ui/`:** the components. The only place that imports reka-ui.
 - **`api/`:** the server. The only place that uses `fetch` or a WebSocket.
-- **`host/`:** the platform: storage, dialogs, windows. The desktop app replaces it.
+- **`host/`:** the platform, behind one interface: storage, files, the clipboard, notifications, the window. The desktop app installs its own.
 - **`features/<tab>/`:** a tab, made of the three above.
 - **`app/`:** the shell: the routes, the navigation, the words.
+
+**The platform is `host()`'s,** from [`src/host/host.ts`](src/host/host.ts) ([ADR-0046](../docs/adr/0046-the-host-adapter.md)):
+
+- `kept` and `session`, text kept by key, between visits or until the window is closed;
+- `files.save` and `files.open`; `copy`; `notify`, which says whether it was shown;
+- `window`: the title and full screen; and `openOutside`, for a web page's or an email's address;
+- `can`: what the desktop app can do and a browser can't. Ask before using it.
+
+Lint refuses the browser's own calls outside `host/`, and names the one to use. Open `#/dev/gallery/host` to try them; a test installs a platform of its own with `installHost`.
 
 ## Calling the server
 

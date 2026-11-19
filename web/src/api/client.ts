@@ -40,7 +40,7 @@ export class Server {
         return request;
       },
       onResponse: ({ request, response }) => {
-        heard(request.method, response.status);
+        heard(request.method, response.status, tokenOf(request.headers));
         return response;
       },
     });
@@ -74,7 +74,10 @@ export const activity = { last: 0 };
 
 const unauthorised = new Set<() => void>();
 
-/** Told each 401: a session that has ended, or none where the server wants one. */
+/**
+ * Told each 401 to a request sent in the session the app has now: one that
+ * has ended, or none where the server wants one.
+ */
 export function onUnauthorised(listener: () => void): () => void {
   unauthorised.add(listener);
   return () => {
@@ -82,10 +85,22 @@ export function onUnauthorised(listener: () => void): () => void {
   };
 }
 
-/** What an answer says of the session, and of the app's last change. */
-function heard(method: string, status: number): void {
-  if (status === 401) for (const listener of unauthorised) listener();
-  else if (status < 300 && method !== "GET" && method !== "HEAD") activity.last = performance.now();
+/** The session's token that a request was sent with, if any. */
+function tokenOf(headers: Headers): string | undefined {
+  return headers.get("authorization")?.replace(/^Bearer /, "");
+}
+
+/** What an answer to a request sent with `sentWith` says of the session, and of the app's last change. */
+function heard(method: string, status: number, sentWith: string | undefined): void {
+  if (status === 401) {
+    // An answer to a request sent before a login, or in a session since
+    // ended, says nothing of the session the app has now: a read sent just
+    // before the login, and refused just after it, once ended the session.
+    // Decided once, before any listener changes the token.
+    if (sentWith === session.token) for (const listener of unauthorised) listener();
+    return;
+  }
+  if (status < 300 && method !== "GET" && method !== "HEAD") activity.last = performance.now();
 }
 
 /** Waits `ms` between calls, unless `signal` aborts first. */
@@ -163,10 +178,11 @@ export async function fetched<T>(
   const { signal, why } = bounded(limits);
   // Under security, media come with the token too, and are shown as blobs (ADR-0045).
   const headers = new Headers(init.headers);
-  if (session.token) headers.set("authorization", `Bearer ${session.token}`);
+  const sentWith = session.token;
+  if (sentWith) headers.set("authorization", `Bearer ${sentWith}`);
   try {
     const response = await fetch(address, { ...init, headers, signal });
-    heard(init.method ?? "GET", response.status);
+    heard(init.method ?? "GET", response.status, sentWith);
     if (!response.ok) {
       throw answerError(response.status, await bodyOf(response), response.statusText);
     }

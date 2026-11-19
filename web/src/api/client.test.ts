@@ -193,6 +193,39 @@ describe("the session's part in each call (W1.3)", () => {
     expect(heard).toBe(2);
   });
 
+  it("tells of a 401 only in the session its request was sent in", async () => {
+    let heard = 0;
+    const stop = onUnauthorised(() => heard++);
+    let answer = (): void => {};
+    const made = network(
+      () =>
+        new Promise<Response>((done) => {
+          answer = () => done(json({ detail: "a token is needed" }, 401));
+        }),
+    );
+    // Sent before a login, and answered after it.
+    const before = call(version).catch(() => {});
+    await vi.waitFor(() => expect(made).toHaveLength(1));
+    session.token = "t1";
+    answer();
+    await before;
+    expect(heard).toBe(0);
+    // Sent in the session, and answered in it.
+    const during = call(version).catch(() => {});
+    await vi.waitFor(() => expect(made).toHaveLength(2));
+    answer();
+    await during;
+    expect(heard).toBe(1);
+    // A medium sent in the session, and answered after its logout.
+    const medium = fetched(elsewhere.address("/api/v1/media/ping"), (got) => got.text());
+    await vi.waitFor(() => expect(made).toHaveLength(3));
+    delete session.token;
+    answer();
+    await medium.catch(() => {});
+    stop();
+    expect(heard).toBe(1);
+  });
+
   it("notes each change the app made: a call that isn't a read, answered well", async () => {
     activity.last = 0;
     network(() => json(null));

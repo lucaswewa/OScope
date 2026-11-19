@@ -1,5 +1,6 @@
 // The app's lint rules (ADR-0039): the usual ones for TypeScript and Vue, the
-// layers' rule, and what a Tauri-ready app may not do outside its two doors.
+// layers' rule, and what a Tauri-ready app may not do outside its two doors:
+// the server's client, and the host adapter (ADR-0046).
 import js from "@eslint/js";
 import vue from "eslint-plugin-vue";
 import tseslint from "typescript-eslint";
@@ -27,7 +28,10 @@ function layerRule(layer, forbidden) {
   return { "no-restricted-imports": ["error", { patterns }] };
 }
 
-/** What only `api/` and `host/` may touch: the network, storage, and windows. */
+/**
+ * What only `api/` and `host/` may touch: the network, and the platform,
+ * which the host adapter gives the rest of the app (ADR-0046).
+ */
 const platform = {
   "no-restricted-globals": [
     "error",
@@ -37,16 +41,44 @@ const platform = {
     })),
     ...["localStorage", "sessionStorage", "indexedDB"].map((name) => ({
       name,
-      message: `Only src/host/ keeps state: ${name} isn't for here (ADR-0039).`,
+      message: "Only src/host/ keeps state: use host().kept or host().session (ADR-0046).",
+    })),
+    ...[
+      ["open", "host().openOutside"],
+      ["Notification", "host().notify"],
+      ["showSaveFilePicker", "host().files.save"],
+      ["showOpenFilePicker", "host().files.open"],
+    ].map(([name, instead]) => ({
+      name,
+      message: `${name} is the platform's: use ${instead} from src/host/ (ADR-0046).`,
     })),
   ],
   "no-restricted-properties": [
     "error",
-    ...["open", "localStorage", "sessionStorage", "fetch"].map((property) => ({
+    {
       object: "window",
+      property: "fetch",
+      message: "Only src/api/ talks to the server: window.fetch isn't for here (ADR-0039).",
+    },
+    ...[
+      ["window", "open", "host().openOutside"],
+      ["window", "localStorage", "host().kept"],
+      ["window", "sessionStorage", "host().session"],
+      ["navigator", "clipboard", "host().copy"],
+      ["document", "execCommand", "host().copy"],
+      ["document", "title", "host().window.title"],
+      ["document", "exitFullscreen", "host().window.leaveFullScreen"],
+      ["document", "fullscreenElement", "host().window.isFullScreen"],
+    ].map(([object, property, instead]) => ({
+      object,
       property,
-      message: `window.${property} is the platform's: go through src/host/ or src/api/ (ADR-0039).`,
+      message: `${object}.${property} is the platform's: use ${instead} from src/host/ (ADR-0046).`,
     })),
+    {
+      property: "requestFullscreen",
+      message:
+        "Full screen is the platform's: use host().window.enterFullScreen from src/host/ (ADR-0046).",
+    },
   ],
   "no-restricted-syntax": [
     "error",

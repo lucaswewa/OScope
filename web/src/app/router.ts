@@ -73,5 +73,11 @@ export const router = createRouter({
       name: "gallery-connection",
       component: () => import("@/features/dev/ConnectionPage.vue"),
     },
+    {
+      // The host adapter: the platform's services, tried by hand (W1.4).
+      path: "/dev/gallery/host",
+      name: "gallery-host",
+      component: () => import("@/features/dev/HostPage.vue"),
+    },
   ],
 });
