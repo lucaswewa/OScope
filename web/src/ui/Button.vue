@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 
+import { useDisabled } from "./control";
 import Icon from "./Icon.vue";
 import type { IconName } from "./icons";
 import Spinner from "./Spinner.vue";
@@ -34,6 +35,8 @@ function swallow(event: MouseEvent): void {
   event.preventDefault();
   event.stopImmediatePropagation();
 }
+// Switched off by its own prop, or by a locked part of the page (ADR-0048).
+const off = useDisabled(props);
 </script>
 
 <template>
@@ -41,7 +44,7 @@ function swallow(event: MouseEvent): void {
     class="button"
     :class="[variant, tone, { compact }]"
     :type="type"
-    :disabled="disabled"
+    :disabled="off"
     :aria-busy="busy || undefined"
     :aria-disabled="busy || undefined"
     @click.capture="swallow"

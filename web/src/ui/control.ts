@@ -1,7 +1,15 @@
 // What a control and the `Field` around it tell each other (ADR-0042): the
 // control's id, for the label; what describes it, a hint or an error; and
 // whether it is in error. A control outside a `Field` has its own.
-import { computed, inject, provide, useId, type ComputedRef, type InjectionKey } from "vue";
+import {
+  computed,
+  inject,
+  provide,
+  useId,
+  type ComputedRef,
+  type InjectionKey,
+  type Ref,
+} from "vue";
 
 export interface FieldContext {
   /** The control's id, which the label points at. */
@@ -19,6 +27,23 @@ const FIELD: InjectionKey<FieldContext> = Symbol("field");
 /** Makes a `Field` known to the control inside it. */
 export function provideField(field: FieldContext): void {
   provide(FIELD, field);
+}
+
+/**
+ * Whether the controls in a part of the page are locked: the app read-only,
+ * without the control lease (ADR-0048). A part inside may free them again.
+ */
+const LOCKED: InjectionKey<Readonly<Ref<boolean>>> = Symbol("locked");
+
+/** Locks, or frees, the controls inside the component that calls it. */
+export function provideLocked(locked: Readonly<Ref<boolean>>): void {
+  provide(LOCKED, locked);
+}
+
+/** Whether a control is switched off: by its own `disabled`, or by a locked part of the page. */
+export function useDisabled(props: { disabled?: boolean | undefined }): ComputedRef<boolean> {
+  const locked = inject(LOCKED, null);
+  return computed(() => Boolean(props.disabled) || (locked?.value ?? false));
 }
 
 /** What every control takes. */
@@ -44,5 +69,7 @@ export function useControl(props: ControlProps) {
     labelledBy: field?.labelId,
     describedBy: computed(() => field?.describedBy.value),
     invalid: computed(() => Boolean(props.invalid) || (field?.invalid.value ?? false)),
+    /** Switched off: by its own prop, or by the locked part of the page it is in. */
+    disabled: useDisabled(props),
   };
 }

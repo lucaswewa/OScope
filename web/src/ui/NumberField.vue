@@ -53,7 +53,7 @@ const describedBy = computed(() => {
   const ids = [reason.value ? reasonId : undefined, control.describedBy.value];
   return ids.filter(Boolean).join(" ") || undefined;
 });
-const fixed = computed(() => props.disabled || props.readonly);
+const fixed = computed(() => control.disabled.value || props.readonly);
 const range = computed(() => ({ min: props.min, max: props.max }));
 
 // A value from outside is shown at once, except under the hand that is typing.
@@ -119,7 +119,7 @@ function wheel(event: WheelEvent): void {
         autocomplete="off"
         spellcheck="false"
         :placeholder="placeholder"
-        :disabled="disabled"
+        :disabled="control.disabled.value"
         :readonly="readonly"
         :aria-label="label"
         :aria-valuenow="value ?? undefined"

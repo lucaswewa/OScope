@@ -40,6 +40,14 @@ import play from "@material-symbols/svg-300/outlined/play_arrow.svg?raw";
 import light from "@material-symbols/svg-300/outlined/light_mode.svg?raw";
 import dark from "@material-symbols/svg-300/outlined/dark_mode.svg?raw";
 import computer from "@material-symbols/svg-300/outlined/contrast.svg?raw";
+import control from "@material-symbols/svg-300/outlined/biotech.svg?raw";
+import scan from "@material-symbols/svg-300/outlined/grid_on.svg?raw";
+import workspace from "@material-symbols/svg-300/outlined/science.svg?raw";
+import gallery from "@material-symbols/svg-300/outlined/photo_library.svg?raw";
+import jobs from "@material-symbols/svg-300/outlined/pending_actions.svg?raw";
+import logging from "@material-symbols/svg-300/outlined/receipt_long.svg?raw";
+import keyboard from "@material-symbols/svg-300/outlined/keyboard.svg?raw";
+import lock from "@material-symbols/svg-300/outlined/lock.svg?raw";
 
 /** The box every Material Symbols file draws in. */
 export const BOX = "0 -960 960 960";
@@ -85,6 +93,14 @@ export const icons = {
   camera: pathOf(camera),
   settings: pathOf(settings),
   power: pathOf(power),
+  control: pathOf(control),
+  scan: pathOf(scan),
+  workspace: pathOf(workspace),
+  gallery: pathOf(gallery),
+  jobs: pathOf(jobs),
+  logging: pathOf(logging),
+  keyboard: pathOf(keyboard),
+  lock: pathOf(lock),
   home: pathOf(home),
   folder: pathOf(folder),
   file: pathOf(file),

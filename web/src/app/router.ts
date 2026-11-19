@@ -1,4 +1,6 @@
-import { createRouter, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
+
+import { TABS } from "@/app/tabs";
 
 /**
  * The app's routes, by hash (ADR-0039): the same build then runs from a
@@ -9,9 +11,18 @@ export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     {
+      // The shell (W2.1): the rail, and the tab it shows. The first is Control.
       path: "/",
-      name: "home",
-      component: () => import("@/features/home/HomePage.vue"),
+      component: () => import("@/app/AppShell.vue"),
+      children: [
+        { path: "", redirect: { name: "control" } },
+        ...TABS.map((tab): RouteRecordRaw => ({
+          path: tab.name,
+          name: tab.name,
+          component: tab.page,
+          props: { tab: tab.name, comes: tab.comes },
+        })),
+      ],
     },
     {
       // The login, when the server has accounts (W1.3).
@@ -22,67 +33,67 @@ export const router = createRouter({
     {
       // The tokens, shown: for whoever builds or checks a component.
       path: "/dev/gallery",
-      name: "gallery",
+      name: "dev-tokens",
       component: () => import("@/features/dev/GalleryPage.vue"),
     },
     {
       // Every control, in each of its states.
       path: "/dev/gallery/inputs",
-      name: "gallery-inputs",
+      name: "dev-inputs",
       component: () => import("@/features/dev/InputsPage.vue"),
     },
     {
       // What appears over the page, and what says something happened.
       path: "/dev/gallery/overlays",
-      name: "gallery-overlays",
+      name: "dev-overlays",
       component: () => import("@/features/dev/OverlaysPage.vue"),
     },
     {
       // Tabs, panes, a table of 100,000 rows, a tree, and the rest.
       path: "/dev/gallery/data",
-      name: "gallery-data",
+      name: "dev-data",
       component: () => import("@/features/dev/DataPage.vue"),
     },
     {
       // Forms drawn from JSON Schemas: the gallery's own, and the server's.
       path: "/dev/gallery/forms",
-      name: "gallery-forms",
+      name: "dev-forms",
       component: () => import("@/features/dev/FormsPage.vue"),
     },
     {
       // Charts drawn by the app, from data recorded from the simulated instrument.
       path: "/dev/gallery/charts",
-      name: "gallery-charts",
+      name: "dev-charts",
       component: () => import("@/features/dev/ChartsPage.vue"),
     },
     {
       // Calls through the typed client: an action followed, and failures as one model.
       path: "/dev/gallery/api",
-      name: "gallery-api",
+      name: "dev-api",
       component: () => import("@/features/dev/ApiPage.vue"),
     },
     {
       // Live Things: the stage's state, kept by the server.
       path: "/dev/gallery/things",
-      name: "gallery-things",
+      name: "dev-things",
       component: () => import("@/features/dev/ThingsPage.vue"),
     },
     {
       // The connection, the session and the control lease (W1.3).
       path: "/dev/gallery/connection",
-      name: "gallery-connection",
+      name: "dev-connection",
       component: () => import("@/features/dev/ConnectionPage.vue"),
     },
     {
       // The host adapter: the platform's services, tried by hand (W1.4).
       path: "/dev/gallery/host",
-      name: "gallery-host",
+      name: "dev-host",
       component: () => import("@/features/dev/HostPage.vue"),
     },
     {
       // The live preview: a worker's frames, drawn with WebGL2 (W1.5).
       path: "/dev/gallery/preview",
-      name: "gallery-preview",
+      name: "dev-preview",
       component: () => import("@/features/dev/PreviewPage.vue"),
     },
   ],

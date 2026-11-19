@@ -91,6 +91,23 @@ export function useEvent<T = unknown>(
   return { told, last: computed(() => told.value.at(-1)) };
 }
 
+const failed = new Set<(error: ApiError, path: string) => void>();
+
+/** Failures that say themselves: a cancellation, an action left, an ended session, a lost server. */
+const QUIET = new Set(["cancelled", "aborted", "unauthorised", "unreachable"]);
+
+/**
+ * Told each action run from a component that the server refused, or that
+ * failed, with its error, whose message is the server's words: the shell
+ * raises a notice of it (W2.1). Gives the means to stop.
+ */
+export function onActionFailed(listener: (error: ApiError, path: string) => void): () => void {
+  failed.add(listener);
+  return () => {
+    failed.delete(listener);
+  };
+}
+
 /**
  * An action, run from a component: its invocation as it goes, then its
  * output or its error. Leaving the component stops following it, and
@@ -126,6 +143,10 @@ export function useAction<P extends ActionPath>(path: P, options: { on?: Server 
       return output.value;
     } catch (thrown) {
       error.value = thrown instanceof ApiError ? thrown : new ApiError("server", String(thrown));
+      // Left, the component follows it no more: that isn't a failure.
+      if (!leaving.signal.aborted && !QUIET.has(error.value.failure)) {
+        for (const listener of failed) listener(error.value, path);
+      }
       return undefined;
     }
   }

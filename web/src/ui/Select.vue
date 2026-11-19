@@ -57,7 +57,7 @@ function show(now: boolean): void {
 </script>
 
 <template>
-  <SelectRoot v-model="chosen" :open="open" :disabled="disabled" @update:open="show">
+  <SelectRoot v-model="chosen" :open="open" :disabled="control.disabled.value" @update:open="show">
     <SelectTrigger
       v-bind="$attrs"
       :id="control.id.value"

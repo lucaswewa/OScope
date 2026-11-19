@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { effectScope } from "vue";
 
-import { useServerVersion } from "@/features/home/serverVersion";
+import { useServerVersion } from "@/features/about/serverVersion";
 
 describe("the server's version on the first page", () => {
   beforeEach(() => vi.useFakeTimers());

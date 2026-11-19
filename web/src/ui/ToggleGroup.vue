@@ -38,7 +38,7 @@ function change(now: unknown): void {
     class="group"
     :type="multiple ? 'multiple' : 'single'"
     :model-value="pressed"
-    :disabled="disabled"
+    :disabled="control.disabled.value"
     :aria-label="label"
     :aria-labelledby="label ? undefined : control.labelledBy"
     :aria-describedby="control.describedBy.value"

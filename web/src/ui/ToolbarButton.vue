@@ -4,6 +4,7 @@ import "./styles/toggle.css";
 import { ToolbarButton } from "reka-ui";
 
 import Button from "./Button.vue";
+import { useDisabled } from "./control";
 import type { IconName } from "./icons";
 
 /**
@@ -13,7 +14,7 @@ import type { IconName } from "./icons";
 defineOptions({ inheritAttrs: false });
 // `pressed` is undefined unless given: Vue would make a missing one false,
 // and every button of a toolbar would then say it can be pressed and let go.
-withDefaults(
+const props = withDefaults(
   defineProps<{
     icon?: IconName;
     /** Whether it is pressed, for a button that stays so. */
@@ -22,10 +23,12 @@ withDefaults(
   }>(),
   { pressed: undefined },
 );
+// Switched off by its own prop, or by a locked part of the page (ADR-0048).
+const off = useDisabled(props);
 </script>
 
 <template>
-  <ToolbarButton as-child :disabled="disabled">
+  <ToolbarButton as-child :disabled="off">
     <Button
       v-bind="$attrs"
       variant="bare"

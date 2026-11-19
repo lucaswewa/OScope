@@ -30,7 +30,7 @@ function change(now: unknown): void {
 function arrow(event: KeyboardEvent): void {
   const steps: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
   const step = steps[event.key];
-  if (step === undefined || props.readonly || props.disabled) return;
+  if (step === undefined || props.readonly || control.disabled.value) return;
   const open = props.options.filter((option) => !option.disabled);
   const from = (event.target as HTMLElement).getAttribute("value");
   const at = open.findIndex((option) => option.value === from);
@@ -45,7 +45,7 @@ function arrow(event: KeyboardEvent): void {
     :class="{ row }"
     :model-value="chosen"
     :orientation="row ? 'horizontal' : 'vertical'"
-    :disabled="disabled"
+    :disabled="control.disabled.value"
     :aria-label="label"
     :aria-labelledby="label ? undefined : control.labelledBy"
     :aria-readonly="readonly || undefined"
@@ -58,7 +58,7 @@ function arrow(event: KeyboardEvent): void {
       v-for="(option, at) in options"
       :key="option.value"
       class="radio"
-      :class="{ off: disabled || option.disabled, fixed: readonly }"
+      :class="{ off: control.disabled.value || option.disabled, fixed: readonly }"
       :for="`${control.id.value}-${at}`"
     >
       <RadioGroupItem

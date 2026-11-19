@@ -14,12 +14,16 @@ function change(now: boolean): void {
 </script>
 
 <template>
-  <label class="switch" :class="{ off: disabled, fixed: readonly }" :for="control.id.value">
+  <label
+    class="switch"
+    :class="{ off: control.disabled.value, fixed: readonly }"
+    :for="control.id.value"
+  >
     <SwitchRoot
       :id="control.id.value"
       class="track"
       :model-value="on"
-      :disabled="disabled"
+      :disabled="control.disabled.value"
       :aria-label="label"
       :aria-readonly="readonly || undefined"
       :aria-describedby="control.describedBy.value"
