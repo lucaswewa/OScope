@@ -94,6 +94,8 @@ test("buttons and choices work from the keyboard @main", async ({ page, server }
   // Radio buttons: an arrow moves the choice, past the one that is switched off.
   const order = page.getByRole("radiogroup", { name: "Scan order" });
   await order.getByRole("radio", { name: "Snake" }).focus();
+  // The key only once the focus is there: a busy Firefox took it before (W3.2).
+  await expect(order.getByRole("radio", { name: "Snake" })).toBeFocused();
   await keys.press("ArrowDown");
   await expect(order.getByRole("radio", { name: "Raster" })).toBeChecked();
   await expect(order.getByRole("radio", { name: "Raster" })).toBeFocused();

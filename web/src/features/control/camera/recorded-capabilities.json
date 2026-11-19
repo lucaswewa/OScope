@@ -1,0 +1,115 @@
+{
+  "model": "simulated MIChrome 20",
+  "sensor_width": 5472,
+  "sensor_height": 3648,
+  "pixel_size": 2.4,
+  "shutter": "rolling",
+  "modes": [
+    {
+      "name": "full",
+      "width": 5472,
+      "height": 3648,
+      "binning": 1,
+      "rates": [
+        {
+          "format": {
+            "kind": "bayer8",
+            "pattern": "RGGB"
+          },
+          "fps": 14.49
+        },
+        {
+          "format": {
+            "kind": "bayer16",
+            "pattern": "RGGB",
+            "significant_bits": 12
+          },
+          "fps": 7.24
+        }
+      ],
+      "line_time": 0.01644736842105263
+    },
+    {
+      "name": "bin2",
+      "width": 2736,
+      "height": 1824,
+      "binning": 2,
+      "rates": [
+        {
+          "format": {
+            "kind": "bayer8",
+            "pattern": "RGGB"
+          },
+          "fps": 53.14
+        },
+        {
+          "format": {
+            "kind": "bayer16",
+            "pattern": "RGGB",
+            "significant_bits": 12
+          },
+          "fps": 26.57
+        }
+      ],
+      "line_time": 0.009868421052631578
+    },
+    {
+      "name": "bin3",
+      "width": 1824,
+      "height": 1216,
+      "binning": 3,
+      "rates": [
+        {
+          "format": {
+            "kind": "bayer8",
+            "pattern": "RGGB"
+          },
+          "fps": 67.26
+        },
+        {
+          "format": {
+            "kind": "bayer16",
+            "pattern": "RGGB",
+            "significant_bits": 12
+          },
+          "fps": 33.87
+        }
+      ],
+      "line_time": 0.012335526315789474
+    },
+    {
+      "name": "design",
+      "width": 5472,
+      "height": 3648,
+      "binning": 1,
+      "rates": [
+        {
+          "format": {
+            "kind": "bayer16",
+            "pattern": "RGGB",
+            "significant_bits": 12
+          },
+          "fps": 14.5
+        }
+      ],
+      "line_time": 0.01644736842105263
+    }
+  ],
+  "exposure_min": 0.0184,
+  "exposure_max": 19340.1,
+  "gain_min": 0,
+  "gain_max": 240,
+  "roi": {
+    "x_step": 12,
+    "y_step": 12,
+    "min_size": 48,
+    "raises_rate": false
+  },
+  "trigger": {
+    "software": true,
+    "external": true,
+    "output": false
+  },
+  "sensor_timestamps": false,
+  "temperature": false
+}
