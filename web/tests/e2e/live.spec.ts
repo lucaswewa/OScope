@@ -54,19 +54,25 @@ const canvasSize = (page: Page) =>
     height: canvas.height,
   }));
 
+/**
+ * How long a first frame may take: on a loaded computer WebKit's are slow,
+ * as W1.5's tests found.
+ */
+const FIRST_FRAME = { timeout: 60_000 };
+
 /** Control, its camera started from the viewer, as its user would. */
 async function live(page: Page, url: string): Promise<void> {
   await page.goto(`${url}/#/control`);
   await expect(readout(page, "state")).toHaveText("Not streaming");
   await button(page, "Start").click();
-  await expect(readout(page, "state")).toHaveText("Live");
+  await expect(readout(page, "state")).toHaveText("Live", FIRST_FRAME);
 }
 
 test("the camera's frames are drawn live on Control, and read out @main", async ({
   page,
   server,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await onTissue(server.url);
   // The stage moved on the fast clock, which is back at real time before anything streams.
   const rate = await call((signal) =>
@@ -93,7 +99,7 @@ test("zooming in asks for the region shown, and that region comes back", async (
   page,
   server,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await aRegion(server.url);
   await live(page, server.url);
   await expect(readout(page, "frame")).toHaveText(region(EXTENT));
@@ -118,7 +124,7 @@ test("the image waits for its first frame, and is stale once frames stop", async
   page,
   server,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   const on = new Api(server.url);
   await aRegion(server.url);
   // Triggered by software, the camera streams and exposes only when told to.
@@ -131,7 +137,7 @@ test("the image waits for its first frame, and is stale once frames stop", async
   await expect(readout(page, "state")).toHaveText("Waiting for a frame");
   await expect(said(page, "live-said")).toHaveText(/first frame/);
   await act("/api/v1/camera/trigger_exposure", {}, { on });
-  await expect(readout(page, "state")).toHaveText("Live");
+  await expect(readout(page, "state")).toHaveText("Live", FIRST_FRAME);
   await expect(said(page, "live-said")).toHaveCount(0);
   // No frame for two seconds: stale, its last frame still shown.
   await expect(readout(page, "state")).toHaveText("Stale");
@@ -144,7 +150,7 @@ test("the view is saved as a PNG, the preview as shown, and fills the screen", a
   page,
   server,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await onTissue(server.url);
   await live(page, server.url);
   const saving = page.waitForEvent("download");
@@ -187,7 +193,7 @@ test("the viewer's chrome looks as its baselines do, the frame hidden @visual", 
   server,
 }) => {
   test.skip(!process.env.OSCOPE_VISUAL, "the baselines are one computer's: OSCOPE_VISUAL=1 there");
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await onTissue(server.url);
   await live(page, server.url);
   await button(page, "Stop").click();
