@@ -14,30 +14,15 @@ import type { PixelRect } from "../../src/api/preview/message.ts";
 import { roiFor } from "../../src/api/preview/view.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
-import { onTissue } from "./sim.ts";
+import { aSmallRegion as aRegion, overTissue, SMALL } from "./sim.ts";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
 const image = (page: Page) => page.getByRole("img", { name: /^The live image/ });
 const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 const readout = (page: Page, name: string) => said(page, name).locator("dd");
 
-/**
- * The camera's region for these tests: 960 × 648 pixels about the sensor's
- * centre, on its grid of 12. A quarter of W1.5's 1920 × 1272, which a
- * Linux replay's software GL couldn't draw beside W1.5's timed test.
- */
-const EXTENT = { x: 2256, y: 1500, width: 960, height: 648 };
-
-/** The camera given the tests' region, which keeps its rate. */
-async function aRegion(url: string): Promise<void> {
-  await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: EXTENT, signal }));
-}
-
-/** The stage over the tissue, on the fast clock, and the camera given the tests' region. */
-async function overTissue(url: string): Promise<void> {
-  await onTissue(url);
-  await aRegion(url);
-}
+/** The camera's region for these tests (sim.ts). */
+const EXTENT = SMALL;
 const region = (r: PixelRect) => `x ${r.x}, y ${r.y}, ${r.width} × ${r.height}`;
 
 /** The region the frame readout says. */

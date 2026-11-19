@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 
+import CameraPane from "@/features/control/camera/CameraPane.vue";
 import StageSample from "@/features/control/StageSample.vue";
 import LiveViewer from "@/features/live/LiveViewer.vue";
 import { kept } from "@/host/kept";
@@ -24,6 +25,7 @@ const sizes = kept("oscope.control.panes", [33, 67] as [number, number], isPair)
       <template #first>
         <section class="pane" :aria-label="t('control.pane')">
           <h1>{{ t("tabs.control.title") }}</h1>
+          <CameraPane />
           <p class="note">{{ t("control.comesPane") }}</p>
           <StageSample />
         </section>

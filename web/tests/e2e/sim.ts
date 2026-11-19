@@ -51,3 +51,22 @@ export async function onTissue(url: string): Promise<void> {
   });
   await aRegion(url);
 }
+
+/**
+ * A small region of the camera: 960 × 648 pixels about the sensor's centre,
+ * on its grid of 12. A quarter of `aRegion`'s, for the tests that stream
+ * but don't time their frames: a Linux replay's software GL couldn't draw
+ * the larger beside W1.5's timed test (W3.1).
+ */
+export const SMALL = { x: 2256, y: 1500, width: 960, height: 648 };
+
+/** The camera given the small region, which keeps its rate. */
+export async function aSmallRegion(url: string): Promise<void> {
+  await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: SMALL, signal }));
+}
+
+/** The stage over the tissue, on the fast clock, and the camera given the small region. */
+export async function overTissue(url: string): Promise<void> {
+  await onTissue(url);
+  await aSmallRegion(url);
+}

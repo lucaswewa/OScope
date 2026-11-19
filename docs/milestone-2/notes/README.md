@@ -23,8 +23,8 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W1.5 | The preview client | Done | [W1.5-preview-client.md](W1.5-preview-client.md) |
 | W2.1 | The shell and navigation | Done | [W2.1-shell.md](W2.1-shell.md) |
 | W2.2 | Status, connection and lease in the shell | Done | [W2.2-status.md](W2.2-status.md) |
-| W3.1 | The live viewer | In review | [W3.1-live-viewer.md](W3.1-live-viewer.md) |
-| W3.2 | Camera controls | Planned | — |
+| W3.1 | The live viewer | Done | [W3.1-live-viewer.md](W3.1-live-viewer.md) |
+| W3.2 | Camera controls | In review | [W3.2-camera-controls.md](W3.2-camera-controls.md) |
 | W3.3 | Stage controls | Planned | — |
 | W3.4 | Illumination and the objective | Planned | — |
 | W3.5 | Overlays I: crosshair, ROI, grid and profile | Planned | — |
