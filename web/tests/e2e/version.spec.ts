@@ -1,7 +1,8 @@
 import { expect, test } from "./fixtures.ts";
 
 // The server's version, which the first page showed (W0.1), is About's now
-// (W2.1): its screenshots in W0.1's notes are of that first page.
+// (W2.1): its screenshots in W0.1's notes are of that first page. Without
+// the server, a page takes the tab's place (W2.2).
 test("About shows the server's version, loses it, and finds it again @main", async ({
   page,
   server,
@@ -12,7 +13,8 @@ test("About shows the server's version, loses it, and finds it again @main", asy
   await expect(status).toHaveText(`Server ${server.version}`);
 
   await server.stop();
-  await expect(status).toHaveText("The server can't be reached.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("The server can't be reached");
+  await expect(status).toBeHidden();
 
   // The same server, back at the same address.
   await server.start();

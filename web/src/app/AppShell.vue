@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 
+import { useConnection } from "@/api/connection/connection";
 import { useCanControl } from "@/api/connection/lease";
 import { onActionFailed } from "@/api/things/use";
 import ReadOnlyLine from "@/app/ReadOnlyLine.vue";
@@ -10,6 +11,10 @@ import ShortcutsDialog from "@/app/ShortcutsDialog.vue";
 import TabBoundary from "@/app/TabBoundary.vue";
 import { addShortcut, listen } from "@/app/shortcuts";
 import { TABS, tabOf } from "@/app/tabs";
+import ConnectionLost from "@/features/status/ConnectionLost.vue";
+import RailStatus from "@/features/status/RailStatus.vue";
+import { useLeaseRequests } from "@/features/status/leaseRequests";
+import { noServer } from "@/features/status/status";
 import { host } from "@/host/host";
 import ControlScope from "@/ui/ControlScope.vue";
 import Rail from "@/ui/Rail.vue";
@@ -21,6 +26,8 @@ import { notify } from "@/ui/toasts";
  * is locked while another holds the control lease, catches its own
  * failures, names the window, and takes the focus to its heading when the
  * route changes. The keys 1 to 9 open the tabs, and `?` lists the keys.
+ * While there is no server, a page says so in place of the tab, which is
+ * kept as it was (W2.2); at the start, only once the server is late.
  */
 const { t } = useI18n();
 const route = useRoute();
@@ -29,6 +36,18 @@ const canControl = useCanControl();
 const listing = ref(false);
 const content = ref<HTMLElement>();
 const boundary = ref<InstanceType<typeof TabBoundary>>();
+const connection = useConnection();
+useLeaseRequests();
+
+/** How long the server may take to answer at the start before the app says it is looking. */
+const LATE = 2_000;
+const late = shallowRef(false);
+const lateTimer = setTimeout(() => (late.value = true), LATE);
+const lost = computed(() => noServer(connection.state, late.value));
+// A page that couldn't load while the server was gone is tried again once it is back.
+watch(lost, (now, before) => {
+  if (before && !now) boundary.value?.retry();
+});
 
 function items(bottom: boolean): RailItem[] {
   return TABS.filter((tab) => Boolean(tab.bottom) === bottom).map((tab) => ({
@@ -75,7 +94,10 @@ const stops = [
   // A page that couldn't load stops its tab, not the app.
   router.onError((error, to) => boundary.value?.fail(error, () => void router.push(to.fullPath))),
 ];
-onBeforeUnmount(() => stops.forEach((stop) => stop()));
+onBeforeUnmount(() => {
+  stops.forEach((stop) => stop());
+  clearTimeout(lateTimer);
+});
 
 function toContent(): void {
   content.value?.focus();
@@ -87,17 +109,19 @@ function toContent(): void {
     <button class="skip" type="button" @click="toContent">{{ t("shell.skip") }}</button>
     <Rail :label="t('shell.rail')" :top="top" :bottom="bottom">
       <template #end>
-        <!-- The instrument's status indicator comes here in W2.2. -->
-        <div class="status" />
+        <RailStatus />
       </template>
     </Rail>
     <main id="content" ref="content" class="content" tabindex="-1">
-      <ReadOnlyLine />
-      <TabBoundary ref="boundary" :tab="String(route.name)">
-        <ControlScope :locked="!canControl">
-          <RouterView />
-        </ControlScope>
-      </TabBoundary>
+      <ConnectionLost v-if="lost" />
+      <div v-show="!lost" class="tab">
+        <ReadOnlyLine />
+        <TabBoundary ref="boundary" :tab="String(route.name)">
+          <ControlScope :locked="!canControl">
+            <RouterView />
+          </ControlScope>
+        </TabBoundary>
+      </div>
     </main>
     <ShortcutsDialog v-model:open="listing" />
   </div>
@@ -122,8 +146,8 @@ function toContent(): void {
   outline: none;
 }
 
-.status {
-  block-size: var(--space-6);
+.tab {
+  display: contents;
 }
 
 .skip {

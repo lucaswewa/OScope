@@ -48,6 +48,7 @@ import jobs from "@material-symbols/svg-300/outlined/pending_actions.svg?raw";
 import logging from "@material-symbols/svg-300/outlined/receipt_long.svg?raw";
 import keyboard from "@material-symbols/svg-300/outlined/keyboard.svg?raw";
 import lock from "@material-symbols/svg-300/outlined/lock.svg?raw";
+import notifications from "@material-symbols/svg-300/outlined/notifications.svg?raw";
 
 /** The box every Material Symbols file draws in. */
 export const BOX = "0 -960 960 960";
@@ -101,6 +102,7 @@ export const icons = {
   logging: pathOf(logging),
   keyboard: pathOf(keyboard),
   lock: pathOf(lock),
+  notifications: pathOf(notifications),
   home: pathOf(home),
   folder: pathOf(folder),
   file: pathOf(file),

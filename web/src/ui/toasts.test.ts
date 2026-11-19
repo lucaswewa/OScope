@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { handClock } from "@/ui/test-kit";
-import { AT_ONCE, createToasts, lasting, LASTS, type Level } from "@/ui/toasts";
+import { AT_ONCE, createToasts, KEPT, lasting, LASTS, type Level } from "@/ui/toasts";
 
 const texts = (queue: ReturnType<typeof createToasts>): string[] =>
   queue.shown.value.map((toast) => toast.text);
@@ -83,6 +83,31 @@ describe("the notices' queue", () => {
     const other = createToasts();
     expect(texts(one)).toEqual(["1"]);
     expect(texts(other)).toEqual([]);
+  });
+});
+
+describe("the notices' history (W2.2)", () => {
+  it("keeps every notice raised, the newest first, sent away or not", () => {
+    const { queue, ids } = raised(5);
+    queue.dismiss(ids[0]!);
+    queue.dismiss(ids[3]!);
+    expect(queue.history.value.map((told) => told.text)).toEqual(["5", "4", "3", "2", "1"]);
+    expect(queue.history.value.map((told) => told.id)).toEqual([...ids].reverse());
+  });
+
+  it("keeps when each was raised", () => {
+    const before = Date.now();
+    const { queue } = raised(1);
+    const at = queue.history.value[0]!.at.getTime();
+    expect(at).toBeGreaterThanOrEqual(before);
+    expect(at).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("keeps the newest KEPT, and lets the oldest go", () => {
+    const { queue } = raised(KEPT + 5);
+    expect(queue.history.value).toHaveLength(KEPT);
+    expect(queue.history.value[0]!.text).toBe(String(KEPT + 5));
+    expect(queue.history.value.at(-1)!.text).toBe("6");
   });
 });
 

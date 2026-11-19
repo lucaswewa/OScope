@@ -12,6 +12,7 @@ import Dialog from "@/ui/Dialog.vue";
 import EmptyState from "@/ui/EmptyState.vue";
 import Field from "@/ui/Field.vue";
 import Menu from "@/ui/Menu.vue";
+import NoticeHistory from "@/ui/NoticeHistory.vue";
 import type { MenuEntry } from "@/ui/menu";
 import Popover from "@/ui/Popover.vue";
 import Progress from "@/ui/Progress.vue";
@@ -172,6 +173,11 @@ function raise(level: Level, withAction = false): void {
         </Button>
         <Button @click="raise('success', true)">{{ t("overlays.toasts.withAction") }}</Button>
         <Switch v-model="quick">{{ t("overlays.toasts.quick") }}</Switch>
+        <NoticeHistory>
+          <template #trigger>
+            <Button icon="notifications">{{ t("overlays.toasts.history") }}</Button>
+          </template>
+        </NoticeHistory>
       </div>
     </section>
 

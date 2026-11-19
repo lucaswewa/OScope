@@ -45,7 +45,12 @@ function reload(): void {
   again = undefined;
 }
 
-defineExpose({ fail });
+/** Tries again a page that couldn't load, if one couldn't: once the server is back (W2.2). */
+function retry(): void {
+  if (failure.value && again) reload();
+}
+
+defineExpose({ fail, retry });
 </script>
 
 <template>

@@ -70,11 +70,12 @@ describe("a Thing's store", () => {
     expect(reads.position).toBe(5);
   });
 
-  it("keeps an observable property by its socket, reading it only once", async () => {
+  it("keeps an observable property by its socket, read at first and as the socket opens", async () => {
     const store = thingStore("stage", on);
     const stop = store.follow("speed");
     await later();
     FakeSocket.last.opens();
+    await later();
     expect(FakeSocket.last.sent).toContainEqual({
       messageType: "addPropertyObservation",
       data: { speed: {} },
@@ -83,8 +84,56 @@ describe("a Thing's store", () => {
     FakeSocket.last.says({ messageType: "propertyStatus", data: { speed: 4000 } });
     expect(store.kept.get("speed")?.value).toBe(4000);
     await later(5_000);
-    expect(reads.speed).toBe(1);
+    expect([store.kept.get("speed")?.value, reads.speed]).toEqual([4000, 2]);
     stop();
+  });
+
+  it("reads again what its socket keeps each time it opens: what changed meanwhile isn't told", async () => {
+    let speed = 1000;
+    standInNetwork({
+      "GET /api/v1/thing_descriptions/": () => ({ stage: STAGE }),
+      "GET /api/v1/stage/speed": () => (reads.speed++, speed),
+    });
+    const store = thingStore("stage", on);
+    const stop = store.follow("speed");
+    await later();
+    // Another client's write, before the server keeps the speed for this one.
+    speed = 4000;
+    FakeSocket.last.opens();
+    await later();
+    expect(store.kept.get("speed")?.value).toBe(4000);
+    // The socket drops, and the speed changes while it is closed.
+    FakeSocket.last.drops();
+    speed = 6000;
+    await later(10_000);
+    FakeSocket.last.opens();
+    await later();
+    expect([store.kept.get("speed")?.value, reads.speed]).toEqual([6000, 3]);
+    stop();
+  });
+
+  it("reads again a property it starts to keep on a socket already open", async () => {
+    let speed = 1000;
+    standInNetwork({
+      "GET /api/v1/thing_descriptions/": () => ({ stage: STAGE }),
+      "GET /api/v1/stage/position": () => ({ x: 1 }),
+      // Another client writes the speed just after it is first read.
+      "GET /api/v1/stage/speed": () => {
+        reads.speed++;
+        const now = speed;
+        speed = 4000;
+        return now;
+      },
+    });
+    const store = thingStore("stage", on);
+    const stops = [store.follow("position")];
+    await later();
+    FakeSocket.last.opens();
+    await later();
+    stops.push(store.follow("speed"));
+    await later();
+    expect([store.kept.get("speed")?.value, reads.speed]).toEqual([4000, 2]);
+    for (const stop of stops) stop();
   });
 
   it("reads again what its socket doesn't keep when the Thing tells an event, and passes the event on", async () => {

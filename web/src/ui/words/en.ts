@@ -27,6 +27,10 @@ export default {
     region: "Notifications ({hotkey})",
     notice: "Notification",
   },
+  notices: {
+    title: "Notices",
+    none: "Nothing has been told yet.",
+  },
   tag: {
     remove: "Remove {tag}",
   },

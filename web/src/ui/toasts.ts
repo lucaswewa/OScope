@@ -34,6 +34,14 @@ export const LASTS: Readonly<Record<Level, number>> = {
 /** How many notices show at once. */
 export const AT_ONCE = 3;
 
+/** How many notices the history keeps (W2.2): the newest, the rest let go. */
+export const KEPT = 100;
+
+/** A notice raised, as the history keeps it: with when, on the computer's clock. */
+export interface Told extends Toast {
+  at: Date;
+}
+
 /** How long this notice stays, in milliseconds: 0 is until it is dismissed. */
 export function lasting(notice: Notice): number {
   return notice.lasts ?? LASTS[notice.level];
@@ -60,6 +68,8 @@ const page: Clock = {
 export function createToasts(atOnce = AT_ONCE, clock: Clock = page) {
   const raised = ref<Toast[]>([]);
   const shown = computed(() => raised.value.slice(0, atOnce));
+  /** Every notice raised, the newest first, as many as KEPT. */
+  const history = ref<Told[]>([]);
   /** Each showing notice's time left, since when, and its running timer. */
   const times = new Map<number, { left: number; since: number; timer?: unknown }>();
   let paused = false;
@@ -92,10 +102,13 @@ export function createToasts(atOnce = AT_ONCE, clock: Clock = page) {
     shown,
     /** How many wait behind them. */
     waiting: computed(() => Math.max(0, raised.value.length - atOnce)),
+    /** The notices raised, the newest first, sent away or not (W2.2). */
+    history: computed(() => history.value),
     /** Raises a notice, and gives the number to dismiss it by. */
     notify(notice: Notice): number {
       const id = next++;
       raised.value = [...raised.value, { ...notice, id }];
+      history.value = [{ ...notice, id, at: new Date() }, ...history.value].slice(0, KEPT);
       run();
       return id;
     },
