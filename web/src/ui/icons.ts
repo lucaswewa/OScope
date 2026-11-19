@@ -56,6 +56,8 @@ import fit from "@material-symbols/svg-300/outlined/fit_screen.svg?raw";
 import actual from "@material-symbols/svg-300/outlined/1x_mobiledata.svg?raw";
 import fullScreen from "@material-symbols/svg-300/outlined/fullscreen.svg?raw";
 import leaveFullScreen from "@material-symbols/svg-300/outlined/fullscreen_exit.svg?raw";
+import raise from "@material-symbols/svg-300/outlined/keyboard_double_arrow_up.svg?raw";
+import lower from "@material-symbols/svg-300/outlined/keyboard_double_arrow_down.svg?raw";
 
 /** The box every Material Symbols file draws in. */
 export const BOX = "0 -960 960 960";
@@ -125,6 +127,8 @@ export const icons = {
   light: pathOf(light),
   dark: pathOf(dark),
   system: pathOf(computer),
+  raise: pathOf(raise),
+  lower: pathOf(lower),
 } as const;
 
 /** An icon the registry has. */

@@ -25,7 +25,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W2.2 | Status, connection and lease in the shell | Done | [W2.2-status.md](W2.2-status.md) |
 | W3.1 | The live viewer | Done | [W3.1-live-viewer.md](W3.1-live-viewer.md) |
 | W3.2 | Camera controls | Done | [W3.2-camera-controls.md](W3.2-camera-controls.md) |
-| W3.3 | Stage controls | Planned | — |
+| W3.3 | Stage controls | In review | [W3.3-stage-controls.md](W3.3-stage-controls.md) |
 | W3.4 | Illumination and the objective | Planned | — |
 | W3.5 | Overlays I: crosshair, ROI, grid and profile | Planned | — |
 | W3.6 | Overlays II: histogram, saturation, false colour and the look | Planned | — |

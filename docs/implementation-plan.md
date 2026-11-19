@@ -927,7 +927,7 @@ The camera, the stage, the lights, the live image and what is drawn over it.
 |---|---|---|---|---|---|
 | [W3.1](milestone-2/phases.md#w3-1) | The live viewer | W1.5, W2.2 | 1,500 | 0049 | Done |
 | [W3.2](milestone-2/phases.md#w3-2) | Camera controls | W3.1 | 1,400 | — | Done |
-| [W3.3](milestone-2/phases.md#w3-3) | Stage controls | W3.1 | 1,700 | — | Planned |
+| [W3.3](milestone-2/phases.md#w3-3) | Stage controls | W3.1 | 1,700 | — | In review |
 | [W3.4](milestone-2/phases.md#w3-4) | Illumination and the objective | W3.2 | 900 | — | Planned |
 | [W3.5](milestone-2/phases.md#w3-5) | Overlays I: crosshair, ROI, grid and profile | W3.1, W0.7 | 1,600 | — | Planned |
 | [W3.6](milestone-2/phases.md#w3-6) | Overlays II: histogram, saturation, false colour and the look | W3.5 | 1,600 | — | Planned |
