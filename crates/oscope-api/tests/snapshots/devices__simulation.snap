@@ -50,16 +50,17 @@ expression: td
       ]
     },
     "rate": {
-      "description": "1 is real time; 0, stepped by tests.",
+      "description": "1 is real time; 0, stepped by tests. It may be written, above 0 and\nup to 1,000: the app's end-to-end tests run it fast while the stage\nhomes and moves (W3.1).",
       "title": "How fast the simulator's clock runs.",
       "writeOnly": false,
-      "readOnly": true,
+      "readOnly": false,
       "type": "number",
       "forms": [
         {
           "href": "/api/v1/simulation/rate",
           "op": [
-            "readproperty"
+            "readproperty",
+            "writeproperty"
           ]
         }
       ]

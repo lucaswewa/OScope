@@ -54,6 +54,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0046](0046-the-host-adapter.md) | The host adapter | Accepted | W1.4 |
 | [0047](0047-the-preview-client-a-worker-and-webgl.md) | The preview client: a worker and WebGL | Accepted | W1.5 |
 | [0048](0048-the-shell-and-the-lease-s-read-only-mode.md) | The shell, and the lease's read-only mode | Accepted | W2.1 |
+| [0049](0049-the-live-viewer-and-its-overlays.md) | The live viewer and its overlays | Accepted | W3.1 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

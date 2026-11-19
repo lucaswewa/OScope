@@ -13,6 +13,7 @@ describe("the preview's renderer", () => {
     const context = {
       clearRect: vi.fn(),
       drawImage: (...args: unknown[]) => drawn.push(args),
+      imageSmoothingEnabled: true,
     };
     const canvas = {
       clientWidth: 400,
@@ -34,6 +35,10 @@ describe("the preview's renderer", () => {
     renderer.draw({ centre: [500, 400], scale: 0.5 });
     expect(context.clearRect).toHaveBeenCalledWith(0, 0, 400, 300);
     expect(drawn).toEqual([[second, 0, 0, 400, 300]]);
+    // Past one to one, the sensor's pixels are squares (W3.1).
+    expect(context.imageSmoothingEnabled).toBe(true);
+    renderer.draw({ centre: [500, 400], scale: 4 });
+    expect(context.imageSmoothingEnabled).toBe(false);
     renderer.dispose();
     expect(second.close).toHaveBeenCalled();
   });

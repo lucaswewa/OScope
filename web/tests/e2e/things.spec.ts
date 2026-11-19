@@ -7,6 +7,7 @@ import { act } from "../../src/api/actions.ts";
 import { Server } from "../../src/api/client.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
+import { fast } from "./sim.ts";
 
 /** The page, read once its socket is open, and what each part of it says. */
 async function open(page: Page, url: string) {
@@ -30,8 +31,10 @@ test("the page follows the stage, moved by another client @main", async ({ page,
   test.setTimeout(60_000);
   const { said } = await open(page, server.url);
   const other = new Server(server.url);
-  await act("/api/v1/stage/home", {}, { on: other, timeout: 30_000 });
-  await act("/api/v1/stage/move_to", { x: 5000, y: 4000, z: 1000 }, { on: other });
+  await fast(server.url, async () => {
+    await act("/api/v1/stage/home", {}, { on: other, timeout: 30_000 });
+    await act("/api/v1/stage/move_to", { x: 5000, y: 4000, z: 1000 }, { on: other });
+  });
   // The simulated stage stops within a few µm of its target.
   await expect.poll(async () => Math.abs((await xOf(said("position"))) - 5000) < 5).toBe(true);
   await expect(said("status")).toContainText("idle");

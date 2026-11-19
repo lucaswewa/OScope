@@ -16,6 +16,14 @@ export interface Renderer {
   dispose(): void;
 }
 
+/**
+ * Whether the sensor's pixels are drawn as squares: past one to one, where
+ * a sensor pixel spans more than a device pixel, rather than smoothed (W3.1).
+ */
+export function squares(view: View): boolean {
+  return view.scale > 1;
+}
+
 /** The renderer for `canvas`: WebGL2's, or a 2D canvas's without it. */
 export function createRenderer(canvas: HTMLCanvasElement): Renderer {
   const gl = canvas.getContext("webgl2", { alpha: false, antialias: false, depth: false });
@@ -116,6 +124,12 @@ function webgl(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): Renderer 
       gl.clear(gl.COLOR_BUFFER_BIT);
       if (!rect) return;
       const at = placed(view, rect, size);
+      gl.bindTexture(gl.TEXTURE_2D, parts.texture);
+      gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_MAG_FILTER,
+        squares(view) ? gl.NEAREST : gl.LINEAR,
+      );
       // From the canvas's pixels to clip space: x from -1 at the left, y
       // from 1 at the top, the image's first row at its top.
       gl.uniform4f(
@@ -152,6 +166,7 @@ function flat(canvas: HTMLCanvasElement): Renderer {
       context.clearRect(0, 0, size.width, size.height);
       if (!shown) return;
       const at = placed(view, shown.rect, size);
+      context.imageSmoothingEnabled = !squares(view);
       context.drawImage(shown.bitmap, at.x, at.y, at.width, at.height);
     },
     size: () => fit(canvas),

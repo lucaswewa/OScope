@@ -133,6 +133,23 @@ export function usePreview(
     whole(): void {
       if (extent.value) moved(fitted(extent.value, size));
     },
+    /** Each sensor pixel on one device pixel, the point under `at` kept (W3.1). */
+    oneToOne(at: [number, number]): void {
+      if (view.value && extent.value) {
+        moved(zoomed(view.value, 1 / view.value.scale, at, extent.value, size));
+      }
+    },
+    /** The canvas's size, in device pixels. */
+    size: (): Size => size,
+    /** The view as drawn now, as a PNG: the preview, not the raw frame (W3.1). */
+    snapshot(): Promise<Blob | undefined> {
+      return new Promise((done) => {
+        if (!renderer || !view.value || !canvas.value) return done(undefined);
+        // Drawn and taken in one task: a WebGL canvas keeps its drawing until then.
+        renderer.draw(view.value);
+        canvas.value.toBlob((blob) => done(blob ?? undefined), "image/png");
+      });
+    },
     /** The quality, the rate or the statistics, from now on. */
     choose(more: PreviewChoices): void {
       chosen = { ...chosen, ...more };

@@ -925,7 +925,7 @@ The camera, the stage, the lights, the live image and what is drawn over it.
 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
-| [W3.1](milestone-2/phases.md#w3-1) | The live viewer | W1.5, W2.2 | 1,500 | 0049 | Planned |
+| [W3.1](milestone-2/phases.md#w3-1) | The live viewer | W1.5, W2.2 | 1,500 | 0049 | In review |
 | [W3.2](milestone-2/phases.md#w3-2) | Camera controls | W3.1 | 1,400 | — | Planned |
 | [W3.3](milestone-2/phases.md#w3-3) | Stage controls | W3.1 | 1,700 | — | Planned |
 | [W3.4](milestone-2/phases.md#w3-4) | Illumination and the objective | W3.2 | 900 | — | Planned |

@@ -5,37 +5,13 @@
 // frames; axe, and the baselines.
 import type { Page } from "@playwright/test";
 
-import { act } from "../../src/api/actions.ts";
-import { call, Server as Api } from "../../src/api/client.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
+import { aRegion, onTissue } from "./sim.ts";
 
 const PAGE = "/#/dev/gallery/preview";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
-
-/**
- * The camera given a 1920 × 1272 region, which keeps its rate. A debug
- * server renders a whole 20 MP sensor on the CPU, and many of them at once,
- * as the end-to-end tests run, starve the browsers: a region is an eighth
- * of that work.
- */
-async function aRegion(url: string): Promise<void> {
-  const roi = { x: 1776, y: 1176, width: 1920, height: 1272 };
-  await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: roi, signal }));
-}
-
-/**
- * The stage homed, then over the default slide's tissue, as P17's example
- * has it, not empty glass, for the tests that look at what is drawn; and
- * the camera's region. Homing takes some 16 s: the others stay on glass.
- */
-async function onTissue(url: string): Promise<void> {
-  const on = new Api(url);
-  await act("/api/v1/stage/home", {}, { on });
-  await act("/api/v1/stage/move_to", { x: 40_000, y: 12_000, z: 5_000, speed: 25_000 }, { on });
-  await aRegion(url);
-}
 
 /** The camera started from the page, as its user would. */
 async function streaming(page: Page): Promise<void> {
