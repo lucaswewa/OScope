@@ -22,7 +22,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W1.4 | The host adapter | Done | [W1.4-host-adapter.md](W1.4-host-adapter.md) |
 | W1.5 | The preview client | Done | [W1.5-preview-client.md](W1.5-preview-client.md) |
 | W2.1 | The shell and navigation | Done | [W2.1-shell.md](W2.1-shell.md) |
-| W2.2 | Status, connection and lease in the shell | In review | [W2.2-status.md](W2.2-status.md) |
+| W2.2 | Status, connection and lease in the shell | Done | [W2.2-status.md](W2.2-status.md) |
 | W3.1 | The live viewer | Planned | — |
 | W3.2 | Camera controls | Planned | — |
 | W3.3 | Stage controls | Planned | — |
