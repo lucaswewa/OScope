@@ -90,16 +90,29 @@ test("the tabs give way to a page while the server is gone, and come back with i
   await expect(said(page, "no-server")).toContainText("Connecting again");
   // Without the server, the instrument's state isn't known.
   await stateIs(page, "Unknown");
-  // The rail still goes from tab to tab, behind the page: a tab whose page
-  // couldn't load without the server is loaded once it is back.
-  await page.getByRole("link", { name: "About", exact: true }).click();
-  await expect(heading(page)).toHaveText("The server can't be reached");
 
   await server.start();
-  await expect(heading(page)).toHaveText("About");
+  await expect(heading(page)).toHaveText("Settings");
   await expect(said(page, "connection")).toHaveText(/Online/);
   await expect(said(page, "no-server")).toHaveCount(0);
   await stateIs(page, "Fault");
+});
+
+// In Chromium: WebKit keeps a module's failure, even across a reload, so a
+// page that couldn't load stays so there (W2.2's notes).
+test("a tab pressed while the server is gone is loaded once it is back", async ({
+  page,
+  server,
+}) => {
+  await page.goto(`${server.url}/#/settings`);
+  await expect(heading(page)).toHaveText("Settings");
+  await server.stop();
+  await expect(heading(page)).toHaveText("The server can't be reached");
+  // The rail still goes from tab to tab, behind the page; About's code can't load.
+  await page.getByRole("link", { name: "About", exact: true }).click();
+  await expect(heading(page)).toHaveText("The server can't be reached");
+  await server.start();
+  await expect(heading(page)).toHaveText("About");
 });
 
 const ALICE = ["alice", "alice's password"] as const;

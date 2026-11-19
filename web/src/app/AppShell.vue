@@ -91,8 +91,11 @@ const stops = [
       heading?.focus();
     });
   }),
-  // A page that couldn't load stops its tab, not the app.
-  router.onError((error, to) => boundary.value?.fail(error, () => void router.push(to.fullPath))),
+  // A page that couldn't load stops its tab, not the app. Tried again and
+  // failing again, it is told here once more: its promise has nothing to add.
+  router.onError((error, to) =>
+    boundary.value?.fail(error, () => void router.push(to.fullPath).catch(() => undefined)),
+  ),
 ];
 onBeforeUnmount(() => {
   stops.forEach((stop) => stop());
