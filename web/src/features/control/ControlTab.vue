@@ -2,8 +2,11 @@
 import { useI18n } from "vue-i18n";
 
 import CameraPane from "@/features/control/camera/CameraPane.vue";
+import CapturePane from "@/features/control/capture/CapturePane.vue";
+import AutofocusPane from "@/features/control/focus/AutofocusPane.vue";
 import LightsPane from "@/features/control/lights/LightsPane.vue";
 import ObjectivePane from "@/features/control/objective/ObjectivePane.vue";
+import RecipePane from "@/features/control/recipe/RecipePane.vue";
 import StageHalt from "@/features/control/stage/StageHalt.vue";
 import StagePane from "@/features/control/stage/StagePane.vue";
 import LiveViewer from "@/features/live/LiveViewer.vue";
@@ -13,7 +16,9 @@ import Splitter from "@/ui/Splitter.vue";
 /**
  * Control and Live View (W2.1's frame for W3): the control pane and the
  * live image (W3.1), side by side, with a handle between them whose place
- * is kept. The stage's Halt stays at the pane's foot (W3.3).
+ * is kept. The stage's Halt stays at the pane's foot (W3.3). The tab's
+ * actions follow the instrument's panes: autofocus, capture and the live
+ * recipe (W3.7).
  */
 const { t } = useI18n();
 
@@ -32,6 +37,9 @@ const sizes = kept("oscope.control.panes", [33, 67] as [number, number], isPair)
           <LightsPane />
           <ObjectivePane />
           <StagePane />
+          <AutofocusPane />
+          <CapturePane />
+          <RecipePane />
           <StageHalt />
         </section>
       </template>
