@@ -59,6 +59,23 @@ pub trait Sample: Send + Sync {
     /// averaged down: the levels of detail (ADR-0013).
     fn render(&self, index: usize, origin: Point2, pixel: Um, width: u32, height: u32) -> Image;
 
+    /// Layers `indices` over one grid, each as [`Sample::render`] renders
+    /// it: one after another, unless the sample's layers share work, which
+    /// it then does once for all of them.
+    fn render_layers(
+        &self,
+        indices: &[usize],
+        origin: Point2,
+        pixel: Um,
+        width: u32,
+        height: u32,
+    ) -> Vec<Image> {
+        indices
+            .iter()
+            .map(|&index| self.render(index, origin, pixel, width, height))
+            .collect()
+    }
+
     /// The height above the slide's top surface at which it is sharpest at
     /// `at`, in slide coordinates: the truth autofocus is held to (P34). By
     /// default, the middle of its layers, from the lowest's bottom to the

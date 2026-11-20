@@ -277,16 +277,31 @@ impl World {
         // From the top down, so each reflection is dimmed by what is above.
         let mut order: Vec<usize> = (0..layers.len()).filter(|i| seen[*i]).collect();
         order.sort_by(|a, b| layers[*b].z.0.total_cmp(&layers[*a].z.0));
+        // A layer blurred by more than the cap renders at a coarser pixel,
+        // blurs there, and is interpolated back: the same light, at a bounded
+        // cost however far it is from focus.
+        let coarseness = |sigma: f64| match sigma > MOST_BLUR {
+            true => (sigma / MOST_BLUR).ceil(),
+            false => 1.0,
+        };
+        // Those at the field's own pixel share its extended grid: they are
+        // rendered together, so that a sample whose layers share work does
+        // it once.
+        let fine: Vec<usize> = order
+            .iter()
+            .copied()
+            .filter(|&index| coarseness(sigmas[index]) == 1.0)
+            .collect();
+        let mut rendered: Vec<Option<Image>> = vec![None; layers.len()];
+        for (index, image) in
+            fine.iter()
+                .zip(slide.sample.render_layers(&fine, origin, Um(p), we, he))
+        {
+            rendered[*index] = Some(image);
+        }
         for index in order {
-            // A layer blurred by more than the cap renders at a coarser
-            // pixel, blurs there, and is interpolated back: the same light,
-            // at a bounded cost however far it is from focus.
             let sigma = sigmas[index];
-            let coarse = if sigma > MOST_BLUR {
-                (sigma / MOST_BLUR).ceil()
-            } else {
-                1.0
-            };
+            let coarse = coarseness(sigma);
             // Coarse, it covers the blur's own reach, 3σ around the field:
             // at the coarse pixel, about 6 × 64 pixels more, whatever σ is.
             let extra = if coarse > 1.0 {
@@ -303,7 +318,10 @@ impl World {
                 (we, he)
             };
             let from = Point2::new(origin.x - extra * p, origin.y - extra * p);
-            let mut layer = slide.sample.render(index, from, Um(p * coarse), lw, lh);
+            let mut layer = match rendered[index].take() {
+                Some(layer) => layer,
+                None => slide.sample.render(index, from, Um(p * coarse), lw, lh),
+            };
             if layer.data().iter().all(|v| *v == 0.0) {
                 continue;
             }

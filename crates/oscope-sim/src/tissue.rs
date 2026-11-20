@@ -8,6 +8,8 @@ use oscope_compute::{Image, Shape};
 use oscope_core::{Point2, Rect, Um};
 
 use crate::noise::{coverage, fractal, hash, nth, value};
+use rayon::prelude::*;
+
 use crate::sample::{Layer, LayerKind, Sample, render_pixels};
 
 /// The stains' optical densities in red, green and blue, for a unit of
@@ -57,13 +59,35 @@ pub struct Nucleus {
 
 impl Nucleus {
     /// The signed distance of `(x, y)` from its edge, negative inside: near
-    /// enough to an ellipse's for anti-aliasing.
-    fn distance(&self, x: f64, y: f64) -> f64 {
+    /// enough to an ellipse's for anti-aliasing. `turn` is its angle's.
+    fn distance(&self, turn: Turn, x: f64, y: f64) -> f64 {
         let (dx, dy) = (x - self.centre.x, y - self.centre.y);
-        let (sin, cos) = self.angle.sin_cos();
-        let (u, v) = (dx * cos + dy * sin, -dx * sin + dy * cos);
+        let (u, v) = turn.apply(dx, dy);
         let (a, b) = (self.semi_major.0, self.semi_minor.0);
         (((u / a).powi(2) + (v / b).powi(2)).sqrt() - 1.0) * b
+    }
+}
+
+/// An angle's sine and cosine, worked out once for every pixel near its
+/// shape.
+#[derive(Clone, Copy, Debug)]
+struct Turn {
+    sin: f64,
+    cos: f64,
+}
+
+impl Turn {
+    fn of(angle: f64) -> Self {
+        let (sin, cos) = angle.sin_cos();
+        Self { sin, cos }
+    }
+
+    /// `(dx, dy)` along the turned axes.
+    fn apply(self, dx: f64, dy: f64) -> (f64, f64) {
+        (
+            dx * self.cos + dy * self.sin,
+            -dx * self.sin + dy * self.cos,
+        )
     }
 }
 
@@ -72,7 +96,7 @@ impl Nucleus {
 struct Island {
     centre: Point2,
     radii: (f64, f64),
-    angle: f64,
+    turn: Turn,
 }
 
 impl Island {
@@ -80,8 +104,7 @@ impl Island {
     /// short radius.
     fn distance(&self, x: f64, y: f64) -> f64 {
         let (dx, dy) = (x - self.centre.x, y - self.centre.y);
-        let (sin, cos) = self.angle.sin_cos();
-        let (u, v) = (dx * cos + dy * sin, -dx * sin + dy * cos);
+        let (u, v) = self.turn.apply(dx, dy);
         ((u / self.radii.0).powi(2) + (v / self.radii.1).powi(2)).sqrt() - 1.0
     }
 }
@@ -108,6 +131,8 @@ pub struct HeTissue {
     islands: Vec<Island>,
     layers: Vec<Layer>,
     dab: bool,
+    /// The stroma's fibres' direction, from the seed.
+    fibres: Turn,
 }
 
 impl HeTissue {
@@ -135,7 +160,7 @@ impl HeTissue {
                         place(bounds.origin.y, bounds.size.height, nth(h, 3)),
                     ),
                     radii: (rx, ry),
-                    angle: PI * nth(h, 4),
+                    turn: Turn::of(PI * nth(h, 4)),
                 }
             })
             .collect();
@@ -151,6 +176,7 @@ impl HeTissue {
             islands,
             layers: vec![half("lower half", 1.0), half("upper half", 3.0)],
             dab: false,
+            fibres: Turn::of(PI * nth(hash(seed, FIBRE_ANGLE, 0, 0), 0)),
         }
     }
 
@@ -228,6 +254,11 @@ impl HeTissue {
     /// How much of the pixel around `(x, y)` is tissue, and how deep inside
     /// its island the point is, in µm.
     fn tissue(&self, x: f64, y: f64, pixel: f64) -> (f64, f64) {
+        self.tissue_near(x, y, pixel, &Direct(self))
+    }
+
+    /// As [`HeTissue::tissue`], with the holes from `near`.
+    fn tissue_near(&self, x: f64, y: f64, pixel: f64, near: &impl Near) -> (f64, f64) {
         let soft = pixel.max(1.0);
         let edge = self.island_distance(x, y, pixel);
         let inside = coverage(edge, soft);
@@ -238,8 +269,8 @@ impl HeTissue {
         let (i, j) = ((x / cell).floor() as i64, (y / cell).floor() as i64);
         let mut hole: f64 = 0.0;
         for (di, dj) in NEIGHBOURS {
-            if let Some(h) = self.hole(i + di, j + dj) {
-                hole = hole.max(coverage(h.distance(x, y), soft));
+            if let Some((h, turn)) = near.hole(i + di, j + dj) {
+                hole = hole.max(coverage(h.distance(turn, x, y), soft));
             }
         }
         (inside * (1.0 - hole), -edge)
@@ -274,8 +305,13 @@ impl HeTissue {
 
     /// The optical density of half-section `layer` over the pixel of side
     /// `pixel` whose corner is at `(x0, y0)`.
-    fn density(&self, layer: usize, x0: f64, y0: f64, pixel: f64) -> [f32; 3] {
-        let (amount, hematoxylin, second) = self.stains(layer, x0, y0, pixel);
+    fn density(&self, layer: usize, x0: f64, y0: f64, pixel: f64, near: &impl Near) -> [f32; 3] {
+        self.densities(self.stains_near(layer, x0, y0, pixel, near))
+    }
+
+    /// The optical density that stains of `(amount, hematoxylin, second)`
+    /// give.
+    fn densities(&self, (amount, hematoxylin, second): (f64, f64, f64)) -> [f32; 3] {
         let (per_um, vector) = self.second();
         let od = |c: usize| {
             (amount * (PER_UM_H * hematoxylin * HEMATOXYLIN[c] + per_um * second * vector[c]))
@@ -305,42 +341,101 @@ impl HeTissue {
     /// corner is at `(x0, y0)`: its thickness of tissue, in µm, and its
     /// amounts of hematoxylin and of the second stain, eosin or DAB.
     fn stains(&self, layer: usize, x0: f64, y0: f64, pixel: f64) -> (f64, f64, f64) {
+        self.stains_near(layer, x0, y0, pixel, &Direct(self))
+    }
+
+    /// As [`HeTissue::stains`], with the nuclei and holes from `near`.
+    fn stains_near(
+        &self,
+        layer: usize,
+        x0: f64,
+        y0: f64,
+        pixel: f64,
+        near: &impl Near,
+    ) -> (f64, f64, f64) {
+        match self.shared(x0, y0, pixel, near) {
+            Some(shared) => self.layer_stains(layer, &shared, pixel, near, &mut None),
+            None => (0.0, 0.0, 0.0),
+        }
+    }
+
+    /// What the pixel of side `pixel` whose corner is at `(x0, y0)` is in
+    /// every layer: none if it isn't tissue.
+    fn shared(&self, x0: f64, y0: f64, pixel: f64, near: &impl Near) -> Option<Shared> {
         let (x, y) = (x0 + pixel / 2.0, y0 + pixel / 2.0);
-        let (tissue, depth) = self.tissue(x, y, pixel);
+        let (tissue, depth) = self.tissue_near(x, y, pixel, near);
         if tissue == 0.0 {
-            return (0.0, 0.0, 0.0);
+            return None;
         }
         let thinning = 0.6 + 0.4 * (depth / 150.0).clamp(0.0, 1.0);
         let thickness = Self::THICKNESS.0
             * (0.75 + 0.5 * fractal(self.seed, THICKNESS, x, y, 700.0, 3, pixel))
             * thinning;
 
+        // Stroma: fibres along the seed's direction, bent by a gentle warp.
+        // (Turning the slide's coordinates by an angle that varies would
+        // ring far from the origin, where a small turn moves a long way.)
+        // With DAB, eosin isn't the second stain, and they aren't seen.
+        let stroma = match self.dab {
+            true => 0.0,
+            false => {
+                let bend = |salt: u64| 60.0 * (value(self.seed, salt, x, y, 200.0) - 0.5);
+                let Turn { sin, cos } = self.fibres;
+                let along = x * cos + y * sin + bend(FIBRE_ANGLE + 1);
+                let across = -x * sin + y * cos + bend(FIBRE_ANGLE + 2);
+                let fibres = fractal(self.seed, FIBRES, along / 4.0, across, 8.0, 6, pixel);
+                0.25 + 0.6 * fibres
+            }
+        };
+        Some(Shared {
+            x,
+            y,
+            tissue,
+            thickness,
+            stroma,
+        })
+    }
+
+    /// Half-section `layer`'s stains, as [`HeTissue::stains`] gives them,
+    /// at the pixel `shared` describes; `chromatin` is its chromatin's
+    /// texture, found the first time a layer needs it.
+    fn layer_stains(
+        &self,
+        layer: usize,
+        shared: &Shared,
+        pixel: f64,
+        near: &impl Near,
+        chromatin: &mut Option<f64>,
+    ) -> (f64, f64, f64) {
+        let Shared {
+            x,
+            y,
+            tissue,
+            thickness,
+            stroma,
+        } = *shared;
+
         // Nuclei, and the cytoplasm around them.
         let cell = Self::CELL;
         let (i, j) = ((x / cell).floor() as i64, (y / cell).floor() as i64);
         let (mut nucleus, mut cytoplasm, mut dab): (f64, f64, f64) = (0.0, 0.0, 0.0);
         for (di, dj) in NEIGHBOURS {
-            let Some(n) = self.nucleus(i + di, j + dj).filter(|n| n.layer == layer) else {
+            let Some((n, turn)) = near
+                .nucleus(i + di, j + dj)
+                .filter(|(n, _)| n.layer == layer)
+            else {
                 continue;
             };
-            let d = n.distance(x, y);
+            let d = n.distance(turn, x, y);
             nucleus = nucleus.max(coverage(d, pixel) * n.hematoxylin);
             cytoplasm = cytoplasm.max(coverage(d - 2.5, pixel));
             dab = dab.max(coverage(d, pixel) * n.dab);
         }
         if nucleus > 0.0 {
-            nucleus *= 0.7 + 0.6 * fractal(self.seed, CHROMATIN, x, y, 1.6, 3, pixel);
+            let texture = *chromatin
+                .get_or_insert_with(|| fractal(self.seed, CHROMATIN, x, y, 1.6, 3, pixel));
+            nucleus *= 0.7 + 0.6 * texture;
         }
-
-        // Stroma: fibres along the seed's direction, bent by a gentle warp.
-        // (Turning the slide's coordinates by an angle that varies would
-        // ring far from the origin, where a small turn moves a long way.)
-        let bend = |salt: u64| 60.0 * (value(self.seed, salt, x, y, 200.0) - 0.5);
-        let (sin, cos) = (PI * nth(hash(self.seed, FIBRE_ANGLE, 0, 0), 0)).sin_cos();
-        let along = x * cos + y * sin + bend(FIBRE_ANGLE + 1);
-        let across = -x * sin + y * cos + bend(FIBRE_ANGLE + 2);
-        let fibres = fractal(self.seed, FIBRES, along / 4.0, across, 8.0, 6, pixel);
-        let stroma = 0.25 + 0.6 * fibres;
         let eosin = (stroma + (0.45 - stroma) * cytoplasm) * (1.0 - 0.6 * nucleus.min(1.0));
         let hematoxylin = nucleus + 0.04;
         let second = if self.dab { dab } else { eosin };
@@ -400,8 +495,255 @@ impl Sample for HeTissue {
         if index >= self.layers.len() {
             return Image::zeros(Shape::new(width, height, 3));
         }
+        // The nuclei and holes near the pixels, found once for all of them.
+        let near = Found::around(self, origin, pixel.0, width, height);
         render_pixels(origin, pixel, width, height, |x0, y0| {
-            self.density(index, x0, y0, pixel.0)
+            self.density(index, x0, y0, pixel.0, &near)
         })
+    }
+
+    /// Each of `indices` as [`Sample::render`] renders it, with what the
+    /// layers share, the tissue, its thickness and its stroma, worked out
+    /// once a pixel for all of them.
+    fn render_layers(
+        &self,
+        indices: &[usize],
+        origin: Point2,
+        pixel: Um,
+        width: u32,
+        height: u32,
+    ) -> Vec<Image> {
+        let near = Found::around(self, origin, pixel.0, width, height);
+        let (n, row) = (indices.len(), width as usize * 3);
+        let mut all = vec![0.0_f32; n * row * height as usize];
+        if n > 0 && row > 0 {
+            // Each row's layers side by side: layer k's row at k · row.
+            all.par_chunks_mut(n * row)
+                .enumerate()
+                .for_each(|(y, rows)| {
+                    let y0 = origin.y + y as f64 * pixel.0;
+                    for x in 0..width as usize {
+                        let x0 = origin.x + x as f64 * pixel.0;
+                        let Some(shared) = self.shared(x0, y0, pixel.0, &near) else {
+                            continue;
+                        };
+                        let mut chromatin = None;
+                        for (k, &layer) in indices.iter().enumerate() {
+                            if layer >= self.layers.len() {
+                                continue;
+                            }
+                            let stains =
+                                self.layer_stains(layer, &shared, pixel.0, &near, &mut chromatin);
+                            let at = k * row + x * 3;
+                            rows[at..at + 3].copy_from_slice(&self.densities(stains));
+                        }
+                    }
+                });
+        }
+        (0..n)
+            .map(|k| {
+                let data = all
+                    .chunks(n * row)
+                    .flat_map(|rows| &rows[k * row..(k + 1) * row])
+                    .copied()
+                    .collect();
+                Image::from_vec(Shape::new(width, height, 3), data).expect("a layer's size")
+            })
+            .collect()
+    }
+}
+
+/// What a pixel is in every layer of the section: its centre, how much of
+/// it is tissue, the section's thickness there, and its stroma.
+#[derive(Clone, Copy, Debug)]
+struct Shared {
+    x: f64,
+    y: f64,
+    tissue: f64,
+    thickness: f64,
+    stroma: f64,
+}
+
+/// Where a pixel's nuclei and holes come from.
+trait Near {
+    /// The nucleus at grid cell `(i, j)`, if there is one, with its turn.
+    fn nucleus(&self, i: i64, j: i64) -> Option<(Nucleus, Turn)>;
+    /// The hole at hole cell `(i, j)`, if there is one, with its turn.
+    fn hole(&self, i: i64, j: i64) -> Option<(Nucleus, Turn)>;
+}
+
+/// Each found as it is asked for.
+struct Direct<'a>(&'a HeTissue);
+
+impl Near for Direct<'_> {
+    fn nucleus(&self, i: i64, j: i64) -> Option<(Nucleus, Turn)> {
+        self.0.nucleus(i, j).map(|n| (n, Turn::of(n.angle)))
+    }
+
+    fn hole(&self, i: i64, j: i64) -> Option<(Nucleus, Turn)> {
+        self.0.hole(i, j).map(|h| (h, Turn::of(h.angle)))
+    }
+}
+
+/// A grid's cells from `(i0, j0)`, `columns` by `rows`, row by row.
+struct Cells {
+    i0: i64,
+    j0: i64,
+    columns: i64,
+    rows: i64,
+    cells: Vec<Option<(Nucleus, Turn)>>,
+}
+
+impl Cells {
+    /// Cells `i0..=i1` by `j0..=j1`, each from `find`.
+    fn new(
+        (i0, i1): (i64, i64),
+        (j0, j1): (i64, i64),
+        find: impl Fn(i64, i64) -> Option<Nucleus>,
+    ) -> Self {
+        let cells = (j0..=j1)
+            .flat_map(|j| (i0..=i1).map(move |i| (i, j)))
+            .map(|(i, j)| find(i, j).map(|n| (n, Turn::of(n.angle))))
+            .collect();
+        Self {
+            i0,
+            j0,
+            columns: i1 - i0 + 1,
+            rows: j1 - j0 + 1,
+            cells,
+        }
+    }
+
+    /// Cell `(i, j)`'s, or `None` outside the grid.
+    fn get(&self, i: i64, j: i64) -> Option<Option<(Nucleus, Turn)>> {
+        let (di, dj) = (i - self.i0, j - self.j0);
+        let inside = (0..self.columns).contains(&di) && (0..self.rows).contains(&dj);
+        inside.then(|| self.cells[(dj * self.columns + di) as usize])
+    }
+}
+
+/// The nuclei and holes around a block of pixels, each found once for all
+/// of them: a pixel otherwise finds the nine about it, with their hashes,
+/// noise and turns, again for each of its own. Outside the block, each is
+/// found as it is asked for, so its pixels are as [`Direct`] makes them, to
+/// the bit.
+struct Found<'a> {
+    tissue: &'a HeTissue,
+    nuclei: Cells,
+    holes: Cells,
+}
+
+impl<'a> Found<'a> {
+    /// Those of the `width` × `height` pixels of side `pixel` from
+    /// `origin`: the cells their centres fall in, and those around.
+    fn around(tissue: &'a HeTissue, origin: Point2, pixel: f64, width: u32, height: u32) -> Self {
+        // A cell more each way than the centres need, against rounding.
+        let span = |from: f64, count: u32, cell: f64| {
+            let first = from + pixel / 2.0;
+            let last = from + f64::from(count.max(1) - 1) * pixel + pixel / 2.0;
+            (
+                (first / cell).floor() as i64 - 2,
+                (last / cell).floor() as i64 + 2,
+            )
+        };
+        let (n, h) = (HeTissue::CELL, HeTissue::HOLE_CELL);
+        Self {
+            tissue,
+            nuclei: Cells::new(
+                span(origin.x, width, n),
+                span(origin.y, height, n),
+                |i, j| tissue.nucleus(i, j),
+            ),
+            holes: Cells::new(
+                span(origin.x, width, h),
+                span(origin.y, height, h),
+                |i, j| tissue.hole(i, j),
+            ),
+        }
+    }
+}
+
+impl Near for Found<'_> {
+    fn nucleus(&self, i: i64, j: i64) -> Option<(Nucleus, Turn)> {
+        self.nuclei
+            .get(i, j)
+            .unwrap_or_else(|| Direct(self.tissue).nucleus(i, j))
+    }
+
+    fn hole(&self, i: i64, j: i64) -> Option<(Nucleus, Turn)> {
+        self.holes
+            .get(i, j)
+            .unwrap_or_else(|| Direct(self.tissue).hole(i, j))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Layer `layer`'s block as `render` makes it, with the nuclei and holes
+    /// found once, and pixel by pixel as each finds its own: to the bit.
+    fn same_as_direct(tissue: &HeTissue, layer: usize, origin: Point2, pixel: f64, side: u32) {
+        let image = tissue.render(layer, origin, Um(pixel), side, side);
+        let direct = render_pixels(origin, Um(pixel), side, side, |x0, y0| {
+            tissue.density(layer, x0, y0, pixel, &Direct(tissue))
+        });
+        let bits = |image: &Image| image.data().iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+        assert_eq!(
+            bits(&image),
+            bits(&direct),
+            "layer {layer} at {origin:?}, {pixel} µm"
+        );
+    }
+
+    #[test]
+    fn the_nuclei_and_holes_found_once_render_as_those_found_by_each_pixel() {
+        for tissue in [
+            HeTissue::new(1, crate::Slide::COVERSLIP),
+            HeTissue::ihc(7, crate::Slide::COVERSLIP),
+        ] {
+            let island = tissue.islands[0];
+            let (rx, _) = island.radii;
+            let centre = island.centre;
+            // Inside, among nuclei, at 10×'s pixel; over the island's rough
+            // edge; and coarse, over holes and edges at a 2 mm field's pixel.
+            let edge = Point2::new(
+                centre.x + rx * island.turn.cos,
+                centre.y + rx * island.turn.sin,
+            );
+            let cases = [
+                (centre, 0.24, 96),
+                (edge, 0.24, 96),
+                (
+                    Point2::new(centre.x - 3_000.0, centre.y - 3_000.0),
+                    40.0,
+                    160,
+                ),
+            ];
+            for (at, pixel, side) in cases {
+                for layer in 0..tissue.layers.len() {
+                    same_as_direct(&tissue, layer, at, pixel, side);
+                }
+                same_together(&tissue, at, pixel, side);
+            }
+        }
+    }
+
+    /// The layers rendered together, with what they share worked out once
+    /// a pixel, as each is alone: to the bit, whichever are asked for, and
+    /// in whatever order, a layer the tissue lacks as zeros.
+    fn same_together(tissue: &HeTissue, origin: Point2, pixel: f64, side: u32) {
+        let bits = |image: &Image| image.data().iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+        for indices in [vec![0, 1], vec![1, 0], vec![1], vec![0, 5, 1]] {
+            let together = tissue.render_layers(&indices, origin, Um(pixel), side, side);
+            for (layer, image) in indices.iter().zip(&together) {
+                let alone = tissue.render(*layer, origin, Um(pixel), side, side);
+                assert_eq!(
+                    bits(image),
+                    bits(&alone),
+                    "layer {layer} of {indices:?} at {origin:?}, {pixel} µm"
+                );
+            }
+        }
     }
 }
