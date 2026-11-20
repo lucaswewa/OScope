@@ -932,7 +932,7 @@ The camera, the stage, the lights, the live image and what is drawn over it.
 | [W3.5](milestone-2/phases.md#w3-5) | Overlays I: crosshair, ROI, grid and profile | W3.1, W0.7 | 1,600 | — | Done |
 | [W3.6](milestone-2/phases.md#w3-6) | Overlays II: histogram, saturation, false colour and the look | W3.5 | 1,600 | — | Done |
 | [W3.7](milestone-2/phases.md#w3-7) | Autofocus, capture and the live recipe | W3.6 | 1,400 | — | Done |
-| [W3.8](milestone-2/phases.md#w3-8) | The free-roam mosaic and the tile viewer | W3.3 | 1,500 | 0050 | Planned |
+| [W3.8](milestone-2/phases.md#w3-8) | The free-roam mosaic and the tile viewer | W3.3 | 1,500 | 0050 | In review |
 
 **Checkpoint G:** a live microscope in the app: jog, zoom to full resolution, watch the histogram and the saturation, autofocus, capture, and build a mosaic by jogging.
 

@@ -158,6 +158,8 @@ onMounted(() => {
     drawer: "canvas",
     imageSmoothingEnabled: false,
     showNavigationControl: false,
+    // The navigator stays: OpenSeadragon would fade it, as a control, once the pointer leaves.
+    autoHideControls: false,
     showNavigator: true,
     navigatorPosition: "TOP_RIGHT",
     navigatorSizeRatio: 0.2,
