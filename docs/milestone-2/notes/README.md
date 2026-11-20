@@ -28,7 +28,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W3.3 | Stage controls | Done | [W3.3-stage-controls.md](W3.3-stage-controls.md) |
 | W3.4 | Illumination and the objective | Done | [W3.4-illumination.md](W3.4-illumination.md) |
 | W3.5 | Overlays I: crosshair, ROI, grid and profile | Done | [W3.5-overlays.md](W3.5-overlays.md) |
-| W3.6 | Overlays II: histogram, saturation, false colour and the look | In review | [W3.6-overlays-ii.md](W3.6-overlays-ii.md) |
+| W3.6 | Overlays II: histogram, saturation, false colour and the look | Done | [W3.6-overlays-ii.md](W3.6-overlays-ii.md) |
 | W3.7 | Autofocus, capture and the live recipe | Planned | — |
 | W3.8 | The free-roam mosaic and the tile viewer | Planned | — |
 | W4.1 | Jobs | Planned | — |
