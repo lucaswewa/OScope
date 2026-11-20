@@ -39,15 +39,18 @@ export async function aRegion(url: string): Promise<void> {
   await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: roi, signal }));
 }
 
+/** Where the default slide's tissue is, in µm, as P17's example has it. */
+export const TISSUE = { x: 40_000, y: 12_000 };
+
 /**
- * The stage homed, then over the default slide's tissue, as P17's example
- * has it, not empty glass, on the fast clock; and the camera's region.
+ * The stage homed, then over the default slide's tissue, not empty glass,
+ * on the fast clock; and the camera's region.
  */
 export async function onTissue(url: string): Promise<void> {
   const on = new Api(url);
   await fast(url, async () => {
     await act("/api/v1/stage/home", {}, { on, timeout: 30_000 });
-    await act("/api/v1/stage/move_to", { x: 40_000, y: 12_000, z: 5_000, speed: 25_000 }, { on });
+    await act("/api/v1/stage/move_to", { ...TISSUE, z: 5_000, speed: 25_000 }, { on });
   });
   await aRegion(url);
 }
@@ -69,4 +72,38 @@ export async function aSmallRegion(url: string): Promise<void> {
 export async function overTissue(url: string): Promise<void> {
   await onTissue(url);
   await aSmallRegion(url);
+}
+
+/** Where the slide at `url` is sharpest under the tissue, in µm: the simulator's truth. */
+export async function inFocus(url: string): Promise<number> {
+  const z = await act("/api/v1/simulation/in_focus", TISSUE, { on: new Api(url) });
+  if (typeof z !== "number") throw new Error("the simulator has no focus under the tissue");
+  return z;
+}
+
+/**
+ * A tiny region of the camera: 288 × 216 pixels about the sensor's centre, on
+ * its grid of 12, about what P34's server test focuses on. An autofocus sweep
+ * renders a frame at each z, and a live recipe runs on each frame: on the
+ * small region, W3.7's tests, unpinned in the Windows replay, held the whole
+ * computer, and the other tests timed out.
+ */
+export const TINY = { x: 2592, y: 1716, width: 288, height: 216 };
+
+/** The stage over the tissue, on the fast clock, and the camera given the tiny region. */
+export async function overTissueTiny(url: string): Promise<void> {
+  await onTissue(url);
+  await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: TINY, signal }));
+}
+
+/**
+ * The stage over the tissue, `by` µm above where it is sharpest, on the fast
+ * clock, and the camera's tiny region: the focus's truth.
+ */
+export async function offFocus(url: string, by: number): Promise<number> {
+  await overTissueTiny(url);
+  const truth = await inFocus(url);
+  const to = { ...TISSUE, z: truth + by, speed: 25_000 };
+  await fast(url, () => act("/api/v1/stage/move_to", to, { on: new Api(url) }));
+  return truth;
 }

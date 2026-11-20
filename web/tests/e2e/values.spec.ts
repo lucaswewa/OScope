@@ -7,7 +7,7 @@ import type { Page } from "@playwright/test";
 import { Server as Api, call } from "../../src/api/client.ts";
 import { expectAccessible } from "./axe.ts";
 import { choose, expect, inScheme, shot, test } from "./fixtures.ts";
-import { mean } from "./pixels.ts";
+import { colourOf, mean, rgbOf } from "./pixels.ts";
 import { overTissue } from "./sim.ts";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
@@ -26,25 +26,8 @@ async function live(page: Page, url: string, exposure: number): Promise<void> {
   await expect(readout(page, "state")).toHaveText("Live", { timeout: 60_000 });
 }
 
-/**
- * The image's pixels in the page, each [r, g, b], from a screenshot in CSS pixels: a
- * quarter of WebKit's own, which took it 12 to 18 s a sample on two cores.
- */
-async function pixels(page: Page): Promise<number[][]> {
-  const png = await image(page).screenshot({ scale: "css" });
-  return page.evaluate(async (base64) => {
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
-    const canvas = document.createElement("canvas");
-    [canvas.width, canvas.height] = [bitmap.width, bitmap.height];
-    const drawn = canvas.getContext("2d")!;
-    drawn.drawImage(bitmap, 0, 0);
-    const { data } = drawn.getImageData(0, 0, bitmap.width, bitmap.height);
-    const out: number[][] = [];
-    for (let i = 0; i < data.length; i += 4 * 7) out.push([data[i]!, data[i + 1]!, data[i + 2]!]);
-    return out;
-  }, png.toString("base64"));
-}
+/** The image's pixels in the page, each [r, g, b], from a screenshot. */
+const pixels = (page: Page) => rgbOf(page, image(page));
 const isRed = ([r, g, b]: number[]) => r! > 240 && g! < 20 && b! < 20;
 const luminance = ([r, g, b]: number[]) => 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
 
@@ -112,8 +95,7 @@ test("false colour is chosen, and kept @main", async ({ page, server, browserNam
   test.setTimeout(150_000);
   await live(page, server.url, 10);
   await tool(page, "Histogram").click();
-  const greyish = async () =>
-    mean((await pixels(page)).map(([r, g, b]) => Math.max(r!, g!, b!) - Math.min(r!, g!, b!)));
+  const greyish = async () => colourOf(await pixels(page));
   const before = await greyish();
   await choose(page, "Colour map", "Grey");
   await expect.poll(greyish, { timeout: 30_000 }).toBeLessThan(2);

@@ -6,6 +6,7 @@ import { act, start, type Invocation } from "../../src/api/actions.ts";
 import { call, Server } from "../../src/api/client.ts";
 import { ApiError } from "../../src/api/errors.ts";
 import { finished, JOB_ENDED, type Job, type JobRef } from "../../src/api/jobs.ts";
+import { projectPage } from "../../src/api/projects.ts";
 import {
   brick,
   download,
@@ -110,6 +111,15 @@ test("a captured image: its job, its tiles, its volume and its files", async ({ 
   expect(typeof job.kind === "string" && typeof job.title === "string").toBe(true);
   expect(Object.keys(job.progress).sort()).toEqual(["counters", "eta_s", "fraction", "stage"]);
   expect(job.results).toHaveLength(1);
+  // The project's page, as projects.ts has it (W3.7).
+  const listed = await projectPage({ limit: 5 }, { on });
+  expect([listed.total, listed.offset]).toEqual([1, 0]);
+  expect(Object.keys(listed.projects[0]!).sort()).toEqual(
+    ["acquisitions", "created", "id", "metadata", "modified", "name", "owner"]
+      .concat(["reports", "results", "sample", "tags"])
+      .sort(),
+  );
+  expect(listed.projects[0]).toMatchObject({ id: project.id, name: "contract", acquisitions: 1 });
   const image: StoredImage = {
     project: project.id,
     kind: "acquisitions",

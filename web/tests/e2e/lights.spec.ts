@@ -155,8 +155,14 @@ test("the lights and the objective look as their baselines do @visual", async ({
   await expect
     .poll(() => controls.evaluate((box) => box.scrollHeight > box.clientHeight))
     .toBe(true);
-  await lights(page).evaluate((section) => section.scrollIntoView({ block: "start" }));
-  await expect.poll(async () => (await lights(page).boundingBox())!.y).toBeLessThan(100);
+  // Scrolled at each look: the pane takes the window's height a moment after it, and a
+  // scroll before then is undone (W3.7, whose panes made the pane overflow sooner).
+  await expect
+    .poll(async () => {
+      await lights(page).evaluate((section) => section.scrollIntoView({ block: "start" }));
+      return (await lights(page).boundingBox())!.y;
+    })
+    .toBeLessThan(100);
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);
     await shot(page, `W3.4-lights-${scheme}`);
