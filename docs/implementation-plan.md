@@ -943,7 +943,7 @@ Jobs, logs, power, and the instrument's state in full.
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
 | [W4.1](milestone-2/phases.md#w4-1) | Jobs | W2.2 | 1,500 | — | Done |
-| [W4.2](milestone-2/phases.md#w4-2) | Logging | W2.2 | 1,300 | — | Planned |
+| [W4.2](milestone-2/phases.md#w4-2) | Logging | W2.2 | 1,300 | — | In review |
 | [W4.3](milestone-2/phases.md#w4-3) | About, Power and the status in full | W4.1 | 1,600 | — | Planned |
 
 **Checkpoint H:** queue and steer jobs, search and follow the log, inject and clear a fault, and restart the service.

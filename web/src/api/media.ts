@@ -347,6 +347,12 @@ export type TailMessage =
   | { skipped: number }
   | { error: string };
 
+/** A daily file of the logs, whole (`logs/files/{name}`), to save. */
+export function logFile(name: string, options: On = {}): Promise<Blob> {
+  const path = `/api/v1/logs/files/${encodeURIComponent(name)}`;
+  return fetched((options.on ?? server).address(path), (answer) => answer.blob(), options);
+}
+
 /** A page of the logs' records, the newest first, and the `before` of the next, older page. */
 export interface LogPage {
   records: LogRecord[];
