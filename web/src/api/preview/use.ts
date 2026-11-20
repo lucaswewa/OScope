@@ -129,6 +129,11 @@ export function usePreview(
     panBy(by: [number, number]): void {
       if (view.value && extent.value) moved(panned(view.value, by, extent.value, size));
     },
+    /** Asks for `stats` from now on: a region's statistics, a line's profile (W3.5). */
+    measure(stats: StatsRequest | undefined): void {
+      chosen = { ...chosen, stats };
+      client.setAsk(ask());
+    },
     /** The whole frame again. */
     whole(): void {
       if (extent.value) moved(fitted(extent.value, size));
