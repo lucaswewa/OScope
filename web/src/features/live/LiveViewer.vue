@@ -8,10 +8,12 @@ import { useProperty } from "@/api/things/use";
 import { keyStep, written } from "@/features/control/stage/stage";
 import { useChoices } from "@/features/control/stage/choices";
 import { usePointing } from "@/features/control/stage/usePointing";
+import { tableOf } from "@/features/live/colourMaps";
 import OverlayMeasures from "@/features/live/overlays/OverlayMeasures.vue";
 import OverlayLayer from "@/features/live/overlays/OverlayLayer.vue";
 import { useOverlays } from "@/features/live/overlays/overlays";
 import { useStreaming } from "@/features/live/streaming";
+import ValuesPanel from "@/features/live/ValuesPanel.vue";
 import {
   fromCentre,
   onCanvas,
@@ -63,10 +65,24 @@ let held: [number, number] | undefined;
 
 const pointing = usePointing();
 const overlays = useOverlays();
-// The statistics follow what is drawn: the ROI's, and the line's profile (W3.5).
+// The statistics follow what is drawn and shown: the ROI's, the line's profile (W3.5),
+// the histogram and the saturation mask (W3.6). Nothing shown, none are asked for.
 watch(
-  () => [overlays.roi, overlays.line] as const,
-  ([roi, line]) => preview.measure(roi || line ? { roi, profile: line } : undefined),
+  () => [overlays.roi, overlays.line, overlays.layers.saturated, overlays.layers.values] as const,
+  ([roi, line, saturated, values]) =>
+    preview.measure(
+      roi || line || saturated || values ? { roi, profile: line, mask: saturated } : undefined,
+    ),
+  { immediate: true },
+);
+watch(
+  () => overlays.layers.saturated,
+  (on) => preview.markSaturated(on),
+  { immediate: true },
+);
+watch(
+  () => overlays.map,
+  (name) => preview.colourBy(tableOf(name)),
   { immediate: true },
 );
 /** Switches a drawing tool on, or off again. */
@@ -309,7 +325,7 @@ const scaleLabel = computed(() => {
     <ControlScope :locked="false">
       <Toolbar class="tools" :label="t('live.overlays.tools')">
         <ToolbarButton
-          v-for="layer in ['crosshair', 'grid', 'scale'] as const"
+          v-for="layer in ['crosshair', 'grid', 'scale', 'saturated', 'values'] as const"
           :key="layer"
           :pressed="overlays.layers[layer]"
           @click="overlays.layers[layer] = !overlays.layers[layer]"
@@ -370,13 +386,14 @@ const scaleLabel = computed(() => {
       </div>
     </dl>
     <OverlayMeasures :stats="preview.stats.value" />
+    <ValuesPanel v-if="overlays.layers.values" :stats="preview.stats.value" />
   </section>
 </template>
 
 <style scoped>
 .live {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
   block-size: 100%;
   background: var(--surface-page);
 }

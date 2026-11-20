@@ -4,7 +4,8 @@
 #
 # - THIRD-PARTY-NOTICES.html, each crate's licence, by cargo-about;
 # - Roboto-LICENSE.txt, the fonts' licence;
-# - typst-assets-0.15.1-NOTICE.txt, the data typst-assets bundles.
+# - typst-assets-0.15.1-NOTICE.txt, the data typst-assets bundles;
+# - turbo-colormap-NOTICE.txt, the app's turbo colour map's (W3.6).
 #
 # Run it from the repository, with cargo-about 0.9.3 installed for the cargo
 # that runs it: under WSL, Linux's. Without it, it says how to install it. It
@@ -27,4 +28,5 @@ cargo about generate --locked -c "$here/about.toml" -m crates/oscope-server/Carg
     "$here/about.hbs" -o "$folder/THIRD-PARTY-NOTICES.html"
 cp crates/oscope-report/fonts/LICENSE "$folder/Roboto-LICENSE.txt"
 cp "$here/typst-assets-0.15.1-NOTICE.txt" "$folder/"
+cp "$here/turbo-colormap-NOTICE.txt" "$folder/"
 echo "$folder"
