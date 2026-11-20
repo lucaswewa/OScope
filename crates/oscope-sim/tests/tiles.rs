@@ -85,6 +85,29 @@ fn tiles_are_the_world_rendered_directly() {
 }
 
 #[test]
+fn tiles_out_of_focus_meet_without_a_seam() {
+    // Out of focus, a layer renders at a coarser pixel and is interpolated
+    // back. Each tile renders apart, from coarse pixels on the stage's grid,
+    // so the four tiles under a field hold its own rendering's pixels: at a
+    // depth of field from focus, and at six.
+    let (world, island) = tissue_world();
+    let o = optics("20x");
+    let p = o.pixel_size().0;
+    let t = f64::from(TILE) * p;
+    let corner = Point2::new(
+        ((island.x / t).floor() + 0.5) * t,
+        ((island.y / t).floor() + 0.5) * t,
+    );
+    let cache = TileCache::new(1 << 30);
+    for depths in [1.0, 6.0] {
+        let dz = depths * o.depth_of_field().0;
+        let (_, depth) = TileCache::bucket_depth(&world, &o, Um(FOCUS + 2.0 + dz));
+        let worst = largest_difference(&cache, &world, &o, corner, depth.0, 300);
+        assert!(worst < 1e-4, "{depths} depths of field out: {worst}");
+    }
+}
+
+#[test]
 fn cached_rendering_matches_uncached_within_a_bucket() {
     // Anywhere in a bucket, a tile renders at its middle: at most a
     // thirty-second of the depth of field away. Through the 50×, where the

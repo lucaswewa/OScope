@@ -95,15 +95,22 @@ pub struct World {
     pub tilt: [f64; 2],
 }
 
-/// The largest blur, in pixels, rendered at the field's own pixel: a layer
-/// further from focus renders at a coarser pixel. The margin around a field
-/// stops at three times this.
-const MOST_BLUR: f64 = 64.0;
+/// The largest blur, in pixels, rendered at the field's own pixel, unless the
+/// layer is that blurred in focus: a layer further from focus than this and
+/// than twice its blur in focus renders at a coarser pixel, as many times
+/// the field's as its blur is times this, and blurs by 2 to 4 of them there,
+/// which the blur leaves nothing finer than. In focus, a layer always
+/// renders at the field's pixel.
+///
+/// At 4, a full frame through the 10× a depth of field from focus renders
+/// over three times as fast as at the field's pixel, and its light is
+/// within 0.1 % of it on average (W2–W4's manual tests).
+const MOST_BLUR: f64 = 4.0;
 
 /// `image`, rendered at pixels `factor` times the field's from `offset` of
-/// the field's pixels above and left of its corner, interpolated to `width`
-/// × `height` of the field's pixels.
-fn enlarge(image: &Image, factor: f64, offset: f64, width: u32, height: u32) -> Image {
+/// the field's pixels above and left of its corner, along x and along y,
+/// interpolated to `width` × `height` of the field's pixels.
+fn enlarge(image: &Image, factor: f64, offset: (f64, f64), width: u32, height: u32) -> Image {
     let (cw, ch, c) = (
         image.width() as usize,
         image.height() as usize,
@@ -116,11 +123,11 @@ fn enlarge(image: &Image, factor: f64, offset: f64, width: u32, height: u32) -> 
         .enumerate()
         .for_each(|(y, row)| {
             // Each pixel's centre, in the coarse pixels' centres' grid.
-            let fy = ((y as f64 + 0.5 + offset) / factor - 0.5).clamp(0.0, (ch - 1) as f64);
+            let fy = ((y as f64 + 0.5 + offset.1) / factor - 0.5).clamp(0.0, (ch - 1) as f64);
             let (y0, ay) = (fy.floor() as usize, fy - fy.floor());
             let y1 = (y0 + 1).min(ch - 1);
             for x in 0..width as usize {
-                let fx = ((x as f64 + 0.5 + offset) / factor - 0.5).clamp(0.0, (cw - 1) as f64);
+                let fx = ((x as f64 + 0.5 + offset.0) / factor - 0.5).clamp(0.0, (cw - 1) as f64);
                 let (x0, ax) = (fx.floor() as usize, fx - fx.floor());
                 let x1 = (x0 + 1).min(cw - 1);
                 for k in 0..c {
@@ -235,7 +242,9 @@ impl World {
                 (_, light) => light.is_none(),
             })
             .collect();
-        let sigmas: Vec<f64> = layers
+        // Each layer's blur here, and the most it renders at the field's own
+        // pixel with: `MOST_BLUR`, or twice its blur in focus.
+        let (sigmas, fines): (Vec<f64>, Vec<f64>) = layers
             .iter()
             .map(|l| {
                 let wavelength = match l.kind {
@@ -246,17 +255,21 @@ impl World {
                     wavelength,
                     ..*optics
                 };
-                at.blur(Um(focal - l.z.0)).0 / p
+                let sharpest = at.blur(Um(0.0)).0 / p;
+                (
+                    at.blur(Um(focal - l.z.0)).0 / p,
+                    MOST_BLUR.max(2.0 * sharpest),
+                )
             })
-            .collect();
-        // The margin the blur needs, up to the blur's cap: beyond it, the
+            .unzip();
+        // The margin the blur needs at the field's own pixel: beyond it, the
         // blur repeats the field's edge.
         let margin = sigmas
             .iter()
+            .zip(&fines)
             .zip(&seen)
             .filter(|(_, seen)| **seen)
-            .fold(0.0_f64, |m, (s, _)| m.max(*s))
-            .min(MOST_BLUR)
+            .fold(0.0_f64, |m, ((s, fine), _)| m.max(s.min(*fine)))
             .mul_add(3.0, 1.0)
             .ceil() as u32;
         let (we, he) = (w + 2 * margin, h + 2 * margin);
@@ -277,11 +290,11 @@ impl World {
         // From the top down, so each reflection is dimmed by what is above.
         let mut order: Vec<usize> = (0..layers.len()).filter(|i| seen[*i]).collect();
         order.sort_by(|a, b| layers[*b].z.0.total_cmp(&layers[*a].z.0));
-        // A layer blurred by more than the cap renders at a coarser pixel,
+        // A layer blurred by more than its cap renders at a coarser pixel,
         // blurs there, and is interpolated back: the same light, at a bounded
         // cost however far it is from focus.
-        let coarseness = |sigma: f64| match sigma > MOST_BLUR {
-            true => (sigma / MOST_BLUR).ceil(),
+        let coarseness = |index: usize| match sigmas[index] > fines[index] {
+            true => (sigmas[index] / MOST_BLUR).ceil(),
             false => 1.0,
         };
         // Those at the field's own pixel share its extended grid: they are
@@ -290,7 +303,7 @@ impl World {
         let fine: Vec<usize> = order
             .iter()
             .copied()
-            .filter(|&index| coarseness(sigmas[index]) == 1.0)
+            .filter(|&index| coarseness(index) == 1.0)
             .collect();
         let mut rendered: Vec<Option<Image>> = vec![None; layers.len()];
         for (index, image) in
@@ -301,23 +314,32 @@ impl World {
         }
         for index in order {
             let sigma = sigmas[index];
-            let coarse = coarseness(sigma);
+            let coarse = coarseness(index);
             // Coarse, it covers the blur's own reach, 3σ around the field:
-            // at the coarse pixel, about 6 × 64 pixels more, whatever σ is.
-            let extra = if coarse > 1.0 {
-                ((3.0 * sigma).ceil() - f64::from(margin)).max(0.0)
-            } else {
-                0.0
+            // at the coarse pixel, 6 to 12 of them more each way.
+            // Its coarse pixels lie on the stage's grid of `coarse` of the
+            // field's, wherever the field is: so that tiles rendered apart
+            // interpolate the same coarse pixels, and meet without a seam.
+            let reach = match coarse > 1.0 {
+                true => ((3.0 * sigma).ceil() - f64::from(margin)).max(0.0),
+                false => 0.0,
             };
-            let (lw, lh) = if coarse > 1.0 {
-                (
-                    ((f64::from(we) + 2.0 * extra) / coarse).ceil() as u32 + 1,
-                    ((f64::from(he) + 2.0 * extra) / coarse).ceil() as u32 + 1,
-                )
-            } else {
-                (we, he)
+            let along = |first: f64, extended: u32| {
+                if coarse == 1.0 {
+                    return (0.0, extended);
+                }
+                let start = ((first - reach) / coarse).floor() * coarse;
+                let before = first - start;
+                let count = ((before + f64::from(extended) + reach) / coarse).ceil() as u32 + 1;
+                (before, count)
             };
-            let from = Point2::new(origin.x - extra * p, origin.y - extra * p);
+            // The extended grid's first pixel, on the stage, in the field's
+            // pixels: a whole number of them for a tile.
+            let first = |corner: f64| (corner / p).round() - f64::from(margin);
+            let (before_x, lw) = along(first(corner.x), we);
+            let (before_y, lh) = along(first(corner.y), he);
+            let extra = (before_x, before_y);
+            let from = Point2::new(origin.x - before_x * p, origin.y - before_y * p);
             let mut layer = match rendered[index].take() {
                 Some(layer) => layer,
                 None => slide.sample.render(index, from, Um(p * coarse), lw, lh),
@@ -340,7 +362,14 @@ impl World {
                 }
                 LayerKind::Reflective => {}
             }
-            gaussian(&mut layer, sigma / coarse);
+            // Coarse, the pixel's square and the interpolation back each blur
+            // too, by variances of a twelfth and a sixth of its side squared:
+            // the Gaussian takes the rest.
+            let left = match coarse > 1.0 {
+                true => (sigma * sigma - coarse * coarse / 4.0).sqrt(),
+                false => sigma,
+            };
+            gaussian(&mut layer, left / coarse);
             if coarse > 1.0 {
                 layer = enlarge(&layer, coarse, extra, we, he);
             }

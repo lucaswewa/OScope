@@ -286,3 +286,60 @@ fn a_coarse_rendering_is_a_fine_one_averaged_down() {
         assert!(worst < 1e-5, "layer {layer}: {worst}");
     }
 }
+
+/// The squares `dz` from focus through `o`, as the world renders them, and
+/// as their layer rendered at the field's own pixel and blurred there
+/// gives them: the largest difference, and the mean, in the light passed.
+fn against_the_field_s_pixel(o: &Optics, dz: f64) -> (f64, f64) {
+    let world = world(0.5, 0.0);
+    let p = o.pixel_size().0;
+    let (w, h) = (160_u32, 120_u32);
+    let centre = on_target(1_050.0, 1_040.0);
+    let seen = world.render(&field(centre, dz, w, h), o, Light::Transmitted);
+    // The squares' layer is 0.05 µm above the slide; its blur, in pixels,
+    // and a margin past three of them.
+    let sigma = o.blur(Um(dz - 0.05)).0 / p;
+    let margin = (3.0 * sigma).ceil() as u32 + 2;
+    let target = TestTarget::new(Point2::new(30_000.0, 10_000.0), 0.5, 0.0);
+    let corner = Point2::new(
+        centre.x - f64::from(w) * p / 2.0 - f64::from(margin) * p,
+        centre.y - f64::from(h) * p / 2.0 - f64::from(margin) * p,
+    );
+    let (we, he) = (w + 2 * margin, h + 2 * margin);
+    let mut passed = target.render(0, corner, Um(p), we, he);
+    for v in passed.data_mut() {
+        *v = 10f32.powf(-*v);
+    }
+    oscope_sim::blur::gaussian(&mut passed, sigma);
+    let (mut worst, mut sum) = (0.0_f64, 0.0);
+    for y in 0..h as usize {
+        for x in 0..w as usize {
+            for c in 0..3 {
+                let at = ((y + margin as usize) * we as usize + x + margin as usize) * 3 + c;
+                let expected = GLASS * f64::from(passed.data()[at]);
+                let d = (f64::from(seen.data()[(y * w as usize + x) * 3 + c]) - expected).abs();
+                worst = worst.max(d);
+                sum += d;
+            }
+        }
+    }
+    (worst, sum / f64::from(w * h * 3))
+}
+
+#[test]
+fn out_of_focus_a_coarser_pixel_renders_as_the_field_s_own() {
+    // From a few pixels' blur, a layer renders at a coarser pixel, blurs
+    // there by what its square and the interpolation back leave, and is
+    // interpolated back: as rendered at the field's own pixel and blurred.
+    // Across the squares' edges, a coarse pixel's mean density passes a
+    // little less light than its parts do: 1.5 % of it at most, and 0.1 %
+    // to 0.6 % on average, from 10 to 60 µm out.
+    let o = optics("10x");
+    for dz in [10.0, 25.0, 60.0] {
+        let (worst, mean) = against_the_field_s_pixel(&o, dz);
+        assert!(
+            worst < 0.02 && mean < 0.008,
+            "{dz} µm: {worst}, mean {mean}"
+        );
+    }
+}
