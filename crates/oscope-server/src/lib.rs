@@ -456,7 +456,10 @@ async fn serve(
         .extensions(extensions)
         .projects(projects)
         .scratch(scratch)
-        .power(config.power.dry_run);
+        .power_with(
+            config.power.dry_run,
+            config.power.dry_run_restart.unwrap_or(config.power.dry_run),
+        );
     if let Some(path) = &cli.config {
         api = api.config_file(Arc::new(TomlFile(path.clone())));
     }
@@ -466,6 +469,10 @@ async fn serve(
     // The web app, at the API's own origin (W0.1).
     if let Some(folder) = &config.web.root {
         api = api.pages(folder);
+    }
+    // The server's third-party notices, for About (W4.3).
+    if let Some(folder) = notices(&config) {
+        api = api.notices(folder);
     }
     // The origins whose pages may call it, besides its own (W1.3, ADR-0045).
     api = api.origins(Origins::new(config.network.origins.clone()));
@@ -699,6 +706,20 @@ fn write_token(roots: &Roots) -> Result<(PathBuf, String), Error> {
     let hex: String = token.iter().map(|b| format!("{b:02x}")).collect();
     oscope_shm::write_private(&path, hex.as_bytes()).map_err(failed)?;
     Ok((std::path::absolute(&path).map_err(failed)?, hex))
+}
+
+/// The folder of the server's third-party notices: the configuration's, or
+/// where the packages put them (P54), beside the server on Windows and in
+/// `/usr/share/doc/oscope` on Ubuntu; none for a build from source.
+fn notices(config: &Config) -> Option<PathBuf> {
+    if let Some(folder) = &config.web.notices {
+        return Some(folder.clone());
+    }
+    let exe = std::env::current_exe().ok();
+    let beside = exe.as_deref().and_then(Path::parent).map(Path::to_owned);
+    let packaged = PathBuf::from("/usr/share/doc/oscope");
+    let made = |folder: &PathBuf| folder.join("THIRD-PARTY-NOTICES.html").is_file();
+    beside.into_iter().chain([packaged]).find(made)
 }
 
 /// The preview ring, if the configuration's `[shm]` asks for one: by

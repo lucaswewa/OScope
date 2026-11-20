@@ -15,14 +15,20 @@ export const web = fileURLToPath(new URL("../..", import.meta.url));
 /**
  * The server's configuration, relative to its folder. Without one, the
  * scratch space is the working folder's: every test's server would share it,
- * and each clears it as it starts. Power actions only say what they would do.
+ * and each clears it as it starts. Power actions only say what they would
+ * do, unless the test lets it restart (ADR-0060). Its third-party notices
+ * are its folder's `notices`, empty unless the test puts some there: not a
+ * package's, if this computer has one installed.
  */
-const CONFIG = `[storage]
+const config = (restarts: boolean) => `[storage]
 data_root = "data"
 scratch_root = "scratch"
 
 [power]
 dry_run = true
+${restarts ? "dry_run_restart = false\n" : ""}
+[web]
+notices = "notices"
 `;
 
 /** The server's program: `OSCOPE_SERVER_BIN`, or the workspace's debug build. */
@@ -40,11 +46,18 @@ export class Server {
   version = "";
   /** Its folder: its configuration, with `data` and `scratch` beside it. */
   readonly folder = mkdtempSync(join(tmpdir(), "oscope-e2e-"));
+  /** How many times it has restarted itself, by its exit code 75 (W4.3). */
+  restarts = 0;
+  /** Why it couldn't start again after a restart of its own, if it couldn't. */
+  failed: string | undefined;
   private port = 0;
   private child: ChildProcess | undefined;
+  /** Its start after a restart of its own, while that is under way. */
+  private again: Promise<void> | undefined;
 
-  constructor() {
-    writeFileSync(join(this.folder, "oscope.toml"), CONFIG);
+  /** With `restarts`, its restart is done, as its supervisor would: rebooting and shutting down never are. */
+  constructor(options: { restarts?: boolean } = {}) {
+    writeFileSync(join(this.folder, "oscope.toml"), config(options.restarts ?? false));
   }
 
   /**
@@ -85,10 +98,19 @@ export class Server {
     this.version = serving[1]!;
     this.url = serving[2]!;
     this.port = Number(serving[3]);
+    // A restart it asked for itself: started again, on the same port, as its supervisor would.
+    child.once("exit", (code) => {
+      if (code !== 75 || this.child !== child) return;
+      this.restarts += 1;
+      this.again = this.start().catch((error: unknown) => {
+        this.failed = String(error);
+      });
+    });
   }
 
   /** Stops it, and waits until it has gone. */
   async stop(): Promise<void> {
+    await this.again;
     const child = this.child;
     this.child = undefined;
     if (!child || child.exitCode !== null) return;

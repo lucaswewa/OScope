@@ -1,6 +1,6 @@
 # ADR-0032: Power actions and their privileges
 
-- Status: Accepted
+- Status: Accepted; extended by [ADR-0060](0060-restarts-in-a-dry-run.md)
 - Date: 2026-11-16
 - Phase: P51
 

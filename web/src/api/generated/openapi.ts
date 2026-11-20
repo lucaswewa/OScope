@@ -274,6 +274,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/notices/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notice
+         * @description `GET notices/{name}`: one of the notices, to read. `404` for any
+         *     name that `notices` doesn't list.
+         */
+        get: operations["notice_api_v1_system_notices__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The server's third-party notices, by name: those in the folder its
+         * @description ## The server's third-party notices, by name: those in the folder its
+         *
+         *     The server's third-party notices, by name: those in the folder its
+         *     package put them in, `notices/{name}` to read each. None when the
+         *     server has no such folder, as a build from source hasn't.
+         */
+        get: operations["get_property_api_v1_system_notices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/os": {
         parameters: {
             query?: never;
@@ -6078,13 +6123,36 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Whether this is a dry run: each action says what it would do, and
-         * @description ## Whether this is a dry run: each action says what it would do, and
+         * Whether rebooting and shutting down are dry runs: each says what it
+         * @description ## Whether rebooting and shutting down are dry runs: each says what it
          *
-         *     Whether this is a dry run: each action says what it would do, and
-         *     does nothing.
+         *     Whether rebooting and shutting down are dry runs: each says what it
+         *     would do, and does nothing.
          */
         get: operations["get_property_api_v1_power_dry_run_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/power/dry_run_restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether restarting the service is a dry run: as `dry_run`, unless
+         * @description ## Whether restarting the service is a dry run: as `dry_run`, unless
+         *
+         *     Whether restarting the service is a dry run: as `dry_run`, unless
+         *     the server's configuration says otherwise (ADR-0060).
+         */
+        get: operations["get_property_api_v1_power_dry_run_restart_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6946,6 +7014,12 @@ export interface components {
             /** @description How much programs can still have. */
             available_bytes: number;
         };
+        system_notices_value: {
+            /** @description Its file's name, such as `THIRD-PARTY-NOTICES.html`. */
+            name: string;
+            /** @description Its size, in bytes. */
+            bytes: number;
+        }[];
         /** @description The operating system. */
         system_os_value: {
             /**
@@ -13098,6 +13172,7 @@ export interface components {
             error?: components["schemas"]["ProblemDetails"] | null;
         };
         power_dry_run_value: boolean;
+        power_dry_run_restart_value: boolean;
         /** @description What a power action did, or with a dry run, would do. */
         power_powering_data: {
             /** @description The action. */
@@ -13825,6 +13900,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["system_memory_value"];
+                };
+            };
+        };
+    };
+    notice_api_v1_system_notices__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_property_api_v1_system_notices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Value of notices */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["system_notices_value"];
                 };
             };
         };
@@ -22012,6 +22127,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["power_dry_run_value"];
+                };
+            };
+        };
+    };
+    get_property_api_v1_power_dry_run_restart_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Value of dry_run_restart */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["power_dry_run_restart_value"];
                 };
             };
         };

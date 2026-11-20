@@ -11,6 +11,9 @@
 //!   - `confirm: true`;
 //!   - no hardware job running, unless `force`.
 //! - **A dry run** does all but act: it says what it would run.
+//! - **The service's restart** may be done while the host's actions stay dry
+//!   runs (W4.3, ADR-0060): the app's tests restart their own server, and
+//!   reboot nothing.
 
 use std::sync::{Arc, OnceLock};
 
@@ -76,13 +79,16 @@ pub struct Powered {
     pub dry_run: bool,
 }
 
-/// Whether the `power` Thing acts, or only says what it would do.
+/// Whether the `power` Thing acts, or only says what it would do: the
+/// host's actions, and the service's restart.
 pub(crate) struct PowerConfig {
     pub(crate) dry_run: bool,
+    pub(crate) dry_run_restart: bool,
 }
 
 struct State {
     dry_run: bool,
+    dry_run_restart: bool,
     jobs: Option<Arc<JobService>>,
     restart: Option<Arc<Restart>>,
 }
@@ -130,14 +136,18 @@ impl PowerThing {
                 job.spec.kind
             )));
         }
+        let dry_run = match action {
+            Action::Restart => state.dry_run_restart,
+            Action::Reboot | Action::Shutdown => state.dry_run,
+        };
         let powered = Powered {
             action,
             command: command(action, Platform::this()),
-            dry_run: state.dry_run,
+            dry_run,
         };
         self.powering.emit(powered.clone());
         tracing::warn!("power: {powered:?}");
-        if state.dry_run {
+        if dry_run {
             return Ok(powered);
         }
         match &powered.command {
@@ -164,19 +174,28 @@ impl PowerThing {
     async fn connect(&self, ctx: ThingCtx) -> anyhow::Result<()> {
         let server = ctx.server();
         let config = server.service::<PowerConfig>();
+        let config = config.as_deref();
         let _ = self.state.set(State {
             dry_run: config.is_none_or(|c| c.dry_run),
+            dry_run_restart: config.is_none_or(|c| c.dry_run_restart),
             jobs: server.service::<JobService>(),
             restart: server.service::<Restart>(),
         });
         Ok(())
     }
 
-    /// Whether this is a dry run: each action says what it would do, and
-    /// does nothing.
+    /// Whether rebooting and shutting down are dry runs: each says what it
+    /// would do, and does nothing.
     #[property]
     async fn dry_run(&self) -> bool {
         self.state.get().is_none_or(|s| s.dry_run)
+    }
+
+    /// Whether restarting the service is a dry run: as `dry_run`, unless
+    /// the server's configuration says otherwise (ADR-0060).
+    #[property]
+    async fn dry_run_restart(&self) -> bool {
+        self.state.get().is_none_or(|s| s.dry_run_restart)
     }
 
     /// Restarts the service.

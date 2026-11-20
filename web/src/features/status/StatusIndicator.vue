@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { useConnection } from "@/api/connection/connection";
@@ -10,10 +10,11 @@ import Popover from "@/ui/Popover.vue";
 /**
  * The instrument's status in the rail (W2.2): ok, degraded or fault, in
  * its colour, an icon over its word as the rail's tabs are; a click away,
- * why, and each subsystem with its message. Without the server, it isn't
- * known.
+ * why, and each subsystem with its message, and the way to the status in
+ * full (W4.3). Without the server, it isn't known.
  */
 const { t, te } = useI18n();
+const open = shallowRef(false);
 const connection = useConnection();
 const told = useInstrument();
 const instrument = computed(() => (connection.state === "connected" ? told.value : undefined));
@@ -29,7 +30,7 @@ const named = (subsystem: string) => {
 </script>
 
 <template>
-  <Popover side="right" align="end">
+  <Popover v-model:open="open" side="right" align="end">
     <template #trigger>
       <button
         class="indicator"
@@ -60,6 +61,9 @@ const named = (subsystem: string) => {
           </span>
         </li>
       </ul>
+      <RouterLink :to="{ name: 'status' }" data-said="status-page" @click="open = false">
+        {{ t("status.page.link") }}
+      </RouterLink>
     </section>
   </Popover>
 </template>

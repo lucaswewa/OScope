@@ -1,7 +1,7 @@
 // The instrument's status (W2.2): the tone each state is shown in, the
 // status kept by its property and its event, and the indicator. On a
 // stand-in socket and network.
-import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
+import { flushPromises, mount, RouterLinkStub, type VueWrapper } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { effectScope } from "vue";
@@ -44,6 +44,7 @@ const i18n = createI18n({
         health: "{state}: {message}",
         states: { ok: "OK", degraded: "Degraded", fault: "Fault", offline: "Offline" },
         subsystems: { camera: "The camera", stage: "The stage", lights: "The lights" },
+        page: { link: "The status in full" },
       },
     },
   },
@@ -145,7 +146,10 @@ describe("the instrument's status", () => {
 
 describe("the indicator", () => {
   it("takes the worst subsystem's colour, as the server weighs them, with each a click away", async () => {
-    drawn = mount(StatusIndicator, { global: { plugins: [i18n] }, attachTo: document.body });
+    drawn = mount(StatusIndicator, {
+      global: { plugins: [i18n], stubs: { RouterLink: RouterLinkStub } },
+      attachTo: document.body,
+    });
     const button = () => drawn!.get("[data-said='indicator']");
     // Without the server, the state isn't known.
     expect(button().text()).toBe("Unknown");

@@ -17,6 +17,8 @@ export interface Health {
   subsystem: string;
   state: InstrumentState;
   message: string;
+  /** What the server measured of it, such as the GPU's temperature (W4.3). */
+  details?: unknown;
 }
 
 /** The instrument's status: its state, why, and its subsystems'. */

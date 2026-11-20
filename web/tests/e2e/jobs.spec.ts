@@ -92,8 +92,12 @@ test("reordering, by the keys and by dragging, and cancelling reach the server @
   // Dragged onto the second's place: the first is first again.
   await row(page, first).dragTo(row(page, second));
   await expect.poll(() => placeOf(server.url, first)).toBe(0);
-  // A waiting job is cancelled at once; the running one, asked first.
-  await row(page, second).click();
+  // A waiting job is cancelled at once; the running one, asked first. Firefox can take
+  // the first press after a drag for the drag's end: the row is pressed until chosen.
+  await expect(async () => {
+    await row(page, second).click();
+    await expect(page).toHaveURL(new RegExp(`job=${second}`), { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   await said(page, "job").getByRole("button", { name: "Cancel the job" }).click();
   await expect.poll(() => stateOf(server.url, second)).toBe("cancelled");
   await row(page, long).click();

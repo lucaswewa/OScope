@@ -1,5 +1,5 @@
-//! The `system` Thing: OScope's build, the computer it runs on, and its
-//! folders.
+//! The `system` Thing: OScope's build, the computer it runs on, its
+//! folders, and its third-party notices.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
@@ -9,6 +9,10 @@ use oscope_store::{Scratch, ScratchHealth};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{CpuRefreshKind, RefreshKind, System as Host};
+use teta_wot::http::PathParams;
+use teta_wot::http::axum::http::StatusCode;
+use teta_wot::http::axum::http::header::CONTENT_TYPE;
+use teta_wot::http::axum::response::{IntoResponse, Response};
 use teta_wot::prelude::*;
 
 use crate::{Restart, Roots};
@@ -63,6 +67,18 @@ pub struct Folder {
     pub total_bytes: u64,
 }
 
+/// One of the server's third-party notices.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Notice {
+    /// Its file's name, such as `THIRD-PARTY-NOTICES.html`.
+    pub name: String,
+    /// Its size, in bytes.
+    pub bytes: u64,
+}
+
+/// The folder of the server's third-party notices (W4.3).
+pub(crate) struct Notices(pub(crate) PathBuf);
+
 /// OScope's build, the computer it runs on, and its folders.
 #[derive(Thing)]
 #[thing(config = Roots)]
@@ -81,6 +97,8 @@ pub struct System {
     restart: OnceLock<Arc<Restart>>,
     #[thing(init = OnceLock::new())]
     scratch: OnceLock<Arc<Scratch>>,
+    #[thing(init = OnceLock::new())]
+    notices: OnceLock<PathBuf>,
 }
 
 #[thing_impl]
@@ -93,7 +111,42 @@ impl System {
         if let Some(scratch) = ctx.server().service::<Scratch>() {
             let _ = self.scratch.set(scratch);
         }
+        if let Some(notices) = ctx.server().service::<Notices>() {
+            let _ = self.notices.set(notices.0.clone());
+        }
         Ok(())
+    }
+
+    /// The server's third-party notices, by name: those in the folder its
+    /// package put them in, `notices/{name}` to read each. None when the
+    /// server has no such folder, as a build from source hasn't.
+    #[property(blocking)]
+    fn notices(&self) -> Vec<Notice> {
+        self.notices
+            .get()
+            .map(|folder| listed(folder))
+            .unwrap_or_default()
+    }
+
+    /// `GET notices/{name}`: one of the notices, to read. `404` for any
+    /// name that `notices` doesn't list.
+    #[endpoint(get, "notices/{name}")]
+    async fn notice(&self, params: PathParams) -> Response {
+        let (Some(folder), Some(name)) = (self.notices.get(), params.get("name")) else {
+            return StatusCode::NOT_FOUND.into_response();
+        };
+        // A notice's name, and only a name: never a path out of the folder.
+        if !is_notice(name) || name.contains(['/', '\\']) {
+            return StatusCode::NOT_FOUND.into_response();
+        }
+        let kind = match name.ends_with(".html") {
+            true => "text/html; charset=utf-8",
+            false => "text/plain; charset=utf-8",
+        };
+        match tokio::fs::read(folder.join(name)).await {
+            Ok(bytes) => ([(CONTENT_TYPE, kind)], bytes).into_response(),
+            Err(_) => StatusCode::NOT_FOUND.into_response(),
+        }
     }
 
     /// Restarts the server.
@@ -198,6 +251,35 @@ fn cpu() -> Cpu {
         cores: Host::physical_core_count().unwrap_or_default(),
         threads: host.cpus().len(),
     }
+}
+
+/// The notices in `folder`, by name: its files whose names say they are
+/// notices; none if it can't be read.
+fn listed(folder: &Path) -> Vec<Notice> {
+    let Ok(entries) = std::fs::read_dir(folder) else {
+        return Vec::new();
+    };
+    let mut notices: Vec<Notice> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let metadata = entry.metadata().ok()?;
+            (metadata.is_file() && is_notice(&name)).then_some(Notice {
+                name,
+                bytes: metadata.len(),
+            })
+        })
+        .collect();
+    notices.sort_by(|a, b| a.name.cmp(&b.name));
+    notices
+}
+
+/// Whether a file called `name` is a notice, as `packaging/notices/make.sh`
+/// names them: HTML or text, a notice or a licence. The folder may hold the
+/// server and its other files too.
+fn is_notice(name: &str) -> bool {
+    let text = name.ends_with(".html") || name.ends_with(".txt");
+    text && (name.contains("NOTICE") || name.contains("LICENSE"))
 }
 
 /// `path` made absolute, without resolving links; as it is if that fails.
