@@ -31,7 +31,12 @@ export const TABS: readonly Tab[] = [
     bottom: true,
     page: () => import("@/features/settings/SettingsTab.vue"),
   },
-  { name: "logging", icon: "logging", bottom: true, comes: "W4.2", page: waiting },
+  {
+    name: "logging",
+    icon: "logging",
+    bottom: true,
+    page: () => import("@/features/logging/LoggingTab.vue"),
+  },
   {
     name: "about",
     icon: "info",
