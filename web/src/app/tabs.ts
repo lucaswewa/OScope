@@ -24,7 +24,7 @@ export const TABS: readonly Tab[] = [
   { name: "scan", icon: "scan", comes: "W5", page: waiting },
   { name: "workspace", icon: "workspace", comes: "W7", page: waiting },
   { name: "gallery", icon: "gallery", comes: "W6", page: waiting },
-  { name: "jobs", icon: "jobs", comes: "W4.1", page: waiting },
+  { name: "jobs", icon: "jobs", page: () => import("@/features/jobs/JobsTab.vue") },
   {
     name: "settings",
     icon: "settings",

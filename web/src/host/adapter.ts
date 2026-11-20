@@ -52,6 +52,8 @@ export interface AppWindow {
    * ways it may. Gives the means to stop.
    */
   onFullScreen(listener: (full: boolean) => void): () => void;
+  /** Whether the app can't be seen now: its page hidden, or its window minimised (W4.1). */
+  isHidden(): boolean;
 }
 
 /** What a platform can do beyond a browser. */

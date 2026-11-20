@@ -347,6 +347,24 @@ export type TailMessage =
   | { skipped: number }
   | { error: string };
 
+/** A page of the logs' records, the newest first, and the `before` of the next, older page. */
+export interface LogPage {
+  records: LogRecord[];
+  next?: number;
+}
+
+/** A page of the records that `query` takes, the newest first (`logs/records`). */
+export function logRecords(
+  query: LogQuery & { before?: number } = {},
+  options: On = {},
+): Promise<LogPage> {
+  const search = new URLSearchParams(
+    Object.entries(query).map(([key, value]) => [key, String(value)]),
+  ).toString();
+  const path = `/api/v1/logs/records${search ? `?${search}` : ""}`;
+  return fetched((options.on ?? server).address(path), (answer) => answer.json(), options);
+}
+
 /**
  * The logs' live tail: each message, to `told`, until `signal` aborts or
  * the server ends it. `ask` changes the query; the tail then starts again

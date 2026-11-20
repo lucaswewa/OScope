@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useConnection } from "@/api/connection/connection";
 import { useLease } from "@/api/connection/lease";
 import { useSession } from "@/api/connection/session";
+import { useProperty } from "@/api/things/use";
 import StatusIndicator from "@/features/status/StatusIndicator.vue";
 import Badge from "@/ui/Badge.vue";
 import Icon from "@/ui/Icon.vue";
@@ -13,8 +14,9 @@ import { toasts } from "@/ui/toasts";
 
 /**
  * The foot of the rail (W2.2): whether the server is there, who holds the
- * control lease when the server has accounts, the notices raised, with how
- * many came since they were last read, and the instrument's status.
+ * control lease when the server has accounts, the hardware job that runs, how
+ * far it has got, leading to it (W4.1), the notices raised, with how many came
+ * since they were last read, and the instrument's status.
  */
 const { t } = useI18n();
 const connection = useConnection();
@@ -32,6 +34,20 @@ const tone = computed(() => {
       return "danger";
   }
 });
+// The hardware job that runs, from the queue, which has its progress.
+const hardware = useProperty("/api/v1/jobs/hardware", { every: 2_000 });
+const queue = useProperty("/api/v1/jobs/queue", { every: 2_000 });
+const running = computed(() => {
+  const id = hardware.value.value;
+  return id ? (queue.value.value ?? []).find((job) => job.id === id) : undefined;
+});
+const runningSaid = computed(() => {
+  const fraction = running.value?.progress.fraction;
+  return fraction === null || fraction === undefined
+    ? t("status.job.short")
+    : `${Math.round(fraction * 100)} %`;
+});
+
 const holder = computed(() => {
   if (session.state !== "in") return undefined;
   const held = lease.lease.value.value?.holder;
@@ -73,6 +89,17 @@ watch([reading, newest], ([open, id]) => {
       <span class="hidden">{{ t("status.lease.label") }}</span>
       <span class="text">{{ holder }}</span>
     </p>
+    <RouterLink
+      v-if="running"
+      class="line job"
+      data-said="running-job"
+      :to="{ name: 'jobs', query: { job: running.id } }"
+      :title="t('status.job.long', { title: running.title })"
+    >
+      <Icon name="jobs" small />
+      <span class="hidden">{{ t("status.job.label", { title: running.title }) }}</span>
+      <span class="text">{{ runningSaid }}</span>
+    </RouterLink>
     <NoticeHistory v-model:open="reading">
       <template #trigger>
         <button
@@ -112,6 +139,12 @@ watch([reading, newest], ([open, id]) => {
   padding: 1px var(--space-1);
   color: var(--text-muted);
   font-size: var(--font-size-small);
+}
+
+/* A link, unlike the lines about it: a target a finger can take, 24 px at least. */
+.job {
+  min-block-size: 1.5rem;
+  text-decoration: none;
 }
 
 .text {

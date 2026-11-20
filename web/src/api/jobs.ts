@@ -3,7 +3,7 @@
 // followed at `jobs/job/{id}`. That route's answer isn't in the OpenAPI
 // document: its shape is written here, and checked against a real server by
 // the contract tests (tests/e2e/contract.spec.ts).
-import { call, pause, server, type Limits, type Server } from "./client.ts";
+import { call, fetched, pause, server, type Limits, type Server } from "./client.ts";
 import { ApiError } from "./errors.ts";
 
 /** Where to follow a job an action has started. */
@@ -24,6 +24,8 @@ export interface Job {
   kind: string;
   /** For people. */
   title: string;
+  /** Who submitted it, where the server has accounts. */
+  account?: string | null;
   state: JobState;
   progress: {
     /** From 0 to 1, if known. */
@@ -72,6 +74,29 @@ export async function job(
     options,
   );
   return answer as Job;
+}
+
+/** Which jobs `jobList` gives: in a state, of a kind, and how many. */
+export interface JobFilter {
+  state?: JobState;
+  kind?: string;
+  /** At most this many: 50 unless given, 1,000 at most. */
+  limit?: number;
+}
+
+/**
+ * The jobs, the newest first (W4.1). Like `jobs/job/{id}`'s, the route's
+ * answer has no schema in the OpenAPI document.
+ */
+export async function jobList(
+  filter: JobFilter = {},
+  options: Limits & { on?: Server | undefined } = {},
+): Promise<Job[]> {
+  const query = new URLSearchParams(
+    Object.entries(filter).map(([key, value]) => [key, String(value)]),
+  ).toString();
+  const path = `/api/v1/jobs/list${query ? `?${query}` : ""}`;
+  return fetched((options.on ?? server).address(path), (answer) => answer.json(), options);
 }
 
 /** A job that didn't complete, as an ApiError. */

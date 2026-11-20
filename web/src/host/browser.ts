@@ -147,6 +147,7 @@ export function browserHost(win: BrowserWindow): HostAdapter {
         doc().addEventListener("fullscreenchange", changed);
         return () => doc().removeEventListener("fullscreenchange", changed);
       },
+      isHidden: () => doc().visibilityState === "hidden",
     },
 
     openOutside(address) {
