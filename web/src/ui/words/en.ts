@@ -15,6 +15,15 @@ export default {
   select: {
     choose: "Choose…",
   },
+  tileViewer: {
+    controls: "The image's controls",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    fit: "All of it",
+    microns: "{length} µm",
+    mm: "{length} mm",
+    at: "x {x}, y {y} µm",
+  },
   combobox: {
     nothing: "Nothing matches.",
     open: "Show the choices",

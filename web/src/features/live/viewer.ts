@@ -5,6 +5,7 @@
 // a view's scale is the device pixels a sensor pixel is drawn across.
 import type { PixelRect } from "@/api/preview/message";
 import { sensorAt, zoomed, type Size, type View } from "@/api/preview/view";
+import { roundLength } from "@/ui/lengths";
 
 /** How much a key, a button or a notch of the wheel zooms. */
 export const STEP = 1.25;
@@ -55,11 +56,7 @@ export function fromCentre(pixel: [number, number], sensor: Size, side: number):
   return [(pixel[0] + 0.5 - sensor.width / 2) * side, (pixel[1] + 0.5 - sensor.height / 2) * side];
 }
 
-/** The longest length of 1, 2 or 5 times a power of ten, in µm, that is at most `most`. */
-export function roundLength(most: number): number {
-  const power = 10 ** Math.floor(Math.log10(most));
-  return [5, 2, 1].map((k) => k * power).find((length) => length <= most * (1 + 1e-9)) ?? power;
-}
+export { roundLength } from "@/ui/lengths";
 
 /** A scale bar: its length at the sample, in µm, and on the screen, in CSS pixels. */
 export interface Bar {

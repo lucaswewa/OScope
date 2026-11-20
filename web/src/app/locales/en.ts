@@ -44,6 +44,7 @@ export default {
   },
   control: {
     handle: "Between the controls and the view",
+    mosaicHandle: "Between the live image and the mosaic",
     pane: "The controls",
     view: "The view",
   },
@@ -252,6 +253,7 @@ export default {
     fullScreen: "Full screen",
     leaveFullScreen: "Leave full screen",
     save: "Save PNG",
+    mosaic: "Mosaic",
     states: {
       off: "Not streaming",
       waiting: "Waiting for a frame",
@@ -345,6 +347,27 @@ export default {
     none: "—",
     microns: "{length} µm",
     mm: "{length} mm",
+  },
+  mosaic: {
+    label: "The live mosaic",
+    viewer: "The mosaic: double-click to send the stage there",
+    begin: "Start the mosaic",
+    halt: "Stop drawing",
+    clear: "Clear",
+    none: "No mosaic yet: start one, and jog the stage.",
+    drawing:
+      "Drawing: {drawn} frames, in {tiles} tiles. Left out: {blurred} blurred, {same} the same place again.",
+    halted: "Stopped: {drawn} frames, in {tiles} tiles.",
+    again: {
+      title: "Start a new mosaic?",
+      text: "The mosaic shown goes, with its tiles.",
+      confirm: "Start anew",
+    },
+    clearing: {
+      title: "Clear the mosaic?",
+      text: "Its tiles go. It goes on drawing, if it was.",
+      confirm: "Clear it",
+    },
   },
   settings: {
     intro: "Kept on this computer. The rest of the settings come in W8.",

@@ -1,8 +1,9 @@
 // The media plane (ADR-0006): OScope's own routes beside the Things, which
 // the OpenAPI document doesn't describe. Each is typed here by hand, and
 // checked against a real server by the contract tests
-// (tests/e2e/contract.spec.ts): deep-zoom tiles (ADR-0028), volumes
-// (ADR-0029), a project's files (P30), and the logs' live tail.
+// (tests/e2e/contract.spec.ts): deep-zoom tiles (ADR-0028), the live
+// mosaic's (P38), volumes (ADR-0029), a project's files (P30), and the logs'
+// live tail.
 import { fetched, server, type Limits, type Server } from "./client.ts";
 import { ApiError } from "./errors.ts";
 
@@ -230,6 +231,27 @@ export function brick(
 ): Promise<Voxels> {
   const path = `/api/v1/volume/${pathOf(image)}/brick${queryOf(box)}`;
   return fetched((options.on ?? server).address(path), voxels, options);
+}
+
+// The live mosaic's tiles (W3.8).
+
+/**
+ * A tile of the live mosaic (P38), at the server's level, 0 the finest: its
+ * JPEG, or nothing where nothing has been drawn (404).
+ */
+export async function mosaicTile(
+  level: number,
+  col: number,
+  row: number,
+  options: On = {},
+): Promise<Blob | undefined> {
+  const path = `/api/v1/mosaic/tiles/${level}/${col}/${row}`;
+  try {
+    return await fetched((options.on ?? server).address(path), (answer) => answer.blob(), options);
+  } catch (thrown) {
+    if (thrown instanceof ApiError && thrown.failure === "missing") return undefined;
+    throw thrown;
+  }
 }
 
 // A project's files.

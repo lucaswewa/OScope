@@ -11,6 +11,7 @@ import { usePointing } from "@/features/control/stage/usePointing";
 import { tableOf } from "@/features/live/colourMaps";
 import OverlayMeasures from "@/features/live/overlays/OverlayMeasures.vue";
 import OverlayLayer from "@/features/live/overlays/OverlayLayer.vue";
+import { useMosaicShown } from "@/features/live/mosaic/shown";
 import { useOverlays } from "@/features/live/overlays/overlays";
 import { useStreaming } from "@/features/live/streaming";
 import ValuesPanel from "@/features/live/ValuesPanel.vue";
@@ -65,6 +66,8 @@ let held: [number, number] | undefined;
 
 const pointing = usePointing();
 const overlays = useOverlays();
+/** Whether the live mosaic is shown beside this view (W3.8). */
+const mosaicShown = useMosaicShown();
 // The statistics follow what is drawn and shown: the ROI's, the line's profile (W3.5),
 // the histogram and the saturation mask (W3.6). Nothing shown, none are asked for.
 watch(
@@ -319,6 +322,9 @@ const scaleLabel = computed(() => {
           {{ full ? t("live.leaveFullScreen") : t("live.fullScreen") }}
         </ToolbarButton>
         <ToolbarButton icon="download" @click="save">{{ t("live.save") }}</ToolbarButton>
+        <ToolbarButton icon="scan" :pressed="mosaicShown" @click="mosaicShown = !mosaicShown">
+          {{ t("live.mosaic") }}
+        </ToolbarButton>
       </ControlScope>
     </Toolbar>
     <!-- The overlays change nothing on the instrument: free in the read-only mode. -->
