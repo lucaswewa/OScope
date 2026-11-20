@@ -167,6 +167,8 @@ test("the jobs tab looks as its baseline does @visual", async ({ page, server })
   const waits = await submit(server.url, "capture.single", { project, name: "waits" });
   await page.goto(`${server.url}/#/jobs?job=${waits}`);
   await expect(row(page, waits)).toContainText("Number 1 in line", { timeout: 30_000 });
+  // The rail's indicator says the stage is homed: a moment after it was, as in W3.1's baseline.
+  await expect(said(page, "indicator")).toHaveAccessibleName("The instrument: OK");
   await page.mouse.move(5, 5);
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);
