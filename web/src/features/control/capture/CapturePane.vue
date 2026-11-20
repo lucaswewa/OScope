@@ -219,8 +219,11 @@ const madeSaid = computed(() => {
   align-items: center;
 }
 
+/* A box of its own, whatever the frame's shape: the pane doesn't move. */
 .record img {
-  max-inline-size: 6rem;
+  inline-size: 6rem;
+  block-size: 4.5rem;
+  object-fit: contain;
   border-radius: var(--radius-control);
 }
 

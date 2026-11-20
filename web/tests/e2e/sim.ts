@@ -82,11 +82,26 @@ export async function inFocus(url: string): Promise<number> {
 }
 
 /**
+ * A tiny region of the camera: 288 × 216 pixels about the sensor's centre, on
+ * its grid of 12, about what P34's server test focuses on. An autofocus sweep
+ * renders a frame at each z, and a live recipe runs on each frame: on the
+ * small region, W3.7's tests, unpinned in the Windows replay, held the whole
+ * computer, and the other tests timed out.
+ */
+export const TINY = { x: 2592, y: 1716, width: 288, height: 216 };
+
+/** The stage over the tissue, on the fast clock, and the camera given the tiny region. */
+export async function overTissueTiny(url: string): Promise<void> {
+  await onTissue(url);
+  await call((signal) => new Api(url).api.PUT("/api/v1/camera/roi", { body: TINY, signal }));
+}
+
+/**
  * The stage over the tissue, `by` µm above where it is sharpest, on the fast
- * clock, and the camera's small region: the focus's truth.
+ * clock, and the camera's tiny region: the focus's truth.
  */
 export async function offFocus(url: string, by: number): Promise<number> {
-  await overTissue(url);
+  await overTissueTiny(url);
   const truth = await inFocus(url);
   const to = { ...TISSUE, z: truth + by, speed: 25_000 };
   await fast(url, () => act("/api/v1/stage/move_to", to, { on: new Api(url) }));

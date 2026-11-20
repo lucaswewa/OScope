@@ -79,7 +79,7 @@ export default {
     sweeps: { stepped: "Stepped", continuous: "Continuous" },
     reach: "Reach either side",
     defaults:
-      "Here, its depth of field is {depth} µm: it sweeps ±{reach} µm, in steps of {coarse} µm, then {fine} µm.",
+      "Here, its depth of field is {depth} µm: by default, it sweeps ±{reach} µm, in steps of {coarse} µm, then {fine} µm.",
     run: "Focus",
     running: "Focusing…",
     measureNow: "Measure the frame",

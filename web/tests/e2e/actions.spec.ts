@@ -11,7 +11,7 @@ import { projectPage } from "../../src/api/projects.ts";
 import { expectAccessible } from "./axe.ts";
 import { choose, expect, inScheme, shot, test } from "./fixtures.ts";
 import { colourOf, rgbOf } from "./pixels.ts";
-import { offFocus, overTissue } from "./sim.ts";
+import { offFocus, overTissueTiny } from "./sim.ts";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
 const image = (page: Page) => page.getByRole("img", { name: /^The live image/ });
@@ -34,21 +34,49 @@ async function stageZ(url: string): Promise<number> {
 // The server does the sweep: one browser is enough.
 test("autofocus takes the stage to the simulator's true focus", async ({ page, server }) => {
   test.setTimeout(240_000);
-  // 12 µm above the focus, as P34's server test starts.
+  // 12 µm above the focus, as P34's server test starts. A reach of 20 µm sweeps two
+  // thirds of the default's frames: each is the simulator's, rendered at its z, and a
+  // debug server's sweep takes several cores.
   const truth = await offFocus(server.url, 12);
+  // The notes' window, for their pictures below.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await streaming(page, server.url);
   const pane = said(page, "autofocus");
+  const reach = pane.getByRole("spinbutton", { name: "Reach either side" });
+  await reach.fill("20");
+  await reach.press("Enter");
   await pane.getByRole("button", { name: "Focus", exact: true }).click();
   await expect(said(page, "focused")).toContainText("In focus at z", { timeout: 180_000 });
   // Within a quarter of the depth of field, as the server's own test asks.
   const on = new Api(server.url);
-  const last = await call((signal) => on.api.GET("/api/v1/autofocus/last", { signal }));
+  const last = (await call((signal) => on.api.GET("/api/v1/autofocus/last", { signal })))!;
   const error = (await stageZ(server.url)) - truth;
-  expect(Math.abs(error)).toBeLessThan(last!.depth_of_field_um / 4);
+  expect(Math.abs(error)).toBeLessThan(last.depth_of_field_um / 4);
+  // The reach typed is the one swept, a coarse step at most past it.
+  const swept = last.coarse.map((point) => Math.abs(point.z_um - last.start_um));
+  expect(Math.max(...swept)).toBeLessThan(20 + last.depth_of_field_um);
   // The curve, and the frame's measures, read when asked.
   await expect(pane.getByText("The last run's curve")).toBeVisible();
   await pane.getByRole("button", { name: "Measure the frame" }).click();
   await expect(said(page, "measures")).toContainText("Brenner");
+
+  // The notes' pictures: the pane scrolled to the actions, once it scrolls.
+  const controls = page.getByRole("region", { name: "The controls" });
+  await expect
+    .poll(() => controls.evaluate((box) => box.scrollHeight > box.clientHeight))
+    .toBe(true);
+  // Scrolled at each look: the pane takes the window's height a moment after it, and a
+  // scroll before then is undone (W3.7, whose panes made the pane overflow sooner).
+  await expect
+    .poll(async () => {
+      await pane.evaluate((section) => section.scrollIntoView({ block: "start" }));
+      return (await pane.boundingBox())!.y;
+    })
+    .toBeLessThan(100);
+  for (const scheme of ["light", "dark"] as const) {
+    await inScheme(page, scheme);
+    await shot(page, `W3.7-actions-${scheme}`);
+  }
 });
 
 test("a capture makes a record in a project made there, and a burst one of its frames @main", async ({
@@ -56,7 +84,7 @@ test("a capture makes a record in a project made there, and a burst one of its f
   server,
 }) => {
   test.setTimeout(150_000);
-  await overTissue(server.url);
+  await overTissueTiny(server.url);
   await streaming(page, server.url);
   const pane = said(page, "capture");
   await pane.getByRole("textbox", { name: "New project" }).fill("Slides of W3.7");
@@ -114,7 +142,7 @@ test("a live recipe is set and cleared, and one that reads a reference waits for
   server,
 }) => {
   test.setTimeout(150_000);
-  await overTissue(server.url);
+  await overTissueTiny(server.url);
   const on = new Api(server.url);
   await call((signal) => on.api.PUT("/api/v1/camera/exposure", { body: 10, signal }));
   // A debug build's recipes take ten times a release's, and more on two cores: the
@@ -160,7 +188,7 @@ test("the tab's actions have no violation axe can find, in either theme", async 
   server,
 }) => {
   test.setTimeout(150_000);
-  await overTissue(server.url);
+  await overTissueTiny(server.url);
   await streaming(page, server.url);
   await act("/api/v1/projects/create", { name: "Axe" }, { on: new Api(server.url) });
   await page.reload();
@@ -173,13 +201,11 @@ test("the tab's actions have no violation axe can find, in either theme", async 
 
 test("the tab's actions look as their baselines do @visual", async ({ page, server }) => {
   test.skip(!process.env.OSCOPE_VISUAL, "the baselines are one computer's: OSCOPE_VISUAL=1 there");
-  test.setTimeout(240_000);
+  test.setTimeout(150_000);
   // Tall enough for the whole pane: the stage's Halt, sticky at its foot, covers a scrolled one.
   await page.setViewportSize({ width: 1280, height: 4000 });
-  await offFocus(server.url, 12);
+  await overTissueTiny(server.url);
   await streaming(page, server.url);
-  await said(page, "autofocus").getByRole("button", { name: "Focus", exact: true }).click();
-  await expect(said(page, "focused")).toContainText("In focus at z", { timeout: 180_000 });
   await said(page, "capture").getByRole("textbox", { name: "New project" }).fill("Baseline");
   await said(page, "capture").getByRole("button", { name: "Make", exact: true }).click();
   await said(page, "capture-run").click();
@@ -189,34 +215,12 @@ test("the tab's actions look as their baselines do @visual", async ({ page, serv
   await page.mouse.move(5, 5);
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);
-    // The run's numbers, its curve and the thumbnail are the simulator's: masked.
-    await expect(said(page, "autofocus")).toHaveScreenshot(`autofocus-${scheme}.png`, {
-      mask: [said(page, "focused"), said(page, "autofocus").locator("canvas")],
-    });
+    // Autofocus before a run: a run's curve is the autofocus test's, and its pictures.
+    await expect(said(page, "autofocus")).toHaveScreenshot(`autofocus-${scheme}.png`);
+    // The thumbnail is the simulator's: masked.
     await expect(said(page, "capture")).toHaveScreenshot(`capture-${scheme}.png`, {
       mask: [said(page, "thumbnail")],
     });
     await expect(said(page, "recipe")).toHaveScreenshot(`recipe-${scheme}.png`);
-  }
-  // The notes' pictures: a window's height, the pane scrolled to the actions.
-  await page.setViewportSize({ width: 1280, height: 900 });
-  // The control pane scrolls once the window is shorter: then it is scrolled to the actions.
-  const controls = page.getByRole("region", { name: "The controls" });
-  await expect
-    .poll(() => controls.evaluate((box) => box.scrollHeight > box.clientHeight))
-    .toBe(true);
-  // Scrolled at each look: the pane takes the window's height a moment after it, and a
-  // scroll before then is undone (W3.7, whose panes made the pane overflow sooner).
-  await expect
-    .poll(async () => {
-      await said(page, "autofocus").evaluate((section) =>
-        section.scrollIntoView({ block: "start" }),
-      );
-      return (await said(page, "autofocus").boundingBox())!.y;
-    })
-    .toBeLessThan(100);
-  for (const scheme of ["light", "dark"] as const) {
-    await inScheme(page, scheme);
-    await shot(page, `W3.7-actions-${scheme}`);
   }
 });
