@@ -13,8 +13,11 @@ const layers = {
   features: ["@/app"],
 };
 
-/** A layer's rule: not the layers it may not know, and reka-ui only in `ui/`. */
-function layerRule(layer, forbidden) {
+/**
+ * A layer's rule: not the layers it may not know, reka-ui only in `ui/`, and
+ * OpenSeadragon only in `ui/tile-viewer/`, which `tiles` says it is.
+ */
+function layerRule(layer, forbidden, tiles = false) {
   const patterns = forbidden.map((name) => ({
     group: [name, `${name}/**`],
     message: `src/${layer}/ may not import from ${name.slice(2)}/ (ADR-0039).`,
@@ -23,6 +26,12 @@ function layerRule(layer, forbidden) {
     patterns.push({
       group: ["reka-ui", "reka-ui/**"],
       message: "Only src/ui/ imports reka-ui: use its components (ADR-0039).",
+    });
+  }
+  if (!tiles) {
+    patterns.push({
+      group: ["openseadragon"],
+      message: "Only src/ui/tile-viewer/ imports OpenSeadragon: use TileViewer (ADR-0050).",
     });
   }
   return { "no-restricted-imports": ["error", { patterns }] };
@@ -124,6 +133,10 @@ export default tseslint.config(
     files: [`src/${layer}/**`],
     rules: layerRule(layer, forbidden),
   })),
+  {
+    files: ["src/ui/tile-viewer/**"],
+    rules: layerRule("ui", layers.ui, true),
+  },
   {
     files: ["src/app/**", "src/main.ts"],
     rules: layerRule("app", []),

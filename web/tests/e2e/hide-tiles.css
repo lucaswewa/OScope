@@ -1,0 +1,6 @@
+/* The tile viewer's baselines (W3.8): the tiles hidden, and the navigator's
+   picture of them, the simulator's noise different each time; the dark behind
+   them, the field marked, the navigator's frame and the scale bar stay. */
+[data-said="tiles"] canvas {
+  visibility: hidden;
+}
