@@ -26,9 +26,12 @@ async function live(page: Page, url: string, exposure: number): Promise<void> {
   await expect(readout(page, "state")).toHaveText("Live", { timeout: 60_000 });
 }
 
-/** The image's pixels in the page, each [r, g, b], from a screenshot. */
+/**
+ * The image's pixels in the page, each [r, g, b], from a screenshot in CSS pixels: a
+ * quarter of WebKit's own, which took it 12 to 18 s a sample on two cores.
+ */
 async function pixels(page: Page): Promise<number[][]> {
-  const png = await image(page).screenshot();
+  const png = await image(page).screenshot({ scale: "css" });
   return page.evaluate(async (base64) => {
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
@@ -59,7 +62,9 @@ test("the saturated pixels are marked where the frame is at the sensor's limit @
   const marked = await pixels(page);
   // Off, as the frames come: the same place, unmarked. Where the marks were, it is near white.
   await tool(page, "Saturated").click();
-  await expect.poll(async () => (await pixels(page)).filter(isRed).length).toBe(0);
+  await expect
+    .poll(async () => (await pixels(page)).filter(isRed).length, { timeout: 30_000 })
+    .toBe(0);
   const plain = await pixels(page);
   const under = plain.filter((_, i) => isRed(marked[i]!));
   const away = plain.filter((_, i) => !isRed(marked[i]!));

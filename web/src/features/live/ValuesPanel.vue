@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { call, server } from "@/api/client";
@@ -48,25 +48,30 @@ const percentiles = computed(() =>
 // The black and white points, in the sensor's units on the histogram's axis.
 const black = computed(() => toSensor(look.value.value?.black ?? 0, fullScale.value));
 const white = computed(() => toSensor(look.value.value?.white ?? 1, fullScale.value));
-// A value as it was is not written again: a field gives its value once more as it
-// loses the focus, which, sent after "Put the look back", would undo it.
+// A field gives its value once more as it loses the focus, as pressing "Put the look
+// back" takes it from the field. That value isn't written again: the server keeps the
+// look in 32-bit floats, so it is compared within a millionth. A changed one is written
+// first, and the reset waits for it.
 const same = (a: number | null | undefined, b: number | null | undefined) =>
-  a === b || (a != null && b != null && Math.abs(a - b) < 1e-9);
+  a === b ||
+  (a != null && b != null && Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b)));
+let written: Promise<void> = Promise.resolve();
+const write = (value: NonNullable<typeof look.value.value>) => (written = look.write(value));
 function level(which: "black" | "white", value: number): void {
   const now = look.value.value;
   const to = toLevel(value, fullScale.value);
-  if (now && !same(now[which], to)) void look.write({ ...now, [which]: to });
+  if (now && !same(now[which], to)) void write({ ...now, [which]: to });
 }
 function gamma(value: number | null): void {
   const now = look.value.value;
-  if (now && !same(now.gamma, value)) void look.write({ ...now, gamma: value });
+  if (now && !same(now.gamma, value)) void write({ ...now, gamma: value });
 }
 function gain(index: number, value: number | null): void {
   const now = look.value.value;
   if (!now || value === null || same(now.gains[index], value)) return;
   const gains = [...now.gains];
   gains[index] = value;
-  void look.write({ ...now, gains });
+  void write({ ...now, gains });
 }
 /** Auto white balance's gains, when they differ from the look's. */
 const found = computed(() => {
@@ -77,6 +82,8 @@ const found = computed(() => {
     : undefined;
 });
 async function reset(): Promise<void> {
+  await nextTick();
+  await written;
   await call((signal) => server.api.POST("/api/v1/preview/look/reset", { signal }));
   await thingStore("preview").read("look");
 }
@@ -186,7 +193,7 @@ const trace = computed(() => [
         v-if="found && look.value.value"
         compact
         data-said="balance-offer"
-        @click="look.write({ ...look.value.value, gains: found })"
+        @click="write({ ...look.value.value, gains: found })"
       >
         {{ t("live.values.useBalance", { gains: found.map((g) => g.toFixed(2)).join(", ") }) }}
       </Button>
