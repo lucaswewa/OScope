@@ -37,7 +37,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0029](0029-volumes-and-3d-data-on-the-media-plane.md) | Volumes and 3D data on the media plane | Accepted | P41 |
 | [0030](0030-reports.md) | Reports: the model, Typst and minijinja, templates and report generators | Accepted | P47 |
 | [0031](0031-authentication-and-the-control-lease.md) | Authentication and the control lease: accounts, sessions, the lease and TLS | Accepted | P49 |
-| [0032](0032-power-actions-and-their-privileges.md) | Power actions and their privileges | Accepted | P51 |
+| [0032](0032-power-actions-and-their-privileges.md) | Power actions and their privileges | Accepted; extended by 0060 | P51 |
 | [0033](0033-packaging-and-release.md) | Packaging and release: the Windows zip, the .deb, the notices and the release workflow | Accepted | P54 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
@@ -56,6 +56,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0048](0048-the-shell-and-the-lease-s-read-only-mode.md) | The shell, and the lease's read-only mode | Accepted | W2.1 |
 | [0049](0049-the-live-viewer-and-its-overlays.md) | The live viewer and its overlays | Accepted | W3.1 |
 | [0050](0050-the-tile-viewer.md) | The tile viewer | Accepted | W3.8 |
+| [0060](0060-restarts-in-a-dry-run.md) | Restarts in a dry run | Accepted | W4.3 |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

@@ -33,7 +33,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W3.8 | The free-roam mosaic and the tile viewer | Done | [W3.8-free-roam-mosaic.md](W3.8-free-roam-mosaic.md) |
 | W4.1 | Jobs | Done | [W4.1-jobs.md](W4.1-jobs.md) |
 | W4.2 | Logging | Done | [W4.2-logging.md](W4.2-logging.md) |
-| W4.3 | About, Power and the status in full | Planned | — |
+| W4.3 | About, Power and the status in full | In review | [W4.3-about-power.md](W4.3-about-power.md) |
 | W5.1 | Scan plans | Planned | — |
 | W5.2 | Running a scan | Planned | — |
 | W5.3 | The histo scan | Planned | — |

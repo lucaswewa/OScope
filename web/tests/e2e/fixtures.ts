@@ -3,12 +3,14 @@ import { resolve } from "node:path";
 
 import { Server, web } from "./server.ts";
 
-/** Each test's own server, started before it and gone after it. */
-export const test = base.extend<{ server: Server; thrown: void }>({
-  // Playwright reads the fixtures a fixture needs from this pattern: none.
-  // eslint-disable-next-line no-empty-pattern
-  server: async ({}, use) => {
-    const server = new Server();
+/**
+ * Each test's own server, started before it and gone after it. With
+ * `restarts`, its restart is done, and it starts again (ADR-0060).
+ */
+export const test = base.extend<{ server: Server; restarts: boolean; thrown: void }>({
+  restarts: [false, { option: true }],
+  server: async ({ restarts }, use) => {
+    const server = new Server({ restarts });
     await server.start();
     await use(server);
     await server.dispose();

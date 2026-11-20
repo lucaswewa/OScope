@@ -61,10 +61,15 @@ function items(bottom: boolean): RailItem[] {
 const top = computed(() => items(false));
 const bottom = computed(() => items(true));
 
-/** The window named for the tab shown. */
+/** The window named for the tab shown, or the status's page (W4.3). */
 function name(routeName: unknown): void {
   const tab = tabOf(routeName);
-  host().window.title(tab ? t("shell.title", { tab: t(`tabs.${tab.name}.title`) }) : t("app.name"));
+  const page = tab
+    ? t(`tabs.${tab.name}.title`)
+    : routeName === "status"
+      ? t("status.page.title")
+      : "";
+  host().window.title(page ? t("shell.title", { tab: page }) : t("app.name"));
 }
 name(route.name);
 

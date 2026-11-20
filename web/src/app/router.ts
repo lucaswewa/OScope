@@ -22,6 +22,12 @@ export const router = createRouter({
           component: tab.page,
           props: { tab: tab.name, comes: tab.comes },
         })),
+        // The status in full (W4.3), from the rail's indicator.
+        {
+          path: "status",
+          name: "status",
+          component: () => import("@/features/status/StatusPage.vue"),
+        },
       ],
     },
     {

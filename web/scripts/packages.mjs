@@ -104,10 +104,12 @@ export function installed(lock) {
 }
 
 /**
+ * A manifest's licence as an SPDX expression: its `license`, or an old
+ * manifest's list of them, one or another.
  * @param {unknown} licence
  * @returns {string | undefined}
  */
-function licenceText(licence) {
+export function licenceText(licence) {
   if (typeof licence === "string") return licence;
   if (Array.isArray(licence))
     return licence.map((one) => licenceText(one) ?? "UNKNOWN").join(" OR ");

@@ -1,5 +1,6 @@
-//! OScope's server: `/health`, the `system` Thing, the media plane behind
-//! the authenticator, pages, and shutting down with a media WebSocket open.
+//! OScope's server: `/health`, the `system` Thing and its notices, the media
+//! plane behind the authenticator, pages, and shutting down with a media
+//! WebSocket open.
 
 use std::path::Path;
 use std::time::Duration;
@@ -95,7 +96,8 @@ async fn the_system_thing_reports_the_build_the_computer_and_its_folders() {
 
     let td = client.get("/api/v1/system/").await.json();
     let properties = td["properties"].as_object().unwrap();
-    assert_eq!(properties.len(), 9);
+    assert_eq!(properties.len(), 10);
+    assert!(properties.contains_key("notices"), "{td}");
     assert!(properties.values().all(|p| p["readOnly"] == true), "{td}");
     assert_eq!(properties["uptime"]["unit"], "s");
 }
@@ -121,6 +123,79 @@ async fn a_root_that_is_missing_is_an_error_not_a_panic() {
         "{}",
         answer.text()
     );
+}
+
+#[tokio::test]
+async fn the_notices_are_listed_and_served_by_their_names_alone() {
+    let folder = tempfile::tempdir().unwrap();
+    let roots = roots(folder.path());
+    // Without a folder of notices, as built from source: none.
+    let none = client(Api::builder(&roots).build().unwrap()).await;
+    assert_eq!(none.get("/api/v1/system/notices").await.json(), json!([]));
+    let missing = none.get("/api/v1/system/notices/THIRD-PARTY-NOTICES.html");
+    assert_eq!(missing.await.status, 404);
+    // A package's folder: the notices, and the server's other files with them.
+    let notices = folder.path().join("package");
+    std::fs::create_dir_all(&notices).unwrap();
+    let files = [
+        ("THIRD-PARTY-NOTICES.html", "<h1>Notices</h1>"),
+        ("Roboto-LICENSE.txt", "Apache License"),
+        ("turbo-colormap-NOTICE.txt", "Copyright 2019 Google LLC"),
+        ("README.txt", "not a notice"),
+        ("oscope-server.exe", "not a notice"),
+    ];
+    for (name, text) in files {
+        std::fs::write(notices.join(name), text).unwrap();
+    }
+    std::fs::write(folder.path().join("secret-NOTICE.txt"), "outside").unwrap();
+    let api = Api::builder(&roots).notices(&notices).build().unwrap();
+    let client = client(api).await;
+    let listed = client.get("/api/v1/system/notices").await.json();
+    let names: Vec<&str> = listed
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|notice| notice["name"].as_str())
+        .collect();
+    let wanted = [
+        "Roboto-LICENSE.txt",
+        "THIRD-PARTY-NOTICES.html",
+        "turbo-colormap-NOTICE.txt",
+    ];
+    assert_eq!(names, wanted);
+    assert_eq!(listed[1]["bytes"], 16);
+    // Each, as HTML or as text.
+    let html = client
+        .get("/api/v1/system/notices/THIRD-PARTY-NOTICES.html")
+        .await;
+    assert_eq!(
+        (html.status.as_u16(), html.text()),
+        (200, "<h1>Notices</h1>".into())
+    );
+    assert!(
+        html.header("content-type")
+            .unwrap()
+            .starts_with("text/html")
+    );
+    let text = client
+        .get("/api/v1/system/notices/Roboto-LICENSE.txt")
+        .await;
+    assert!(
+        text.header("content-type")
+            .unwrap()
+            .starts_with("text/plain")
+    );
+    // Nothing else, and nothing out of the folder.
+    for name in [
+        "README.txt",
+        "oscope-server.exe",
+        "missing-NOTICE.txt",
+        "..%2Fsecret-NOTICE.txt",
+        "..%5Csecret-NOTICE.txt",
+    ] {
+        let answer = client.get(&format!("/api/v1/system/notices/{name}")).await;
+        assert_eq!(answer.status, 404, "{name}");
+    }
 }
 
 /// Lets in only `Authorization: Bearer let-me-in`.

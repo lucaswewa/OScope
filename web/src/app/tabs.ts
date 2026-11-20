@@ -43,7 +43,12 @@ export const TABS: readonly Tab[] = [
     bottom: true,
     page: () => import("@/features/about/AboutTab.vue"),
   },
-  { name: "power", icon: "power", bottom: true, comes: "W4.3", page: waiting },
+  {
+    name: "power",
+    icon: "power",
+    bottom: true,
+    page: () => import("@/features/power/PowerTab.vue"),
+  },
 ];
 
 /** The tab a route shows, if it is one. */

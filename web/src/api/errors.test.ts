@@ -131,9 +131,18 @@ describe("an invocation that ended without its output", () => {
       "the pipeline broke",
       undefined,
     ]);
-    const unknown = invocationError({ status: "error", error: { detail: "upset (409): odd" } });
-    expect(unknown.failure).toBe("failed");
     expect(invocationError({ status: "error", error: null }).message).toBe("the action failed");
+  });
+
+  it("is a failure with its status, in its words, when a Thing's own refusal leads it", () => {
+    const detail = "conflict (409): a burst is running on the instrument";
+    const error = invocationError({ status: "error", error: { detail } });
+    expect([error.failure, error.message, error.status, error.refusal]).toEqual([
+      "failed",
+      "a burst is running on the instrument",
+      409,
+      undefined,
+    ]);
   });
 });
 

@@ -154,6 +154,9 @@ export function invocationError(invocation: { status: string; error?: unknown })
   if (head && isRefusal(head[1])) {
     return new ApiError("refused", head[3]!, { status: Number(head[2]), refusal: head[1], body });
   }
+  // A Thing's own refusal, such as the power actions' "conflict (409): …" (W4.3):
+  // its status, and its words.
+  if (head) return new ApiError("failed", head[3]!, { status: Number(head[2]), body });
   return new ApiError("failed", detail ?? "the action failed", { body });
 }
 

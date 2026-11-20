@@ -57,8 +57,9 @@ fn print_openapi_and_print_td_describe_the_api_and_create_nothing() {
     let tds: Value = serde_json::from_slice(&output.stdout).unwrap();
     let td = &tds["system"];
     assert_eq!(td["base"], "http://127.0.0.1:8299/");
-    assert_eq!(td["properties"].as_object().unwrap().len(), 9);
+    assert_eq!(td["properties"].as_object().unwrap().len(), 10);
     assert!(td["properties"]["scratch"].is_object());
+    assert!(td["properties"]["notices"].is_object());
     assert_eq!(
         td["properties"]["os"]["forms"][0]["href"],
         "/api/v1/system/os"

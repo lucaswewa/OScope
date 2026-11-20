@@ -1,7 +1,8 @@
 //! The `power` Thing over HTTP (P51), in a dry run: refused without a
 //! confirmation; refused while a hardware job runs, unless forced, but not
 //! while a compute job runs; each action's command on this platform, and
-//! the event; and nothing done.
+//! the event; and nothing done. And (W4.3) the service's restart done while
+//! the host's actions stay dry runs.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -16,6 +17,12 @@ use teta_wot::testing::TestClient;
 /// hardware one, `test.hold`, and a compute one, `test.think`; and its
 /// restart request.
 async fn server(folder: &Path) -> (TestClient, Arc<Restart>) {
+    server_with(folder, true).await
+}
+
+/// A server as [`server`] makes it, the host's actions dry runs, its
+/// restart one or not as `dry_run_restart` says.
+async fn server_with(folder: &Path, dry_run_restart: bool) -> (TestClient, Arc<Restart>) {
     let roots = Roots {
         data: folder.join("data"),
         scratch: folder.join("scratch"),
@@ -48,7 +55,8 @@ async fn server(folder: &Path) -> (TestClient, Arc<Restart>) {
             }),
         );
     }
-    let api = Api::builder(&roots).jobs(jobs).power(true).build().unwrap();
+    let api = Api::builder(&roots).jobs(jobs);
+    let api = api.power_with(true, dry_run_restart).build().unwrap();
     let restart = api.restart();
     let client = TestClient::start(api.into_thing_server()).await.unwrap();
     (client, restart)
@@ -106,6 +114,8 @@ async fn power_actions_are_safeguarded_and_in_a_dry_run_only_said() {
     let folder = tempfile::tempdir().unwrap();
     let (client, restart) = server(folder.path()).await;
     assert_eq!(client.get("/api/v1/power/dry_run").await.json(), true);
+    let dry_run_restart = client.get("/api/v1/power/dry_run_restart").await;
+    assert_eq!(dry_run_restart.json(), true);
     let mut powering = client.events("/api/v1/power/powering").await;
     // Not confirmed: refused.
     let refused = invoke(&client, "power/reboot", json!({})).await;
@@ -171,4 +181,24 @@ async fn power_actions_are_safeguarded_and_in_a_dry_run_only_said() {
     let after = invoke(&client, "power/shutdown", confirmed).await;
     assert_eq!(after["output"]["dry_run"], true, "{after}");
     end(&client, &thinking).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_restart_is_done_while_the_hosts_actions_stay_dry_runs() {
+    let folder = tempfile::tempdir().unwrap();
+    let (client, restart) = server_with(folder.path(), false).await;
+    assert_eq!(client.get("/api/v1/power/dry_run").await.json(), true);
+    let dry_run_restart = client.get("/api/v1/power/dry_run_restart").await;
+    assert_eq!(dry_run_restart.json(), false);
+    // The host's actions only say what they would run.
+    let confirmed = json!({"confirm": true});
+    for action in ["reboot", "shutdown"] {
+        let said = invoke(&client, &format!("power/{action}"), confirmed.clone()).await;
+        assert_eq!(said["output"]["dry_run"], true, "{said}");
+    }
+    assert!(!restart.is_requested(), "a dry run acted");
+    // The restart is done: asked of the server, which stops and exits with 75.
+    let restarted = invoke(&client, "power/restart", confirmed).await;
+    assert_eq!(restarted["output"]["dry_run"], false, "{restarted}");
+    assert!(restart.is_requested(), "{restarted}");
 }

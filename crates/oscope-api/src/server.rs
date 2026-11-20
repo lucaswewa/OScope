@@ -37,7 +37,7 @@ use crate::projects::ProjectsThing;
 use crate::scan::ScanThing;
 use crate::settings::{ConfigFile, SettingsFile, SettingsThing};
 use crate::status::StatusThing;
-use crate::system::{System, VERSION};
+use crate::system::{Notices, System, VERSION};
 use crate::workspace::WorkspaceThing;
 use crate::{data, media, mosaic, pages, volume, zoom};
 
@@ -165,11 +165,31 @@ impl ApiBuilder {
 
     /// Serves the `power` Thing (P51, ADR-0032): the service restarted, the
     /// host rebooted or shut down; with `dry_run`, only said.
-    pub fn power(mut self, dry_run: bool) -> Self {
+    pub fn power(self, dry_run: bool) -> Self {
+        self.power_with(dry_run, dry_run)
+    }
+
+    /// Serves the `power` Thing as [`power`](Self::power) does, with the
+    /// service's restart a dry run or not apart from the host's actions
+    /// (W4.3, ADR-0060).
+    pub fn power_with(mut self, dry_run: bool, dry_run_restart: bool) -> Self {
+        let config = PowerConfig {
+            dry_run,
+            dry_run_restart,
+        };
         self.things = self
             .things
-            .service(Arc::new(PowerConfig { dry_run }))
+            .service(Arc::new(config))
             .thing("power", PowerThing::default());
+        self
+    }
+
+    /// Gives the `system` Thing the folder of the server's third-party
+    /// notices, to list and serve (W4.3): the packages put them beside the
+    /// server (P54).
+    pub fn notices(mut self, folder: impl Into<PathBuf>) -> Self {
+        let notices = Notices(folder.into());
+        self.things = self.things.service(Arc::new(notices));
         self
     }
 

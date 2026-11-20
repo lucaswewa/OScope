@@ -71,9 +71,11 @@ pub const CONFIG_VERSION: i64 = 2;
 ///
 /// [power]                         # P51
 /// dry_run = false                 # true: power actions only say what they'd do
+/// dry_run_restart = false         # the service's restart apart: dry_run's when not given (W4.3)
 ///
 /// [web]                           # the web app (W0.1)
 /// root = "web/dist"               # its built files, served at /; none when not given
+/// notices = "notices"             # the third-party notices: where the package put them when not given
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -114,6 +116,10 @@ pub struct Web {
     /// The folder of its built files, `web/dist`, served at `/` beside the
     /// API, so that both share an origin. Without it, no app is served.
     pub root: Option<PathBuf>,
+    /// The folder of the server's third-party notices, for About (W4.3).
+    /// Without it, where the packages put them: beside the server, or in
+    /// `/usr/share/doc/oscope` (P54).
+    pub notices: Option<PathBuf>,
 }
 
 /// The power actions (P51, ADR-0032).
@@ -123,6 +129,11 @@ pub struct PowerSection {
     /// Only say what restarting, rebooting or shutting down would do: false
     /// by default.
     pub dry_run: bool,
+    /// Whether restarting the service only says what it would do, apart
+    /// from the host's actions: as `dry_run` when not given (W4.3,
+    /// ADR-0060). The app's tests restart their own server, and reboot
+    /// nothing.
+    pub dry_run_restart: Option<bool>,
 }
 
 /// Sessions, the control lease and TLS (P49, ADR-0031). The files are
@@ -386,7 +397,7 @@ impl Config {
         let (python, security) = (&mut config.python, &mut config.security);
         let paths = [&mut python.uv, &mut python.sdk, &mut python.wheelhouse];
         let tls = [&mut security.certificate, &mut security.key];
-        let web = [&mut config.web.root];
+        let web = [&mut config.web.root, &mut config.web.notices];
         for path in paths.into_iter().chain(tls).chain(web).flatten() {
             *path = folder.join(&*path);
         }
