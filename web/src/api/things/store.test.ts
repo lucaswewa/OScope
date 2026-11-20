@@ -12,7 +12,7 @@ import {
   standInSockets,
 } from "../../../tests/setup/stand-ins.ts";
 import { Server } from "../client.ts";
-import { STALE_AFTER, thingStore } from "./store.ts";
+import { AFTER_EVENTS, STALE_AFTER, thingStore } from "./store.ts";
 
 let on: Server;
 let reads: { position: number; speed: number; status: number };
@@ -152,6 +152,26 @@ describe("a Thing's store", () => {
     await later();
     expect(store.kept.get("position")?.value).toEqual({ x: 7 });
     expect(told).toEqual([{ data: { position: { x: 7 } }, time: "2026-11-18T12:00:00Z" }]);
+    for (const stop of stops) stop();
+  });
+
+  it("reads again at most every quarter second through a flood of events, and after the last", async () => {
+    const store = thingStore("stage", on);
+    const stops = [store.follow("position", 60_000), store.on("moved", () => undefined)];
+    await later();
+    FakeSocket.last.opens();
+    const before = reads.position ?? 0;
+    // Ten events in a tenth of a second, as a job's frames tell them.
+    for (let n = 0; n < 10; n++) {
+      position = n;
+      const event = { moved: { data: { n }, timestamp: "2026-11-18T12:00:00Z" } };
+      FakeSocket.last.says({ messageType: "event", data: event });
+      await later(10);
+    }
+    await later(AFTER_EVENTS);
+    // The first at once, then one for the rest: the last event's value.
+    expect((reads.position ?? 0) - before).toBe(2);
+    expect(store.kept.get("position")?.value).toEqual({ x: 9 });
     for (const stop of stops) stop();
   });
 
