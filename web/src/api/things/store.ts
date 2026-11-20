@@ -11,6 +11,9 @@ import { ApiError } from "../errors.ts";
 import { description, observable } from "./descriptions.ts";
 import { socketOf, type Heard } from "./socket.ts";
 
+/** The least time between two reads an event asks for, in ms (W4.1). */
+export const AFTER_EVENTS = 250;
+
 /** How long a value stays current without the server confirming it: 5 s. */
 export const STALE_AFTER = 5_000;
 
@@ -82,6 +85,28 @@ export function thingStore(thing: string, on: Server = server) {
       }
     }
 
+    /**
+     * What an event reads again is read at most every `AFTER_EVENTS` ms: a
+     * Thing may tell one with each frame of a job (W4.1), and each would read
+     * every property it follows. The first event reads at once, and a read
+     * always follows the last.
+     */
+    const soon = new Map<string, ReturnType<typeof setTimeout>>();
+    const lastRead = new Map<string, number>();
+    function readSoon(name: string): void {
+      if (soon.has(name)) return;
+      const since = performance.now() - (lastRead.get(name) ?? -Infinity);
+      const wait = Math.max(0, AFTER_EVENTS - since);
+      soon.set(
+        name,
+        setTimeout(() => {
+          soon.delete(name);
+          lastRead.set(name, performance.now());
+          void read(name);
+        }, wait),
+      );
+    }
+
     function hear(heard: Heard): void {
       if (heard.kind === "property") {
         const property = kept.get(heard.name);
@@ -95,7 +120,7 @@ export function thingStore(thing: string, on: Server = server) {
         }
         // What the socket doesn't keep may have changed with it.
         for (const [name, property] of kept) {
-          if (!property.observed && followed.has(name)) void read(name);
+          if (!property.observed && followed.has(name)) readSoon(name);
         }
       }
     }

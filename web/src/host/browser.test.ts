@@ -56,6 +56,7 @@ function screen() {
   const told = () => doc.dispatchEvent(new Event("fullscreenchange"));
   const doc = Object.assign(new EventTarget(), {
     title: "",
+    visibilityState: "visible" as DocumentVisibilityState,
     fullscreenElement: null as unknown,
     documentElement: {
       requestFullscreen: vi.fn(async () => {
@@ -216,6 +217,10 @@ describe("the browser's host", () => {
     const told: boolean[] = [];
     const stop = browser.window.onFullScreen((full) => told.push(full));
     expect(browser.window.isFullScreen()).toBe(false);
+    // Hidden as its page is: another tab chosen, or the browser minimised.
+    expect(browser.window.isHidden()).toBe(false);
+    doc.visibilityState = "hidden";
+    expect(browser.window.isHidden()).toBe(true);
     await browser.window.enterFullScreen();
     expect(browser.window.isFullScreen()).toBe(true);
     await browser.window.leaveFullScreen();

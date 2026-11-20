@@ -11,6 +11,7 @@ import ShortcutsDialog from "@/app/ShortcutsDialog.vue";
 import TabBoundary from "@/app/TabBoundary.vue";
 import { addShortcut, listen } from "@/app/shortcuts";
 import { TABS, tabOf } from "@/app/tabs";
+import { useJobEnds } from "@/features/jobs/ends";
 import ConnectionLost from "@/features/status/ConnectionLost.vue";
 import RailStatus from "@/features/status/RailStatus.vue";
 import { useLeaseRequests } from "@/features/status/leaseRequests";
@@ -66,6 +67,9 @@ function name(routeName: unknown): void {
   host().window.title(tab ? t("shell.title", { tab: t(`tabs.${tab.name}.title`) }) : t("app.name"));
 }
 name(route.name);
+
+// Each job's end, told wherever the user is (W4.1).
+useJobEnds();
 
 const stops = [
   ...TABS.map((tab, at) =>
