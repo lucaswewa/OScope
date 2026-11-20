@@ -36,6 +36,9 @@ export function usePreview(
   let observer: ResizeObserver | undefined;
   let size: Size = { width: 0, height: 0 };
   let chosen = { ...choices };
+  /** The colour map's table chosen, and whether saturated pixels are marked (W3.6). */
+  let table: Uint8Array | undefined;
+  let marking = false;
   let drawing = false;
   /** The sensor's pixels a whole frame shows, as the last frame asked for whole said. */
   const extent = shallowRef<PixelRect>();
@@ -61,6 +64,8 @@ export function usePreview(
       view.value = view.value ? kept(view.value, roi, size) : fitted(roi, size);
     }
     renderer.show(frame.bitmap, roi);
+    // The mask comes with the statistics: a frame without them keeps the last.
+    if (frame.stats) renderer.mark(marking ? frame.mask : undefined);
     if (view.value) renderer.draw(view.value);
   }
 
@@ -98,6 +103,7 @@ export function usePreview(
     if (!canvas.value) return;
     renderer = createRenderer(canvas.value);
     kind.value = renderer.kind;
+    renderer.colour(table);
     size = renderer.size();
     client.setAsk(ask());
     client.start();
@@ -128,6 +134,18 @@ export function usePreview(
     /** Moves the view by `by`, in device pixels. */
     panBy(by: [number, number]): void {
       if (view.value && extent.value) moved(panned(view.value, by, extent.value, size));
+    },
+    /** Colours the image by a map's 256 colours, on its luminance: its own colours without (W3.6). */
+    colourBy(chosenTable: Uint8Array | undefined): void {
+      table = chosenTable;
+      renderer?.colour(table);
+      redraw();
+    },
+    /** Marks the saturated pixels, from the masks that come with the statistics (W3.6). */
+    markSaturated(on: boolean): void {
+      marking = on;
+      if (!on) renderer?.mark(undefined);
+      redraw();
     },
     /** Asks for `stats` from now on: a region's statistics, a line's profile (W3.5). */
     measure(stats: StatsRequest | undefined): void {

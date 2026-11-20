@@ -1,6 +1,6 @@
 // The preview drawn on a canvas (W1.5, ADR-0047): with WebGL2, one textured
 // quad that the view places; with a 2D canvas where WebGL2 is missing.
-import type { PixelRect } from "./message.ts";
+import type { PixelRect, SaturationMask } from "./message.ts";
 import { placed, type Size, type View } from "./view.ts";
 
 /** What draws the frames. */
@@ -13,6 +13,13 @@ export interface Renderer {
   draw(view: View): void;
   /** The canvas's size, in device pixels, its drawing buffer made to match. */
   size(): Size;
+  /**
+   * Colours each pixel by `table`, 256 sRGB colours, on its luminance (W3.6):
+   * the frame's own colours without. WebGL2's only.
+   */
+  colour(table: Uint8Array | undefined): void;
+  /** Marks the pixels `mask` sets, the frame's saturated ones, from now on: none without. WebGL2's only. */
+  mark(mask: SaturationMask | undefined): void;
   dispose(): void;
 }
 
@@ -49,13 +56,25 @@ void main() {
   gl_Position = vec4(place.xy + corner * place.zw, 0.0, 1.0);
 }`;
 
+// False colour on the luminance, Rec. 709's weights, through a map's 256
+// colours; then the saturated pixels marked in red, over any map.
 const FRAGMENT = `#version 300 es
 precision mediump float;
 uniform sampler2D image;
+uniform sampler2D map;
+uniform sampler2D saturated;
+uniform bool mapped;
+uniform bool marking;
 in vec2 uv;
 out vec4 colour;
 void main() {
-  colour = texture(image, uv);
+  vec4 seen = texture(image, uv);
+  if (mapped) {
+    float y = dot(seen.rgb, vec3(0.2126, 0.7152, 0.0722));
+    seen = vec4(texture(map, vec2((y * 255.0 + 0.5) / 256.0, 0.5)).rgb, 1.0);
+  }
+  if (marking && texture(saturated, uv).r > 0.5) seen = vec4(1.0, 0.0, 0.0, 1.0);
+  colour = seen;
 }`;
 
 /** The quad's program, its corners and its texture: made again after the context is lost and restored. */
@@ -81,6 +100,35 @@ function build(gl: WebGL2RenderingContext) {
   const corner = gl.getAttribLocation(program, "corner");
   gl.enableVertexAttribArray(corner);
   gl.vertexAttribPointer(corner, 2, gl.FLOAT, false, 0, 0);
+  const texture = imageTexture(gl);
+  const extra = (unit: number, uniform: string) => {
+    const made = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, made);
+    for (const [name, value] of [
+      [gl.TEXTURE_MIN_FILTER, gl.NEAREST],
+      [gl.TEXTURE_MAG_FILTER, gl.NEAREST],
+      [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],
+      [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE],
+    ] as const) {
+      gl.texParameteri(gl.TEXTURE_2D, name, value);
+    }
+    gl.uniform1i(gl.getUniformLocation(program, uniform), unit);
+    gl.activeTexture(gl.TEXTURE0);
+    return made;
+  };
+  return {
+    texture,
+    map: extra(1, "map"),
+    saturated: extra(2, "saturated"),
+    place: gl.getUniformLocation(program, "place"),
+    mapped: gl.getUniformLocation(program, "mapped"),
+    marking: gl.getUniformLocation(program, "marking"),
+  };
+}
+
+/** A texture for the frames, smoothed and clamped, bound on the unit in use. */
+function imageTexture(gl: WebGL2RenderingContext): WebGLTexture {
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
   for (const [name, value] of [
@@ -91,7 +139,7 @@ function build(gl: WebGL2RenderingContext) {
   ] as const) {
     gl.texParameteri(gl.TEXTURE_2D, name, value);
   }
-  return { texture, place: gl.getUniformLocation(program, "place") };
+  return texture;
 }
 
 function webgl(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): Renderer {
@@ -102,11 +150,27 @@ function webgl(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): Renderer 
   // A lost context comes back if asked to: then its program is made again,
   // and the next frame fills its texture.
   const lost = (event: Event) => event.preventDefault();
+  /** The map chosen, given again to a context made again. */
+  let table: Uint8Array | undefined;
   const restored = () => {
     parts = build(gl);
     rect = undefined;
     filter = gl.LINEAR;
+    if (table) colour(table);
   };
+  /** Gives the program a map's colours, on the texture unit 1: none for the frame's own. */
+  function colour(chosen: Uint8Array | undefined): void {
+    if (gl.isContextLost()) return;
+    gl.uniform1i(parts.mapped, chosen ? 1 : 0);
+    if (!chosen) return;
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, parts.map);
+    // As RGBA: WebKit's WebGL samples a three-byte RGB texture as black.
+    const rgba = new Uint8Array(256 * 4).fill(255);
+    for (let i = 0; i < 256; i++) rgba.set(chosen.subarray(i * 3, i * 3 + 3), i * 4);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+    gl.activeTexture(gl.TEXTURE0);
+  }
   canvas.addEventListener("webglcontextlost", lost);
   canvas.addEventListener("webglcontextrestored", restored);
   return {
@@ -141,9 +205,41 @@ function webgl(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): Renderer 
         (2 * at.width) / size.width,
         (-2 * at.height) / size.height,
       );
+      // Each texture bound to its unit for each draw: WebKit's upload of a bitmap
+      // may leave another unit's binding changed, and the map would read as black.
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, parts.map);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, parts.saturated);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, parts.texture);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },
     size: () => fit(canvas),
+    colour(chosen) {
+      table = chosen;
+      colour(chosen);
+    },
+    mark(mask) {
+      if (gl.isContextLost()) return;
+      gl.uniform1i(parts.marking, mask ? 1 : 0);
+      if (!mask) return;
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, parts.saturated);
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.R8,
+        mask.width,
+        mask.height,
+        0,
+        gl.RED,
+        gl.UNSIGNED_BYTE,
+        unpacked(mask),
+      );
+      gl.activeTexture(gl.TEXTURE0);
+    },
     dispose() {
       canvas.removeEventListener("webglcontextlost", lost);
       canvas.removeEventListener("webglcontextrestored", restored);
@@ -172,9 +268,24 @@ function flat(canvas: HTMLCanvasElement): Renderer {
       context.drawImage(shown.bitmap, at.x, at.y, at.width, at.height);
     },
     size: () => fit(canvas),
+    // The 2D canvas draws the frame's own colours, and marks nothing.
+    colour: () => undefined,
+    mark: () => undefined,
     dispose() {
       shown?.bitmap.close();
       shown = undefined;
     },
   };
+}
+
+/** The mask's bits as a byte a pixel: 255 where set, for an R8 texture. */
+export function unpacked(mask: SaturationMask): Uint8Array {
+  const bytes = new Uint8Array(mask.width * mask.height);
+  for (let row = 0; row < mask.height; row++) {
+    for (let x = 0; x < mask.width; x++) {
+      const byte = mask.bits[row * mask.stride + (x >> 3)]!;
+      if (byte & (0x80 >> (x & 7))) bytes[row * mask.width + x] = 255;
+    }
+  }
+  return bytes;
 }
