@@ -127,3 +127,49 @@ fn binned_pixels_sum_their_electrons() {
     let full = s.count(1.1 * s.full_well, 0.0, 4, 0.0, &mut random);
     assert_eq!(full, ADC_MAX);
 }
+
+/// The standard normal distribution's share between `a` and `b`, by
+/// Simpson's rule over its density.
+fn normal_share(a: f64, b: f64) -> f64 {
+    let density = |x: f64| (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt();
+    let steps = 2_000;
+    let h = (b - a) / f64::from(steps);
+    let inner: f64 = (1..steps)
+        .map(|i| {
+            let weight = if i % 2 == 1 { 4.0 } else { 2.0 };
+            weight * density(a + f64::from(i) * h)
+        })
+        .sum();
+    h / 3.0 * (density(a) + inner + density(b))
+}
+
+#[test]
+fn the_normal_numbers_have_the_normal_distribution_out_to_its_tails() {
+    // 4,000,000 draws, in bins a quarter wide from 0 to 4 either way and
+    // past 4: each bin's share within five of its standard errors of the
+    // density's, the ziggurat's layers, wedges and tail past 3.44 alike.
+    let mut random = Random::new(3);
+    let n = 4_000_000_u32;
+    let mut bins = [[0_u32; 17]; 2];
+    for _ in 0..n {
+        let z = random.normal();
+        let bin = ((z.abs() * 4.0) as usize).min(16);
+        bins[usize::from(z < 0.0)][bin] += 1;
+    }
+    for (side, counts) in bins.iter().enumerate() {
+        for (bin, count) in counts.iter().enumerate() {
+            let from = bin as f64 / 4.0;
+            let expected = match bin {
+                16 => 0.5 - normal_share(0.0, 4.0),
+                _ => normal_share(from, from + 0.25),
+            };
+            let share = f64::from(*count) / f64::from(n);
+            let error = (expected * (1.0 - expected) / f64::from(n)).sqrt();
+            assert!(
+                (share - expected).abs() < 5.0 * error,
+                "{} from {from}: {share} against {expected}",
+                ["above 0", "below 0"][side]
+            );
+        }
+    }
+}

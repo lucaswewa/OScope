@@ -58,8 +58,13 @@ impl Mounting {
     /// The stage point that a point `(dx, dy)` µm from the sensor's centre,
     /// along the sensor's axes, looks at, from the stage's position.
     pub fn to_stage(&self, dx: f64, dy: f64) -> Point2 {
+        self.turned(self.rotation.sin_cos(), dx, dy)
+    }
+
+    /// As [`Mounting::to_stage`], with the rotation's sine and cosine
+    /// worked out once for a frame's pixels.
+    fn turned(&self, (sin, cos): (f64, f64), dx: f64, dy: f64) -> Point2 {
         let dx = if self.mirrored { -dx } else { dx };
-        let (sin, cos) = self.rotation.sin_cos();
         Point2::new(
             self.offset.x + cos * dx - sin * dy,
             self.offset.y + sin * dx + cos * dy,
@@ -460,6 +465,7 @@ impl Inner {
         let p = at_sample * f64::from(k);
         let (cw, ch) = (f64::from(self.config.width), f64::from(self.config.height));
         let mounting = self.config.mounting;
+        let turn = mounting.rotation.sin_cos();
         // The vignetting: an output pixel's centre from the sensor's, in the
         // sensor's pixels, x0 + k u along x, and its half diagonal's square.
         let vignetting = self.config.vignetting;
@@ -473,7 +479,7 @@ impl Inner {
         let local = |u: f64, v: f64| {
             let dx = (f64::from(roi.x) + (u + 0.5) * f64::from(k) - cw / 2.0) * at_sample;
             let dy = (f64::from(roi.y) + (v + 0.5) * f64::from(k) - ch / 2.0) * at_sample;
-            mounting.to_stage(dx, dy)
+            mounting.turned(turn, dx, dy)
         };
         let end = start + line_d * height.saturating_sub(1) + exposure;
 
@@ -545,6 +551,8 @@ impl Inner {
         let sensor = self.config.sensor;
         let exposure_ms = settings.exposure.0;
         let scale = view.light * sensor.electrons_per_ms * exposure_ms * f64::from(k * k);
+        // What each pixel's count takes, worked out once for the frame.
+        let readout = sensor.readout(exposure_ms / 1e3, k * k, settings.gain);
         let counts = |values| Counts {
             values,
             roi,
@@ -602,15 +610,16 @@ impl Inner {
                         .map(|s| sample(s.x + here.x, s.y + here.y, c))
                         .sum::<f64>()
                         / n as f64;
-                    let (dx, dy) = (vx0 + f64::from(k) * u as f64, vy0 + f64::from(k) * v as f64);
-                    let falloff = vignette(vignetting, dx, dy, half_diagonal);
-                    *out = sensor.count(
-                        light * scale * falloff,
-                        exposure_ms / 1e3,
-                        k * k,
-                        settings.gain,
-                        &mut random,
-                    );
+                    // No vignetting leaves the light as it is: 1 exactly.
+                    let falloff = match vignetting == 0.0 {
+                        true => 1.0,
+                        false => {
+                            let (dx, dy) =
+                                (vx0 + f64::from(k) * u as f64, vy0 + f64::from(k) * v as f64);
+                            vignette(vignetting, dx, dy, half_diagonal)
+                        }
+                    };
+                    *out = readout.count(light * scale * falloff, &mut random);
                 }
             });
         Some(counts(values))
@@ -666,15 +675,17 @@ impl Inner {
                     Some(mut buffer) => {
                         let bytes = buffer.bytes_mut();
                         if first.format == BAYER8 {
-                            for (b, c) in bytes.iter_mut().zip(&counts.values) {
-                                *b = (c >> 4) as u8;
-                            }
+                            bytes
+                                .par_iter_mut()
+                                .zip(counts.values.par_iter())
+                                .for_each(|(b, c)| *b = (c >> 4) as u8);
                         } else {
-                            for (b, c) in
-                                bytes.as_chunks_mut::<2>().0.iter_mut().zip(&counts.values)
-                            {
-                                *b = (c << 4).to_le_bytes();
-                            }
+                            bytes
+                                .as_chunks_mut::<2>()
+                                .0
+                                .par_iter_mut()
+                                .zip(counts.values.par_iter())
+                                .for_each(|(b, c)| *b = (c << 4).to_le_bytes());
                         }
                         let mut meta = FrameMeta::new(
                             id,

@@ -51,6 +51,9 @@ pub struct TiledField {
     columns: usize,
     rows: usize,
     tiles: Vec<Arc<Tile>>,
+    /// The first and last global pixel centres the tiles hold, along x and
+    /// along y: worked out once for every sample.
+    span: [(f64, f64); 2],
 }
 
 impl TiledField {
@@ -77,10 +80,9 @@ impl TiledField {
         let t = i64::from(TILE);
         let side = TILE as usize + 1;
         let (fx, fy) = (x / self.pixel - 0.5, y / self.pixel - 0.5);
-        let span_x = (self.i0 * t) as f64..=((self.i0 + self.columns as i64) * t - 1) as f64;
-        let span_y = (self.j0 * t) as f64..=((self.j0 + self.rows as i64) * t - 1) as f64;
-        let fx = fx.clamp(*span_x.start(), *span_x.end());
-        let fy = fy.clamp(*span_y.start(), *span_y.end());
+        let [span_x, span_y] = self.span;
+        let fx = fx.clamp(span_x.0, span_x.1);
+        let fy = fy.clamp(span_y.0, span_y.1);
         let (gx, gy) = (fx.floor(), fy.floor());
         let (ax, ay) = (fx - gx, fy - gy);
         let (gx, gy) = (gx as i64, gy as i64);
@@ -333,13 +335,18 @@ impl TileCache {
             }
         }
         state.stats.tiles = state.tiles.len();
+        let (columns, rows) = ((i1 - i0 + 1) as usize, (j1 - j0 + 1) as usize);
+        let span = |first: i64, count: usize| {
+            ((first * t) as f64, ((first + count as i64) * t - 1) as f64)
+        };
         TiledField {
             pixel: p,
             i0,
             j0,
-            columns: (i1 - i0 + 1) as usize,
-            rows: (j1 - j0 + 1) as usize,
+            columns,
+            rows,
             tiles,
+            span: [span(i0, columns), span(j0, rows)],
         }
     }
 }
