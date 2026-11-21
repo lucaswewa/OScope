@@ -37,7 +37,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W5.1 | Scan plans | Done | [W5.1-scan-plans.md](W5.1-scan-plans.md) |
 | W5.2 | Running a scan | Done | [W5.2-running-a-scan.md](W5.2-running-a-scan.md) |
 | W5.3 | The histo scan | Done | [W5.3-histo-scan.md](W5.3-histo-scan.md) |
-| W5.4 | Z-scans, stacks and positions | In review | [W5.4-zscans-stacks-positions.md](W5.4-zscans-stacks-positions.md) |
+| W5.4 | Z-scans, stacks and positions | Done | [W5.4-zscans-stacks-positions.md](W5.4-zscans-stacks-positions.md) |
 | W6.1 | Projects | Planned | — |
 | W6.2 | A project's records | Planned | — |
 | W6.3 | Imports, exports and uploads | Planned | — |
