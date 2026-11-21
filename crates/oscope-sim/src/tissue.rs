@@ -595,6 +595,17 @@ struct Cells {
 }
 
 impl Cells {
+    /// No cells: every cell is outside the grid.
+    fn none() -> Self {
+        Self {
+            i0: 0,
+            j0: 0,
+            columns: 0,
+            rows: 0,
+            cells: Vec::new(),
+        }
+    }
+
     /// Cells `i0..=i1` by `j0..=j1`, each from `find`.
     fn new(
         (i0, i1): (i64, i64),
@@ -636,6 +647,11 @@ struct Found<'a> {
 impl<'a> Found<'a> {
     /// Those of the `width` × `height` pixels of side `pixel` from
     /// `origin`: the cells their centres fall in, and those around.
+    ///
+    /// Only while the grid has fewer cells than the nine its pixels would
+    /// each look up: a pixel much larger than a cell, as far from focus,
+    /// would make a grid of millions for a few hundred pixels. Then each
+    /// pixel finds its own, as [`Direct`] does.
     fn around(tissue: &'a HeTissue, origin: Point2, pixel: f64, width: u32, height: u32) -> Self {
         // A cell more each way than the centres need, against rounding.
         let span = |from: f64, count: u32, cell: f64| {
@@ -646,19 +662,19 @@ impl<'a> Found<'a> {
                 (last / cell).floor() as i64 + 2,
             )
         };
-        let (n, h) = (HeTissue::CELL, HeTissue::HOLE_CELL);
+        let lookups = 9 * i64::from(width) * i64::from(height);
+        let grid = |cell: f64, find: &dyn Fn(i64, i64) -> Option<Nucleus>| {
+            let (across, down) = (span(origin.x, width, cell), span(origin.y, height, cell));
+            let cells = (across.1 - across.0 + 1) * (down.1 - down.0 + 1);
+            match cells <= lookups {
+                true => Cells::new(across, down, find),
+                false => Cells::none(),
+            }
+        };
         Self {
             tissue,
-            nuclei: Cells::new(
-                span(origin.x, width, n),
-                span(origin.y, height, n),
-                |i, j| tissue.nucleus(i, j),
-            ),
-            holes: Cells::new(
-                span(origin.x, width, h),
-                span(origin.y, height, h),
-                |i, j| tissue.hole(i, j),
-            ),
+            nuclei: grid(HeTissue::CELL, &|i, j| tissue.nucleus(i, j)),
+            holes: grid(HeTissue::HOLE_CELL, &|i, j| tissue.hole(i, j)),
         }
     }
 }
@@ -719,6 +735,9 @@ mod tests {
                     40.0,
                     160,
                 ),
+                // Half a millimetre a pixel, as 15 mm from focus: each pixel
+                // finds its own.
+                (Point2::new(-1_000.0, -1_000.0), 550.0, 26),
             ];
             for (at, pixel, side) in cases {
                 for layer in 0..tissue.layers.len() {
@@ -727,6 +746,24 @@ mod tests {
                 same_together(&tissue, at, pixel, side);
             }
         }
+    }
+
+    #[test]
+    fn a_grid_is_found_only_where_it_is_fewer_cells_than_its_pixels_look_up() {
+        // At the 10×'s pixel, a 283-pixel tile and its margin make grids of
+        // a few hundred cells; at half a millimetre a pixel, 26 pixels would
+        // make one of over a million nuclei's cells, for 6,084 look-ups.
+        let tissue = HeTissue::new(1, crate::Slide::COVERSLIP);
+        let at = tissue.islands[0].centre;
+        let fine = Found::around(&tissue, at, 0.24, 283, 283);
+        assert!(!fine.nuclei.cells.is_empty() && !fine.holes.cells.is_empty());
+        let coarse = Found::around(&tissue, Point2::new(-1_000.0, -1_000.0), 550.0, 26, 26);
+        assert!(
+            coarse.nuclei.cells.is_empty(),
+            "{} cells",
+            coarse.nuclei.cells.len()
+        );
+        assert!(coarse.holes.cells.len() <= 9 * 26 * 26);
     }
 
     /// The layers rendered together, with what they share worked out once
