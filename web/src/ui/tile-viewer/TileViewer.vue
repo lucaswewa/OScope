@@ -262,7 +262,13 @@ watch(() => [props.marker, props.placement], mark);
 watch(() => props.placement, measure);
 watch(() => props.placement, lay);
 watch(() => props.drawing, dragging);
-watch(() => props.fit, fitTo);
+// Where to look, again when the image beneath is another, whose own
+// coordinates the view is in (W5.2): by value, as each is made anew.
+const valueOf = (rect: Rect | Placement | undefined) => rect && JSON.stringify(rect);
+watch(
+  () => [valueOf(props.fit), valueOf(props.placement)],
+  () => fitTo(props.fit),
+);
 </script>
 
 <template>
@@ -366,6 +372,23 @@ watch(() => props.fit, fitTo);
 .layer .region {
   stroke-width: 2px;
   stroke-dasharray: 6 4;
+}
+
+/* A scan's tiles (W5.2): taken, the next, and the one at fault. */
+.layer .done {
+  fill: color-mix(in srgb, var(--success) 30%, transparent);
+  stroke: var(--success);
+}
+
+.layer .next {
+  fill: color-mix(in srgb, var(--accent) 40%, transparent);
+  stroke-width: 2px;
+}
+
+.layer .fault {
+  fill: color-mix(in srgb, var(--danger) 40%, transparent);
+  stroke: var(--danger);
+  stroke-width: 2px;
 }
 
 /* The field of view: where the camera looks now. */

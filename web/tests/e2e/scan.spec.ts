@@ -11,32 +11,11 @@ import { act } from "../../src/api/actions.ts";
 import { Server as Api, call } from "../../src/api/client.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
+import { estimate, said, typeRegion } from "./scanning.ts";
 import { homed, overTissueTiny } from "./sim.ts";
 
 const HIDE_TILES = fileURLToPath(new URL("hide-tiles.css", import.meta.url));
-const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
 const plan = (page: Page) => said(page, "plan");
-const estimate = (page: Page, term: string) =>
-  said(page, "estimate").locator("dt", { hasText: term }).locator("xpath=following-sibling::dd[1]");
-
-/** Types a region, in mm, into a pane's fields. */
-async function typeRegion(
-  page: Page,
-  pane: string,
-  [x, y, width, height]: number[],
-): Promise<void> {
-  const fields = said(page, pane);
-  for (const [label, value] of [
-    ["x", x],
-    ["y", y],
-    ["Width", width],
-    ["Height", height],
-  ] as const) {
-    const field = fields.getByLabel(label, { exact: true });
-    await field.fill(String(value));
-    await field.press("Tab");
-  }
-}
 
 /** The server's plan of a snake over `region`, in µm. */
 async function serverPlan(

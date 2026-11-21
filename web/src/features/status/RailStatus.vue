@@ -111,9 +111,15 @@ watch([reading, newest], ([open, id]) => {
         >
           <span class="bell">
             <Icon name="notifications" />
-            <Badge v-if="unseen > 0" tone="accent" class="count" aria-hidden="true">{{
-              unseen
-            }}</Badge>
+            <!-- The count drawn, not written: the button's name says it, and
+                 its words must hold what is written on it (W5.2, axe). -->
+            <Badge
+              v-if="unseen > 0"
+              tone="accent"
+              class="count"
+              :data-count="unseen"
+              aria-hidden="true"
+            />
           </span>
           <span class="text">{{ t("status.notices.short") }}</span>
         </button>
@@ -216,5 +222,9 @@ watch([reading, newest], ([open, id]) => {
   position: absolute;
   inset-block-start: calc(-1 * var(--space-2));
   inset-inline-start: 60%;
+}
+
+.count::after {
+  content: attr(data-count);
 }
 </style>

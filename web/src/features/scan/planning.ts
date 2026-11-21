@@ -7,7 +7,7 @@ import { act } from "@/api/actions";
 import { ApiError } from "@/api/errors";
 import type { Point, Rect } from "@/ui/tile-viewer/coordinates";
 
-import { requestOf, type Preview, type Stack } from "./plan";
+import { requestOf, type Focus, type Preview, type Stack } from "./plan";
 
 /** How long after a change the plan is asked for again, in ms. */
 const SETTLE_MS = 300;
@@ -22,6 +22,8 @@ function planning() {
   const at = shallowRef<Point>();
   const positions = ref<Point[]>([]);
   const params = ref<unknown>();
+  /** How each tile's z is found, which the run's pane chooses (W5.2). */
+  const focus = ref<Focus>({ kind: "here" });
   /** Whether a drag on the view draws the region. */
   const drawing = ref(false);
 
@@ -34,6 +36,7 @@ function planning() {
       at: at.value,
       positions: positions.value,
       params: params.value,
+      focus: focus.value,
     }),
   );
   const preview = shallowRef<Preview>();
@@ -83,6 +86,7 @@ function planning() {
     at,
     positions,
     params,
+    focus,
     drawing,
     request,
     preview,

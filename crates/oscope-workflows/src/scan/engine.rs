@@ -16,7 +16,7 @@ use serde_json::json;
 
 use super::focus_map::{FitOptions, FocusMap, FocusPoint};
 use super::measure::{MapSample, measure_map};
-use super::plan::{Motion, Plan, ZPolicy, check_stack};
+use super::plan::{Motion, Plan, ZPolicy, check_stack, within};
 use crate::autofocus::frames::frame_after;
 use crate::autofocus::{AutofocusError, FocusOptions, FocusRig, autofocus, focus_defaults};
 use crate::calibration::Report;
@@ -131,7 +131,7 @@ pub fn scan_jobs(rig: ScanRig, last: LastScan) -> Factory {
             account: None,
             params: value.clone(),
             resource: Resource::Hardware,
-            pausable: false,
+            pausable: true,
             gpu_mib: 0,
         };
         let (rig, last) = (rig.clone(), Arc::clone(&last));
@@ -275,6 +275,8 @@ async fn run(rig: ScanRig, params: Params, ctx: JobCtx, last: LastScan) -> Resul
         request,
     } = params;
     let start = position(&rig.focus).await.map_err(Stop::failed)?;
+    let limits = rig.focus.stage.capabilities();
+    let start = within(limits, start);
     let plan = match measured(&rig, plan, &options, &ctx).await {
         Ok(plan) => plan,
         Err(stop) => {
@@ -310,7 +312,8 @@ async fn run(rig: ScanRig, params: Params, ctx: JobCtx, last: LastScan) -> Resul
         n => lags.iter().sum::<f64>() / n as f64,
     };
     let below = Some(options.approach_um);
-    let back = reach(&rig.focus, (start.x.0, start.y.0), start.z.0 + lag, below).await;
+    let back = within(limits, Xyz::new(start.x, start.y, Um(start.z.0 + lag)));
+    let back = reach(&rig.focus, (back.x.0, back.y.0), back.z.0, below).await;
     let ended = scanned.and_then(|()| back.map(drop).map_err(Stop::failed));
     let why = match &ended {
         Ok(()) => None,
@@ -462,9 +465,12 @@ async fn tiles(
     };
     let settle = Duration::from_secs_f64(options.settle_ms / 1e3);
     let nearest = (0..planes.len()).min_by(|&a, &b| planes[a].abs().total_cmp(&planes[b].abs()));
-    let mut z = position(focus).await.map_err(Stop::failed)?.z.0;
+    let read = position(focus).await.map_err(Stop::failed)?;
+    let mut z = within(focus.stage.capabilities(), read).z.0;
     let mut taken = 0_u64;
     for (k, tile) in plan.tiles.iter().enumerate() {
+        // Paused, it waits here, the stage where the last tile left it.
+        ctx.checkpoint().await?;
         let (xy, which) = ((tile.x_um, tile.y_um), format!("tile {} of {count}", k + 1));
         match tile.z_um {
             Some(own) => z = own,

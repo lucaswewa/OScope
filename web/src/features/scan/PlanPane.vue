@@ -93,7 +93,7 @@ const entries = computed(() => {
     },
     { term: t("scan.result.overlap"), value: `${Math.round(planned.field.overlap * 100)} %` },
     { term: t("scan.result.time"), value: upFor(estimate.seconds) },
-    { term: t("scan.result.data"), value: t("logging.size", data) },
+    { term: t("scan.result.data"), value: t("logging.files.size", data) },
   ];
 });
 const warnings = computed<Warning[]>(() => {
@@ -114,8 +114,8 @@ function said(warning: Warning): string {
       return t("scan.warnings.calibration");
     case "room":
       return t("scan.warnings.room", {
-        needed: t("logging.size", sizeOf(warning.needed)),
-        available: t("logging.size", sizeOf(warning.available)),
+        needed: t("logging.files.size", sizeOf(warning.needed)),
+        available: t("logging.files.size", sizeOf(warning.available)),
       });
   }
 }

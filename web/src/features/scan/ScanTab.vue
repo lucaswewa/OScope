@@ -3,6 +3,9 @@ import { useI18n } from "vue-i18n";
 
 import OverviewPane from "@/features/scan/OverviewPane.vue";
 import PlanPane from "@/features/scan/PlanPane.vue";
+import RunningPane from "@/features/scan/RunningPane.vue";
+import RunPane from "@/features/scan/RunPane.vue";
+import { useScan } from "@/features/scan/scanning";
 import ScanView from "@/features/scan/ScanView.vue";
 import { kept } from "@/host/kept";
 import Splitter from "@/ui/Splitter.vue";
@@ -10,9 +13,11 @@ import Splitter from "@/ui/Splitter.vue";
 /**
  * The scan tab (W5.1): the overview and the plan's panes, and beside them
  * the plan drawn over the overview, with a handle between whose place is
- * kept, as Control's is. Nothing moves until a scan runs (W5.2).
+ * kept, as Control's is. Nothing moves until a scan runs (W5.2): its run's
+ * pane, the scan's, and the scan drawn on the view as it is taken.
  */
 const { t } = useI18n();
+const scan = useScan();
 
 const isPair = (value: unknown): value is [number, number] =>
   Array.isArray(value) && value.length === 2 && value.every((one) => typeof one === "number");
@@ -27,11 +32,13 @@ const sizes = kept("oscope.scan.panes", [33, 67] as [number, number], isPair);
           <h1>{{ t("tabs.scan.title") }}</h1>
           <OverviewPane />
           <PlanPane />
+          <RunPane :scan="scan" />
+          <RunningPane :scan="scan" />
         </section>
       </template>
       <template #second>
         <section class="view" :aria-label="t('scan.view')">
-          <ScanView />
+          <ScanView :scan="scan" />
         </section>
       </template>
     </Splitter>

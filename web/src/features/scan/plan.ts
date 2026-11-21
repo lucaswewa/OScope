@@ -109,6 +109,39 @@ export const COVERSLIP: Rect = { x: 22_000, y: 500, width: 50_000, height: 24_00
 /** A scan as the server's `plan` and `run` take it. */
 export type ScanRequest = Input<"/api/v1/scan/plan">["request"];
 export type Stack = NonNullable<ScanRequest["stack"]>;
+export type ZPolicy = NonNullable<ScanRequest["z"]>;
+
+/**
+ * How each tile's z is found, as the run's pane chooses it (W5.2): at the
+ * stage's z now; by autofocus every so many tiles, those between at the z
+ * last found; or by a focus map measured before the first tile, at a grid's
+ * points, a plane or a thin-plate spline fitted.
+ */
+export type Focus =
+  | { kind: "here" }
+  | { kind: "autofocus"; every: number }
+  | { kind: "map"; columns: number; rows: number; surface: "plane" | "thin_plate" };
+
+/**
+ * The request's z for `focus`: none for the stage's z now, the server's own
+ * default. The tissue found's default is the server's too: a map of 3 × 3
+ * points, a plane, as its run's pane says.
+ */
+export function zOf(focus: Focus): ZPolicy | undefined {
+  switch (focus.kind) {
+    case "here":
+      return undefined;
+    case "autofocus":
+      return { kind: "autofocus", every: focus.every };
+    case "map": {
+      const surface =
+        focus.surface === "plane"
+          ? { kind: "plane" as const }
+          : { kind: "thin_plate" as const, smoothing: 0 };
+      return { kind: "measure", columns: focus.columns, rows: focus.rows, surface };
+    }
+  }
+}
 
 /** What the plan's form has: its pattern, and what each pattern may need. */
 export interface Asked {
@@ -122,6 +155,8 @@ export interface Asked {
   positions: readonly Point[];
   /** A workflow's parameters, by its schema. */
   params?: unknown;
+  /** How each tile's z is found: at the stage's z now, if not said. */
+  focus?: Focus | undefined;
 }
 
 /** The built-in patterns: any other is an extension's workflow. */
@@ -134,7 +169,13 @@ const BUILT_IN = ["raster", "snake", "tiled_stack", "z_scan", "positions", "tiss
  * overview's, and a workflow's its parameters'.
  */
 export function requestOf(asked: Asked): ScanRequest | undefined {
-  const base: ScanRequest = { pattern: asked.pattern, overlap: asked.overlap, positions: [] };
+  const z = asked.focus && zOf(asked.focus);
+  const base: ScanRequest = {
+    pattern: asked.pattern,
+    overlap: asked.overlap,
+    positions: [],
+    ...(z ? { z } : {}),
+  };
   const region = asked.region && regionOf(asked.region);
   switch (asked.pattern) {
     case "raster":

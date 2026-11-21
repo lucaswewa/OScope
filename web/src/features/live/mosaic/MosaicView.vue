@@ -2,13 +2,11 @@
 import { computed, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 
-import { mosaicTile } from "@/api/media";
 import { useAction, useProperty } from "@/api/things/use";
-import { fieldOf, placementOf, serverLevel } from "@/features/live/mosaic/mosaic";
+import { fieldOf, mosaicImage, placementOf } from "@/features/live/mosaic/mosaic";
 import Button from "@/ui/Button.vue";
 import Confirm from "@/ui/Confirm.vue";
 import { fieldAbout, type Point } from "@/ui/tile-viewer/coordinates";
-import type { TiledImage } from "@/ui/tile-viewer/source";
 import TileViewer from "@/ui/tile-viewer/TileViewer.vue";
 
 /**
@@ -31,19 +29,7 @@ const clear = useAction("/api/v1/live_mosaic/clear");
 const move = useAction("/api/v1/stage/move_to");
 
 const placement = computed(() => placementOf(state.value.value));
-const image = computed<TiledImage | undefined>(() => {
-  const now = state.value.value;
-  if (!now?.canvas) return undefined;
-  const levels = now.levels;
-  return {
-    width: now.canvas.width,
-    height: now.canvas.height,
-    tileSize: now.tile,
-    levels,
-    key: `mosaic-${now.mosaic}-${now.generation}`,
-    load: (level, col, row, signal) => mosaicTile(serverLevel(level, levels), col, row, { signal }),
-  };
-});
+const image = computed(() => mosaicImage(state.value.value));
 
 /** Where the stage is, and the field of view about it. */
 const here = computed(() => position.value.value?.position);

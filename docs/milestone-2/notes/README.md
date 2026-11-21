@@ -34,8 +34,8 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W4.1 | Jobs | Done | [W4.1-jobs.md](W4.1-jobs.md) |
 | W4.2 | Logging | Done | [W4.2-logging.md](W4.2-logging.md) |
 | W4.3 | About, Power and the status in full | Done | [W4.3-about-power.md](W4.3-about-power.md) |
-| W5.1 | Scan plans | In review | [W5.1-scan-plans.md](W5.1-scan-plans.md) |
-| W5.2 | Running a scan | Planned | — |
+| W5.1 | Scan plans | Done | [W5.1-scan-plans.md](W5.1-scan-plans.md) |
+| W5.2 | Running a scan | In review | [W5.2-running-a-scan.md](W5.2-running-a-scan.md) |
 | W5.3 | The histo scan | Planned | — |
 | W5.4 | Z-scans, stacks and positions | Planned | — |
 | W6.1 | Projects | Planned | — |

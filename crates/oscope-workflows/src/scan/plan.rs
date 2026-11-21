@@ -1,7 +1,8 @@
 //! The plan model: tiles at stage positions, in order, with how each one's
 //! z is found and the planes taken there, and the field that spaces them.
 
-use oscope_core::{Point2, Rect, Size2};
+use oscope_core::{Point2, Rect, Size2, Um, Xyz};
+use oscope_hal::{Axis, StageCapabilities};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -306,4 +307,20 @@ impl Plan {
 
 pub(super) fn check_stack(stack: Option<&Stack>) -> Result<(), ScanError> {
     stack.map_or(Ok(()), Stack::check)
+}
+
+/// `at`, brought within the stage's soft limits: where a scan or an
+/// overview goes to where the stage reads itself. Encoders read the true
+/// position, which may lie past a limit by the backlash, as just after
+/// homing; a move there would be refused (W5.2).
+pub fn within(capabilities: &StageCapabilities, at: Xyz) -> Xyz {
+    let clamp = |v: Um, axis: Axis| {
+        let travel = capabilities.travel(axis);
+        Um(v.0.clamp(travel.min.0, travel.max.0))
+    };
+    Xyz::new(
+        clamp(at.x, Axis::X),
+        clamp(at.y, Axis::Y),
+        clamp(at.z, Axis::Z),
+    )
 }

@@ -3,10 +3,16 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { useProperty } from "@/api/things/use";
-import { fieldOf } from "@/features/live/mosaic/mosaic";
+import {
+  fieldOf,
+  mosaicImage,
+  placementOf as mosaicPlacement,
+} from "@/features/live/mosaic/mosaic";
 import { blankOf, imageOf, placementOf } from "@/features/scan/overview";
 import { usePlanning } from "@/features/scan/planning";
 import { shapesOf } from "@/features/scan/plan";
+import { mosaicRegionOf, runShapes } from "@/features/scan/running";
+import type { Scan } from "@/features/scan/scanning";
 import type { Rect } from "@/ui/tile-viewer/coordinates";
 import TileViewer from "@/ui/tile-viewer/TileViewer.vue";
 
@@ -16,7 +22,11 @@ import TileViewer from "@/ui/tile-viewer/TileViewer.vue";
  * their order, the path from each to the next, and its region; and the
  * camera's field of view where the stage is. While the region is being
  * drawn, a drag on it draws one.
+ *
+ * A scan, while it is shown (W5.2): the live mosaic its frames draw, and
+ * its plan over it, each tile marked as it is taken.
  */
+const props = defineProps<{ scan: Scan }>();
 const { t } = useI18n();
 const plan = usePlanning();
 const overview = useProperty("/api/v1/scan/last_overview", { every: 10_000 });
@@ -25,17 +35,22 @@ const position = useProperty("/api/v1/stage/position", { every: 1_000 });
 const roi = useProperty("/api/v1/camera/roi", { every: 10_000 });
 const camera = useProperty("/api/v1/camera/capabilities", { every: 60_000 });
 const pixel = useProperty("/api/v1/objective/pixel_at_sample", { every: 10_000 });
+const mosaic = useProperty("/api/v1/live_mosaic/state", { every: 1_000 });
 
 const blank = computed(() => {
   const travel = capabilities.value.value;
   return travel ? blankOf(travel) : undefined;
 });
 const shown = computed(() => {
+  const image = props.scan.shown.value ? mosaicImage(mosaic.value.value) : undefined;
+  if (image) return { image, placement: mosaicPlacement(mosaic.value.value) };
   const view = overview.value.value;
   if (view) return { image: imageOf(view), placement: placementOf(view) };
   return blank.value;
 });
 const shapes = computed(() => {
+  const progress = props.scan.progress.value;
+  if (props.scan.shown.value && progress) return runShapes(progress, props.scan.job.value);
   const preview = plan.preview.value;
   return preview ? shapesOf(preview.plan, plan.region.value) : [];
 });
@@ -46,9 +61,13 @@ const field = computed(() => {
   return fieldOf(position.value.value?.position, size ?? undefined, pixel.value.value);
 });
 
-/** Where to look: the region, with as much again about it, each time it changes. */
+/**
+ * Where to look: the plan's region, or the scan's frames while it is shown,
+ * with as much again about it, each time it changes.
+ */
 const fit = computed(() => {
-  const r = plan.region.value;
+  const progress = props.scan.progress.value;
+  const r = props.scan.shown.value && progress ? mosaicRegionOf(progress.plan) : plan.region.value;
   return (
     r && { x: r.x - r.width / 2, y: r.y - r.height / 2, width: r.width * 2, height: r.height * 2 }
   );
@@ -74,7 +93,9 @@ function drew(rect: Rect): void {
     />
     <p class="said" data-said="view-said" role="status">
       <template v-if="plan.drawing.value">{{ t("scan.drawHint") }}</template>
-      <template v-else-if="!overview.value.value">{{ t("scan.noOverview") }}</template>
+      <template v-else-if="!overview.value.value && !scan.shown.value">{{
+        t("scan.noOverview")
+      }}</template>
     </p>
   </div>
 </template>

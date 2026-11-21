@@ -4,7 +4,8 @@
 //! can't be, refused; an overview, binned, finding the tissue that the
 //! `tissue` pattern then plans over (P37); and, with `OSCOPE_PYTHON=1`, the
 //! sample Python workflow, `example.spiral`, listed with its schema,
-//! planned and run.
+//! planned and run. Just after homing, a plan and an overview keep within
+//! the stage's limits (W5.2).
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -377,5 +378,43 @@ async fn an_overview_finds_the_tissue_the_tissue_pattern_plans_over() {
     );
     // Its z: a map measured over it, before the first tile.
     assert_eq!(tissue["plan"]["z"]["kind"], "measure");
+    output(&client, "camera/stop_streaming", json!({})).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn just_after_homing_a_plan_and_an_overview_keep_within_the_stages_limits() {
+    let folder = tempfile::tempdir().unwrap();
+    let client = server(folder.path(), None).await;
+    let roi = json!({"x": 556, "y": 360, "width": 256, "height": 192});
+    let set = client.put_json("/api/v1/camera/roi", &roi).await;
+    assert!(set.status.is_success());
+    // Homed, the encoders read the stage past its home corner by half the
+    // backlash (W5.1's try-it found an overview refused there).
+    output(&client, "stage/home", json!({})).await;
+    let here = client.get("/api/v1/stage/position").await.json()["position"].clone();
+    let capabilities = client.get("/api/v1/stage/capabilities").await.json();
+    let top = capabilities["z"]["max"].as_f64().unwrap();
+    assert!(here["z"].as_f64().unwrap() > top, "{here}");
+
+    // A plan at the stage's z now: at its limit.
+    let request = json!({"pattern": "snake", "region": square(500.0)});
+    let preview = output(&client, "scan/plan", json!({"request": request})).await;
+    let z = &preview["plan"]["z"];
+    assert_eq!(
+        (z["kind"].as_str(), z["z_um"].as_f64()),
+        (Some("fixed"), Some(top)),
+        "{z}"
+    );
+
+    // An overview where the stage is, of 2 × 2 frames: taken, not refused.
+    output(&client, "camera/start_streaming", json!({})).await;
+    let rect = json!({"origin": {"x": 0.0, "y": 0.0}, "size": {"width": 400.0, "height": 300.0}});
+    let job = output(&client, "scan/overview", json!({"region": {"rect": rect}})).await;
+    let job = ended(&client, job["href"].as_str().unwrap()).await;
+    assert_eq!(job["state"], "completed", "{job}");
+    assert_eq!(
+        client.get("/api/v1/scan/last_overview").await.json()["frames"],
+        4
+    );
     output(&client, "camera/stop_streaming", json!({})).await;
 }

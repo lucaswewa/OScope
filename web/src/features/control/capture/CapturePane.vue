@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, shallowRef } from "vue";
+import { computed, onScopeDispose, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 
-import { ApiError } from "@/api/errors";
 import { download } from "@/api/media";
-import { projectPage, type ProjectSummary } from "@/api/projects";
-import { useAction, useProperty } from "@/api/things/use";
+import { useProperty } from "@/api/things/use";
 import { useJobAction } from "@/features/control/jobAction";
-import { kept } from "@/host/kept";
+import ProjectFields from "@/features/projects/ProjectFields.vue";
+import { useProjectChoice } from "@/features/projects/projectChoice";
 import Button from "@/ui/Button.vue";
 import Field from "@/ui/Field.vue";
 import NumberField from "@/ui/NumberField.vue";
@@ -24,36 +23,11 @@ import TextField from "@/ui/TextField.vue";
  */
 const { t } = useI18n();
 const streaming = useProperty("/api/v1/camera/streaming", { every: 1_000 });
-const make = useAction("/api/v1/projects/create");
 const single = useJobAction("/api/v1/capture/single");
 const burst = useJobAction("/api/v1/capture/burst");
 
-const isText = (value: unknown): value is string => typeof value === "string";
-const project = kept("oscope.control.capture.project", "", isText);
-const projects = shallowRef<ProjectSummary[]>([]);
-const unlisted = shallowRef<string>();
-async function list(): Promise<void> {
-  try {
-    projects.value = (await projectPage({ limit: 500 })).projects;
-    unlisted.value = undefined;
-  } catch (thrown) {
-    unlisted.value = thrown instanceof ApiError ? thrown.message : String(thrown);
-  }
-}
-onMounted(list);
-const choices = computed(() => projects.value.map((one) => ({ value: one.id, label: one.name })));
-const chosen = computed(() => projects.value.find((one) => one.id === project.value));
-
-const naming = shallowRef("");
-async function makeProject(): Promise<void> {
-  const name = naming.value.trim();
-  if (!name) return;
-  const made = await make.run({ name });
-  if (!made) return;
-  naming.value = "";
-  await list();
-  project.value = made.id;
-}
+const choice = useProjectChoice("oscope.control.capture.project");
+const { project, projects, chosen, list } = choice;
 
 const name = shallowRef("");
 const frames = shallowRef<number | null>(1);
@@ -119,21 +93,7 @@ const madeSaid = computed(() => {
 <template>
   <section class="capture" aria-labelledby="capture-title" data-said="capture">
     <h2 id="capture-title">{{ t("capture.title") }}</h2>
-    <Field :label="t('capture.project')" :error="unlisted">
-      <Select v-model="project" :options="choices" :placeholder="t('capture.noProject')" />
-    </Field>
-    <div class="row">
-      <Field class="grow" :label="t('capture.newProject')">
-        <TextField
-          v-model="naming"
-          :placeholder="t('capture.newName')"
-          @keydown.enter="makeProject"
-        />
-      </Field>
-      <Button compact :busy="make.running.value" :disabled="!naming.trim()" @click="makeProject">
-        {{ t("capture.make") }}
-      </Button>
-    </div>
+    <ProjectFields :choice="choice" />
     <Field :label="t('capture.name')">
       <TextField
         v-model="name"

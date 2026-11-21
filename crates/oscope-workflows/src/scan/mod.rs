@@ -36,7 +36,7 @@ pub use histo::{
 };
 pub use measure::{MapSample, measure_map};
 pub use plan::{
-    Field, MOST_OVERLAP, MOST_PLANES, Motion, Pattern, Plan, Position, Stack, Tile, ZPolicy,
+    Field, MOST_OVERLAP, MOST_PLANES, Motion, Pattern, Plan, Position, Stack, Tile, ZPolicy, within,
 };
 pub use planners::{MOST_TILES, positions, raster, snake, tiled_stack, z_scan};
 pub use region::{Mask, Region};
