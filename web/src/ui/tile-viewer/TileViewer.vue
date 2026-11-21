@@ -13,6 +13,7 @@ import {
   type Point,
   type Rect,
 } from "./coordinates";
+import { between, pointsIn, rectShape, type Shape } from "./shapes";
 import { sourceOf, type TiledImage } from "./source";
 
 /**
@@ -22,6 +23,10 @@ import { sourceOf, type TiledImage } from "./source";
  * a scale bar, the pointer's place and a navigator. A double click says
  * where, on the stage. A new key for the image fetches its tiles in view
  * again, drawn over the old until they have come, so that nothing blinks.
+ *
+ * Shapes on the stage are drawn over the image, zooming with it (W5.1).
+ * While drawing, a drag draws a rectangle of the stage instead of panning,
+ * and says it when let go.
  */
 const props = defineProps<{
   label: string;
@@ -31,12 +36,19 @@ const props = defineProps<{
   marker?: Rect | undefined;
   /** Where to look when an image first opens, on the stage: all of it, without. */
   start?: Rect | undefined;
+  /** Where to look, on the stage, each time it changes. */
+  fit?: Rect | undefined;
+  /** Shapes of the stage, drawn over the image. */
+  shapes?: readonly Shape[] | undefined;
+  /** Whether a drag draws a rectangle, which `draw` then says, instead of panning. */
+  drawing?: boolean;
 }>();
-const emit = defineEmits<{ pick: [at: Point] }>();
+const emit = defineEmits<{ pick: [at: Point]; draw: [rect: Rect] }>();
 const { t } = useI18n();
 
 const host = ref<HTMLDivElement>();
 const field = ref<HTMLDivElement>();
+const layer = ref<SVGSVGElement>();
 let viewer: OpenSeadragon.Viewer | undefined;
 let tracker: OpenSeadragon.MouseTracker | undefined;
 const scale = shallowRef<{ length: number; width: number }>();
@@ -77,6 +89,13 @@ function look(): void {
   viewer.viewport.fitBounds(new OpenSeadragon.Rect(x, y, width, height), true);
 }
 
+/** Looks at `rect` of the stage, as `fit` asks. */
+function fitTo(rect: Rect | undefined): void {
+  if (!viewer || !props.placement || !rect) return;
+  const { x, y, width, height } = stageRectToViewport(props.placement, rect);
+  viewer.viewport.fitBounds(new OpenSeadragon.Rect(x, y, width, height));
+}
+
 /** The field of view, marked over the image. */
 let marked = false;
 function mark(): void {
@@ -95,6 +114,34 @@ function mark(): void {
   if (marked) viewer.updateOverlay(element, location);
   else viewer.addOverlay({ element, location });
   marked = true;
+}
+
+/** The shapes' layer, laid over the whole image. */
+let layered = false;
+function lay(): void {
+  const element = layer.value;
+  if (!viewer || !element) return;
+  const at = props.placement;
+  if (!at) {
+    if (layered) viewer.removeOverlay(element);
+    layered = false;
+    return;
+  }
+  const location = new OpenSeadragon.Rect(0, 0, 1, at.height / at.width);
+  if (layered) viewer.updateOverlay(element, location);
+  else viewer.addOverlay({ element, location });
+  layered = true;
+}
+
+/** The rectangle being drawn: where the drag began, and where it is. */
+const dragged = shallowRef<{ from: Point; to: Point }>();
+const drawn = computed(() =>
+  dragged.value ? rectShape("region", between(dragged.value.from, dragged.value.to)) : undefined,
+);
+const allShapes = computed(() => [...(props.shapes ?? []), ...(drawn.value ? [drawn.value] : [])]);
+/** The viewer's own panning and zooming, unless a drag draws. */
+function dragging(): void {
+  viewer?.setMouseNavEnabled(!props.drawing);
 }
 
 /** The image's key shown, and whether a newer is being drawn over it. */
@@ -185,9 +232,24 @@ onMounted(() => {
     element: viewer.canvas,
     moveHandler: (event) => (pointer.value = stageAt(event.position)),
     leaveHandler: () => (pointer.value = undefined),
+    pressHandler: (event) => {
+      const at = props.drawing ? stageAt(event.position) : undefined;
+      dragged.value = at ? { from: at, to: at } : undefined;
+    },
+    dragHandler: (event) => {
+      const at = dragged.value && stageAt(event.position);
+      if (dragged.value && at) dragged.value = { from: dragged.value.from, to: at };
+    },
+    releaseHandler: () => {
+      const rect = dragged.value && between(dragged.value.from, dragged.value.to);
+      dragged.value = undefined;
+      if (rect && rect.width > 0 && rect.height > 0) emit("draw", rect);
+    },
   });
+  dragging();
   show();
   mark();
+  lay();
 });
 onBeforeUnmount(() => {
   tracker?.destroy();
@@ -198,6 +260,9 @@ onBeforeUnmount(() => {
 watch(() => props.image, show);
 watch(() => [props.marker, props.placement], mark);
 watch(() => props.placement, measure);
+watch(() => props.placement, lay);
+watch(() => props.drawing, dragging);
+watch(() => props.fit, fitTo);
 </script>
 
 <template>
@@ -213,9 +278,28 @@ watch(() => props.placement, measure);
         {{ t("ui.tileViewer.fit") }}
       </ToolbarButton>
     </Toolbar>
-    <div class="frame">
+    <div class="frame" :class="{ drawing }">
       <div ref="host" class="viewer" data-said="tiles" />
       <div ref="field" class="field" data-said="field" />
+      <svg
+        ref="layer"
+        class="layer"
+        data-said="shapes"
+        aria-hidden="true"
+        preserveAspectRatio="none"
+        :viewBox="placement ? `0 0 ${placement.width} ${placement.height}` : undefined"
+      >
+        <template v-if="placement">
+          <template v-for="(shape, i) in allShapes" :key="i">
+            <polyline
+              v-if="shape.kind === 'path'"
+              :class="shape.kind"
+              :points="pointsIn(placement, shape)"
+            />
+            <polygon v-else :class="shape.kind" :points="pointsIn(placement, shape)" />
+          </template>
+        </template>
+      </svg>
       <figure v-if="scale" class="scale" data-said="tile-scale">
         <span class="line" :style="{ inlineSize: `${scale.width}px` }" />
         <figcaption>{{ scaleSaid }}</figcaption>
@@ -245,6 +329,43 @@ watch(() => props.placement, measure);
 .viewer {
   position: absolute;
   inset: 0;
+}
+
+.drawing {
+  cursor: crosshair;
+}
+
+/* The shapes: thin whatever the zoom, and never in the pointer's way. */
+.layer {
+  pointer-events: none;
+  overflow: visible;
+}
+
+.layer polygon,
+.layer polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.layer .frame {
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.layer .first {
+  fill: color-mix(in srgb, var(--accent) 40%, transparent);
+  stroke-width: 2px;
+}
+
+/* The path in the accent, as the live view's overlays: the image is black in either scheme. */
+.layer .path {
+  stroke-dasharray: 3 3;
+}
+
+.layer .region {
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
 }
 
 /* The field of view: where the camera looks now. */

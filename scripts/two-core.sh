@@ -69,6 +69,17 @@ build_web() {
   built_web=true
 }
 
+# A target's label, in its logs' names and the summary: a long one, as a
+# web:unit: target of many files, cut short, with a checksum to keep it its
+# own. Whole, it can be longer than a file's name may be.
+label() {
+  if [ "${#1}" -le 64 ]; then
+    printf '%s' "$1"
+  else
+    printf '%s...%s' "${1:0:52}" "$(printf '%s' "$1" | cksum | cut -c1-8)"
+  fi
+}
+
 # Each target built, and its runs listed, its copies together so that they
 # run side by side.
 : > "$logs/runs.tsv"
@@ -131,7 +142,7 @@ for name in "${targets[@]}"; do
       ;;
   esac
   for ((k = 1; k <= repeat; k++)); do
-    printf '%s #%d\t%s\t%s\n' "$name" "$k" "$folder" "$command" >> "$logs/runs.tsv"
+    printf '%s #%d\t%s\t%s\n' "$(label "$name")" "$k" "$folder" "$command" >> "$logs/runs.tsv"
   done
 done
 
@@ -140,7 +151,7 @@ PINNED_RESULTS=()
 run_pinned "$slots" "$logs" "$logs/runs.tsv"
 echo
 for name in "${targets[@]}"; do
-  printf '%s\n' "${PINNED_RESULTS[@]}" | awk -F'\t' -v name="$name" '
+  printf '%s\n' "${PINNED_RESULTS[@]}" | awk -F'\t' -v name="$(label "$name")" '
     { split($1, part, " #") }
     part[1] == name {
       runs++; if ($2 == 0) passed++
