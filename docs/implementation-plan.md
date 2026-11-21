@@ -954,7 +954,7 @@ A scan planned over a picture of the slide, run, and watched.
 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
-| [W5.1](milestone-2/phases.md#w5-1) | Scan plans | W3.8, W0.6 | 1,800 | — | Planned |
+| [W5.1](milestone-2/phases.md#w5-1) | Scan plans | W3.8, W0.6 | 1,800 | — | In review |
 | [W5.2](milestone-2/phases.md#w5-2) | Running a scan | W5.1, W4.1 | 1,500 | — | Planned |
 | [W5.3](milestone-2/phases.md#w5-3) | The histo scan | W5.2 | 1,200 | — | Planned |
 | [W5.4](milestone-2/phases.md#w5-4) | Z-scans, stacks and positions | W5.2 | 1,200 | — | Planned |

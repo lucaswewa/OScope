@@ -21,7 +21,7 @@ const waiting = () => import("@/features/shell/TabPlaceholder.vue");
 
 export const TABS: readonly Tab[] = [
   { name: "control", icon: "control", page: () => import("@/features/control/ControlTab.vue") },
-  { name: "scan", icon: "scan", comes: "W5", page: waiting },
+  { name: "scan", icon: "scan", page: () => import("@/features/scan/ScanTab.vue") },
   { name: "workspace", icon: "workspace", comes: "W7", page: waiting },
   { name: "gallery", icon: "gallery", comes: "W6", page: waiting },
   { name: "jobs", icon: "jobs", page: () => import("@/features/jobs/JobsTab.vue") },
