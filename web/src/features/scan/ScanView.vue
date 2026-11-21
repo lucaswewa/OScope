@@ -67,8 +67,7 @@ const field = computed(() => {
  */
 const fit = computed(() => {
   const progress = props.scan.progress.value;
-  const r =
-    props.scan.shown.value && progress ? mosaicRegionOf(progress.plan) : plan.region.value;
+  const r = props.scan.shown.value && progress ? mosaicRegionOf(progress.plan) : plan.region.value;
   return (
     r && { x: r.x - r.width / 2, y: r.y - r.height / 2, width: r.width * 2, height: r.height * 2 }
   );
