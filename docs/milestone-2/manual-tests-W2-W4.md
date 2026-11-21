@@ -53,7 +53,7 @@ Over the tissue:
 - [ ] **Streaming:** *Start*: the state turns from *Waiting for a frame* to *Live*, and the rate and the latency are read out.
 - [ ] **Zoom:** the wheel over a nucleus keeps it under the pointer. Past *100 %*, the sensor's pixels show as squares, and *Frame* is the small region asked for. The scale bar shortens. *Fit*, or `0` on the image, shows the whole frame again.
 - [ ] **The place:** over the image, the pointer's pixel, and its distance from the sensor's centre in µm.
-- [ ] **Waiting and stale:** with the camera on a software trigger (W3.1's notes), the image waits for its first frame; once one is triggered, it is live, then stale two seconds later.
+- [ ] **Waiting and stale:** with the camera on a software trigger (W3.1's notes), the image waits for its first frame; once one is triggered, it is live, then stale two seconds later. Then stop, and set the trigger back to free running: the camera keeps its trigger, after a restart too, and on a software trigger it waits for ever.
 - [ ] **The PNG and full screen:** *Save PNG* downloads the view as shown. *Full screen*, or `F` on the image; Escape leaves.
 
 ## W3.2: the camera's controls
@@ -62,7 +62,7 @@ Over the tissue:
 - [ ] **Auto exposure:** its job runs, and the pane says what it found. *Put the saved settings back* returns the exposure.
 - [ ] **The mode** can't be applied while streaming, and the pane says so. Stopped, the other mode or format applies.
 - [ ] **The region:** a region applied shows that part of the sensor; *The whole sensor* gives it all back; one off the sensor is refused, in the camera's words.
-- [ ] **The trigger and white balance:** *Software* makes the camera wait for a trigger. *White balance* says its gains.
+- [ ] **The trigger and white balance:** *Software* makes the camera wait for a trigger; set it back to *Free running* afterwards, as in W3.1. *White balance* says its gains.
 
 ## W3.3: the stage's controls
 
