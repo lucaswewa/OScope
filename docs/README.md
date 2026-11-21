@@ -13,6 +13,7 @@
 | [Manual tests of P24–P34](milestone-1/manual-tests-P24-P34.md) | A checklist for trying each phase from P24 to P34 by hand, from its example, and Checkpoints B and C |
 | [Manual tests of P35–P43](milestone-1/manual-tests-P35-P43.md) | A checklist for trying each phase from P35 to P43 by hand, from its example, and Checkpoints D and E |
 | [Manual tests of P44–P54](milestone-1/manual-tests-P44-P54.md) | A checklist for trying each phase from P44 to P54 by hand, from its example, with Checkpoint F, the packages, and what needs an administrator or a computer that may be rebooted |
+| [Manual tests of W0–W1](milestone-2/manual-tests-W0-W1.md) | A checklist for trying each phase of the app's stages W0 and W1 by hand, in the app itself, in both themes |
 | [Milestone 1 retrospective](milestone-1/retrospective.md) | A look back at Milestone 1: what it delivered, what its numbers say, what went well and what didn't, and what M2 inherits |
 | [Hardware](hardware.md) | The real instrument: camera, SDK, stage controller, lights and host. Written in P02b; M3's bring-up keeps it up to date |
 | [Releasing](releasing.md) | The checklist before a release's tag, and what the release workflow does with it |
