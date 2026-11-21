@@ -1,6 +1,6 @@
 # ADR-0038: Local CI replays, side by side on two CPUs
 
-- Status: Accepted
+- Status: Accepted; extended by [ADR-0061](0061-gates-test-what-a-change-reaches.md), a phase's replays running what its change reaches
 - Date: 2026-11-15
 - Phase: none: the owner's request, before P40
 
