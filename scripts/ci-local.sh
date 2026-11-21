@@ -230,11 +230,15 @@ if command -v npm > /dev/null; then
   # registry, whose install then removes the builds the tests need.
   step "web browsers" web npx --no-install playwright install chromium firefox webkit
   # With the visual tests, whose baselines are this computer's: OSCOPE_VISUAL=
-  # in the environment, empty, leaves them out.
+  # in the environment, empty, leaves them out. On Linux, six workers, not
+  # Playwright's half of the CPUs: under WSL its twelve failed two to six
+  # load-sensitive tests a run, from 2026-11-21 (the owner's choice).
+  workers=()
+  [ "$(uname -s)" = Linux ] && workers=(--workers=6)
   case "$reach_e2e" in
     none) skip "web end to end" ;;
-    all) step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e ;;
-    *) step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e -- $(in_web "$reach_e2e") ;;
+    all) step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e -- ${workers[@]+"${workers[@]}"} ;;
+    *) step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e -- ${workers[@]+"${workers[@]}"} $(in_web "$reach_e2e") ;;
   esac
 else
   failed=$((failed + 1))
