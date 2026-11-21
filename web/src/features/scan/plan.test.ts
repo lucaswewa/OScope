@@ -138,7 +138,8 @@ describe("each pattern's request", () => {
     });
     expect(requestOf({ ...asked, pattern: "positions" })).toBeUndefined();
     expect(
-      requestOf({ ...asked, pattern: "positions", positions: [{ x: 1, y: 2 }] })?.positions,
+      requestOf({ ...asked, pattern: "positions", positions: [{ x: 1, y: 2, name: "" }] })
+        ?.positions,
     ).toEqual([{ x_um: 1, y_um: 2 }]);
   });
 

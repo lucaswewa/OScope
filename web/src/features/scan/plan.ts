@@ -6,6 +6,8 @@ import type { ValueOf } from "@/api/things/use";
 import type { Point, Rect } from "@/ui/tile-viewer/coordinates";
 import { rectShape, type Shape } from "@/ui/tile-viewer/shapes";
 
+import { positionsOf, type Place } from "./positions";
+
 /** The server's plan of a scan, and its estimate. */
 export type Preview = Output<"/api/v1/scan/plan">;
 export type Plan = Preview["plan"];
@@ -152,7 +154,7 @@ export interface Asked {
   stack: Stack;
   /** Where a z-scan is taken. */
   at?: Point | undefined;
-  positions: readonly Point[];
+  positions: readonly Place[];
   /** A workflow's parameters, by its schema. */
   params?: unknown;
   /** How each tile's z is found: at the stage's z now, if not said. */
@@ -192,7 +194,7 @@ export function requestOf(asked: Asked): ScanRequest | undefined {
       return asked.at && { ...base, at: asked.at, stack: asked.stack };
     case "positions":
       return asked.positions.length > 0
-        ? { ...base, positions: asked.positions.map((p) => ({ x_um: p.x, y_um: p.y })) }
+        ? { ...base, positions: positionsOf(asked.positions) }
         : undefined;
     case "tissue":
       return base;
