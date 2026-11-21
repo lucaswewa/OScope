@@ -1,3 +1,4 @@
+// Covers: web/src/features/jobs, web/src/features/shell
 // The jobs tab (W4.1): the queue follows jobs submitted from elsewhere, and
 // the rail leads to the running one; reordering, by the keys and by
 // dragging, cancelling, and pausing and resuming reach the server; a job's

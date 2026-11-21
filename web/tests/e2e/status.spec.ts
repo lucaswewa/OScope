@@ -1,3 +1,4 @@
+// Covers: web/src/features/status, web/src/features/shell, web/src/features/settings
 // The shell's status (W2.2): the instrument's indicator following the stage
 // homed on the fast clock (W3.1), and a fault injected and cleared; the page in place of the tabs
 // while the server is gone; another's request for the lease, handed over

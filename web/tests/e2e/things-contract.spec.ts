@@ -1,3 +1,4 @@
+// Covers: web/src/api
 // Contract tests (W1.2, ADR-0044): live Things against a real server, each
 // test's own. No page: they run in Chromium's project only, as untagged
 // tests do.

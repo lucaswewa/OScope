@@ -1,3 +1,4 @@
+// Covers: web/src/api
 // The preview's stream (W1.5) against a real server, read as the worker
 // reads it: frames arrive, numbered, each a JPEG of the size its header
 // says; a region gets the pixels asked for; statistics come when asked;

@@ -1,3 +1,4 @@
+// Covers: web/src/features/live, web/src/features/control
 // The frame's values (W3.6): the saturated pixels marked where the frame is
 // at the sensor's limit; a look's change reaching the preview, and not the
 // frame's values; false colour chosen and kept; axe; and the values

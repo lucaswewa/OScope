@@ -1,3 +1,4 @@
+// Covers: web/src/features/control
 // The stage's controls (W3.3), on the simulator at real distances: the wait
 // to be homed, and homing; a move arriving; steps from the pad and from the
 // keys on the image; a step past a limit refused before it is sent; a jog

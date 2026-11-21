@@ -1,3 +1,4 @@
+// Covers: web/src/features/dev
 // The live preview (W1.5), in the browser: frames drawn and acknowledged in
 // Chromium, Firefox and WebKit; at 1920 pixels wide, every frame the server
 // sent drawn; the frames' size following the window; a region asked for

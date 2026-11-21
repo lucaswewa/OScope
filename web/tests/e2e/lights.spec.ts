@@ -1,3 +1,4 @@
+// Covers: web/src/features/control
 // The lights and the objective (W3.4): a light's intensity changing the
 // image's mean, and the light switched off; fitting an objective changing
 // the scale bar and the place's µm, and its check offered and run, or

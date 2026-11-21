@@ -1,3 +1,4 @@
+// Covers: web/src/features/about
 import { expect, test } from "./fixtures.ts";
 
 // The server's version, which the first page showed (W0.1), is About's now

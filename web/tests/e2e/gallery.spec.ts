@@ -1,3 +1,4 @@
+// Covers: web/src/features/dev
 import { expectAccessible } from "./axe.ts";
 import { choose, expect, inScheme, shot, surface, test } from "./fixtures.ts";
 

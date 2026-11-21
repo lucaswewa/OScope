@@ -1,3 +1,4 @@
+// Covers: web/src/features/live, web/src/features/control
 // The live viewer (W3.1): the camera's frames drawn live on Control, with
 // the readouts; zooming in asking for the region shown, and that region
 // coming back; the states, from not streaming to stale; the scale bar

@@ -1,3 +1,4 @@
+// Covers: web/src/features/dev
 import type { APIRequestContext, Page } from "@playwright/test";
 
 import { expectAccessible } from "./axe.ts";

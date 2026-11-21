@@ -1,3 +1,4 @@
+// Covers: web/src/features/control, web/src/features/live
 // The free-roam mosaic (W3.8): jogging adds tiles where the stage went, and
 // none where it didn't; a double click on the mosaic sends the stage there;
 // axe; and the tile viewer's chrome against its baseline. On the camera's

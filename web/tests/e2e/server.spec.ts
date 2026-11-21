@@ -1,3 +1,4 @@
+// Covers: web/tests/e2e
 import { join } from "node:path";
 
 import { expect, test } from "./fixtures.ts";
