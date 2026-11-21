@@ -241,9 +241,13 @@ onMounted(() => {
     if (at) emit("pick", at);
   });
   viewer.addHandler("animation", measure);
+  // The resize is raised before OpenSeadragon keeps the image's size on the
+  // screen: the look again comes after it, once its update is done.
   viewer.addHandler("resize", () => {
     measure();
-    if (!moved) look();
+    queueMicrotask(() => {
+      if (!moved) look();
+    });
   });
   for (const by of ["canvas-drag", "canvas-scroll", "canvas-pinch"] as const)
     viewer.addHandler(by, () => (moved = true));
