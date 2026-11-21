@@ -1,3 +1,4 @@
+// Covers: web/src/features/about, web/src/features/status
 // About and the status in full (W4.3): the server's computer and its time
 // up; its notices, listed and read, and the app's own, made at build; the
 // status's page from the rail's indicator, each subsystem's details, and a

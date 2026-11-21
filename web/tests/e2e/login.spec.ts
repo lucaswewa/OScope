@@ -1,3 +1,4 @@
+// Covers: web/src/features/login, web/src/features/dev
 // The login and the control lease (W1.3), with two browsers on a server
 // that has accounts: a wrong password, a login, the lease taken, asked for
 // and handed over, and a session that ends.

@@ -122,7 +122,10 @@ npm run test:e2e    # after `cargo build -p oscope-server`: each test starts its
 `scripts/ci-local.sh` runs all of CI's checks, every example's `--smoke` among them, and `--cuda` adds the CUDA tests. It runs the suites and smoke runs eight at a time, each on two CPUs of its own. `scripts/ci-clone.sh` runs them on a fresh clone of a commit; on Windows, run it under WSL ([`scripts/README.md`](scripts/README.md)).
 
 - **The replays are the merge gate** ([ADR-0038](docs/adr/0038-local-ci-replays-side-by-side.md)): both pass, each run alone, on the commit merged, or on one that only docs follow. GitHub Actions isn't waited for.
-- **Two cores, five times:** the suites and smoke runs a change touches, and only those, run five times each, side by side, on two CPUs each: `scripts/two-core.sh PACKAGE:TEST… EXAMPLE…`, with `web:unit` and `web:e2e` for the app's.
+  - **A phase's replays run what its change reaches** ([ADR-0061](docs/adr/0061-gates-test-what-a-change-reaches.md)): `scripts/ci-local.sh --changed main`, and `scripts/ci-clone.sh COMMIT --changed main` under WSL. `web/scripts/changed.mjs` picks the Rust suites, the examples, the unit tests and the end-to-end specs; every other check runs in full.
+  - **Both run in full** for a stage's checkpoint phase, and for a change to the build's files or to the gate's own scripts, which reaches everything.
+  - **Each end-to-end spec says what it covers,** in a `// Covers:` line naming the feature folders whose changes it runs for.
+- **Two cores, five times:** the suites, smoke runs and specs a change reaches, and only those, run five times each, side by side, on two CPUs each: `scripts/two-core.sh PACKAGE:TEST… EXAMPLE…`, with `web:unit`, `web:e2e`, `web:unit:FILE,…` and `web:e2e:SPEC,…` for the app's.
 - **Disk:** check `df -h` first. The replays need some 20 GB free, and build output grows by the phase: `cargo clean --profile dev` clears it, with the owner's word.
 
 Docs-only phases check that their relative links and anchors resolve.

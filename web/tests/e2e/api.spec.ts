@@ -1,3 +1,4 @@
+// Covers: web/src/features/dev
 // The API's page (W1.1): an action called through the typed client and
 // followed to its end, refused, and cancelled; and the server's failures,
 // each read as the client's one model of them.

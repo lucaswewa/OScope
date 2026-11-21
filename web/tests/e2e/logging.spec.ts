@@ -1,3 +1,4 @@
+// Covers: web/src/features/logging
 // The logging tab (W4.2): a record emitted appears at the tail, and under
 // its filter; scrolling up holds the tail, and its end follows it again; a
 // record opened shows its fields; a daily file is listed and downloaded;

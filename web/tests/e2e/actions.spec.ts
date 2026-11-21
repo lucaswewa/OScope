@@ -1,3 +1,4 @@
+// Covers: web/src/features/control
 // The control tab's actions (W3.7): autofocus to the simulator's true
 // focus; a capture making a record, in a project made there, and a burst;
 // a live recipe set and cleared, and one that reads a reference, refused

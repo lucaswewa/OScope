@@ -1,3 +1,4 @@
+// Covers: web/src/features
 // The shell (W2.1): the rail's nine tabs, each opened, naming the window and
 // taking the focus to its heading; the skip link, the rail and the keys from
 // the keyboard; the shortcuts' list; an action the server refuses, told in

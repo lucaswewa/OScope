@@ -1,3 +1,4 @@
+// Covers: web/src/features/dev
 // The Things page (W1.2): the stage's state kept live while another client
 // moves it; marked stale without the server, and live again when it
 // returns; and a refused write taken back, with its reason at the field.

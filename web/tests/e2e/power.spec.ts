@@ -1,3 +1,4 @@
+// Covers: web/src/features/power
 // Power (W4.3): reboot and shutdown against the dry run, each confirmed by
 // typing its name; a refusal while a hardware job runs, then forced; a
 // restart, the test's own server really stopped and started again, with the

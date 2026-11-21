@@ -1,3 +1,4 @@
+// Covers: web/src/features/control
 // The camera's controls (W3.2): each setting changes the camera; a value out
 // of range refused at its field, by the field or by the camera in its words;
 // the mode applied, and kept from while streaming; auto exposure run as a

@@ -43,7 +43,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |
 | [0037](0037-importers-exporters-and-the-abi-s-third-version.md) | Importers, exporters, and the ABI's third version | Accepted | P30 |
-| [0038](0038-local-ci-replays-side-by-side.md) | Local CI replays, side by side on two CPUs | Accepted | — |
+| [0038](0038-local-ci-replays-side-by-side.md) | Local CI replays, side by side on two CPUs | Accepted; extended by 0061 | — |
 | [0039](0039-the-web-app-its-layers-state-and-routing.md) | The web app: its layers, state and routing | Accepted | W0.1 |
 | [0040](0040-testing-the-app.md) | Testing the app: unit, contract, end to end and visual | Accepted | W0.1 |
 | [0041](0041-design-tokens-and-themes.md) | Design tokens and themes | Accepted | W0.2 |
@@ -57,6 +57,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0049](0049-the-live-viewer-and-its-overlays.md) | The live viewer and its overlays | Accepted | W3.1 |
 | [0050](0050-the-tile-viewer.md) | The tile viewer | Accepted | W3.8 |
 | [0060](0060-restarts-in-a-dry-run.md) | Restarts in a dry run | Accepted | W4.3 |
+| [0061](0061-gates-test-what-a-change-reaches.md) | Gates test what a change reaches | Accepted | — |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

@@ -1,3 +1,4 @@
+// Covers: web/src/api
 // Contract tests (W1.3, ADR-0045): a real server with accounts, each test's
 // own. Media are fetched with the session's token, and refused without it;
 // the control lease is taken, refused to another, and handed over. No

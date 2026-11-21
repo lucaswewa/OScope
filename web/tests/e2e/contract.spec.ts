@@ -1,3 +1,4 @@
+// Covers: web/src/api
 // Contract tests (W1.1, ADR-0043): the typed client, and the wrappers
 // written by hand for what the OpenAPI document doesn't describe, against
 // a real server, each test's own. No page: they run in Chromium's project

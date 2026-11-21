@@ -27,6 +27,24 @@ Two scripts run the checks that CI runs on every pull request ([`.github/workflo
 
 Each step's output goes to a log file, and each suite's and smoke run's to its own. A failing step shows the end of its log. Both scripts exit with 0 only if every step passed.
 
+### Only what a change reaches: `--changed BASE`
+
+A phase's replays run the tests its change reaches, and every other check in full ([ADR-0061](../docs/adr/0061-gates-test-what-a-change-reaches.md)):
+
+```sh
+scripts/ci-local.sh --changed main
+scripts/ci-clone.sh HEAD --changed main    # under WSL
+```
+
+- **[`web/scripts/changed.mjs BASE`](../web/scripts/changed.mjs)** reads the files changed since BASE's merge base with the commit. It prints the plan:
+  - the Rust packages changed, and every workspace package that depends on them;
+  - the doc tests and examples among them;
+  - the unit tests Vitest finds related to the changed files;
+  - and the end-to-end specs: those changed, those whose baselines changed, and those covering a changed feature by their `// Covers:` line.
+- **Some changes reach everything of a kind.** The build's files, the toolchain or these scripts reach every check. The app's shared code, the end-to-end harness, or anything that reaches `oscope-server` reach every spec. The plan's `why:` lines say which. It is kept as `changed.txt` beside the logs.
+- **A step nothing reaches** prints `skip`, and doesn't fail the run.
+- **Both run in full** for a stage's checkpoint, as CLAUDE.md asks.
+
 ### Side by side, on two CPUs each
 
 The test suites, and then the smoke runs, go eight at a time, each limited to two CPUs of its own, as on CI's two-core runners. Slot k gets CPUs 2k and 2k+1: on the owner's PC, an i9-12900, CPUs 0–15 are its eight performance cores' threads. `--jobs N` runs N at a time, at most one for each pair of CPUs there is. On Windows the limit is set through PowerShell; on Linux, with `taskset`.
@@ -99,6 +117,7 @@ scripts/two-core.sh --repeat 10 oscope-api:preview
 
 - **A target** is a test suite, `PACKAGE:TEST` for its `tests/TEST.rs` or `PACKAGE:lib` for its unit tests, or an example by its name, for its `--smoke`.
 - **The app's tests** are `web:unit` and `web:e2e`. The end-to-end tests run with one worker, as Playwright chooses on a two-core runner: it counts the computer's CPUs, not the pair it is held to. The visual tests run among them.
+- **Some of the app's tests:** `web:e2e:SPEC,…`, those specs by their names in `web/tests/e2e`, and `web:unit:FILE,…`, the unit tests related to those files, from `web/`. A phase repeats only its own: `scripts/two-core.sh web:e2e:scan.spec.ts,scan-plan.spec.ts`.
 - **Its runs go side by side,** eight at a time on their own pairs of CPUs, as `ci-local.sh`'s do: a target's five copies run together.
 - **`--repeat N`** runs each N times, and `--jobs N` N at a time. Logs go to `target/two-core/<date-time>/`, or to `--logs DIR`.
 

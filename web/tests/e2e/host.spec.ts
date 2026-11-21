@@ -1,3 +1,4 @@
+// Covers: web/src/features/dev
 // The host adapter (W1.4), in the browser: a saved file reaches the disk, an
 // opened one is read, and what is kept survives a reload, in Chromium,
 // Firefox and WebKit; a login kept for its tab alone; the clipboard, a

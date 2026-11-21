@@ -1,3 +1,4 @@
+// Covers: web/src/features/live, web/src/features/control
 // The layers over the live image (W3.5): an ROI drawn, the region the server
 // measures, moved from the keyboard and made the camera's region; a line's
 // profile, its ends the line's; the layers switched and kept across a

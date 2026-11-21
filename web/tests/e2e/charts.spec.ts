@@ -1,3 +1,4 @@
+// Covers: web/src/features/dev
 import type { Page } from "@playwright/test";
 
 import { expectAccessible } from "./axe.ts";
