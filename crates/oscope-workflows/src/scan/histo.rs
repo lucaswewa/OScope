@@ -10,7 +10,7 @@ use oscope_jobs::{Factory, Job, JobCtx, JobSpec, Resource, Stop};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::plan::{Field, ZPolicy};
+use super::plan::{Field, ZPolicy, within};
 use super::planners::snake;
 use super::region::{Mask, Region};
 use crate::autofocus::frames::{colour_cells, frame_after};
@@ -121,7 +121,8 @@ pub async fn overview(
     options: &OverviewOptions,
     report: &dyn Report,
 ) -> Result<Overview, AutofocusError> {
-    let here = rig.stage.position().await.map_err(device)?.position;
+    let read = rig.stage.position().await.map_err(device)?.position;
+    let here = within(rig.stage.capabilities(), read);
     let fixed = ZPolicy::Fixed { z_um: here.z.0 };
     let plan = snake(region, field, fixed).map_err(|e| failed(e.to_string()))?;
     let b = region.bounds();

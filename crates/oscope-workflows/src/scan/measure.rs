@@ -5,6 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::focus_map::FocusPoint;
+use super::plan::within;
 use crate::autofocus::{AutofocusError, FocusOptions, FocusRig, autofocus, check, device};
 use crate::calibration::Report;
 
@@ -58,7 +59,8 @@ pub async fn measure_map(
     options: &FocusOptions,
     report: &dyn Report,
 ) -> Result<Vec<MapSample>, AutofocusError> {
-    let mut z = rig.stage.position().await.map_err(device)?.position.z.0;
+    let read = rig.stage.position().await.map_err(device)?.position;
+    let mut z = within(rig.stage.capabilities(), read).z.0;
     let share = 1.0 / points.len().max(1) as f64;
     let mut samples = Vec::with_capacity(points.len());
     for (k, &at) in points.iter().enumerate() {

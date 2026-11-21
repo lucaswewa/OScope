@@ -12,3 +12,5 @@ src/features/dev/charts/recorded.ts
 # server's answers recorded for the error model's tests (scripts/record-answers.mjs).
 src/api/generated/
 src/api/recorded-answers.json
+# Generated: a scan's messages, recorded from the simulated instrument (scripts/record-scan.mjs).
+src/features/scan/recorded-scan.json

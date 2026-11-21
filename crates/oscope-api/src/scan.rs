@@ -12,7 +12,8 @@ use oscope_workflows::calibration::{Values, geometry_key};
 use oscope_workflows::scan::{
     Estimate, Field, FrameSize, LastOverview, LastScan, OVERVIEW, OverviewOptions, Pattern, Plan,
     Position, Region, SCAN, ScanOptions, ScanProgress, ScanRig, Stack, Surface, TileHook, Timing,
-    ZPolicy, estimate, overview_jobs, positions, raster, scan_jobs, snake, tiled_stack, z_scan,
+    ZPolicy, estimate, overview_jobs, positions, raster, scan_jobs, snake, tiled_stack, within,
+    z_scan,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -220,9 +221,8 @@ impl ScanThing {
             },
             None => {
                 let here = state.devices.stage.position().await.map_err(device)?;
-                ZPolicy::Fixed {
-                    z_um: here.position.z.0,
-                }
+                let here = within(state.devices.stage.capabilities(), here.position);
+                ZPolicy::Fixed { z_um: here.z.0 }
             }
         };
         let region = || {

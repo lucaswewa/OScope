@@ -3,8 +3,8 @@
 // image's pixels so that they zoom with it.
 import { stageToImage, type Placement, type Point, type Rect } from "./coordinates";
 
-/** What a shape is, which its look follows. */
-export type ShapeKind = "frame" | "first" | "path" | "region";
+/** What a shape is, which its look follows: a scan's tiles done, next and at fault too (W5.2). */
+export type ShapeKind = "frame" | "first" | "path" | "region" | "done" | "next" | "fault";
 
 /** A shape on the stage: closed, but for a path. */
 export interface Shape {

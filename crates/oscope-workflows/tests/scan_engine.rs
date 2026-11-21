@@ -3,7 +3,8 @@
 //! from the lowest; autofocus at every n-th tile; a cancel keeping the
 //! frames, in scratch; a step that fails tried again, and the scan failing
 //! after three tries; every scan ending where it started; and plans that
-//! can't be refused.
+//! can't be refused. A paused scan holds the stage until resumed, and a
+//! scan just after homing returns within the stage's limits (W5.2).
 
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -555,5 +556,79 @@ async fn a_map_measured_before_the_first_tile_puts_each_at_its_focus() {
     }
     let contents = bench.store.contents(bench.project).unwrap();
     assert_eq!(contents.acquisitions[0].plan["z"]["kind"], "map");
+    bench.stop().await;
+}
+
+/// Waits up to 300 s for job `id` to be as `done` says: `what`, if not.
+async fn until(bench: &Bench, id: JobId, what: &str, done: impl Fn(&oscope_jobs::JobInfo) -> bool) {
+    let deadline = Instant::now() + Duration::from_secs(300);
+    while !done(&bench.jobs.get(id).unwrap()) {
+        assert!(Instant::now() < deadline, "{what}");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+fn frames(info: &oscope_jobs::JobInfo) -> u64 {
+    info.progress.counters.get("frames").copied().unwrap_or(0)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_paused_scan_holds_the_stage_until_it_is_resumed() {
+    let _turn = TURN.lock().await;
+    let bench = bench().await;
+    let plan = snake(&bench.square(600.0), &bench.field, bench.map()).unwrap();
+    let n = plan.tiles.len() as u64;
+    assert!(n >= 4, "{n}");
+    let id = bench.submit(&plan);
+    until(&bench, id, "no frame", |info| frames(info) >= 1).await;
+    bench.jobs.pause(id).unwrap();
+    // It pauses as the next tile begins.
+    until(&bench, id, "no pause", |info| {
+        info.state == JobState::Paused
+    })
+    .await;
+    let (held, taken) = (bench.here().await, frames(&bench.jobs.get(id).unwrap()));
+    assert!(taken < n, "{taken} of {n}");
+    // Three seconds of the simulator's time, many tiles' worth: the stage
+    // stays, and no frame is taken.
+    bench.sim.clock.sleep(Duration::from_secs(3)).await;
+    assert!(
+        near(bench.here().await, held, 0.5, 0.1),
+        "{:?} from {held:?}",
+        bench.here().await
+    );
+    let info = bench.jobs.get(id).unwrap();
+    assert_eq!((info.state, frames(&info)), (JobState::Paused, taken));
+    bench.jobs.resume(id).unwrap();
+    assert_eq!(bench.ended(id).await, JobState::Completed);
+    assert_eq!(frames(&bench.jobs.get(id).unwrap()), n);
+    bench.stop().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scan_just_after_homing_returns_within_the_stages_limits() {
+    let _turn = TURN.lock().await;
+    let bench = bench().await;
+    // Homed, the encoders read the stage past its home corner by half the
+    // backlash: where the scan must return, but can't go.
+    bench.sim.stage.home().await.unwrap();
+    let limits = bench.sim.stage.capabilities().clone();
+    let read = bench.here().await;
+    assert!(read.z.0 > limits.z.max.0, "{read:?}");
+    let plan = snake(&bench.square(300.0), &bench.field, bench.map()).unwrap();
+    let id = bench.submit(&plan);
+    let ended = bench.ended(id).await;
+    assert_eq!(
+        ended,
+        JobState::Completed,
+        "{:?}",
+        bench.jobs.get(id).unwrap().error
+    );
+    let corner = Xyz::new(limits.x.min, limits.y.min, limits.z.max);
+    assert!(
+        near(bench.here().await, corner, 2.5, 2.0),
+        "{:?}",
+        bench.here().await
+    );
     bench.stop().await;
 }
