@@ -1,0 +1,50 @@
+# The GPU simulator's standalone benchmarks, 2026-11-21, on the owner's laptop
+
+## OSCOPE_CUDA=1 cargo test --release -p oscope-sim --features cuda --test models -- --ignored --nocapture --test-threads=1
+
+running 2 tests
+test what_each_model_costs ... frames, in ms: cold, its tiles; warm medians: frame, tiles, motion, exposure; between frames; new tiles a frame
+  as the live view                5536  345    165.6    0.1   2.6  162.9      0.0    0.0
+  the sensor without noise        5297  345     73.8    0.1   2.5   71.2      0.0    0.0
+  no slide                         177  330    164.7    0.1   2.5  162.0      0.0    0.0
+  5×                              5279  345    165.5    0.1   2.6  162.7      0.0    0.0
+  20×                             5888  330    163.8    0.1   2.5  161.1      0.0    0.0
+  50×                             8924  330    165.9    0.1   2.6  163.1      0.0    0.0
+  10 µm out of focus              7334  345    166.7    0.1   2.6  163.8      0.0    0.0
+  50 µm out of focus             13956  345    167.8    0.1   2.6  165.1      0.0    0.0
+  the light at full intensity     5509  345    168.5    0.1   2.7  165.7      0.0    0.0
+  vignetting of 0.3               5561  345    165.5    0.1   2.7  162.6      0.0    0.0
+  jogging at 200 µm/s             5509  345    586.1    0.1  13.0  567.7      0.0    6.0
+  jogging at 500 µm/s             5507  345   1434.9  232.1  24.4 1176.8      0.0   15.0
+one tile on one thread, in ms: the two layers, their blur, the whole tile
+  5x     0 µm from focus    114.4    9.6  125.6
+  10x    0 µm from focus    111.6    9.9  122.7
+  20x    0 µm from focus    115.2   12.4  139.9
+  50x    0 µm from focus    163.4   33.5  198.5
+  10x   10 µm from focus    132.7   32.2  163.2
+  10x   50 µm from focus    301.3   21.8  321.6
+one pixel on one thread, in ns: the mounting 3.6, a sample of the field 18.2, the vignetting 1.8, the counts with noise 44.2 and without 6.3
+ok
+test what_each_model_costs_on_the_gpu ... frames, in ms: cold, its tiles; warm medians: frame, tiles, motion, exposure; between frames; new tiles a frame
+  as the live view                 405  345      7.8    0.1   2.2    5.5      0.0    0.0
+  the sensor without noise         286  345      7.0    0.0   2.0    4.6      0.0    0.0
+  50×                              582  330      7.6    0.1   2.1    5.4      0.0    0.0
+  50 µm out of focus              1307  345      7.6    0.1   2.1    5.5      0.0    0.0
+  jogging at 200 µm/s              289  345     21.7    0.1  11.1   10.4      4.7    6.0
+  jogging at 500 µm/s              288  345     41.0    0.1  22.9   17.7     12.5   18.0
+  camera.gpu_layers: 5 batches, 12.0 ms on average
+  camera.gpu_tiles: 5 batches, 2.5 ms on average
+  camera.expose_gpu: 5 batches, 17.8 ms on average
+ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 110.00s
+
+## cargo run --release -p ex-sim-bench --features cuda
+
+the simulated MIChrome 20, 5472 × 3648, mode `design`, over H&E tissue at 10×; median of 8 frames:
+               cold          still   jog 0.2 mm/s     jog 1 mm/s   tiles
+  CPU       5443 ms   168 ms  5.9/s   198 ms  5.1/s   554 ms  1.8/s     495
+  GPU         82 ms     8 ms 129.0/s     9 ms 108.3/s    24 ms 41.6/s       0
+perf: sim.cpu_fps 5.94
+CPU: 5.9 frames a second, still: meets §5.20's 5
+perf: sim.gpu_fps 129.04
+GPU: 129.0 frames a second, still: meets §5.20's 14.5

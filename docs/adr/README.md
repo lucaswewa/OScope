@@ -18,7 +18,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0010](0010-compute-backends-the-cpu-reference-and-cuda.md) | Compute backends: the CPU reference and CUDA through `cudarc` | Accepted | P06 |
 | [0011](0011-building-loading-and-redistributing-cuda-kernels.md) | Building, loading and redistributing CUDA kernels | Accepted | P07 |
 | [0012](0012-the-hardware-abstraction-layer.md) | The hardware abstraction layer | Accepted | P09 |
-| [0013](0013-the-simulator-clock-camera-mounting-and-3d-samples.md) | The simulator: its clock, camera mounting and 3D samples | Accepted | P10 |
+| [0013](0013-the-simulator-clock-camera-mounting-and-3d-samples.md) | The simulator: its clock, camera mounting and 3D samples | Accepted; extended by 0062 | P10 |
 | [0014](0014-the-preview-protocol-jpeg-over-a-binary-websocket.md) | The preview protocol: JPEG over a binary WebSocket | Accepted; extended by 0035, 0026 | P17 |
 | [0015](0015-the-sidecar-contract-service-mode-and-the-desktop-fast-path.md) | The sidecar contract, service mode and the desktop fast path | Accepted | P19 |
 | [0016](0016-the-job-service.md) | The job service | Accepted | P20 |
@@ -59,6 +59,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0051](0051-uploads.md) | Uploads | Accepted | W6.3 |
 | [0060](0060-restarts-in-a-dry-run.md) | Restarts in a dry run | Accepted | W4.3 |
 | [0061](0061-gates-test-what-a-change-reaches.md) | Gates test what a change reaches | Accepted | — |
+| [0062](0062-the-simulated-camera-s-image-on-the-gpu.md) | The simulated camera's image on the GPU | Accepted | The GPU simulator |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

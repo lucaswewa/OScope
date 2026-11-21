@@ -28,8 +28,8 @@ use oscope_sim::blur::gaussian;
 use oscope_sim::camera::vignette;
 use oscope_sim::sensor::Random;
 use oscope_sim::{
-    Field, HeTissue, Light, Mounting, Optics, Rate, Sample, SensorModel, SimCameraConfig, Slide,
-    TileCache, World,
+    Field, HeTissue, Light, Mounting, Optics, Rate, Sample, SensorModel, SimCamera,
+    SimCameraConfig, Slide, TileCache, World,
 };
 
 /// The live view's models, with one changed.
@@ -80,10 +80,34 @@ fn p50(steps: &[StepStats], step: &str) -> f64 {
         .map_or(0.0, |s| s.p50_ms)
 }
 
-/// A cold frame's time and tiles, then the warm frames' medians: the
-/// frame, the tiles, the motion, the exposure, the packing, and the tiles
-/// rendered while warm.
-async fn frames(v: Variant) -> [f64; 8] {
+/// What a variant's frames took, in ms: a cold frame, and its tiles; then
+/// the warm frames' medians: the frame, its tiles, the motion and the
+/// exposure; the tiles made between frames, a frame's mean; and the new
+/// tiles a frame.
+#[derive(Debug, Default)]
+struct Measured {
+    cold: f64,
+    tiles: f64,
+    frame: f64,
+    field: f64,
+    motion: f64,
+    expose: f64,
+    between: f64,
+    more: f64,
+}
+
+/// The tiles `camera` has rendered or made, on the CPU and on the GPU.
+fn made(camera: &SimCamera) -> f64 {
+    #[cfg(feature = "cuda")]
+    let gpu = camera.gpu_stats().map_or(0, |s| s.made + s.from_cpu);
+    #[cfg(not(feature = "cuda"))]
+    let gpu = 0;
+    (camera.cache_stats().misses + gpu) as f64
+}
+
+/// `v`'s frames, the camera set up by `prepare`: a cold frame, then five
+/// warm ones.
+async fn frames(v: Variant, prepare: impl FnOnce(&SimCamera)) -> Measured {
     let (world, at) = match v.slide {
         true => tissue(v.defocus),
         false => (World::empty(), Point2::new(40_000.0, 12_000.0)),
@@ -94,6 +118,7 @@ async fn frames(v: Variant) -> [f64; 8] {
     let rig = rig_over(config, world, at, Rate::Stepped);
     rig.camera.set_optics(optics(v.objective));
     rig.camera.set_light(v.intensity, Light::Transmitted);
+    prepare(&rig.camera);
     let frames = start(&rig.camera).await;
     // Mode `full` in 16 bits: 7.24 frames a second.
     let interval = Duration::from_secs_f64(1.0 / 7.24);
@@ -107,7 +132,7 @@ async fn frames(v: Variant) -> [f64; 8] {
     timing::reset();
     next();
     let cold = timing::snapshot();
-    let tiles = rig.camera.cache_stats().misses;
+    let tiles = made(&rig.camera);
     if v.jog > 0.0 {
         rig.stage
             .jog(Axis::X, true, Some(UmPerS(v.jog)))
@@ -119,18 +144,37 @@ async fn frames(v: Variant) -> [f64; 8] {
         next();
     }
     let warm = timing::snapshot();
-    let more = rig.camera.cache_stats().misses - tiles;
+    let more = made(&rig.camera) - tiles;
     rig.camera.stop().await.unwrap();
-    [
-        p50(&cold, "camera.render"),
-        tiles as f64,
-        p50(&warm, "camera.render"),
-        p50(&warm, "camera.field"),
-        p50(&warm, "camera.motion"),
-        p50(&warm, "camera.expose"),
-        p50(&warm, "camera.pack"),
-        more as f64 / 5.0,
-    ]
+    let total = |step: &str| {
+        warm.iter()
+            .find(|s| s.step == step)
+            .map_or(0.0, |s| s.mean_ms * s.count as f64)
+    };
+    Measured {
+        cold: p50(&cold, "camera.render"),
+        tiles,
+        frame: p50(&warm, "camera.render"),
+        field: p50(&warm, "camera.field"),
+        motion: p50(&warm, "camera.motion"),
+        expose: p50(&warm, "camera.expose").max(p50(&warm, "camera.expose_gpu")),
+        between: total("camera.prefetch") / 5.0,
+        more: more / 5.0,
+    }
+}
+
+/// Prints a table of `variants`' frames.
+async fn table(variants: &[Variant], prepare: impl Fn(&SimCamera)) {
+    println!(
+        "frames, in ms: cold, its tiles; warm medians: frame, tiles, motion, exposure; between frames; new tiles a frame"
+    );
+    for v in variants {
+        let m = frames(*v, &prepare).await;
+        println!(
+            "  {:28} {:7.0} {:4.0}   {:6.1} {:6.1} {:5.1} {:6.1}   {:6.1}   {:4.1}",
+            v.name, m.cold, m.tiles, m.frame, m.field, m.motion, m.expose, m.between, m.more
+        );
+    }
 }
 
 /// The median of `runs` timings of `work`, in ms.
@@ -300,16 +344,7 @@ async fn what_each_model_costs() {
             ..LIVE
         },
     ];
-    println!(
-        "frames, in ms: cold, its tiles; warm medians: frame, tiles, motion, exposure, pack; tiles rendered a warm frame"
-    );
-    for v in variants {
-        let [cold, tiles, frame, field, motion, expose, pack, more] = frames(v).await;
-        println!(
-            "  {:28} {cold:7.0} {tiles:4.0}   {frame:6.1} {field:6.1} {motion:5.1} {expose:6.1} {pack:4.1}   {more:4.1}",
-            v.name
-        );
-    }
+    table(&variants, |_| {}).await;
     println!("one tile on one thread, in ms: the two layers, their blur, the whole tile");
     for (objective, defocus) in [
         ("5x", 1.0),
@@ -330,4 +365,62 @@ async fn what_each_model_costs() {
         "one pixel on one thread, in ns: the mounting {to_stage:.1}, a sample of the field {sample:.1}, \
          the vignetting {vignetting:.1}, the counts with noise {noisy:.1} and without {plain:.1}"
     );
+}
+
+/// The same on the GPU (ADR-0062), with `OSCOPE_CUDA=1`: the cold frame's
+/// tiles made in full, with no budget, to time them.
+#[cfg(feature = "cuda")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a benchmark: run it in release with --ignored, and OSCOPE_CUDA=1"]
+async fn what_each_model_costs_on_the_gpu() {
+    if std::env::var("OSCOPE_CUDA").as_deref() != Ok("1") {
+        eprintln!("skipped: set OSCOPE_CUDA=1 to run the tests that need a GPU");
+        return;
+    }
+    timing::enable(true);
+    let variants = [
+        LIVE,
+        Variant {
+            name: "the sensor without noise",
+            noise: false,
+            ..LIVE
+        },
+        Variant {
+            name: "50×",
+            objective: "50x",
+            ..LIVE
+        },
+        Variant {
+            name: "50 µm out of focus",
+            defocus: 51.0,
+            ..LIVE
+        },
+        Variant {
+            name: "jogging at 200 µm/s",
+            jog: 200.0,
+            ..LIVE
+        },
+        Variant {
+            name: "jogging at 500 µm/s",
+            jog: 500.0,
+            ..LIVE
+        },
+    ];
+    table(&variants, |camera| {
+        let cuda = oscope_compute::cuda::Cuda::open(0).unwrap();
+        camera
+            .use_gpu(cuda, oscope_sim::devices::GPU_SLOTS)
+            .unwrap();
+        camera.set_tile_budget(usize::MAX);
+    })
+    .await;
+    let steps = timing::snapshot();
+    for step in ["camera.gpu_layers", "camera.gpu_tiles", "camera.expose_gpu"] {
+        if let Some(s) = steps.iter().find(|s| s.step == step) {
+            println!(
+                "  {step}: {} batches, {:.1} ms on average",
+                s.count, s.mean_ms
+            );
+        }
+    }
 }

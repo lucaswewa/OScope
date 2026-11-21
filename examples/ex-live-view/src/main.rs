@@ -91,9 +91,20 @@ fn timings(devices: &Devices) -> Value {
     let to_epoch_ms = since_epoch.as_secs_f64() * 1e3 - now.0 as f64 / 1e6;
     let camera = devices.simulator.as_ref().map(|simulator| {
         let cache = simulator.camera.cache_stats();
+        // The GPU's tiles, when the camera renders there (ADR-0062).
+        #[cfg(feature = "cuda")]
+        let gpu = simulator.camera.gpu_stats().map(|s| {
+            json!({
+                "made": s.made, "layers": s.layers, "from_cpu": s.from_cpu,
+                "coarse_frames": s.coarse_frames, "held": s.tiles, "layers_held": s.layer_tiles,
+            })
+        });
+        #[cfg(not(feature = "cuda"))]
+        let gpu: Option<Value> = None;
         json!({
             "gpu": simulator.camera.on_gpu(),
             "tiles": {"hits": cache.hits, "misses": cache.misses, "held": cache.tiles, "bytes": cache.bytes},
+            "gpu_tiles": gpu,
         })
     });
     let (published, unplaced, refused) = devices.acquisition.counts();

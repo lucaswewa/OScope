@@ -23,8 +23,9 @@ It starts the simulated microscope on the MIChrome 20's full sensor (5472 × 364
   - **the server's:** the camera's rendering, acquisition, the session and the preview chain's steps, read from `/bench/timings.json`;
   - **the page's:** the message's transit, the JPEG's decoding, the draw, and the time from the exposure's end to the frame drawn.
   - **Copy the timings** copies them all as JSON.
+  - **Under the table,** the camera's tiles: with the camera on the GPU, how many tiles and layer tiles it has made, how many came from the CPU, and how many frames were coarse.
 
-**With the GPU:** `cargo run --release -p ex-live-view --features cuda` makes the previews with CUDA, when there is a GPU. `GET /api/v1/preview/gpu` says whether there is one. The simulated camera still renders on the CPU.
+**With the GPU:** `cargo run --release -p ex-live-view --features cuda` makes the previews with CUDA, when there is a GPU, and the simulated camera renders its frames there too, with the H&E section's tiles (ADR-0062). The log says where the camera renders, and `GET /api/v1/preview/gpu` whether the previews use the GPU.
 
 **The benchmark:** with the example serving, `node examples/ex-live-view/bench/bench.mjs --label cpu` opens the page in headless Chrome. It records the timings over three windows of 30 s:
 

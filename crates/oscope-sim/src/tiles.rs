@@ -23,10 +23,94 @@ const BUCKETS_PER_DEPTH: f64 = 16.0;
 /// Everything a tile's rendering depends on but its place: the optics, the
 /// light, and the depth, as exact bits.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct Level {
+pub(crate) struct Level {
     optics: [u64; 5],
     light: Light,
     bucket: i64,
+}
+
+/// How a region of the stage becomes tiles: their level, the depth they
+/// render at, the pixel's side at the sample, and the tiles, from column
+/// `i0` and row `j0` to `i1` and `j1`, that hold the global pixels whose
+/// centres the region's interpolation needs. The CPU's cache and the GPU's
+/// share it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Plan {
+    pub level: Level,
+    pub depth: Um,
+    pub pixel: f64,
+    pub i0: i64,
+    pub j0: i64,
+    pub i1: i64,
+    pub j1: i64,
+}
+
+impl Plan {
+    /// `region` of `world`, through `optics` in `light`, with the stage at
+    /// `z`.
+    pub fn new(world: &World, optics: &Optics, light: Light, z: Um, region: Rect) -> Self {
+        let p = optics.pixel_size().0;
+        let (bucket, depth) = TileCache::bucket_depth(world, optics, z);
+        let level = Level {
+            optics: [
+                optics.na.to_bits(),
+                optics.magnification.to_bits(),
+                optics.sensor_pixel.0.to_bits(),
+                optics.wavelength.0.to_bits(),
+                optics.medium.to_bits(),
+            ],
+            light,
+            bucket,
+        };
+        let t = i64::from(TILE);
+        let pixel = |v: f64| (v / p - 0.5).floor() as i64;
+        let (gx0, gy0) = (pixel(region.origin.x), pixel(region.origin.y));
+        let (gx1, gy1) = (
+            pixel(region.origin.x + region.size.width) + 1,
+            pixel(region.origin.y + region.size.height) + 1,
+        );
+        Self {
+            level,
+            depth,
+            pixel: p,
+            i0: gx0.div_euclid(t),
+            j0: gy0.div_euclid(t),
+            i1: (gx1 - 1).div_euclid(t),
+            j1: (gy1 - 1).div_euclid(t),
+        }
+    }
+
+    /// The tiles' columns.
+    pub fn columns(&self) -> usize {
+        (self.i1 - self.i0 + 1) as usize
+    }
+
+    /// Their rows.
+    pub fn rows(&self) -> usize {
+        (self.j1 - self.j0 + 1) as usize
+    }
+
+    /// Each tile's column and row, row by row.
+    pub fn places(&self) -> Vec<(i64, i64)> {
+        (self.j0..=self.j1)
+            .flat_map(|j| (self.i0..=self.i1).map(move |i| (i, j)))
+            .collect()
+    }
+
+    /// The field tile `(i, j)` renders: `TILE` + 1 pixels from its corner,
+    /// at the plan's depth.
+    pub fn field(&self, i: i64, j: i64) -> Field {
+        let (t, p) = (i64::from(TILE), self.pixel);
+        let side = TILE + 1;
+        let corner = Point2::new((i * t) as f64 * p, (j * t) as f64 * p);
+        let half = f64::from(side) * p / 2.0;
+        Field {
+            centre: Point2::new(corner.x + half, corner.y + half),
+            z: self.depth,
+            width: side,
+            height: side,
+        }
+    }
 }
 
 /// One tile: the world's linear RGB over `TILE` + 1 pixels square, from
@@ -112,13 +196,13 @@ pub struct CacheStats {
 /// goes. The
 /// sample is kept, so that a new one can't take its place at its address.
 #[derive(Clone)]
-struct WorldMark {
+pub(crate) struct WorldMark {
     sample: Option<Arc<dyn Sample>>,
     numbers: [u64; 9],
 }
 
 impl WorldMark {
-    fn of(world: &World) -> Self {
+    pub(crate) fn of(world: &World) -> Self {
         let slide = world.slide.as_ref();
         let c = slide.map(|s| s.coverslip);
         let origin = slide.map_or(Point2::new(0.0, 0.0), |s| s.origin);
@@ -138,13 +222,25 @@ impl WorldMark {
         }
     }
 
-    fn same(&self, other: &Self) -> bool {
+    pub(crate) fn same(&self, other: &Self) -> bool {
         let samples = match (&self.sample, &other.sample) {
             (Some(a), Some(b)) => Arc::ptr_eq(a, b),
             (None, None) => true,
             _ => false,
         };
         samples && self.numbers == other.numbers
+    }
+
+    /// Whether the sample, and where the slide lies, are the same: all that
+    /// a sample's layers depend on but the pixel and the place.
+    #[cfg(feature = "cuda")]
+    pub(crate) fn same_sample(&self, other: &Self) -> bool {
+        let samples = match (&self.sample, &other.sample) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+        samples && self.numbers[..2] == other.numbers[..2]
     }
 }
 
@@ -222,33 +318,10 @@ impl TileCache {
         z: Um,
         region: Rect,
     ) -> TiledField {
-        let p = optics.pixel_size().0;
-        let (bucket, depth) = Self::bucket_depth(world, optics, z);
-        let level = Level {
-            optics: [
-                optics.na.to_bits(),
-                optics.magnification.to_bits(),
-                optics.sensor_pixel.0.to_bits(),
-                optics.wavelength.0.to_bits(),
-                optics.medium.to_bits(),
-            ],
-            light,
-            bucket,
-        };
-        // The global pixels whose centres the region's interpolation needs,
-        // and the tiles that hold them.
-        let t = i64::from(TILE);
-        let pixel = |v: f64| (v / p - 0.5).floor() as i64;
-        let (gx0, gy0) = (pixel(region.origin.x), pixel(region.origin.y));
-        let (gx1, gy1) = (
-            pixel(region.origin.x + region.size.width) + 1,
-            pixel(region.origin.y + region.size.height) + 1,
-        );
-        let (i0, j0) = (gx0.div_euclid(t), gy0.div_euclid(t));
-        let (i1, j1) = ((gx1 - 1).div_euclid(t), (gy1 - 1).div_euclid(t));
-        let places: Vec<(i64, i64)> = (j0..=j1)
-            .flat_map(|j| (i0..=i1).map(move |i| (i, j)))
-            .collect();
+        let plan = Plan::new(world, optics, light, z, region);
+        let (level, p) = (plan.level, plan.pixel);
+        let (i0, j0) = (plan.i0, plan.j0);
+        let places = plan.places();
 
         let mark = WorldMark::of(world);
         let missing: Vec<(i64, i64)> = {
@@ -275,19 +348,10 @@ impl TileCache {
 
         // Each missing tile, rendered alone: a field of its pixels, which
         // the world renders as it would any other.
-        let side = TILE + 1;
         let rendered: Vec<Arc<Tile>> = missing
             .par_iter()
             .map(|&(i, j)| {
-                let corner = Point2::new((i * t) as f64 * p, (j * t) as f64 * p);
-                let half = f64::from(side) * p / 2.0;
-                let field = Field {
-                    centre: Point2::new(corner.x + half, corner.y + half),
-                    z: depth,
-                    width: side,
-                    height: side,
-                };
-                let image = world.render(&field, optics, light);
+                let image = world.render(&plan.field(i, j), optics, light);
                 let mut data = image.data().to_vec();
                 if self.response != crate::camera::IDEAL.map(|row| row.map(|v| v as f32)) {
                     let m = &self.response;
@@ -337,8 +401,8 @@ impl TileCache {
             pixel: p,
             i0,
             j0,
-            columns: (i1 - i0 + 1) as usize,
-            rows: (j1 - j0 + 1) as usize,
+            columns: plan.columns(),
+            rows: plan.rows(),
             tiles,
         }
     }

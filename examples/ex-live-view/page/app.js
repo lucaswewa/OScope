@@ -203,9 +203,13 @@ const ORDER = [
   ["camera.render", "camera: renders the frame"],
   ["camera.field", "the world's tiles, rendered when not cached", true],
   ["camera.motion", "the stage's places during each row", true],
+  ["camera.gpu_layers", "the section's layers, made on the GPU", true],
+  ["camera.gpu_tiles", "tiles from the layers: blur, glass (GPU)", true],
+  ["camera.cpu_tiles", "tiles from the CPU, for the GPU", true],
+  ["camera.coarse", "a coarse frame's tiles, past the budget", true],
   ["camera.expose", "each pixel through the optics and sensor (CPU)", true],
-  ["camera.expose_gpu", "each pixel through the optics and sensor (GPU)", true],
-  ["camera.pack", "camera: counts packed into the frame's buffer"],
+  ["camera.expose_gpu", "each pixel through the optics and sensor, and back (GPU)", true],
+  ["camera.prefetch", "camera: tiles made between frames, ahead of the stage"],
   ["acquisition.position_wait", "acquisition: waits for the stage's position"],
   ["acquisition.publish", "acquisition: seals and publishes the frame"],
   ["stream.frame_age", "session: the frame's age when taken"],
@@ -254,11 +258,15 @@ function table() {
       `<td>${ms(s.p95_ms)}</td><td>${ms(s.max_ms)}</td></tr>`;
   });
   $("steps").tBodies[0].innerHTML = rows.join("");
-  const tiles = server?.camera?.tiles;
-  $("tiles").textContent = tiles
-    ? `The camera's tiles: ${tiles.held} held, ${(tiles.bytes / 2 ** 20).toFixed(0)} MB; ` +
-      `${tiles.hits} found and ${tiles.misses} rendered since it started. Frames published: ${server.frames.published}.`
-    : "";
+  const [tiles, gpu] = [server?.camera?.tiles, server?.camera?.gpu_tiles];
+  $("tiles").textContent = gpu
+    ? `The camera renders on the GPU: ${gpu.held} tiles and ${gpu.layers_held} layer tiles held; ` +
+      `${gpu.made} tiles and ${gpu.layers} layer tiles made there since it started, ${gpu.from_cpu} from the CPU, ` +
+      `${gpu.coarse_frames} frames coarse. Frames published: ${server.frames.published}.`
+    : tiles
+      ? `The camera's tiles: ${tiles.held} held, ${(tiles.bytes / 2 ** 20).toFixed(0)} MB; ` +
+        `${tiles.hits} found and ${tiles.misses} rendered since it started. Frames published: ${server.frames.published}.`
+      : "";
 }
 
 async function refreshTimings() {
