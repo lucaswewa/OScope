@@ -11,7 +11,7 @@ use std::path::Path;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 
 use crate::records::RecordKind;
-use crate::{Project, Query, Result, StoreError};
+use crate::{Order, Project, Query, Result, StoreError};
 
 /// The schema, one step a version.
 const MIGRATIONS: &[&str] = &["CREATE TABLE store_projects (
@@ -171,8 +171,8 @@ impl Index {
         insert_record(&self.0, row)
     }
 
-    /// The projects `query` asks for, the most recently changed first, and
-    /// how many there are in all.
+    /// The projects `query` asks for, in its order, and how many there are
+    /// in all.
     pub fn page(&self, query: &Query) -> Result<(usize, Vec<Listed>)> {
         let text = query.text.as_deref().unwrap_or_default().trim();
         let escaped: String = text
@@ -202,9 +202,13 @@ impl Index {
             )
         };
         let [a, r, d] = RecordKind::ALL.map(count);
+        let order = match query.sort.unwrap_or_default() {
+            Order::Changed => "modified DESC, id DESC",
+            Order::Name => "name COLLATE NOCASE, id",
+        };
         let sql = format!(
             "SELECT document, {a}, {r}, {d} FROM store_projects p WHERE {filter}
-             ORDER BY modified DESC, id DESC LIMIT ?3 OFFSET ?4"
+             ORDER BY {order} LIMIT ?3 OFFSET ?4"
         );
         let limit = query.limit.unwrap_or(50).min(PAGE_MAX) as i64;
         let offset = query.offset.unwrap_or(0) as i64;

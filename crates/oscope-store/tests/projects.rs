@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use oscope_core::ProjectId;
 use oscope_store::{
-    Change, ImageInfo, Input, NewProject, NodeVersion, Provenance, Query, SampleType, Samples,
-    Store, StoreError,
+    Change, ImageInfo, Input, NewProject, NodeVersion, Order, Provenance, Query, SampleType,
+    Samples, Store, StoreError,
 };
 use serde_json::{Map, json};
 
@@ -120,6 +120,17 @@ fn projects_are_made_changed_listed_searched_and_deleted() {
         ..Query::default()
     };
     assert_eq!(names(&store, page), (3, vec!["Tonsil".into()]));
+    // By name, in any case, and paged so (W6.1).
+    let by_name = |offset: usize| Query {
+        sort: Some(Order::Name),
+        offset: Some(offset),
+        ..Query::default()
+    };
+    assert_eq!(
+        names(&store, by_name(0)).1,
+        ["Blood smear", "Kidney", "Tonsil"]
+    );
+    assert_eq!(names(&store, by_name(2)), (3, vec!["Tonsil".into()]));
 
     // Changes: renamed, retagged, metadata set and removed.
     let metadata = json!({"stain": "H&E", "slide": 7})

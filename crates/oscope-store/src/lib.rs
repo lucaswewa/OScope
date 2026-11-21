@@ -47,7 +47,7 @@ pub use records::{
     ResultRecord,
 };
 pub use scratch::{Scratch, ScratchHealth, ScratchPolicy, ScratchState};
-pub use store::{Change, Contents, Draft, NewProject, Page, Query, Store, Summary};
+pub use store::{Change, Contents, Draft, NewProject, Order, Page, Query, Store, Summary};
 
 /// What the store refuses, or fails at.
 #[derive(Debug, thiserror::Error)]

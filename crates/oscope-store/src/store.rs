@@ -99,6 +99,20 @@ pub struct Query {
     /// At most how many: 50 if not given, and 500 at most.
     #[serde(default)]
     pub limit: Option<usize>,
+    /// Their order: the most recently changed first, if not given (W6.1).
+    #[serde(default)]
+    pub sort: Option<Order>,
+}
+
+/// How projects are listed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Order {
+    /// The most recently changed first.
+    #[default]
+    Changed,
+    /// By name, in any case.
+    Name,
 }
 
 /// A project, as a page lists it.

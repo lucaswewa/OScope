@@ -967,7 +967,7 @@ Projects as cards, what each holds, and its images at any zoom.
 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
-| [W6.1](milestone-2/phases.md#w6-1) | Projects | W2.2 | 1,500 | — | Planned |
+| [W6.1](milestone-2/phases.md#w6-1) | Projects | W2.2 | 1,500 | — | In review |
 | [W6.2](milestone-2/phases.md#w6-2) | A project's records | W6.1 | 1,400 | — | Planned |
 | [W6.3](milestone-2/phases.md#w6-3) | Imports, exports and uploads | W6.2, W4.1 | 1,500 | 0051 | Planned |
 | [W6.4](milestone-2/phases.md#w6-4) | The deep-zoom viewer | W6.2, W3.8 | 1,600 | — | Planned |

@@ -236,8 +236,8 @@ impl ProjectsThing {
     ///
     /// Searched by `?text=…` in their names, samples and tags, in any case,
     /// and `&tag=…` for a whole tag; paged by `&offset=…&limit=…` (50, and
-    /// 500 at most). Each with how many acquisitions, results and reports
-    /// it has.
+    /// 500 at most); by name with `&sort=name`. Each with how many
+    /// acquisitions, results and reports it has.
     #[endpoint(get, "list")]
     async fn list(&self, Query(search): Query<Search>) -> Response {
         match self.blocking(move |store| store.list(&search)).await {
