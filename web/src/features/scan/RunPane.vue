@@ -22,7 +22,14 @@ import TextField from "@/ui/TextField.vue";
  * frame. The live mosaic is begun over the plan first, to draw the scan's
  * frames alone, as they are taken.
  */
-const props = defineProps<{ scan: Scan }>();
+const props = withDefaults(
+  defineProps<{
+    scan: Scan;
+    /** Whether the focus is chosen here: the histo scan chooses its map before (W5.3). */
+    chooseFocus?: boolean;
+  }>(),
+  { chooseFocus: true },
+);
 const { t } = useI18n();
 const plan = usePlanning();
 const choice = useProjectChoice("oscope.scan.project");
@@ -111,17 +118,17 @@ async function runIt(): Promise<void> {
     <Field :label="t('scan.run.name')">
       <TextField v-model="name" :placeholder="t('scan.run.namePlaceholder')" />
     </Field>
-    <Field :label="t('scan.run.focus')">
+    <Field v-if="chooseFocus" :label="t('scan.run.focus')">
       <Select
         :model-value="plan.focus.value.kind"
         :options="kinds"
         @update:model-value="(value) => choose(value as string)"
       />
     </Field>
-    <Field v-if="plan.focus.value.kind === 'autofocus'" :label="t('scan.run.every')">
+    <Field v-if="chooseFocus && plan.focus.value.kind === 'autofocus'" :label="t('scan.run.every')">
       <NumberField v-model="every" :min="1" :max="1000" :step="1" :digits="0" />
     </Field>
-    <div v-else-if="plan.focus.value.kind === 'map'" class="row" data-said="map">
+    <div v-else-if="chooseFocus && plan.focus.value.kind === 'map'" class="row" data-said="map">
       <Field class="grow" :label="t('scan.run.columns')">
         <NumberField v-model="columns" :min="1" :max="10" :step="1" :digits="0" />
       </Field>

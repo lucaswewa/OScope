@@ -81,19 +81,20 @@ const scaleSaid = computed(() => {
     : t("ui.tileViewer.microns", { length });
 });
 
-/** Looks where `start` says, or at all of the image. */
+/** Looks where `fit`, or else `start`, says, or at all of the image. */
 function look(): void {
   if (!viewer || !props.placement) return;
-  if (!props.start) return void viewer.viewport.goHome(true);
-  const { x, y, width, height } = stageRectToViewport(props.placement, props.start);
+  const rect = props.fit ?? props.start;
+  if (!rect) return void viewer.viewport.goHome(true);
+  const { x, y, width, height } = stageRectToViewport(props.placement, rect);
   viewer.viewport.fitBounds(new OpenSeadragon.Rect(x, y, width, height), true);
 }
 
-/** Looks at `rect` of the stage, as `fit` asks. */
+/** Looks at `rect` of the stage, as `fit` asks: at once, as the first look does. */
 function fitTo(rect: Rect | undefined): void {
   if (!viewer || !props.placement || !rect) return;
   const { x, y, width, height } = stageRectToViewport(props.placement, rect);
-  viewer.viewport.fitBounds(new OpenSeadragon.Rect(x, y, width, height));
+  viewer.viewport.fitBounds(new OpenSeadragon.Rect(x, y, width, height), true);
 }
 
 /** The field of view, marked over the image. */
@@ -192,9 +193,22 @@ function show(): void {
   });
 }
 
+/**
+ * Whether the user has panned or zoomed since the view last looked where
+ * it was asked to: until then, a resize looks there again (W5.3), as the
+ * image keeps its size on the screen.
+ */
+let moved = false;
+
 function zoom(by: number): void {
+  moved = true;
   viewer?.viewport.zoomBy(by);
   viewer?.viewport.applyConstraints();
+}
+
+function allOfIt(): void {
+  moved = true;
+  viewer?.viewport.goHome();
 }
 
 onMounted(() => {
@@ -227,7 +241,16 @@ onMounted(() => {
     if (at) emit("pick", at);
   });
   viewer.addHandler("animation", measure);
-  viewer.addHandler("resize", measure);
+  // The resize is raised before OpenSeadragon keeps the image's size on the
+  // screen: the look again comes after it, once its update is done.
+  viewer.addHandler("resize", () => {
+    measure();
+    queueMicrotask(() => {
+      if (!moved) look();
+    });
+  });
+  for (const by of ["canvas-drag", "canvas-scroll", "canvas-pinch"] as const)
+    viewer.addHandler(by, () => (moved = true));
   tracker = new OpenSeadragon.MouseTracker({
     element: viewer.canvas,
     moveHandler: (event) => (pointer.value = stageAt(event.position)),
@@ -267,7 +290,10 @@ watch(() => props.drawing, dragging);
 const valueOf = (rect: Rect | Placement | undefined) => rect && JSON.stringify(rect);
 watch(
   () => [valueOf(props.fit), valueOf(props.placement)],
-  () => fitTo(props.fit),
+  () => {
+    moved = false;
+    fitTo(props.fit);
+  },
 );
 </script>
 
@@ -280,7 +306,7 @@ watch(
       <ToolbarButton icon="zoomIn" @click="zoom(STEP)">
         {{ t("ui.tileViewer.zoomIn") }}
       </ToolbarButton>
-      <ToolbarButton icon="fit" @click="viewer?.viewport.goHome()">
+      <ToolbarButton icon="fit" @click="allOfIt">
         {{ t("ui.tileViewer.fit") }}
       </ToolbarButton>
     </Toolbar>
@@ -389,6 +415,17 @@ watch(
   fill: color-mix(in srgb, var(--danger) 40%, transparent);
   stroke: var(--danger);
   stroke-width: 2px;
+}
+
+/* The histo scan's (W5.3): a region dropped, and a focus map's point. */
+.layer .dropped {
+  stroke: var(--text-muted);
+  stroke-dasharray: 2 4;
+}
+
+.layer .point {
+  fill: var(--accent);
+  stroke: var(--accent-on);
 }
 
 /* The field of view: where the camera looks now. */

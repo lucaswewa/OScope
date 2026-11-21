@@ -157,7 +157,12 @@ export interface Asked {
   params?: unknown;
   /** How each tile's z is found: at the stage's z now, if not said. */
   focus?: Focus | undefined;
+  /** The histo scan's regions, as one mask (W5.3): its region, over `region`. */
+  mask?: Mask | undefined;
 }
+
+/** A region of cells, the histo scan's regions kept. */
+export type Mask = Extract<NonNullable<ScanRequest["region"]>, { mask: unknown }>["mask"];
 
 /** The built-in patterns: any other is an extension's workflow. */
 const BUILT_IN = ["raster", "snake", "tiled_stack", "z_scan", "positions", "tissue"];
@@ -176,7 +181,7 @@ export function requestOf(asked: Asked): ScanRequest | undefined {
     positions: [],
     ...(z ? { z } : {}),
   };
-  const region = asked.region && regionOf(asked.region);
+  const region = asked.mask ? { mask: asked.mask } : asked.region && regionOf(asked.region);
   switch (asked.pattern) {
     case "raster":
     case "snake":

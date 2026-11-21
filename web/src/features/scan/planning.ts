@@ -7,7 +7,7 @@ import { act } from "@/api/actions";
 import { ApiError } from "@/api/errors";
 import type { Point, Rect } from "@/ui/tile-viewer/coordinates";
 
-import { requestOf, type Focus, type Preview, type Stack } from "./plan";
+import { requestOf, type Focus, type Mask, type Preview, type Stack } from "./plan";
 
 /** How long after a change the plan is asked for again, in ms. */
 const SETTLE_MS = 300;
@@ -24,6 +24,8 @@ function planning() {
   const params = ref<unknown>();
   /** How each tile's z is found, which the run's pane chooses (W5.2). */
   const focus = ref<Focus>({ kind: "here" });
+  /** The histo scan's regions kept, as one mask, which a pattern's region then is (W5.3). */
+  const mask = shallowRef<Mask>();
   /** Whether a drag on the view draws the region. */
   const drawing = ref(false);
 
@@ -37,6 +39,7 @@ function planning() {
       positions: positions.value,
       params: params.value,
       focus: focus.value,
+      mask: mask.value,
     }),
   );
   const preview = shallowRef<Preview>();
@@ -87,6 +90,7 @@ function planning() {
     positions,
     params,
     focus,
+    mask,
     drawing,
     request,
     preview,
