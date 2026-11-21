@@ -6,6 +6,7 @@ import { useProperty } from "@/api/things/use";
 import { upFor } from "@/features/about/about";
 import { sizeOf } from "@/features/logging/logs";
 import { warningsOf, type Warning } from "@/features/scan/plan";
+import { added, moved, planesOf, removed, renamed } from "@/features/scan/positions";
 import { usePlanning } from "@/features/scan/planning";
 import RegionFields from "@/features/scan/RegionFields.vue";
 import Banner from "@/ui/Banner.vue";
@@ -16,6 +17,7 @@ import KeyValue from "@/ui/KeyValue.vue";
 import NumberField from "@/ui/NumberField.vue";
 import SchemaForm from "@/ui/schema-form/SchemaForm.vue";
 import Select from "@/ui/Select.vue";
+import TextField from "@/ui/TextField.vue";
 import ToggleButton from "@/ui/ToggleButton.vue";
 
 /**
@@ -71,13 +73,18 @@ const here = computed(() => position.value.value?.position);
 function atHere(): void {
   if (here.value) plan.at.value = { x: here.value.x, y: here.value.y };
 }
+/** The stage's place, its z with it, added last: focused there by hand (W5.4). */
 function addHere(): void {
   if (here.value)
-    plan.positions.value = [...plan.positions.value, { x: here.value.x, y: here.value.y }];
+    plan.positions.value = added(plan.positions.value, here.value, (n) =>
+      t("scan.plan.positionName", { n }),
+    );
 }
-function drop(index: number): void {
-  plan.positions.value = plan.positions.value.filter((_, i) => i !== index);
-}
+const rename = (i: number, name: string) =>
+  (plan.positions.value = renamed(plan.positions.value, i, name));
+const move = (from: number, to: number) =>
+  (plan.positions.value = moved(plan.positions.value, from, to));
+const drop = (i: number) => (plan.positions.value = removed(plan.positions.value, i));
 const mm = (um: number) => (um / 1000).toFixed(3);
 
 const entries = computed(() => {
@@ -92,6 +99,9 @@ const entries = computed(() => {
       value: t("scan.result.gridIs", { rows: planned.rows, columns: planned.columns }),
     },
     { term: t("scan.result.overlap"), value: `${Math.round(planned.field.overlap * 100)} %` },
+    ...(planned.stack
+      ? [{ term: t("scan.result.planes"), value: String(planesOf(planned.stack)) }]
+      : []),
     { term: t("scan.result.time"), value: upFor(estimate.seconds) },
     { term: t("scan.result.data"), value: t("logging.files.size", data) },
   ];
@@ -161,12 +171,35 @@ function said(warning: Warning): string {
       </span>
     </div>
     <div v-if="needs.positions" class="positions" data-said="positions">
-      <Button compact variant="bare" :disabled="!here" @click="addHere">{{
-        t("scan.plan.addHere")
-      }}</Button>
+      <div class="row">
+        <Button compact variant="bare" :disabled="!here" @click="addHere">{{
+          t("scan.plan.addHere")
+        }}</Button>
+        <span v-if="here" class="said" data-said="here">
+          {{ t("scan.plan.here", { x: mm(here.x), y: mm(here.y), z: here.z.toFixed(1) }) }}
+        </span>
+      </div>
       <ol v-if="plan.positions.value.length">
-        <li v-for="(one, i) in plan.positions.value" :key="i">
-          {{ t("scan.plan.at", { x: mm(one.x), y: mm(one.y) }) }}
+        <li v-for="(one, i) in plan.positions.value" :key="i" :data-said="`position-${i + 1}`">
+          <TextField
+            :model-value="one.name"
+            :label="t('scan.plan.positionLabel', { n: i + 1 })"
+            compact
+            @update:model-value="(name) => rename(i, name)"
+          />
+          <span class="said">{{ t("scan.plan.at", { x: mm(one.x), y: mm(one.y) }) }}</span>
+          <IconButton
+            icon="up"
+            :label="t('scan.plan.up', { name: one.name })"
+            :disabled="i === 0"
+            @click="move(i, i - 1)"
+          />
+          <IconButton
+            icon="down"
+            :label="t('scan.plan.down', { name: one.name })"
+            :disabled="i === plan.positions.value.length - 1"
+            @click="move(i, i + 1)"
+          />
           <IconButton icon="close" :label="t('scan.plan.drop', { n: i + 1 })" @click="drop(i)" />
         </li>
       </ol>
