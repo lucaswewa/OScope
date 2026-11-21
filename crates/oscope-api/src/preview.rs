@@ -18,7 +18,7 @@ use oscope_acquire::preview::{
 };
 use oscope_acquire::stats::StatsRequest;
 use oscope_compute::{Compute, ComputeConfig, Image, Shape, cpu};
-use oscope_core::{Frame, PixelRect};
+use oscope_core::{Frame, PixelRect, timing};
 use oscope_ext::Extensions;
 use oscope_imaging::color::{ColourCorrection, Curve, Display, encode_tiff16};
 use oscope_jobs::JobService;
@@ -656,9 +656,17 @@ impl PreviewThing {
                     false => break,
                 },
             };
+            // How long since the camera finished the frame: acquisition, and
+            // its wait on the bus.
+            let age = service.devices.clock.now();
+            timing::record(
+                "stream.frame_age",
+                age.saturating_since(frame.meta().host_time),
+            );
             // Behind on acknowledging: wait, then take the newest frame,
             // counting those it replaced.
             let mut missed = false;
+            let acknowledged = timing::start("stream.ack_wait");
             while subscriber.params().unshown(sequence) >= AHEAD {
                 if !subscriber.changed().await {
                     break 'session;
@@ -668,6 +676,7 @@ impl PreviewThing {
                     (frame, missed) = (newer, true);
                 }
             }
+            acknowledged.stop();
             let (request, max_fps) = self.request(&subscriber.params(), &adaptation);
             next = Instant::now() + Duration::from_secs_f64(1.0 / max_fps);
             let look = Look::from(&self.look.get());
@@ -676,7 +685,9 @@ impl PreviewThing {
                 .params()
                 .stats
                 .filter(|_| measured.is_none_or(|at| at.elapsed() >= STATS_EVERY));
+            let queued = Instant::now();
             let made = tokio::task::spawn_blocking(move || {
+                timing::record("stream.spawn", queued.elapsed());
                 let mut made = preview.render(&frame, &request, &look, gpu);
                 if let Err(PreviewError::Roi { .. }) = made {
                     let whole = PreviewRequest {
@@ -713,10 +724,12 @@ impl PreviewThing {
             let ready = service.devices.clock.now();
             let header = Header::of(&frame, &rendered, quality, sequence, ready);
             let latency = header.ready.saturating_since(header.exposure_end);
+            timing::record("stream.latency", latency);
             let blocks: Vec<(u8, &[u8])> = blocks.iter().map(|(k, b)| (*k, b.as_slice())).collect();
-            let message = header.message(&rendered.jpeg, &blocks);
+            let message =
+                timing::time("stream.message", || header.message(&rendered.jpeg, &blocks));
             let bytes = message.len();
-            if !subscriber.send(message) {
+            if !timing::time("stream.send", || subscriber.send(message)) {
                 break;
             }
             // Timed from the sending, so that messages with statistics go at

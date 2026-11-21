@@ -11,12 +11,14 @@
 //! - [`error`]: this crate's [`Error`], and the error conventions of every crate.
 //! - [`version`]: documents that carry their schema's version.
 //! - [`frame`]: frames in pooled memory, their metadata, and views of them.
+//! - [`timing`]: how long the live path's steps take, for profiling.
 
 pub mod clock;
 pub mod error;
 pub mod frame;
 pub mod geometry;
 pub mod ids;
+pub mod timing;
 pub mod units;
 pub mod version;
 

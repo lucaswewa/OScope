@@ -1,0 +1,105 @@
+# Standalone benchmarks, 2026-11-20, on the owner's laptop (i7-12700H, RTX 3070 Ti Laptop GPU)
+
+## cargo test --release -p oscope-acquire --features cuda --test preview -- --ignored --nocapture --test-threads=1
+
+running 2 tests
+test the_live_view_s_preview ... CPU:
+  preview.bin              p50    3.9  mean    4.0  p95    4.4 ms
+  preview.demosaic         p50    5.4  mean    5.5  p95    6.6 ms
+  preview.jpeg             p50    1.9  mean    1.9  p95    2.1 ms
+  preview.render           p50   28.9  mean   29.2  p95   30.7 ms
+  preview.resize           p50    3.5  mean    3.6  p95    4.0 ms
+  preview.to_display       p50    3.8  mean    3.9  p95    4.2 ms
+  preview.to_f32           p50    5.1  mean    5.0  p95    5.4 ms
+GPU:
+  preview.gpu.bin          p50    0.3  mean    0.3  p95    0.3 ms
+  preview.gpu.demosaic     p50    0.6  mean    0.6  p95    0.6 ms
+  preview.gpu.to_display   p50    1.9  mean    2.0  p95    2.4 ms
+  preview.gpu.to_f32       p50    4.5  mean    4.7  p95    5.7 ms
+  preview.jpeg             p50    2.0  mean    2.0  p95    2.2 ms
+  preview.render           p50   13.5  mean   13.6  p95   14.8 ms
+  preview.resize           p50    3.8  mean    3.8  p95    4.1 ms
+ok
+test the_preview_budget ... CPU: 53.0 ms for 1920 × 1280, 285743 bytes
+perf: preview.cpu_ms 53.01
+GPU: 35.3 ms
+perf: preview.gpu_ms 35.25
+thread 'the_preview_budget' (13436) panicked at crates\oscope-acquire\tests\preview.rs:448:9:
+35.2539ms
+FAILED
+failures:
+failures:
+    the_preview_budget
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 2.92s
+[exited with code 0]
+
+## the_preview_budget, three more runs
+
+CPU: 51.2 ms for 1920 × 1280, 285743 bytes; GPU: 29.8 ms
+CPU: 51.0 ms for 1920 × 1280, 285743 bytes; GPU: 29.9 ms
+CPU: 49.4 ms for 1920 × 1280, 285743 bytes; GPU: 30.4 ms
+
+## cargo run --release -p ex-sim-bench --features cuda
+
+the simulated MIChrome 20, 5472 × 3648, mode `design`, over H&E tissue at 10×; median of 8 frames:
+               cold          still   jog 0.2 mm/s     jog 1 mm/s   tiles
+  CPU       4577 ms   143 ms  7.0/s   171 ms  5.8/s   481 ms  2.1/s     495
+  GPU       4536 ms    17 ms 57.5/s    19 ms 52.7/s   236 ms  4.2/s     495
+perf: sim.cpu_fps 6.97
+CPU: 7.0 frames a second, still: meets §5.20's 5
+perf: sim.gpu_fps 57.49
+GPU: 57.5 frames a second, still: meets §5.20's 14.5
+
+## cargo test --release -p oscope-sim --test models -- --ignored --nocapture --test-threads=1, run 1
+
+running 1 test
+test what_each_model_costs ... frames, in ms: cold, its tiles; warm medians: frame, tiles, motion, exposure, pack; tiles rendered a warm frame
+  as the live view                4760  345    148.8    0.1   2.6  146.1  5.6    0.0
+  the sensor without noise        4687  345     68.3    0.1   2.6   65.6  5.0    0.0
+  no slide                         163  330    148.5    0.1   2.7  145.6  4.4    0.0
+  5×                              4791  345    149.5    0.1   2.5  146.7  5.7    0.0
+  20×                             5359  330    145.3    0.1   2.6  142.3  5.1    0.0
+  50×                             9025  330    256.4    0.1  11.2  243.3 10.8    0.0
+  10 µm out of focus              9377  345    169.6    0.1   2.6  166.6  6.5    0.0
+  50 µm out of focus             16050  345    259.4    0.1  14.6  237.1  8.9    0.0
+  the light at full intensity     6679  345    148.0    0.1   2.7  145.2  4.3    0.0
+  vignetting of 0.3               4929  345    144.8    0.1   2.7  142.0  4.5    0.0
+  jogging at 200 µm/s             4833  345    489.9    0.1  12.1  476.1  4.4    6.0
+  jogging at 500 µm/s             4795  345   1195.3  200.1  25.3  969.8  4.3   15.0
+one tile on one thread, in ms: the two layers, their blur, the whole tile
+  5x     0 µm from focus    113.4    9.2  122.6
+  10x    0 µm from focus    110.4    9.6  121.5
+  20x    0 µm from focus    114.2   12.2  138.2
+  50x    0 µm from focus    161.2   33.2  196.7
+  10x   10 µm from focus    131.5   31.2  161.3
+  10x   50 µm from focus    299.4   21.2  318.9
+one pixel on one thread, in ns: the mounting 3.6, a sample of the field 18.0, the vignetting 1.8, the counts with noise 43.7 and without 6.1
+ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 105.92s
+
+## the same, run 2
+
+running 1 test
+test what_each_model_costs ... frames, in ms: cold, its tiles; warm medians: frame, tiles, motion, exposure, pack; tiles rendered a warm frame
+  as the live view                4458  345    132.6    0.1   2.6  129.8  4.6    0.0
+  the sensor without noise        4467  345     64.0    0.1   2.6   61.3  4.2    0.0
+  no slide                         149  330    137.0    0.1   2.6  134.2  5.3    0.0
+  5×                              4477  345    137.6    0.1   2.5  134.9  4.2    0.0
+  20×                             5040  330    138.5    0.1   2.7  135.6  4.2    0.0
+  50×                             7708  330    140.8    0.1   2.6  138.1  4.7    0.0
+  10 µm out of focus              6340  345    142.5    0.1   2.7  139.6  4.3    0.0
+  50 µm out of focus             12142  345    140.9    0.1   2.8  138.0  4.3    0.0
+  the light at full intensity     4875  345    144.7    0.1   2.7  141.9  4.5    0.0
+  vignetting of 0.3               4829  345    144.8    0.1   2.7  141.8  4.3    0.0
+  jogging at 200 µm/s             4961  345    506.7    0.1  12.7  492.8  4.5    6.0
+  jogging at 500 µm/s             4878  345   1220.4  204.2  27.3  980.3  4.2   15.0
+one tile on one thread, in ms: the two layers, their blur, the whole tile
+  5x     0 µm from focus    115.2    9.8  123.0
+  10x    0 µm from focus    111.3    9.5  121.5
+  20x    0 µm from focus    114.9   12.0  137.2
+  50x    0 µm from focus    161.8   32.8  198.1
+  10x   10 µm from focus    132.2   31.7  163.9
+  10x   50 µm from focus    300.3   21.6  320.1
+one pixel on one thread, in ns: the mounting 3.6, a sample of the field 18.4, the vignetting 1.8, the counts with noise 44.1 and without 6.2
+ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 93.17s

@@ -40,7 +40,7 @@ use std::sync::{Arc, PoisonError, RwLock};
 use std::time::{Duration, Instant};
 
 use oscope_compute::{Compute, ComputeError, Image, Lane, Shape, cpu};
-use oscope_core::{BayerPattern, Frame, FrameMeta, FrameView, PixelFormat, PixelRect};
+use oscope_core::{BayerPattern, Frame, FrameMeta, FrameView, PixelFormat, PixelRect, timing};
 use oscope_imaging::color::{self, ColorError, ColourCorrection, Demosaic, Display};
 use oscope_pipeline::Value;
 use oscope_pipeline::stock::Region;
@@ -225,15 +225,19 @@ impl Preview {
         let shown = self.display(frame, request, look, gpu)?;
         let (rgb, width, height) = (&shown.rgb, shown.width, shown.height);
         let jpeg = self.compute.pools().install(Lane::Live, || {
-            color::encode_jpeg(rgb, width, height, request.quality)
+            timing::time("preview.jpeg", || {
+                color::encode_jpeg(rgb, width, height, request.quality)
+            })
         })?;
+        let took = started.elapsed();
+        timing::record("preview.render", took);
         Ok(Rendered {
             jpeg,
             roi: shown.roi,
             width,
             height,
             gpu: shown.gpu,
-            took: started.elapsed(),
+            took,
             recipe: shown.recipe,
         })
     }
@@ -288,7 +292,9 @@ impl Preview {
             let coloured = self.colour(&view, &steps, gpu, recipe.as_ref(), region)?;
             let (pixels, shape, on_gpu, recipe) = coloured;
             Ok(Displayed {
-                rgb: resize::resize(&pixels, shape, width, height),
+                rgb: timing::time("preview.resize", || {
+                    resize::resize(&pixels, shape, width, height)
+                }),
                 roi,
                 width,
                 height,
@@ -328,24 +334,32 @@ impl Preview {
             return Ok((pixels, shape, true, took));
         }
         let _ = gpu;
-        let mut image = self.compute.to_f32(Lane::Live, view)?;
+        let mut image = timing::time("preview.to_f32", || self.compute.to_f32(Lane::Live, view))?;
         if let Some(pattern) = steps.pattern {
-            image = color::demosaic(&image, pattern, steps.method)?;
+            image = timing::time("preview.demosaic", || {
+                color::demosaic(&image, pattern, steps.method)
+            })?;
         }
         if steps.bin > 1 {
-            image = cpu::downsample(&image, steps.bin)?;
+            image = timing::time("preview.bin", || cpu::downsample(&image, steps.bin))?;
         }
         if steps.black > 0.0 {
-            color::subtract_black(&mut image, steps.black)?;
+            timing::time("preview.black", || {
+                color::subtract_black(&mut image, steps.black)
+            })?;
         }
         if let Some(recipe) = recipe {
             let (shown, took) = recipe.run(Value::image(image), region)?;
             return Ok((bytes(&shown), shown.shape(), false, Some(took)));
         }
         if image.channels() == 3 && steps.look.correction != ColourCorrection::default() {
-            color::correct(&mut image, &steps.look.correction)?;
+            timing::time("preview.correct", || {
+                color::correct(&mut image, &steps.look.correction)
+            })?;
         }
-        let pixels = color::to_display(&image, &steps.look.display)?;
+        let pixels = timing::time("preview.to_display", || {
+            color::to_display(&image, &steps.look.display)
+        })?;
         Ok((pixels, image.shape(), false, None))
     }
 }
@@ -369,24 +383,47 @@ fn on_gpu(
 ) -> Result<(Vec<u8>, Shape, Option<Duration>), PreviewError> {
     use oscope_imaging::color::gpu;
     let lane = Lane::Live;
+    // Each step timed on its own: with timing on, it waits for the GPU to
+    // finish the step before the next starts.
+    let synced = |step| {
+        let timer = timing::start(step);
+        move || {
+            if timing::enabled() {
+                let _ = cuda.synchronize(lane);
+            }
+            timer.stop();
+        }
+    };
+    let done = synced("preview.gpu.to_f32");
     let mut image = cuda.to_f32(lane, view)?;
+    done();
     if let Some(pattern) = steps.pattern {
+        let done = synced("preview.gpu.demosaic");
         image = gpu::demosaic(cuda, lane, &image, pattern, steps.method)?;
+        done();
     }
     if steps.bin > 1 {
+        let done = synced("preview.gpu.bin");
         image = cuda.downsample(lane, &image, steps.bin)?;
+        done();
     }
     if steps.black > 0.0 {
+        let done = synced("preview.gpu.black");
         gpu::subtract_black(cuda, lane, &mut image, steps.black)?;
+        done();
     }
     if let Some(recipe) = recipe {
         let (shown, took) = recipe.run(Value::DeviceImage(Arc::new(image)), region)?;
         return Ok((bytes(&shown), shown.shape(), Some(took)));
     }
     if image.shape().channels == 3 && steps.look.correction != ColourCorrection::default() {
+        let done = synced("preview.gpu.correct");
         gpu::correct(cuda, lane, &mut image, &steps.look.correction)?;
+        done();
     }
+    let done = synced("preview.gpu.to_display");
     let pixels = gpu::to_display(cuda, lane, &image, &steps.look.display)?;
+    done();
     Ok((pixels, image.shape(), None))
 }
 

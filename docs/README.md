@@ -17,6 +17,7 @@
 | [Manual tests of W0–W1](milestone-2/manual-tests-W0-W1.md) | A checklist for trying each phase of the app's stages W0 and W1 by hand, in the app itself, in both themes |
 | [Milestone 1 retrospective](milestone-1/retrospective.md) | A look back at Milestone 1: what it delivered, what its numbers say, what went well and what didn't, and what M2 inherits |
 | [Hardware](hardware.md) | The real instrument: camera, SDK, stage controller, lights and host. Written in P02b; M3's bring-up keeps it up to date |
+| [The live view's baseline](performance/live-view-baseline.md) | How a frame gets from the simulated camera to the page, how the camera makes its image, and each step's time on the owner's laptop, on the CPU and with CUDA, before optimising. With what to optimise first |
 | [Releasing](releasing.md) | The checklist before a release's tag, and what the release workflow does with it |
 | [Deploying on Ubuntu 24.04](deploying-on-ubuntu.md) | Line by line: the accounts, the build and its tests, the package, the service, and its smoke test, on the computer it serves |
 | [Working rules](../CLAUDE.md) | How phases are delivered, and the rules every change follows |

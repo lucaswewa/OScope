@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use oscope_core::{
     BayerPattern, Clock, FrameId, FrameMeta, FramePool, Ms, PixelFormat, PixelRect, Point2, Rect,
-    Timestamp, Um,
+    Timestamp, Um, timing,
 };
 use oscope_hal::{
     Camera, CameraCapabilities, CameraMode, CameraSettings, Error, FrameSink, HalFuture, ModeRate,
@@ -447,6 +447,7 @@ impl Inner {
     /// Renders the frame whose first row starts at `start`, at the stage's
     /// true positions, as 12-bit counts.
     fn render(&self, settings: &CameraSettings, start: Timestamp, frame: u64) -> Option<Counts> {
+        let _rendering = timing::start("camera.render");
         let mut view = *lock(&self.view);
         // The sensor's pixel is the camera's own, whatever the optics say.
         view.optics.sensor_pixel = self.config.pixel_size;
@@ -518,11 +519,14 @@ impl Inner {
         // The rendered tiles, from the cache: only those it lacks are
         // rendered now.
         let z = self.stage.true_position(middle).z;
-        let field = self.tiles.field(&world, &optics, view.path, z, region);
+        let field = timing::time("camera.field", || {
+            self.tiles.field(&world, &optics, view.path, z, region)
+        });
         let sample = |x: f64, y: f64, c: usize| field.sample(x, y, c);
 
         // Where the stage is during each row's exposure: enough places to
         // blur its motion a pixel at a time, up to 64.
+        let motion = timing::start("camera.motion");
         let rows: Vec<Vec<Point2>> = (0..height)
             .into_par_iter()
             .map(|v| {
@@ -542,6 +546,7 @@ impl Inner {
                     .collect()
             })
             .collect();
+        motion.stop();
         let sensor = self.config.sensor;
         let exposure_ms = settings.exposure.0;
         let scale = view.light * sensor.electrons_per_ms * exposure_ms * f64::from(k * k);
@@ -576,7 +581,7 @@ impl Inner {
                     frame,
                     vignette: [vx0, vy0, f64::from(k), half_diagonal, vignetting],
                 };
-                match device.expose(&job) {
+                match timing::time("camera.expose_gpu", || device.expose(&job)) {
                     Ok(values) => return Some(counts(values)),
                     // The GPU failed: this frame and the rest on the CPU.
                     Err(_) => *gpu = None,
@@ -585,6 +590,7 @@ impl Inner {
         }
 
         // Each row, over its own exposure; then the sensor.
+        let exposing = timing::start("camera.expose");
         let mut values = vec![0_u16; width as usize * height as usize];
         values
             .par_chunks_mut(width as usize)
@@ -613,6 +619,7 @@ impl Inner {
                     );
                 }
             });
+        exposing.stop();
         Some(counts(values))
     }
 
@@ -660,10 +667,14 @@ impl Inner {
             if !self.clock.block_until(start + span, stop) {
                 return;
             }
+            // How late the camera starts on the frame, after its exposure.
+            let late = self.clock.now().saturating_since(start + span);
+            timing::record("camera.wake_late", late);
             if let Some(counts) = self.render(&settings, start, id.0) {
                 match pool.take() {
                     None => dropped += 1,
                     Some(mut buffer) => {
+                        let packing = timing::start("camera.pack");
                         let bytes = buffer.bytes_mut();
                         if first.format == BAYER8 {
                             for (b, c) in bytes.iter_mut().zip(&counts.values) {
@@ -676,6 +687,7 @@ impl Inner {
                                 *b = (c << 4).to_le_bytes();
                             }
                         }
+                        packing.stop();
                         let mut meta = FrameMeta::new(
                             id,
                             first.format,
