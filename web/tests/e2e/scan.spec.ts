@@ -163,6 +163,8 @@ test("a plan over the stage looks as its baseline does @visual", async ({ page, 
   await expect(estimate(page, "Tiles")).toHaveText(/^\d+$/, { timeout: 30_000 });
   // The view fitted to the region, and still; no field focused, the pane at its top.
   await expect(said(page, "shapes").locator("polygon").first()).toBeVisible();
+  // The rail's indicator says the stage is homed: a moment after it was, as in W4.1's baseline.
+  await expect(said(page, "indicator")).toHaveAccessibleName("The instrument: OK");
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await page
     .getByRole("region", { name: "The overview and the plan" })
