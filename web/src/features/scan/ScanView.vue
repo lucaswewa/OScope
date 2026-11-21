@@ -8,12 +8,15 @@ import {
   mosaicImage,
   placementOf as mosaicPlacement,
 } from "@/features/live/mosaic/mosaic";
+import { useHisto } from "@/features/scan/histo/flow";
+import { mapPointsOf } from "@/features/scan/histo/histo";
 import { blankOf, imageOf, placementOf } from "@/features/scan/overview";
 import { usePlanning } from "@/features/scan/planning";
 import { shapesOf } from "@/features/scan/plan";
 import { mosaicRegionOf, runShapes } from "@/features/scan/running";
 import type { Scan } from "@/features/scan/scanning";
-import type { Rect } from "@/ui/tile-viewer/coordinates";
+import { fieldAbout, type Point, type Rect } from "@/ui/tile-viewer/coordinates";
+import { rectShape, type Shape, type ShapeKind } from "@/ui/tile-viewer/shapes";
 import TileViewer from "@/ui/tile-viewer/TileViewer.vue";
 
 /**
@@ -26,7 +29,8 @@ import TileViewer from "@/ui/tile-viewer/TileViewer.vue";
  * A scan, while it is shown (W5.2): the live mosaic its frames draw, and
  * its plan over it, each tile marked as it is taken.
  */
-const props = defineProps<{ scan: Scan }>();
+const props = defineProps<{ scan: Scan; histo?: boolean }>();
+const flow = useHisto();
 const { t } = useI18n();
 const plan = usePlanning();
 const overview = useProperty("/api/v1/scan/last_overview", { every: 10_000 });
@@ -48,11 +52,44 @@ const shown = computed(() => {
   if (view) return { image: imageOf(view), placement: placementOf(view) };
   return blank.value;
 });
+/** A focus map's point, a small square about it, a quarter of a frame across. */
+function pointShape(kind: ShapeKind, at: Point, side: number): Shape {
+  return rectShape(kind, fieldAbout(at, side, side));
+}
+/**
+ * The histo scan's (W5.3): its regions, and the focus map's points, where
+ * the run will measure them, or, once it has, those used and those rejected.
+ */
+const histoShapes = computed<Shape[]>(() => {
+  if (!props.histo) return [];
+  const preview = plan.preview.value;
+  const z = props.scan.progress.value?.plan.z;
+  const side = (preview?.plan.field.cell_um.width ?? 0) / 4;
+  const measured =
+    props.scan.shown.value && z?.kind === "map"
+      ? [
+          ...z.map.used.map((p) => pointShape("point", { x: p.x_um, y: p.y_um }, side)),
+          ...z.map.rejected.map((p) => pointShape("fault", { x: p.x_um, y: p.y_um }, side)),
+        ]
+      : undefined;
+  const choosing = flow.step.value === "focus" || flow.step.value === "run";
+  const planned =
+    preview && choosing
+      ? mapPointsOf(preview.plan, flow.columns.value, flow.rows.value).map((p) =>
+          pointShape("point", p, side),
+        )
+      : [];
+  return [...flow.shapes.value, ...(measured ?? planned)];
+});
 const shapes = computed(() => {
   const progress = props.scan.progress.value;
-  if (props.scan.shown.value && progress) return runShapes(progress, props.scan.job.value);
+  const scanned =
+    props.scan.shown.value && progress ? runShapes(progress, props.scan.job.value) : undefined;
   const preview = plan.preview.value;
-  return preview ? shapesOf(preview.plan, plan.region.value) : [];
+  const planned = preview
+    ? shapesOf(preview.plan, props.histo ? undefined : plan.region.value)
+    : [];
+  return [...(scanned ?? planned), ...histoShapes.value];
 });
 const field = computed(() => {
   const sensor = camera.value.value;
@@ -61,20 +98,37 @@ const field = computed(() => {
   return fieldOf(position.value.value?.position, size ?? undefined, pixel.value.value);
 });
 
+/** The histo scan's regions kept, about them all. */
+const keptBounds = computed<Rect | undefined>(() => {
+  const kept = flow.regions.value.filter((one) => one.kept).map((one) => one.rect);
+  if (kept.length === 0) return undefined;
+  const x = Math.min(...kept.map((r) => r.x));
+  const y = Math.min(...kept.map((r) => r.y));
+  const width = Math.max(...kept.map((r) => r.x + r.width)) - x;
+  const height = Math.max(...kept.map((r) => r.y + r.height)) - y;
+  return { x, y, width, height };
+});
+
 /**
  * Where to look: the plan's region, or the scan's frames while it is shown,
  * with as much again about it, each time it changes.
  */
 const fit = computed(() => {
   const progress = props.scan.progress.value;
-  const r = props.scan.shown.value && progress ? mosaicRegionOf(progress.plan) : plan.region.value;
+  const r =
+    props.scan.shown.value && progress
+      ? mosaicRegionOf(progress.plan)
+      : props.histo
+        ? keptBounds.value
+        : plan.region.value;
   return (
     r && { x: r.x - r.width / 2, y: r.y - r.height / 2, width: r.width * 2, height: r.height * 2 }
   );
 });
 
 function drew(rect: Rect): void {
-  plan.region.value = rect;
+  if (props.histo) flow.drew(rect);
+  else plan.region.value = rect;
   plan.drawing.value = false;
 }
 </script>

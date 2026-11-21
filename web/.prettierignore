@@ -14,3 +14,5 @@ src/api/generated/
 src/api/recorded-answers.json
 # Generated: a scan's messages, recorded from the simulated instrument (scripts/record-scan.mjs).
 src/features/scan/recorded-scan.json
+# Generated: a histo session, recorded from the simulated instrument (scripts/record-histo.mjs).
+src/features/scan/histo/recorded-histo.json

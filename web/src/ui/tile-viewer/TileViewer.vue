@@ -391,6 +391,17 @@ watch(
   stroke-width: 2px;
 }
 
+/* The histo scan's (W5.3): a region dropped, and a focus map's point. */
+.layer .dropped {
+  stroke: var(--text-muted);
+  stroke-dasharray: 2 4;
+}
+
+.layer .point {
+  fill: var(--accent);
+  stroke: var(--accent-on);
+}
+
 /* The field of view: where the camera looks now. */
 .field {
   border: 2px solid var(--accent);

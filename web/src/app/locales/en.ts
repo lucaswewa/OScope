@@ -456,6 +456,37 @@ export default {
         confirm: "Cancel the scan",
       },
     },
+    flows: { label: "The scan's flow", plan: "Plan a scan", histo: "Histo scan" },
+    histo: {
+      title: "The histo scan",
+      stepsLabel: "Its steps",
+      steps: {
+        overview: "The overview",
+        tissue: "The tissue",
+        regions: "The regions",
+        focus: "The focus map",
+        run: "The run",
+      },
+      tissue:
+        "{kept} islands of tissue, {area} mm² in all, found at a saturation of {threshold}; {dropped} too small, dropped.",
+      proposeAgain: "Propose the regions again",
+      regionsSaid:
+        "One region proposed, about its island: keep, drop, edit or draw it again. | {n} regions proposed, one about each island: keep, drop, edit or draw each again.",
+      region: "Region {n}",
+      keep: "Keep it",
+      redraw: "Draw it again",
+      drawNew: "Draw a new one",
+      focusSaid:
+        "The run measures focus at these points before its first tile, then fits a surface through them.",
+      back: "Back",
+      next: "Next",
+      mapTitle: "The focus map",
+      map: "{surface} through {used} points, {rejected} rejected: it misses them by {rms} µm rms.",
+      point: "Where",
+      found: "Focus found, µm",
+      surface: "The surface there, µm",
+      rejected: "(rejected)",
+    },
   },
   jobs: {
     lists: "The queue and the history",
