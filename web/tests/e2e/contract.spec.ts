@@ -7,7 +7,12 @@ import { act, start, type Invocation } from "../../src/api/actions.ts";
 import { call, Server } from "../../src/api/client.ts";
 import { ApiError } from "../../src/api/errors.ts";
 import { finished, JOB_ENDED, type Job, type JobRef } from "../../src/api/jobs.ts";
-import { projectPage } from "../../src/api/projects.ts";
+import {
+  projectFormats,
+  projectPage,
+  waitingRecordings,
+  type Staged,
+} from "../../src/api/projects.ts";
 import {
   brick,
   download,
@@ -197,4 +202,29 @@ test("the logs' tail sends its query, the records that match, and catches up", a
   expect(told.map(asked).filter(Boolean)).toEqual([{}, { level: "error" }]);
   caller.abort();
   await tail.ended;
+});
+
+test("the formats, a file staged and the recordings waiting are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  const formats = await projectFormats({ on });
+  expect(formats.importers.map((one) => one.id)).toEqual(
+    expect.arrayContaining(["tiff", "png", "jpeg"]),
+  );
+  expect(formats.exporters.map((one) => one.id)).toEqual(
+    expect.arrayContaining(["ome-tiff", "tiff16", "png", "dzi"]),
+  );
+  for (const one of [...formats.importers, ...formats.exporters])
+    expect(Object.keys(one).sort()).toEqual(["extensions", "id", "name"]);
+  // The upload's answer; the browser's wrapper sends it by XMLHttpRequest.
+  const answer = await fetch(on.address("/api/v1/upload/a%20file.tif"), {
+    method: "POST",
+    body: new Uint8Array(12),
+  });
+  expect(answer.status).toBe(201);
+  const staged = (await answer.json()) as Staged;
+  expect(Object.keys(staged).sort()).toEqual(["bytes", "expires", "id", "name"]);
+  expect([staged.name, staged.bytes]).toEqual(["a file.tif", 12]);
+  expect(await waitingRecordings({ on })).toEqual([]);
 });

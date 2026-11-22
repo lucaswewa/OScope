@@ -40,7 +40,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W5.4 | Z-scans, stacks and positions | Done | [W5.4-zscans-stacks-positions.md](W5.4-zscans-stacks-positions.md) |
 | W6.1 | Projects | Done | [W6.1-projects.md](W6.1-projects.md) |
 | W6.2 | A project's records | Done | [W6.2-records.md](W6.2-records.md) |
-| W6.3 | Imports, exports and uploads | Planned | — |
+| W6.3 | Imports, exports and uploads | In review | [W6.3-files.md](W6.3-files.md) |
 | W6.4 | The deep-zoom viewer | Planned | — |
 | W7.1 | Recipes over the API | Planned | — |
 | W7.2 | The graph editor: the canvas | Planned | — |

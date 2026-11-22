@@ -17,6 +17,7 @@ import {
 } from "@/features/gallery/gallery";
 import ProjectCard from "@/features/gallery/ProjectCard.vue";
 import ProjectPage from "@/features/gallery/project/ProjectPage.vue";
+import RecordingsWaiting from "@/features/gallery/RecordingsWaiting.vue";
 import { kept } from "@/host/kept";
 import Button from "@/ui/Button.vue";
 import Confirm from "@/ui/Confirm.vue";
@@ -242,6 +243,7 @@ async function deleteIt(): Promise<void> {
       <h1 id="gallery-title">{{ t("tabs.gallery.title") }}</h1>
       <Button icon="add" @click="making">{{ t("projects.new") }}</Button>
     </header>
+    <RecordingsWaiting />
     <div class="finding" role="search">
       <Field class="grow" :label="t('projects.find')">
         <TextField v-model="text" :placeholder="t('projects.findPlaceholder')" />

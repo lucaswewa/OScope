@@ -42,6 +42,7 @@ use teta_wot::http::axum::response::{IntoResponse, Response};
 use teta_wot::prelude::*;
 
 use crate::files::{Codecs, EXPORT, Formats, IMPORT, export_jobs, import_jobs};
+use crate::upload::Uploads;
 
 /// What a rebuild of the index found.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -195,7 +196,11 @@ impl ProjectsThing {
         let data = store.root().parent().unwrap_or(store.root());
         let templates = Templates::open(&data.join("templates"));
         if let Some(jobs) = ctx.server().service::<JobService>() {
-            jobs.register(IMPORT, import_jobs(Arc::clone(&store), Arc::clone(&codecs)));
+            let uploads = ctx.server().service::<Uploads>();
+            jobs.register(
+                IMPORT,
+                import_jobs(Arc::clone(&store), Arc::clone(&codecs), uploads),
+            );
             jobs.register(EXPORT, export_jobs(Arc::clone(&store), Arc::clone(&codecs)));
             jobs.register(STITCH, stitch_jobs(Arc::clone(&store)));
             jobs.register(DEPTH, depth_jobs(Arc::clone(&store)));

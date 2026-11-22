@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
-use oscope_store::{Scratch, ScratchHealth};
+use oscope_store::{Recording, Scratch, ScratchHealth};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{CpuRefreshKind, RefreshKind, System as Host};
@@ -227,6 +227,17 @@ impl System {
             PropertyError::failed(std::io::Error::other("the server has no scratch space"))
         })?;
         scratch.health().map_err(PropertyError::failed)
+    }
+
+    /// The recordings waiting in the scratch space, the newest first: each
+    /// ingested into a project with the `projects.ingest` job, or left
+    /// (W6.3).
+    #[property(blocking)]
+    fn recordings(&self) -> Result<Vec<Recording>, PropertyError> {
+        let scratch = self.scratch.get().ok_or_else(|| {
+            PropertyError::failed(std::io::Error::other("the server has no scratch space"))
+        })?;
+        scratch.recordings().map_err(PropertyError::failed)
     }
 }
 

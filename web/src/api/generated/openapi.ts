@@ -341,6 +341,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/recordings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The recordings waiting in the scratch space, the newest first: each
+         * @description ## The recordings waiting in the scratch space, the newest first: each
+         *
+         *     The recordings waiting in the scratch space, the newest first: each
+         *     ingested into a project with the `projects.ingest` job, or left
+         *     (W6.3).
+         */
+        get: operations["get_property_api_v1_system_recordings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/restart": {
         parameters: {
             query?: never;
@@ -7063,6 +7087,39 @@ export interface components {
             /** @description The processor architecture, such as `x86_64`. */
             arch: string;
         };
+        system_recordings_value: {
+            /**
+             * Format: uuid
+             * @description Its ID, which is also its folder's name.
+             */
+            id: string;
+            /** @description Its name. */
+            name: string;
+            /**
+             * Format: date-time
+             * @description When it started.
+             */
+            created: string;
+            /** @description What it recorded, such as the camera and its mode. */
+            source?: unknown;
+            /** @description When it ended: none while it records. */
+            ended?: string | null;
+            /** @description Why it ended early, if it did: a full disk, say. */
+            error?: string | null;
+            /**
+             * @description Whether a crash cut it short, and its segments were recovered.
+             * @default false
+             */
+            recovered: boolean;
+            /** @description The frames it holds. */
+            frames: number;
+            /** @description Their pixels, in bytes. */
+            bytes: number;
+            /** @description Frames the camera dropped between those it holds. */
+            dropped: number;
+            /** @description Frames deleted with the oldest segments, when rolling. */
+            discarded: number;
+        }[];
         /**
          * @description Represent the input of an action that never takes parameters.
          *
@@ -14018,6 +14075,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["system_os_value"];
+                };
+            };
+        };
+    };
+    get_property_api_v1_system_recordings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Value of recordings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["system_recordings_value"];
                 };
             };
         };

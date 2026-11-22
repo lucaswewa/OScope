@@ -250,7 +250,7 @@ OScope/
 | `GET /api/v1/media/mosaic/live/…` | The live mosaic's tiles |
 | `GET /api/v1/media/volume/{dataset}/meta`, `/slice`, `/brick` | Volume metadata, orthogonal slices and bricks (binary, with a small header) for VTK.js |
 | `GET /api/v1/data/{project}/{path}` | Downloads, with Range support |
-| `POST /api/v1/upload/…` | `.omext` packages and sample images or stacks |
+| `POST /api/v1/upload/{name}` | A client's file, staged in the scratch space for a job: an image or a stack to import, a sample (W6.3, ADR-0051). `.omext` packages go to `extensions/install` (P24) |
 
 ### 5.5 Frames, the clock, and the two streams
 
@@ -969,7 +969,7 @@ Projects as cards, what each holds, and its images at any zoom.
 |---|---|---|---|---|---|
 | [W6.1](milestone-2/phases.md#w6-1) | Projects | W2.2 | 1,500 | — | Done |
 | [W6.2](milestone-2/phases.md#w6-2) | A project's records | W6.1 | 1,400 | — | Done |
-| [W6.3](milestone-2/phases.md#w6-3) | Imports, exports and uploads | W6.2, W4.1 | 1,500 | 0051 | Planned |
+| [W6.3](milestone-2/phases.md#w6-3) | Imports, exports and uploads | W6.2, W4.1 | 1,500 | 0051 | In review |
 | [W6.4](milestone-2/phases.md#w6-4) | The deep-zoom viewer | W6.2, W3.8 | 1,600 | — | Planned |
 
 **Checkpoint J:** find the scanned slide, read its records, view it at every zoom, export and import.

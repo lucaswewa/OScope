@@ -12,6 +12,9 @@ use oscope_store::zoom::export_dzi;
 use oscope_store::{Exporter, Format, Importer, RecordKind, Store, export, import};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use crate::upload::{Uploads, staged};
 
 /// An import's kind.
 pub(crate) const IMPORT: &str = "projects.import";
@@ -92,7 +95,12 @@ impl Codecs {
 #[serde(deny_unknown_fields)]
 struct ImportParams {
     project: ProjectId,
-    path: PathBuf,
+    /// A file on the server; or else
+    #[serde(default)]
+    path: Option<PathBuf>,
+    /// a file the upload route staged (W6.3), removed once imported.
+    #[serde(default)]
+    upload: Option<Uuid>,
     #[serde(default)]
     name: Option<String>,
     #[serde(default)]
@@ -125,16 +133,27 @@ fn spec(kind: &str, title: String, params: &serde_json::Value) -> JobSpec {
     }
 }
 
-/// Makes import jobs, whose parameters are `project` and `path`, a file on
-/// the server, and optionally `name` and `format`, an importer's ID. Each
-/// reads the file, with the importer named or else the first whose
-/// extensions its name has, into a new acquisition of the project.
-pub(crate) fn import_jobs(store: Arc<Store>, codecs: Arc<Codecs>) -> Factory {
+/// Makes import jobs, whose parameters are `project`, and `path`, a file on
+/// the server, or `upload`, one the upload route staged; and optionally
+/// `name` and `format`, an importer's ID. Each reads the file, with the
+/// importer named or else the first whose extensions its name has, into a
+/// new acquisition of the project; an upload is then removed.
+pub(crate) fn import_jobs(
+    store: Arc<Store>,
+    codecs: Arc<Codecs>,
+    uploads: Option<Arc<Uploads>>,
+) -> Factory {
     Arc::new(move |value| {
         let params = ImportParams::deserialize(value).map_err(|e| e.to_string())?;
-        let importer = codecs.importer(params.format.as_deref(), &params.path)?;
-        let title = format!("import {}", params.path.display());
-        let store = Arc::clone(&store);
+        let path = match (&params.path, params.upload) {
+            (Some(path), None) => path.clone(),
+            (None, Some(id)) => staged(uploads.as_deref(), id)?,
+            _ => return Err("an import reads a `path` or an `upload`, one of them".to_owned()),
+        };
+        let importer = codecs.importer(params.format.as_deref(), &path)?;
+        let file = path.file_name().unwrap_or_default().to_string_lossy();
+        let title = format!("import {file}");
+        let (store, uploads) = (Arc::clone(&store), uploads.clone());
         Ok(Job {
             spec: spec(IMPORT, title, value),
             run: Box::new(move |ctx| {
@@ -142,7 +161,11 @@ pub(crate) fn import_jobs(store: Arc<Store>, codecs: Arc<Codecs>) -> Factory {
                     let project = params.project;
                     let work = tokio::task::spawn_blocking(move || {
                         let name = params.name.as_deref();
-                        import(&store, project, &*importer, &params.path, name)
+                        let made = import(&store, project, &*importer, &path, name);
+                        if let (Ok(_), Some(id), Some(uploads)) = (&made, params.upload, uploads) {
+                            uploads.remove(id);
+                        }
+                        made
                     });
                     let acquisition = work.await.map_err(Stop::failed)?.map_err(Stop::failed)?;
                     ctx.progress(Some(1.0), "imported");

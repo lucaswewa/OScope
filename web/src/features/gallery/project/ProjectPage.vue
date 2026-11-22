@@ -6,6 +6,9 @@ import { useRoute, useRouter } from "vue-router";
 import { ApiError } from "@/api/errors";
 import { projectContents } from "@/api/projects";
 import { useAction, useEvent } from "@/api/things/use";
+import { useFileDrop } from "@/features/gallery/drop";
+import { importInto, importsOf } from "@/features/gallery/imports";
+import ImportPane from "@/features/gallery/project/ImportPane.vue";
 import { recordsOf, type AnyRecord, type Contents } from "@/features/gallery/project/project";
 import RecordDetail from "@/features/gallery/project/RecordDetail.vue";
 import Button from "@/ui/Button.vue";
@@ -15,7 +18,8 @@ import EmptyState from "@/ui/EmptyState.vue";
  * A project's page (W6.2), the Gallery's at `?project=`: its acquisitions,
  * its results and its reports, each one's details beside them, the one
  * chosen in `?record=`; kept live as the project changes. The index of
- * every project is rebuilt from here, from their folders.
+ * every project is rebuilt from here, from their folders. Files dropped on
+ * it are imported into it (W6.3).
  */
 const props = defineProps<{ project: string }>();
 const { t } = useI18n();
@@ -42,10 +46,15 @@ async function load(): Promise<void> {
 }
 watch(() => props.project, load, { immediate: true });
 onScopeDispose(() => asked?.abort());
-// Kept live: a change to the projects reads it again.
+// Kept live: a change to the projects reads it again; and so does each of
+// its imports' end, as a job's records aren't told as a change.
 const changed = useEvent("/api/v1/projects/changed", { keep: 1 });
 watch(
   () => changed.last.value,
+  () => void load(),
+);
+watch(
+  () => importsOf(props.project).filter((one) => one.state === "imported").length,
   () => void load(),
 );
 
@@ -59,9 +68,11 @@ const kinds = computed(() =>
     .map((kind) => ({ kind, list: records.value.filter((one) => one.kind === kind) }))
     .filter((group) => group.list.length > 0),
 );
-function choose(one: AnyRecord): void {
-  void router.replace({ query: { ...route.query, record: one.record.id } });
+function choose(one: AnyRecord | string): void {
+  const record = typeof one === "string" ? one : one.record.id;
+  void router.replace({ query: { ...route.query, record } });
 }
+const drop = useFileDrop((files) => void importInto(props.project, files));
 async function deleted(): Promise<void> {
   void router.replace({ query: { project: props.project } });
   await load();
@@ -74,7 +85,13 @@ const when = (time: string) => new Date(time).toLocaleDateString();
 </script>
 
 <template>
-  <section class="project" aria-labelledby="project-title" data-said="project">
+  <section
+    class="project"
+    :class="{ over: drop.over.value }"
+    aria-labelledby="project-title"
+    data-said="project"
+    v-on="drop.on"
+  >
     <header class="head">
       <RouterLink :to="{ name: 'gallery' }" class="back">{{ t("projectPage.back") }}</RouterLink>
       <h1 id="project-title">{{ contents?.project.name ?? "…" }}</h1>
@@ -91,6 +108,7 @@ const when = (time: string) => new Date(time).toLocaleDateString();
     <p v-if="unread" class="said failed" data-said="unread">{{ unread }}</p>
     <p v-if="rebuilt" class="said" data-said="rebuilt">{{ rebuilt }}</p>
     <p v-if="contents?.project.sample" class="said">{{ contents.project.sample }}</p>
+    <ImportPane :project="project" @open="choose" />
 
     <EmptyState v-if="contents && !records.length" :title="t('projectPage.empty')" icon="folder" />
     <div v-else-if="contents" class="body">
@@ -132,6 +150,11 @@ const when = (time: string) => new Date(time).toLocaleDateString();
   align-content: start;
   padding: var(--space-3);
   overflow: auto;
+}
+
+.project.over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
 }
 
 .head {
