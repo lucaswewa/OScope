@@ -81,7 +81,7 @@ pub use motion::Segment;
 pub use optics::Optics;
 pub use sample::{GpuModel, Layer, LayerKind, Sample};
 pub use sensor::SensorModel;
-pub use stage::{LostSteps, Pulse, Settling, SimStage, SimStageConfig};
+pub use stage::{LostSteps, Pulse, Settling, SimStage, SimStageConfig, TruePath};
 pub use structures::Structures;
 pub use surface::Surface;
 pub use target::TestTarget;

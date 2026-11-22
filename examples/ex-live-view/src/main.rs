@@ -1,6 +1,6 @@
 //! `ex-live-view`: the live preview, and its benchmark. It serves the
 //! simulated microscope on the full 5472 × 3648 sensor, homed and over the
-//! H&E slide's tissue, lit and streaming, with a page that shows the
+//! H&E slide's tissue, lit and streaming at 14.5 fps, with a page that shows the
 //! `preview` Thing's stream at 1000 × 667, with WebGL, and jog buttons.
 //!
 //! Timing is on: each step's times, from the camera's rendering to the
@@ -71,8 +71,16 @@ async fn run() -> anyhow::Result<()> {
         .devices(devices)
         .pages_under("bench", bench);
     // The camera starts streaming once the server answers, through the
-    // API, after the Things have started and set their saved settings.
+    // API, after the Things have started and set their saved settings: in
+    // mode `design`, full resolution in 16 bits at P29's 14.5 fps. Mode
+    // `full`'s 7.24 fps is the MIChrome 20's measured rate in 16 bits.
     example.when_serving(|address| async move {
+        let design = json!({
+            "mode": "design",
+            "format": {"kind": "bayer16", "pattern": "RGGB", "significant_bits": 12},
+        });
+        let set = post(address, "/api/v1/camera/set_mode", &design).await?;
+        ensure!(set.status == 201, "set_mode: {}", set.status);
         let started = post(address, "/api/v1/camera/start_streaming", &json!({})).await?;
         ensure!(started.status == 201, "start_streaming: {}", started.status);
         Ok(())

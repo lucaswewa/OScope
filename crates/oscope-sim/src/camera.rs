@@ -549,10 +549,13 @@ impl Inner {
             Point2::new(f64::MAX, f64::MAX),
             Point2::new(f64::MIN, f64::MIN),
         );
+        // The stage's path during the frame, taken once: its threads find
+        // positions on it without the stage's lock.
+        let path = self.stage.true_path(start);
         let span = end.0.saturating_sub(start.0);
         for j in 0..=32_u64 {
             let at = Timestamp(start.0 + span * j / 32);
-            let s = self.stage.true_position(at);
+            let s = path.at(at);
             for c in &corners {
                 lo = Point2::new(lo.x.min(s.x.0 + c.x), lo.y.min(s.y.0 + c.y));
                 hi = Point2::new(hi.x.max(s.x.0 + c.x), hi.y.max(s.y.0 + c.y));
@@ -575,7 +578,7 @@ impl Inner {
             .read()
             .unwrap_or_else(PoisonError::into_inner)
             .clone();
-        let z = self.stage.true_position(middle).z;
+        let z = path.at(middle).z;
 
         // Where the stage is during each row's exposure: enough places to
         // blur its motion a pixel at a time, up to 64.
@@ -584,16 +587,13 @@ impl Inner {
             .into_par_iter()
             .map(|v| {
                 let first = start + line_d * v;
-                let (a, b) = (
-                    self.stage.true_position(first),
-                    self.stage.true_position(first + exposure),
-                );
+                let (a, b) = (path.at(first), path.at(first + exposure));
                 let moved = ((b.x.0 - a.x.0).powi(2) + (b.y.0 - a.y.0).powi(2)).sqrt() / p;
                 let n = (moved.ceil() as u64 + 1).clamp(1, 64);
                 (0..n)
                     .map(|j| {
                         let at = first + exposure.mul_f64((j as f64 + 0.5) / n as f64);
-                        let s = self.stage.true_position(at);
+                        let s = path.at(at);
                         Point2::new(s.x.0, s.y.0)
                     })
                     .collect()

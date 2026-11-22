@@ -8,7 +8,7 @@ The live preview, and its benchmark: the simulated camera's frames as JPEGs thro
 cargo run --release -p ex-live-view
 ```
 
-It starts the simulated microscope on the MIChrome 20's full sensor (5472 × 3648 pixels of 0.24 µm at 10×), homes the stage, places it over the H&E slide's tissue, turns the light on and starts streaming. Then it prints `ex-live-view: open http://127.0.0.1:8218/`. A debug build works too, more slowly.
+It starts the simulated microscope on the MIChrome 20's full sensor (5472 × 3648 pixels of 0.24 µm at 10×), homes the stage, places it over the H&E slide's tissue, turns the light on and starts streaming in mode `design`: full resolution in 16 bits at 14.5 fps. Then it prints `ex-live-view: open http://127.0.0.1:8218/`. A debug build works too, more slowly.
 
 **The page:**
 
@@ -63,7 +63,16 @@ curl http://127.0.0.1:8218/bench/timings.json
 
 **Things to know:**
 
-- **The simulator runs in real time** once it has homed the stage, at 50 times real time. Frames come at most at the simulated camera's rate: 7.2 a second at full resolution in 16 bits. It renders more slowly than that, so it skips frames.
+- **The simulator runs in real time** once it has homed the stage, at 50 times real time.
+- **Frames come at most at the camera mode's rate.** The example sets mode `design`, P29's design rate of 14.5 fps in 16 bits. Mode `full` is the MIChrome 20's measured rate: 7.24 fps in 16 bits, the rate of [the baseline](../../docs/performance/live-view-baseline.md). To set it, stop streaming first:
+
+  ```sh
+  curl -X POST -H "Content-Type: application/json" -d '{}' http://127.0.0.1:8218/api/v1/camera/stop_streaming
+  curl -X POST -H "Content-Type: application/json"        -d '{"mode": "full", "format": {"kind": "bayer16", "pattern": "RGGB", "significant_bits": 12}}'        http://127.0.0.1:8218/api/v1/camera/set_mode
+  curl -X POST -H "Content-Type: application/json" -d '{}' http://127.0.0.1:8218/api/v1/camera/start_streaming
+  ```
+
+- **Built with `--features cuda`, the camera keeps up with 14.5 fps,** still and jogging. On the CPU it renders more slowly, so it skips frames.
 - **A preview is never larger than the region it shows.**
 - **Settings are saved** in the data root's `settings` folder, under `.oscope/ex-live-view/`, and the timings in its `bench` folder.
 

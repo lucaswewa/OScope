@@ -100,6 +100,8 @@ try {
       os: `${os.type()} ${os.release()}`,
     },
     browser: `${options.channel} ${browser.version()}${options.headed ? "" : ", headless"}`,
+    // The camera's mode, format and exposure: its mode sets the most frames a second.
+    camera: await (await fetch(api("camera/settings"))).json(),
     windows,
   };
   const out = options.out ?? `bench-${options.label}.json`;
