@@ -41,7 +41,7 @@ cargo run -p ex-server-hello -- --smoke
 It checks four things:
 
 - the page and its script are served;
-- the Thing Description lists 10 properties;
+- the Thing Description lists 11 properties;
 - each property answers at the address its form gives;
 - the media plane answers `pong`.
 
