@@ -1,9 +1,0 @@
-[
-  { "file": "levels.json", "title": "Levels and gamma: 0.05 to 0.85, gamma 2.2" },
-  { "file": "false-colour.json", "title": "False colour: fire, from 0.3 to 0.95" },
-  { "file": "inverted.json", "title": "Inverted" },
-  { "file": "green.json", "title": "The green channel alone" },
-  { "file": "flat-field.json", "title": "Flat field", "needs": ["flat"] },
-  { "file": "flat-field-false-colour.json", "title": "Flat field, then false colour", "needs": ["flat"] },
-  { "file": "dark-and-flat.json", "title": "Dark frame and flat field", "needs": ["dark", "flat"] }
-]

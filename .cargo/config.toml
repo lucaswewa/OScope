@@ -1,3 +1,0 @@
-# `cargo xtask`: the workspace's own tasks (P53): xtask/README.md.
-[alias]
-xtask = "run --package xtask --"

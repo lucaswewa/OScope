@@ -1,9 +1,0 @@
-#!/bin/sh
-# OScope's .deb (P54), before it is removed: its service stopped and disabled.
-# An upgrade leaves it running; the new version's postinst starts it again.
-set -e
-
-if [ "$1" = remove ] && [ -d /run/systemd/system ]; then
-    systemctl disable --now oscope.service >/dev/null 2>&1 || true
-fi
-exit 0
