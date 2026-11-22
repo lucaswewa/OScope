@@ -1,0 +1,19 @@
+[package]
+name = "oscope-acquire"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+oscope-core.workspace = true
+oscope-hal.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+chrono.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+[lints]
+workspace = true

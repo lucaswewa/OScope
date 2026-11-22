@@ -52,9 +52,12 @@ sudo bash scripts/dev.sh backend
 sudo bash scripts/dev.sh shell-cpu
 ```
 
-Inside the container, run `cargo run -p ex-core-tour --locked -- --smoke` to try
-units, a seeded affine fit and the clock. The backend gate is independent of
-frontend tooling. See [development instructions](docs/development.md).
+Inside the container, run `cargo run -p ex-acquisition --locked -- --smoke` for
+simulated tissue through the camera, exposure metadata and frame bus. Use
+`scripts/dev.sh shell` and add `--require-cuda` to require actual GPU capture.
+See the [R04 manual procedure](docs/phases/r04-devices-acquisition.md#manual-test)
+and [development instructions](docs/development.md). The backend gate is
+independent of frontend tooling.
 
 ## License
 

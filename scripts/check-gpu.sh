@@ -11,3 +11,6 @@ cargo test -p oscope-imaging --test gpu --locked -- --test-threads=1 --nocapture
 # timing test is not part of this gate and must not appear as a skipped pass.
 cargo test -p oscope-imaging --test registration_gpu --locked the_gpu_agrees_with_the_cpu -- --exact --test-threads=1 --nocapture
 cargo test -p oscope-volume --test cuda --locked -- --test-threads=1 --nocapture
+cargo test -p oscope-sim --test backend --locked -- --test-threads=1 --nocapture
+cargo test -p oscope-sim --test gpu --locked -- --test-threads=1 --nocapture
+cargo run -p ex-acquisition --locked -- --require-cuda --smoke

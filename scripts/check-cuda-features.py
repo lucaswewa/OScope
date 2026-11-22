@@ -11,7 +11,8 @@ if mode == "cpu":
     args.append("--no-default-features")
 metadata = json.loads(subprocess.check_output(args, text=True))
 names = {p["id"]: p["name"] for p in metadata["packages"]}
-required = {"oscope-compute", "oscope-imaging", "oscope-volume", "ex-compute-info", "ex-cuda-check"}
+required = {"oscope-compute", "oscope-imaging", "oscope-volume", "oscope-sim",
+            "ex-compute-info", "ex-cuda-check", "ex-sim-camera", "ex-acquisition"}
 checked = set()
 for node in metadata["resolve"]["nodes"]:
     name = names[node["id"]]

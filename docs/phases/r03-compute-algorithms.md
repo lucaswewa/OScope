@@ -1,9 +1,9 @@
 # R03 Compute and algorithms
 
-- Status: Complete locally; owner review pending
+- Status: Approved
 - Date: 2026-11-22
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
-- Owner approval: Pending
+- Owner approval: Accepted on 2026-11-22
 - Scope: compute, imaging, stitching and volume algorithms; no devices or frontend
 
 ## Port specification
@@ -110,7 +110,7 @@ sudo bash scripts/dev.sh cpu-tests
 echo $?
 ```
 
-Expect resolved CUDA features to be disabled for all five feature-bearing members,
+Expect resolved CUDA features to be disabled for all feature-bearing workspace members,
 CPU-only Clippy/tests to pass, the example to report CUDA absent from the build,
 and exit code `0`. This checks compilation without CUDA, separately from runtime
 fallback in the default build.

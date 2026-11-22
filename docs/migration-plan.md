@@ -20,8 +20,8 @@ skipped. Keep the owner informed as implementation progresses.
 | R00 | Clean branch, approved architecture and factory flow | Complete | Pinned source; plans and working rules saved |
 | R01 | Docker development environment and tooling checks | Complete | Image built; tools and real CUDA kernel passed; missing-GPU check failed as required; see phase notes |
 | R02 | Minimal Linux workspace, core and architecture checks | Approved by owner, 2026-11-22; hosted CI blocked | 41 tests; core-tour smoke; actual-manifest rejection; locked dependency parity; Linux container gate |
-| R03 | Compute and algorithm libraries | Complete locally; owner review pending | CUDA-default and CPU-only gates; 13 GPU numerical tests; required-device rejection; source/lock parity; manual procedure |
-| R04 | HAL, simulator, frame bus and live acquisition | Planned | Simulated camera through acquisition; pacing/backpressure and cancellation |
+| R03 | Compute and algorithm libraries | Approved by owner, 2026-11-22 | CUDA-default and CPU-only gates; 13 GPU numerical tests; required-device rejection; source/lock parity; manual procedure |
+| R04 | HAL, simulator, frame bus and live acquisition | Complete locally; owner review pending | Default/CPU-only gates; 15 numerical GPU tests; simulated acquisition metadata, fan-out and cancellation; manual procedure |
 | R05 | Storage, recording, jobs and processing engine | Planned | Bounded recording/reopen; job recovery; recipes and Python worker IPC |
 | R06 | API and container runtime | Planned | Health/readiness, authenticated control/media, signals, restart and persistent state |
 | R07 | Calibration, scans and analysis workflows | Planned | Runnable simulated microscope checkpoint; scientific outputs match references |

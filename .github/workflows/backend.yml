@@ -5,6 +5,7 @@ on:
       - Cargo.*
       - .cargo/**
       - crates/**
+      - configs/**
       - examples/**
       - xtask/**
       - deny.toml
@@ -24,6 +25,7 @@ on:
       - Cargo.*
       - .cargo/**
       - crates/**
+      - configs/**
       - examples/**
       - xtask/**
       - deny.toml

@@ -16,4 +16,8 @@ cargo xtask check-layering
 cargo run --package ex-core-tour --locked -- --smoke
 cargo run --package ex-compute-info --locked -- --smoke
 cargo run --package ex-cuda-check --locked -- --smoke
+cargo run --package ex-hal-fakes --locked -- --smoke
+cargo run --package ex-frame-bus --locked -- --smoke
+cargo run --package ex-sim-camera --locked -- --smoke
+cargo run --package ex-acquisition --locked -- --smoke
 cargo deny --locked check

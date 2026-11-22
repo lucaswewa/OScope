@@ -6,3 +6,4 @@ python3 scripts/check-cuda-features.py cpu
 cargo clippy --workspace --all-targets --no-default-features --locked -- -D warnings
 cargo test --workspace --no-default-features --locked
 cargo run -p ex-cuda-check --no-default-features --locked -- --smoke
+cargo run -p ex-acquisition --no-default-features --locked -- --smoke

@@ -2,8 +2,9 @@
 
 The Linux x86_64 development container contains the pinned Rust toolchain, CUDA
 compilation tools, Python, uv and cargo-deny. Tool checks and a required-device
-CUDA probe validate the environment. The current application checkpoint is the
-ported core tour; camera support and production readiness remain later phases.
+CUDA probe validate the environment. The current application checkpoint uses
+simulated devices through live acquisition. Physical drivers, the server and
+production readiness remain later phases.
 
 ## WSL prerequisites
 
@@ -58,9 +59,8 @@ verifies all 4,096 results. Missing hardware or an incorrect result fails.
 The CUDA development base is pinned to its Linux amd64 manifest digest. Rust is
 1.98.1, uv is 0.13.6 and cargo-deny is 0.20.2, matching the source baseline.
 Ubuntu package versions in the development image are resolved at build time;
-this is not a bit-for-bit
-reproducible or production-qualified release. Source ports add locked application
-dependencies are locked in the ported workspace. Its default Cargo target is
+this is not a bit-for-bit reproducible or production-qualified release.
+Application dependencies are locked in the ported workspace. Its default Cargo target is
 `x86_64-unknown-linux-gnu`.
 
 ## Interactive development
@@ -71,10 +71,10 @@ sudo bash scripts/dev.sh shell-cpu   # no GPU reservation
 ```
 
 The same image is used in both modes. It contains CUDA tools in either mode;
-`shell-cpu` verifies launch without GPU injection, not the backend's future CPU
-fallback. The core tour runs now; there is no microscope server until R06.
+`shell-cpu` launches without GPU injection. The CUDA-enabled acquisition checkpoint
+exercises runtime CPU fallback there; there is no microscope server until R06.
 
-## Backend gate and core checkpoint
+## Backend gate and simulated acquisition checkpoint
 
 From the Linux checkout:
 
@@ -84,28 +84,31 @@ sudo bash scripts/dev.sh backend
 ```
 
 The backend gate runs Rust formatting, Clippy with warnings denied, all current
-workspace tests and doc tests, Rust documentation, the architecture checker, the
-core-tour smoke check, and dependency licenses/advisories. It runs without a GPU
-reservation, Node or browser installation. The current Rust ports include the
-core, compute, imaging, stitching and volume libraries, architecture tooling and
-standalone core/compute examples. Device/API services remain later phases.
+workspace tests and doc tests, Rust documentation, the architecture checker,
+standalone example smoke checks, and dependency licenses/advisories. It runs
+without a GPU reservation, Node or browser installation. The current Rust ports
+include core, compute, imaging, stitching, volume, architecture tooling,
+HAL, simulator and acquisition bus/metadata, plus runnable examples. Physical
+device drivers and API services remain later phases.
 
 R03 adds `sudo bash scripts/dev.sh gpu-tests` for required-device numerical
 equivalence and `sudo bash scripts/dev.sh cpu-tests` for an explicit CPU-only
 build. Normal builds contain CUDA and permit runtime CPU fallback. See the
-[R03 manual procedure](phases/r03-compute-algorithms.md#manual-test) for commands
-and expected results. Each phase must now include its own manual procedure.
+[R03 manual procedure](phases/r03-compute-algorithms.md#manual-test) for algorithms
+and the [R04 manual procedure](phases/r04-devices-acquisition.md#manual-test) for
+devices, backpressure and live acquisition. Each phase includes its own procedure.
 
 Inside `scripts/dev.sh shell` or `shell-cpu`, try the checkpoint directly:
 
 ```sh
-cargo run --package ex-core-tour --locked -- --smoke
+cargo run --package ex-acquisition --locked -- --smoke
 cargo xtask check-layering
 ```
 
-The tour fits a seeded affine camera/stage mapping and checks units and clocks.
-The existing core tests also cover frame ownership/pooling, strides, Bayer layout,
-IDs and document versions. See [R02 evidence](phases/r02-core-workspace.md).
+Acquisition prefers CUDA, with CPU fallback, and checks metadata and slab cleanup
+for six frames. Add `--require-cuda` inside the GPU shell to reject fallback.
+The core tour also remains available for units and a seeded affine fit; see
+[R02 evidence](phases/r02-core-workspace.md).
 
 The Compose service mounts source at `/workspace` and keeps Cargo registry/Git,
 build output and uv caches in named volumes. No service port, USB device, Docker
