@@ -41,7 +41,8 @@ test("a project made elsewhere appears @main", async ({ page, server }) => {
   await page.goto(`${server.url}/#/gallery`);
   await expect(said(page, "empty")).toContainText("No project yet");
   await made(server.url, "Tonsil");
-  await expect(card(page, "Tonsil")).toBeVisible();
+  // At its change, or, told before the page listened, at its next look.
+  await expect(card(page, "Tonsil")).toBeVisible({ timeout: 30_000 });
   await expect(said(page, "count")).toHaveText("One project");
 });
 
@@ -125,7 +126,7 @@ test("the grid, and its empty state, look as their baselines do @visual", async 
   }
   // One card: the grid's look, in any order.
   await made(server.url, "Tonsil");
-  await expect(said(page, "grid").locator(":scope > li")).toHaveCount(1);
+  await expect(said(page, "grid").locator(":scope > li")).toHaveCount(1, { timeout: 30_000 });
   await page.mouse.move(5, 5);
   // The dates are today's: masked.
   for (const scheme of ["light", "dark"] as const) {

@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use oscope_core::ProjectId;
 use oscope_store::{
-    Change, ImageInfo, Input, NewProject, NodeVersion, Order, Provenance, Query, SampleType,
-    Samples, Store, StoreError,
+    Change, ImageInfo, Input, NewProject, NodeVersion, Order, Provenance, Query, RecordKind,
+    SampleType, Samples, Store, StoreError,
 };
 use serde_json::{Map, json};
 
@@ -485,6 +485,56 @@ fn a_result_is_deleted_unless_another_was_made_from_it() {
     std::fs::rename(results.join(c.to_string()), &going).unwrap();
     live.rebuild_index().unwrap();
     assert!(live.contents(id).unwrap().results.is_empty() && !going.exists());
+}
+
+#[test]
+fn any_record_is_deleted_unless_a_result_was_made_from_it() {
+    // W6.2: an acquisition, a result made from it, and a report.
+    let folder = tempfile::tempdir().unwrap();
+    let live = store(folder.path());
+    let id = live.create(project("Records", "", &[])).unwrap().id;
+    let acquisition = acquire(&live, id, 64, 64).id;
+    let provenance = Provenance {
+        recipe: json!(null),
+        nodes: vec![],
+        inputs: vec![Input::Acquisition(acquisition)],
+        hashes: Default::default(),
+        software: "OScope".into(),
+    };
+    let result = live
+        .result(id, "from it", provenance, None)
+        .unwrap()
+        .commit()
+        .unwrap()
+        .id;
+    let report = live.report(id, "a report").unwrap().commit().unwrap().id;
+    let (a, r, p) = (
+        acquisition.to_string(),
+        result.to_string(),
+        report.to_string(),
+    );
+    let refused = live.delete_record(id, RecordKind::Acquisition, &a);
+    assert!(
+        matches!(&refused, Err(StoreError::Refused(why)) if why.contains("from it")),
+        "{refused:?}"
+    );
+    live.delete_record(id, RecordKind::Report, &p).unwrap();
+    live.delete_record(id, RecordKind::Result, &r).unwrap();
+    live.delete_record(id, RecordKind::Acquisition, &a).unwrap();
+    let contents = live.contents(id).unwrap();
+    assert!(contents.acquisitions.is_empty() && contents.results.is_empty());
+    assert!(contents.reports.is_empty());
+    for (kind, record) in [("acquisitions", &a), ("results", &r), ("reports", &p)] {
+        assert!(!live.folder(id).join(kind).join(record).exists(), "{kind}");
+    }
+    // Not one of the project's: not found, whatever it names.
+    for name in [a.as_str(), "..", "../project.json"] {
+        let missing = live.delete_record(id, RecordKind::Acquisition, name);
+        assert!(
+            matches!(missing, Err(StoreError::NotFound { .. })),
+            "{name}"
+        );
+    }
 }
 
 #[test]

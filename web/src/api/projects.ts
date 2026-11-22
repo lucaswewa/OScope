@@ -56,13 +56,17 @@ export function projectPage(
   return fetched((options.on ?? server).address(path), (answer) => answer.json(), options);
 }
 
-/** A project's thumbnail, its newest image's, a JPEG: none while it has no image. */
+/**
+ * A project's thumbnail, its newest image's, or one of its records' (W6.2),
+ * a JPEG: none while it has no image.
+ */
 export async function projectThumbnail(
   id: string,
-  options: Limits & { on?: Server } = {},
+  options: Limits & { on?: Server; record?: string } = {},
 ): Promise<Blob | undefined> {
+  const record = options.record ? `/${encodeURIComponent(options.record)}` : "";
   const address = (options.on ?? server).address(
-    `/api/v1/projects/thumbnail/${encodeURIComponent(id)}`,
+    `/api/v1/projects/thumbnail/${encodeURIComponent(id)}${record}`,
   );
   try {
     return await fetched(address, (answer) => answer.blob(), options);
@@ -70,4 +74,18 @@ export async function projectThumbnail(
     if (thrown instanceof ApiError && thrown.status === 404) return undefined;
     throw thrown;
   }
+}
+
+/**
+ * A project, with its acquisitions, results and reports (W6.2): as the
+ * store's records are, which the Gallery's project page reads.
+ */
+export function projectContents(
+  id: string,
+  options: Limits & { on?: Server } = {},
+): Promise<unknown> {
+  const address = (options.on ?? server).address(
+    `/api/v1/projects/project/${encodeURIComponent(id)}`,
+  );
+  return fetched(address, (answer) => answer.json() as Promise<unknown>, options);
 }

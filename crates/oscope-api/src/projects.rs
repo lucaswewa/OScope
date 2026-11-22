@@ -408,6 +408,23 @@ impl ProjectsThing {
         Ok(())
     }
 
+    /// Deletes a record of a project, with its files.
+    ///
+    /// `kind` is `acquisition`, `result` or `report`. Refused while a
+    /// result was made from it (W6.2).
+    #[action]
+    async fn delete_record(
+        &self,
+        project: ProjectId,
+        kind: RecordKind,
+        record: String,
+    ) -> Result<(), ActionError> {
+        let deleted = self.blocking(move |store| store.delete_record(project, kind, &record));
+        deleted.await.map_err(action_error)?;
+        self.changed.emit(project);
+        Ok(())
+    }
+
     /// Rebuilds the index from the folders, which are the truth.
     ///
     /// For an index lost or damaged: how many projects it then lists, and
