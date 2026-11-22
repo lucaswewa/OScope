@@ -6,6 +6,7 @@ import { projectThumbnail } from "@/api/projects";
 import { useAction } from "@/api/things/use";
 import DownloadRow from "@/features/gallery/project/DownloadRow.vue";
 import ExportPane from "@/features/gallery/project/ExportPane.vue";
+import { imageOf } from "@/features/gallery/viewer/viewer";
 import {
   detailsOf,
   filesOf,
@@ -82,6 +83,17 @@ async function deleteIt(): Promise<void> {
     <p class="said">{{ t(`projectPage.kinds.${one.kind}`) }}</p>
     <img v-if="thumbnail" class="picture" :src="thumbnail" :alt="t('projectPage.thumbnail')" />
     <KeyValue :entries="details" data-said="details" />
+    <RouterLink
+      v-if="imageOf(one)"
+      class="view"
+      data-said="view"
+      :to="{
+        name: 'gallery',
+        query: { project: contents.project.id, record: one.record.id, view: '1' },
+      }"
+    >
+      {{ t("viewer.open") }}
+    </RouterLink>
 
     <section
       v-if="provenance"

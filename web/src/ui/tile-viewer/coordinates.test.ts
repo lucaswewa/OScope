@@ -6,6 +6,7 @@ import {
   stageRectToViewport,
   stageToImage,
   stageToViewport,
+  viewportRectToStage,
   viewportToStage,
   type Placement,
 } from "./coordinates";
@@ -40,6 +41,19 @@ describe("the tile viewer's coordinates", () => {
       y: 0.117,
       width: 0.01,
       height: 0.006,
+    });
+  });
+
+  it("say a view of the viewport as a rectangle of the stage, the one it came from (W6.4)", () => {
+    const field = { x: 700, y: 3_100, width: 250, height: 125 };
+    const back = viewportRectToStage(offset, stageRectToViewport(offset, field));
+    for (const key of ["x", "y", "width", "height"] as const)
+      expect(back[key]).toBeCloseTo(field[key], 6);
+    expect(viewportRectToStage(canvas, { x: 0.5, y: 0.25, width: 0.1, height: 0.05 })).toEqual({
+      x: 50_000,
+      y: 25_000,
+      width: 10_000,
+      height: 5_000,
     });
   });
 });

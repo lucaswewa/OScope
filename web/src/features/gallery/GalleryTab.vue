@@ -17,6 +17,7 @@ import {
 } from "@/features/gallery/gallery";
 import ProjectCard from "@/features/gallery/ProjectCard.vue";
 import ProjectPage from "@/features/gallery/project/ProjectPage.vue";
+import ViewerPage from "@/features/gallery/viewer/ViewerPage.vue";
 import RecordingsWaiting from "@/features/gallery/RecordingsWaiting.vue";
 import { kept } from "@/host/kept";
 import Button from "@/ui/Button.vue";
@@ -43,6 +44,10 @@ const route = useRoute();
 const open = computed(() =>
   typeof route.query.project === "string" ? route.query.project : undefined,
 );
+const queried = (value: unknown) => (typeof value === "string" && value ? value : undefined);
+/** The record the deep-zoom viewer shows, and the one beside it (W6.4). */
+const viewing = computed(() => (route.query.view ? queried(route.query.record) : undefined));
+const beside = computed(() => queried(route.query.beside));
 const isSort = (value: unknown): value is string => value === "changed" || value === "name";
 const sort = kept("oscope.gallery.sort", "changed", isSort);
 const text = shallowRef("");
@@ -237,7 +242,8 @@ async function deleteIt(): Promise<void> {
 </script>
 
 <template>
-  <ProjectPage v-if="open" :project="open" />
+  <ViewerPage v-if="open && viewing" :project="open" :record="viewing" :beside="beside" />
+  <ProjectPage v-else-if="open" :project="open" />
   <section v-else class="gallery" :aria-labelledby="'gallery-title'" data-said="gallery">
     <header class="head">
       <h1 id="gallery-title">{{ t("tabs.gallery.title") }}</h1>
