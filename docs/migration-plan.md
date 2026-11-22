@@ -16,7 +16,7 @@ skipped. Keep the owner informed as implementation progresses.
 | Phase | Deliverable | Status | Exit evidence |
 |---|---|---|---|
 | R00 | Clean branch, approved architecture and factory flow | Complete | Pinned source; plans and working rules saved |
-| R01 | Docker development environment and tooling checks | In progress | Image builds; Rust/Python/CUDA tools checked; actual CUDA kernel checked separately |
+| R01 | Docker development environment and tooling checks | Complete | Image built; tools and real CUDA kernel passed; missing-GPU check failed as required; see phase notes |
 | R02 | Minimal Linux workspace, core and architecture checks | Planned | Locked dependency graph; core tests; Linux-only crate boundaries |
 | R03 | Compute and algorithm libraries | Planned | CPU references and real CUDA equivalence; compile and exercise CPU fallback |
 | R04 | HAL, simulator, frame bus and live acquisition | Planned | Simulated camera through acquisition; pacing/backpressure and cancellation |

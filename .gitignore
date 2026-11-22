@@ -9,6 +9,7 @@
 /web/dist/
 /web/test-results/
 /web/playwright-report/
+/web/.bundle/
 **/.venv/
 **/__pycache__/
 **/.pytest_cache/

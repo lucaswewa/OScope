@@ -1,0 +1,12 @@
+# Overlay: ordinary development prefers CUDA. The base can launch without a GPU.
+services:
+  dev:
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

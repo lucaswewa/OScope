@@ -1,0 +1,10 @@
+{
+  "name": "OScope Linux CUDA development",
+  "dockerComposeFile": ["../compose.yaml", "../compose.gpu.yaml"],
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "oscope",
+  "updateRemoteUserUID": true,
+  "overrideCommand": true,
+  "shutdownAction": "stopCompose"
+}

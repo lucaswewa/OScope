@@ -1,0 +1,42 @@
+name: Development environment
+on:
+  pull_request:
+    paths:
+      - containers/**
+      - compose*.yaml
+      - .dockerignore
+      - .devcontainer/**
+      - rust-toolchain.toml
+      - scripts/dev.sh
+      - scripts/setup-wsl.sh
+      - .github/workflows/environment.yml
+  push:
+    branches: [main, codex/linux-container-rebuild]
+    paths:
+      - containers/**
+      - compose*.yaml
+      - .dockerignore
+      - .devcontainer/**
+      - rust-toolchain.toml
+      - scripts/dev.sh
+      - scripts/setup-wsl.sh
+      - .github/workflows/environment.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  environment:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Shell syntax and Compose configuration
+        run: |
+          for script in scripts/*.sh containers/*.sh; do bash -n "$script"; done
+          bash scripts/dev.sh config
+      - name: Build the development image
+        run: bash scripts/dev.sh build
+      - name: Check tools without a GPU reservation
+        run: bash scripts/dev.sh tools
+      # The required-device probe runs locally: bash scripts/dev.sh gpu.
+      # A hosted runner without a GPU cannot supply that evidence.

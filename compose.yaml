@@ -1,0 +1,28 @@
+name: oscope-development
+services:
+  dev:
+    image: oscope-development:r01
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: containers/development.Dockerfile
+      target: development
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    init: true
+    shm_size: ${OSCOPE_DEV_SHM_SIZE:-1gb}
+    environment:
+      CARGO_TARGET_DIR: /workspace/target
+      UV_CACHE_DIR: /home/oscope/.cache/uv
+    volumes:
+      - .:/workspace
+      - target:/workspace/target
+      - cargo-registry:/home/oscope/.cargo/registry
+      - cargo-git:/home/oscope/.cargo/git
+      - uv-cache:/home/oscope/.cache/uv
+volumes:
+  target:
+  cargo-registry:
+  cargo-git:
+  uv-cache:

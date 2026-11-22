@@ -1,0 +1,6 @@
+# Include only build inputs. Legacy local caches and recordings may still exist
+# in a Windows checkout; they must never be sent to the Docker daemon.
+**
+!containers/
+!containers/**
+!rust-toolchain.toml

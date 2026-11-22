@@ -13,6 +13,8 @@ Saved the architecture, migration phases, factory/service workflow, ADR 0062 and
 branch-specific working rules. Kept the MIT license, LF policy and pinned Rust
 toolchain. Application code and frontend changes begin only in their port phases.
 
-Validation: verify main's pinned commit, document links, clean branch contents,
-and `git diff --check` before committing. R01 environment verification is recorded
-separately and must not be inferred from the planning commit.
+Verified main's pinned commit, local document links and `git diff --check` before
+committing the clean foundation as `f0de2c4`. The tracked tree contains plans,
+working rules, the license, LF policy and the Rust toolchain pin. Ignored legacy
+build caches and recordings remain local and are not included in the new tree.
+R01 environment verification is recorded separately.

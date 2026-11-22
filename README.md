@@ -6,7 +6,8 @@ WSL2. The Vue 3 frontend and future Windows Tauri 2 app connect over the API.
 
 The owner approved this direction on 2026-11-22. This is a clean migration branch:
 the existing microscope implementation is available in Git and will be ported in
-small, independently verified phases. No microscope backend has been ported yet.
+small, independently verified phases. R00 planning and R01's development image and
+real GPU probe are complete. No microscope backend has been ported yet.
 
 ## Start here
 
