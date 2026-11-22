@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+members = ["crates/oscope-core", "examples/ex-core-tour", "xtask"]
+
+[workspace.package]
+version = "0.1.1"
+edition = "2024"
+rust-version = "1.98"
+license = "MIT"
+repository = "https://github.com/lucaswewa/OScope"
+publish = false
+
+[workspace.dependencies]
+# Retain the pinned source's versions and features. Add dependencies only as
+# their implementation is ported; Cargo.lock is pruned from the source lock.
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std", "serde"] }
+rand = "0.9.5"
+schemars = { version = "1.2.2", features = ["chrono04", "uuid1"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.21"
+uuid = { version = "1.26.1", features = ["serde", "v7"] }
+oscope-core = { path = "crates/oscope-core" }
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "warn"

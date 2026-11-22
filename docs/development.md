@@ -1,9 +1,9 @@
 # Container development environment
 
-R01 establishes a Linux x86_64 development container before any microscope code is
-ported. It will contain the pinned Rust toolchain, CUDA compilation tools, Python
-and uv. Tool checks and a required-device CUDA probe validate the environment;
-they do not establish camera support or production readiness.
+The Linux x86_64 development container contains the pinned Rust toolchain, CUDA
+compilation tools, Python, uv and cargo-deny. Tool checks and a required-device
+CUDA probe validate the environment. The current application checkpoint is the
+ported core tour; camera support and production readiness remain later phases.
 
 ## WSL prerequisites
 
@@ -56,10 +56,12 @@ GPU access, allocates pinned/device memory, launches a CUDA kernel, downloads an
 verifies all 4,096 results. Missing hardware or an incorrect result fails.
 
 The CUDA development base is pinned to its Linux amd64 manifest digest. Rust is
-1.98.1 and uv is 0.13.6, matching the source baseline. Ubuntu package versions in
-the development image are resolved at build time; this is not a bit-for-bit
+1.98.1, uv is 0.13.6 and cargo-deny is 0.20.2, matching the source baseline.
+Ubuntu package versions in the development image are resolved at build time;
+this is not a bit-for-bit
 reproducible or production-qualified release. Source ports add locked application
-dependencies in R02.
+dependencies are locked in the R02 workspace. Its default Cargo target is
+`x86_64-unknown-linux-gnu`.
 
 ## Interactive development
 
@@ -70,7 +72,33 @@ sudo bash scripts/dev.sh shell-cpu   # no GPU reservation
 
 The same image is used in both modes. It contains CUDA tools in either mode;
 `shell-cpu` verifies launch without GPU injection, not the backend's future CPU
-fallback. There is no microscope server to run until R06.
+fallback. The core tour runs now; there is no microscope server until R06.
+
+## Backend gate and core checkpoint
+
+From the Linux checkout:
+
+```sh
+sudo bash scripts/dev.sh build
+sudo bash scripts/dev.sh backend
+```
+
+The backend gate runs Rust formatting, Clippy with warnings denied, all current
+workspace tests and doc tests, Rust documentation, the architecture checker, the
+core-tour smoke check, and dependency licenses/advisories. It runs without a GPU
+reservation, Node or browser installation. The Rust ports currently contain only
+`oscope-core`, `xtask` and `ex-core-tour`. CUDA compute arrives in R03.
+
+Inside `scripts/dev.sh shell` or `shell-cpu`, try the checkpoint directly:
+
+```sh
+cargo run --package ex-core-tour --locked -- --smoke
+cargo xtask check-layering
+```
+
+The tour fits a seeded affine camera/stage mapping and checks units and clocks.
+The existing core tests also cover frame ownership/pooling, strides, Bayer layout,
+IDs and document versions. See [R02 evidence](phases/r02-core-workspace.md).
 
 The Compose service mounts source at `/workspace` and keeps Cargo registry/Git,
 build output and uv caches in named volumes. No service port, USB device, Docker
@@ -92,8 +120,11 @@ git diff --check
 
 The documentation workflow does not build the image. The environment workflow
 runs only for environment inputs and checks the image without a GPU. Run the GPU
-probe locally for environment/CUDA changes. Backend, frontend and application
-integration gates arrive with their ports; the old full replay is not restored.
+probe locally for environment/CUDA changes. The backend workflow is limited to
+backend/tooling paths and uses the same development image. Both container workflows
+reuse a GitHub Actions image-layer cache; they load images locally rather than
+publishing a release. Frontend and application integration gates arrive with
+their ports. The old combined full replay is not restored.
 
 ## Troubleshooting
 

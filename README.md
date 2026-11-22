@@ -7,7 +7,8 @@ WSL2. The Vue 3 frontend and future Windows Tauri 2 app connect over the API.
 The owner approved this direction on 2026-11-22. This is a clean migration branch:
 the existing microscope implementation is available in Git and will be ported in
 small, independently verified phases. R00 planning and R01's development image and
-real GPU probe are complete. No microscope backend has been ported yet.
+real GPU probe are complete. R02 ports the core vocabulary, its tests, the core
+tour and architecture checks. Device services and the server are later phases.
 
 ## Start here
 
@@ -38,6 +39,20 @@ git show 44bc08a53f98dc29db1fa6b488a4f6269732a71a:crates/oscope-core/src/lib.rs
 The fresh tree deliberately starts with plans and development tooling. Hardware
 qualification and unattended startup must pass before this architecture is used
 to ship microscopes. See the phase status in the migration plan.
+
+## Current runnable checkpoint
+
+From the WSL Linux checkout:
+
+```sh
+sudo bash scripts/dev.sh build
+sudo bash scripts/dev.sh backend
+sudo bash scripts/dev.sh shell-cpu
+```
+
+Inside the container, run `cargo run -p ex-core-tour --locked -- --smoke` to try
+units, a seeded affine fit and the clock. The backend gate is independent of
+frontend tooling. See [development instructions](docs/development.md).
 
 ## License
 

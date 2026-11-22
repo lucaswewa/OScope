@@ -1,7 +1,7 @@
 name: oscope-development
 services:
   dev:
-    image: oscope-development:r01
+    image: oscope-development:r02
     platform: linux/amd64
     build:
       context: .

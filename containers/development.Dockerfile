@@ -44,6 +44,8 @@ RUN curl --proto '=https' --tlsv1.2 -fsSL \
     && /tmp/rustup-init -y --no-modify-path --profile minimal \
         --default-toolchain "${RUST_VERSION}" --component clippy --component rustfmt
 
+RUN cargo install cargo-deny --version 0.20.2 --locked
+
 USER root
 COPY --from=uv /uv /uvx /usr/local/bin/
 COPY rust-toolchain.toml /opt/oscope/rust-toolchain.toml

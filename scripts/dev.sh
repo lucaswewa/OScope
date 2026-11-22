@@ -14,7 +14,8 @@ case "${1:-shell}" in
   config) "${base[@]}" config --quiet; "${gpu[@]}" config --quiet ;;
   tools) "${base[@]}" run --rm --no-deps -T dev oscope-check tools ;;
   gpu) "${gpu[@]}" run --rm --no-deps -T dev oscope-check gpu ;;
+  backend) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-backend.sh ;;
   shell) "${gpu[@]}" run --rm --no-deps dev bash ;;
   shell-cpu) "${base[@]}" run --rm --no-deps dev bash ;;
-  *) echo 'usage: scripts/dev.sh [build|config|tools|gpu|shell|shell-cpu]' >&2; exit 2 ;;
+  *) echo 'usage: scripts/dev.sh [build|config|tools|gpu|backend|shell|shell-cpu]' >&2; exit 2 ;;
 esac

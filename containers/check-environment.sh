@@ -12,6 +12,7 @@ rustc --version
 cargo --version
 cargo fmt --version
 cargo clippy --version
+cargo deny --version
 uv --version
 nvcc --version
 python3 - <<'PY'
