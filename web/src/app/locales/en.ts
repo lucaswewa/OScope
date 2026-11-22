@@ -225,6 +225,18 @@ export default {
       refused: "{name}: no importer reads this file",
     },
   },
+  viewer: {
+    open: "View it, deep-zoomed",
+    back: "Its project",
+    label: "{name}, deep-zoomed",
+    fullScreen: "Full screen",
+    leaveFullScreen: "Leave full screen",
+    save: "Save the view",
+    beside: "Beside it",
+    alone: "Nothing",
+    plane: "Plane",
+    none: "This record has no image to view.",
+  },
   exports: {
     title: "Export",
     format: "Format",

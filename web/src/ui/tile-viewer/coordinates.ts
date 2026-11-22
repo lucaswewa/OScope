@@ -54,6 +54,13 @@ export function stageRectToViewport(at: Placement, um: Rect): Rect {
   return { ...corner, width: um.width / across, height: um.height / across };
 }
 
+/** A rectangle of the viewport as one of the stage, in µm: what a view shows (W6.4). */
+export function viewportRectToStage(at: Placement, rect: Rect): Rect {
+  const corner = viewportToStage(at, rect);
+  const across = at.pixel_um * at.width;
+  return { ...corner, width: rect.width * across, height: rect.height * across };
+}
+
 /** A field of view `width` × `height` µm about `centre`, as a rectangle of the stage. */
 export function fieldAbout(centre: Point, width: number, height: number): Rect {
   return { x: centre.x - width / 2, y: centre.y - height / 2, width, height };

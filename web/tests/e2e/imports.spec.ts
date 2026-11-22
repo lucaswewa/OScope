@@ -10,50 +10,14 @@ import type { Locator, Page } from "@playwright/test";
 
 import { act } from "../../src/api/actions.ts";
 import { Server as Api, call } from "../../src/api/client.ts";
-import { finished, job } from "../../src/api/jobs.ts";
+import { job } from "../../src/api/jobs.ts";
 import { expectAccessible } from "./axe.ts";
 import { choose, expect, inScheme, shot, test } from "./fixtures.ts";
+import { imported, made } from "./records.ts";
 import { homed, overTissueTiny } from "./sim.ts";
+import { tiffOf } from "./tiff.ts";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
-
-/** A 16-bit greyscale TIFF, uncompressed, of `width` × `height` pixels: a ramp. */
-function tiffOf(width: number, height: number): Buffer {
-  const entries: [tag: number, type: 3 | 4, value: number][] = [
-    [256, 3, width],
-    [257, 3, height],
-    [258, 3, 16],
-    [259, 3, 1],
-    [262, 3, 1],
-    [273, 4, 0],
-    [277, 3, 1],
-    [278, 3, height],
-    [279, 4, width * height * 2],
-  ];
-  const ifd = 8;
-  const pixels = ifd + 2 + entries.length * 12 + 4;
-  const file = Buffer.alloc(pixels + width * height * 2);
-  file.write("II", 0, "latin1");
-  file.writeUInt16LE(42, 2);
-  file.writeUInt32LE(ifd, 4);
-  file.writeUInt16LE(entries.length, ifd);
-  entries.forEach(([tag, type, value], i) => {
-    const at = ifd + 2 + i * 12;
-    file.writeUInt16LE(tag, at);
-    file.writeUInt16LE(type, at + 2);
-    file.writeUInt32LE(1, at + 4);
-    const told = tag === 273 ? pixels : value;
-    if (type === 3) file.writeUInt16LE(told, at + 8);
-    else file.writeUInt32LE(told, at + 8);
-  });
-  for (let i = 0; i < width * height; i++) file.writeUInt16LE((i * 37) % 65_536, pixels + i * 2);
-  return file;
-}
-
-/** A project made: its ID. */
-async function made(url: string, name: string): Promise<string> {
-  return (await act("/api/v1/projects/create", { name }, { on: new Api(url) })).id;
-}
 
 /** Drops `bytes` as the file `name` on `target`, as a drag from the desktop would. */
 async function dropOn(target: Locator, name: string, bytes: Buffer): Promise<void> {
@@ -67,21 +31,6 @@ async function dropOn(target: Locator, name: string, bytes: Buffer): Promise<voi
   );
   for (const event of ["dragenter", "dragover", "drop"])
     await target.dispatchEvent(event, { dataTransfer: files });
-}
-
-/** `bytes` uploaded as `name` and imported into `project` by the API: the acquisition's ID. */
-async function imported(url: string, project: string, name: string, bytes: Buffer) {
-  const answer = await fetch(new URL(`/api/v1/upload/${encodeURIComponent(name)}`, url), {
-    method: "POST",
-    body: new Uint8Array(bytes),
-  });
-  expect(answer.status).toBe(201);
-  const staged = (await answer.json()) as { id: string };
-  const on = new Api(url);
-  const params = { project, upload: staged.id };
-  const submitted = await act("/api/v1/jobs/submit", { kind: "projects.import", params }, { on });
-  const ended = await finished(submitted, { on, timeout: 60_000 });
-  return /acquisitions\/([^/]+)$/.exec(ended.results[0]!)![1]!;
 }
 
 test("a TIFF dropped on a project's page is uploaded and imported @main", async ({

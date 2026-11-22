@@ -8,6 +8,7 @@ import Toolbar from "../Toolbar.vue";
 import ToolbarButton from "../ToolbarButton.vue";
 import {
   stageRectToViewport,
+  viewportRectToStage,
   viewportToStage,
   type Placement,
   type Point,
@@ -27,6 +28,10 @@ import { sourceOf, type TiledImage } from "./source";
  * Shapes on the stage are drawn over the image, zooming with it (W5.1).
  * While drawing, a drag draws a rectangle of the stage instead of panning,
  * and says it when let go.
+ *
+ * Moved by its user, it says what it shows, on the stage, so that another
+ * may follow it by its `fit` (W6.4); and it marks whether its tiles in view
+ * have all come, `data-sharp`.
  */
 const props = defineProps<{
   label: string;
@@ -43,7 +48,7 @@ const props = defineProps<{
   /** Whether a drag draws a rectangle, which `draw` then says, instead of panning. */
   drawing?: boolean;
 }>();
-const emit = defineEmits<{ pick: [at: Point]; draw: [rect: Rect] }>();
+const emit = defineEmits<{ pick: [at: Point]; draw: [rect: Rect]; view: [rect: Rect] }>();
 const { t } = useI18n();
 
 const host = ref<HTMLDivElement>();
@@ -95,6 +100,22 @@ function fitTo(rect: Rect | undefined): void {
   if (!viewer || !props.placement || !rect) return;
   const { x, y, width, height } = stageRectToViewport(props.placement, rect);
   viewer.viewport.fitBounds(new OpenSeadragon.Rect(x, y, width, height), true);
+}
+
+/** What the view shows, on the stage, said while its user moves it. */
+function said(): void {
+  if (!viewer || !props.placement || !moved) return;
+  const { x, y, width, height } = viewer.viewport.getBounds(true);
+  emit("view", viewportRectToStage(props.placement, { x, y, width, height }));
+}
+
+/** Whether the tiles in view have all come, at the finest level they are needed. */
+const sharp = shallowRef(false);
+function sharpen(item: OpenSeadragon.TiledImage): void {
+  sharp.value = item.getFullyLoaded();
+  item.addHandler("fully-loaded-change", (event) => {
+    sharp.value = (event as unknown as { fullyLoaded: boolean }).fullyLoaded;
+  });
 }
 
 /** The field of view, marked over the image. */
@@ -167,6 +188,7 @@ function show(): void {
     index: older.length,
     success: (event) => {
       const item = (event as unknown as { item: OpenSeadragon.TiledImage }).item;
+      sharpen(item);
       if (first) {
         look();
         measure();
@@ -211,6 +233,14 @@ function allOfIt(): void {
   viewer?.viewport.goHome();
 }
 
+/** The view as it is drawn, a PNG: none before the image has opened (W6.4). */
+function snapshot(): Promise<Blob | undefined> {
+  const canvas = viewer?.drawer.canvas;
+  if (!(canvas instanceof HTMLCanvasElement)) return Promise.resolve(undefined);
+  return new Promise((done) => canvas.toBlob((png) => done(png ?? undefined), "image/png"));
+}
+defineExpose({ snapshot });
+
 onMounted(() => {
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   viewer = OpenSeadragon({
@@ -229,6 +259,9 @@ onMounted(() => {
     navigatorDisplayRegionColor: "var(--accent)",
     gestureSettingsMouse: { clickToZoom: false, dblClickToZoom: false },
     gestureSettingsTouch: { dblClickToZoom: false },
+    // A whole row of tiles asked for each frame, not one: a full screen of a
+    // region never seen is sharp sooner (W6.4); the browser queues them.
+    maxTilesPerFrame: 8,
     zoomPerScroll: 1.25,
     maxZoomPixelRatio: 4,
     visibilityRatio: 0.1,
@@ -241,6 +274,7 @@ onMounted(() => {
     if (at) emit("pick", at);
   });
   viewer.addHandler("animation", measure);
+  viewer.addHandler("viewport-change", said);
   // The resize is raised before OpenSeadragon keeps the image's size on the
   // screen: the look again comes after it, once its update is done.
   viewer.addHandler("resize", () => {
@@ -311,7 +345,7 @@ watch(
       </ToolbarButton>
     </Toolbar>
     <div class="frame" :class="{ drawing }">
-      <div ref="host" class="viewer" data-said="tiles" />
+      <div ref="host" class="viewer" data-said="tiles" :data-sharp="sharp" />
       <div ref="field" class="field" data-said="field" />
       <svg
         ref="layer"
