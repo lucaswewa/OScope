@@ -54,3 +54,35 @@ R02 ports the minimal workspace, core types and architecture checks from the
 pinned source. It must establish a locked graph and meaningful core tests before
 compute and device services are brought over. No application code is included in
 R01.
+
+## Manual test
+
+Use the WSL Linux checkout with Docker/NVIDIA Container Toolkit configured as
+described in [development setup](../development.md). From WSL:
+
+```sh
+sudo bash scripts/dev.sh config
+sudo bash scripts/dev.sh build
+sudo bash scripts/dev.sh tools
+sudo bash scripts/dev.sh gpu
+```
+
+Expect valid base/GPU Compose configurations, a successful image build, the pinned
+Rust/Python/CUDA tools and libraries, and `CUDA kernel passed: 4096 values` with
+the real GPU name. A missing compiler/library, wrong Rust version, failed kernel
+or mismatched result is a failure. The current image may include later phases'
+tools; the original R01 image identity is recorded above.
+
+To confirm a required-GPU check cannot silently fall back, run without GPU
+injection:
+
+```sh
+sudo docker compose -f compose.yaml run --rm --no-deps -T \
+  -e NVIDIA_VISIBLE_DEVICES=void dev oscope-check gpu
+echo $?
+```
+
+Expect a nonzero exit code and a CUDA device-initialization error. If this command
+passes, the required-device check has failed its purpose. Keep this result
+separate from successful CPU fallback in the application. Containers are removed
+by `--rm`; retain the development cache volumes.

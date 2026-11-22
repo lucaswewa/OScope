@@ -1,0 +1,28 @@
+[package]
+name = "oscope-volume"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["cuda"]
+# The focus measure on the GPU, through oscope-compute's CUDA backend.
+cuda = ["oscope-compute/cuda", "oscope-imaging/cuda"]
+
+[dependencies]
+oscope-compute.workspace = true
+oscope-imaging.workspace = true
+rayon.workspace = true
+rustfft.workspace = true
+schemars.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+rand.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

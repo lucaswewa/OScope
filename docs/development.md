@@ -60,7 +60,7 @@ The CUDA development base is pinned to its Linux amd64 manifest digest. Rust is
 Ubuntu package versions in the development image are resolved at build time;
 this is not a bit-for-bit
 reproducible or production-qualified release. Source ports add locked application
-dependencies are locked in the R02 workspace. Its default Cargo target is
+dependencies are locked in the ported workspace. Its default Cargo target is
 `x86_64-unknown-linux-gnu`.
 
 ## Interactive development
@@ -86,8 +86,15 @@ sudo bash scripts/dev.sh backend
 The backend gate runs Rust formatting, Clippy with warnings denied, all current
 workspace tests and doc tests, Rust documentation, the architecture checker, the
 core-tour smoke check, and dependency licenses/advisories. It runs without a GPU
-reservation, Node or browser installation. The Rust ports currently contain only
-`oscope-core`, `xtask` and `ex-core-tour`. CUDA compute arrives in R03.
+reservation, Node or browser installation. The current Rust ports include the
+core, compute, imaging, stitching and volume libraries, architecture tooling and
+standalone core/compute examples. Device/API services remain later phases.
+
+R03 adds `sudo bash scripts/dev.sh gpu-tests` for required-device numerical
+equivalence and `sudo bash scripts/dev.sh cpu-tests` for an explicit CPU-only
+build. Normal builds contain CUDA and permit runtime CPU fallback. See the
+[R03 manual procedure](phases/r03-compute-algorithms.md#manual-test) for commands
+and expected results. Each phase must now include its own manual procedure.
 
 Inside `scripts/dev.sh shell` or `shell-cpu`, try the checkpoint directly:
 

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Explicit CPU-only compilation, independent of runtime fallback.
+set -euo pipefail
+cd "$(dirname -- "${BASH_SOURCE[0]}")/.."
+python3 scripts/check-cuda-features.py cpu
+cargo clippy --workspace --all-targets --no-default-features --locked -- -D warnings
+cargo test --workspace --no-default-features --locked
+cargo run -p ex-cuda-check --no-default-features --locked -- --smoke

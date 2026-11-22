@@ -8,7 +8,11 @@ root = Path(__file__).resolve().parents[1]
 files = [root / "README.md", root / "AGENTS.md", *sorted((root / "docs").rglob("*.md"))]
 failures = []
 for file in files:
-    for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", file.read_text(encoding="utf-8")):
+    text = file.read_text(encoding="utf-8")
+    if file.parent == root / "docs" / "phases" and re.match(r"r\d\d-", file.name):
+        if not re.search(r"^## Manual test\s*$", text, flags=re.MULTILINE):
+            failures.append(f"{file.relative_to(root)} -> missing Manual test procedure")
+    for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", text):
         if re.match(r"[a-zA-Z][a-zA-Z0-9+.-]*:", target) or target.startswith("#"):
             continue
         path = unquote(target.split("#", 1)[0])

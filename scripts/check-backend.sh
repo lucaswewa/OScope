@@ -8,9 +8,12 @@ if [ "$(uname -s)" != Linux ] || [ "$(uname -m)" != x86_64 ]; then
   exit 2
 fi
 cargo fmt --all --check
+python3 scripts/check-cuda-features.py default
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps --locked
 cargo xtask check-layering
 cargo run --package ex-core-tour --locked -- --smoke
+cargo run --package ex-compute-info --locked -- --smoke
+cargo run --package ex-cuda-check --locked -- --smoke
 cargo deny --locked check

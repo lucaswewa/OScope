@@ -23,6 +23,10 @@
 - Give each phase a focused commit and notes with commands, outcomes and gaps.
   Mark a phase complete only when its exit criteria pass. Hardware access or a
   missing external tool is recorded as pending evidence, never as a pass.
+- Every phase note must include a `## Manual test` procedure with prerequisites,
+  commands, expected results, failure conditions and cleanup where needed. Keep
+  commands usable in the WSL/container environment and distinguish GPU checks
+  from CPU fallback. Record owner approval separately from automated validation.
 - Backend and frontend checks are independent. Integration checks cover the API
   boundary. Long GPU, hardware, endurance and release checks are separate gates.
 - Keep at least one runnable checkpoint at every application port phase.

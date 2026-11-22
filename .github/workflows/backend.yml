@@ -13,6 +13,9 @@ on:
       - compose*.yaml
       - .dockerignore
       - scripts/check-backend.sh
+      - scripts/check-cpu.sh
+      - scripts/check-gpu.sh
+      - scripts/check-cuda-features.py
       - scripts/dev.sh
       - .github/workflows/backend.yml
   push:
@@ -29,6 +32,9 @@ on:
       - compose*.yaml
       - .dockerignore
       - scripts/check-backend.sh
+      - scripts/check-cpu.sh
+      - scripts/check-gpu.sh
+      - scripts/check-cuda-features.py
       - scripts/dev.sh
       - .github/workflows/backend.yml
   workflow_dispatch:
@@ -57,3 +63,5 @@ jobs:
           cache-to: type=gha,scope=oscope-development,mode=min,ignore-error=true
       - name: Backend checks without frontend installation
         run: bash scripts/dev.sh backend
+      - name: Explicit CPU-only compilation and tests
+        run: bash scripts/dev.sh cpu-tests

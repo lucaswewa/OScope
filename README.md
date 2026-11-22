@@ -7,8 +7,10 @@ WSL2. The Vue 3 frontend and future Windows Tauri 2 app connect over the API.
 The owner approved this direction on 2026-11-22. This is a clean migration branch:
 the existing microscope implementation is available in Git and will be ported in
 small, independently verified phases. R00 planning and R01's development image and
-real GPU probe are complete. R02 ports the core vocabulary, its tests, the core
-tour and architecture checks. Device services and the server are later phases.
+real GPU probe are complete, and R02 is approved. R03 ports compute, imaging,
+stitching and volume algorithms with CUDA defaults and explicit CPU fallback.
+Device services and the server are later phases. Every phase includes a manual
+test procedure in its notes.
 
 ## Start here
 

@@ -1,6 +1,7 @@
 # R02 Minimal workspace and core
 
 - Status: Complete locally; hosted CI blocked
+- Owner approval: Accepted on 2026-11-22
 - Date: 2026-11-22
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
 - Scope: Linux Rust workspace, core vocabulary, architecture rules and core tour
