@@ -56,6 +56,106 @@ container and does not install Node or browsers. The image now includes pinned
 cargo-deny 0.20.2 and is tagged `oscope-development:r02`. Environment/backend image
 builds share a GitHub Actions layer cache without publishing application images.
 
+## Manual test
+
+The R02 checkpoint exercises units, geometry, clocks, frame types and architecture
+rules through the command line. Use the existing WSL checkout and development
+image. For a fresh machine, first follow [development setup](../development.md).
+
+### Open the development container
+
+From Windows PowerShell:
+
+```powershell
+wsl -d Ubuntu-24.04 --cd /home/lucas/src/OScope-container
+```
+
+In the WSL shell:
+
+```sh
+git branch --show-current
+sudo bash scripts/dev.sh shell-cpu
+```
+
+The branch should be `codex/linux-container-rebuild`. If the image has not been
+built, run `sudo bash scripts/dev.sh build` from WSL before opening the container.
+The container's working directory is `/workspace`.
+
+Core functions do not require a GPU. `shell-cpu` launches without GPU injection,
+so the CUDA base image's driver-not-detected warning is expected in this mode.
+
+### Inspect the core tour
+
+Inside the container:
+
+```sh
+cargo run -p ex-core-tour --locked -- --smoke
+```
+
+Check the printed results:
+
+| Item | Expected at R02 |
+|---|---|
+| Length conversion | 25 mm becomes 25,000 micrometres |
+| Exposure | 2.5 ms |
+| Fitted pixel size | Approximately 0.24000 micrometres per pixel |
+| Fitted rotation | Approximately 0.502 degrees |
+| Image flip | `true` |
+| Fit residual | Approximately 0.037 micrometres RMS |
+| Far-corner error | Approximately 0.032 micrometres |
+| Fake-clock exposure midpoint | `0.070250000 s` |
+| Final result | `smoke: ok` |
+
+Run the command again. The geometry results should be identical because the noise
+uses a fixed seed. The system-clock start and current timestamps change on each
+run. The example returns a nonzero exit code if its built-in checks fail.
+
+### Check architecture and core behavior
+
+Still inside the container:
+
+```sh
+cargo xtask check-layering
+cargo test --workspace --locked
+```
+
+Expect `Layering passed for 3 workspace packages` and 41 passing tests in total,
+with no failures or ignored tests. The total is spread across multiple test
+binaries. Coverage includes frame ownership and pool reuse, strides, Bayer
+layout, geometry, clocks, identifiers, document versions and dependency rules.
+These package/test counts describe R02; later ports add more.
+
+### Run the full R02 backend gate
+
+Exit the container to return to WSL, then run:
+
+```sh
+exit
+sudo bash scripts/dev.sh backend
+echo $?
+```
+
+The exit code printed immediately after the gate must be `0`. The gate checks
+formatting, Clippy, tests, Rust documentation, layering, the tour and dependency
+policy. The duplicate `getrandom` warning is permitted by the retained policy;
+failed checks stop the gate. Dependency/advisory checks may need network access.
+
+### Optionally check the GPU environment
+
+From WSL:
+
+```sh
+sudo bash scripts/dev.sh gpu
+```
+
+Expect `CUDA kernel passed: 4096 values` followed by the actual GPU and driver
+information. This checks the development environment's real CUDA execution; the
+R02 core tour itself runs on the CPU. A missing GPU or an incorrect result must
+fail this optional environment check rather than skip it.
+
+Record the commit tested, tour result, architecture result, test counts and gate
+exit code. Record the GPU result separately if that check was run.
+
 ## Validation evidence
 
 | Check | Result |
