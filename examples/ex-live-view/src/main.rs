@@ -39,9 +39,12 @@ async fn run() -> anyhow::Result<()> {
     let example = Example::from_args("ex-live-view", 8218)?;
     timing::enable(true);
     // The simulated microscope on the full sensor, homed and placed over
-    // the tissue at 50 times real time, then in real time.
+    // the tissue at 50 times real time, then in real time. `--smoke` takes
+    // the quarter sensor, the same field in a sixteenth of the pixels: on
+    // two CPUs the full sensor's first tiles take over a minute.
     let mut config = DevicesConfig::default();
-    config.simulator.sensor = "full".to_owned();
+    let sensor = if example.smoke { "quarter" } else { "full" };
+    config.simulator.sensor = sensor.to_owned();
     config.simulator.rate = 50.0;
     let devices = Devices::from_config(&config, Path::new("."))
         .await

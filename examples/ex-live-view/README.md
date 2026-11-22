@@ -76,7 +76,7 @@ curl http://127.0.0.1:8218/bench/timings.json
 - **A preview is never larger than the region it shows.**
 - **Settings are saved** in the data root's `settings` folder, under `.oscope/ex-live-view/`, and the timings in its `bench` folder.
 
-**`--smoke`** serves on a port the system picks, with a temporary data root, then checks:
+**`--smoke`** serves on a port the system picks, with a temporary data root, on the quarter sensor: 1368 × 912 pixels of 9.6 µm, the same field in a sixteenth of the pixels. On two CPUs the full sensor's first tiles take over a minute. Then it checks:
 
 - that the page is served;
 - that four previews of 1000 × 667 arrive during a jog, each acknowledged;
