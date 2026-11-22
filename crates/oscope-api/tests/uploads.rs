@@ -270,7 +270,24 @@ async fn an_upload_needs_the_lease() {
     let acquired = client
         .request(Method::POST, acquire, &alice, Some(b"{}".to_vec()))
         .await;
-    assert!(acquired.status.is_success(), "{}", acquired.text());
+    assert_eq!(acquired.status, 201, "{}", acquired.text());
+    // An invocation: the lease is hers once it has completed.
+    let href = acquired.json()["href"].as_str().unwrap().to_owned();
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let now = client
+            .request(Method::GET, &href, &alice, None)
+            .await
+            .json();
+        if now["status"] == "completed" {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline && now["status"] != "error",
+            "{now}"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
     let answer = upload(&client, "a.tif", &alice, vec![0; 10]).await;
     assert_eq!(answer.status, 201, "{}", answer.text());
 }
