@@ -1,6 +1,6 @@
 # The simulated camera's image on the GPU
 
-- **Status:** complete, for the owner's tests, committed on the branch `perf/gpu-simulator`, stacked on `perf/live-view-baseline`. Not pushed. [The live view at 14.5 fps](live-view-fps.md) follows it.
+- **Status:** *In review*, in #113 with [the baseline](live-view-baseline.md) and [the live view at 14.5 fps](live-view-fps.md), which follows it. The gate's results are in [the latter's checks](live-view-fps.md#checks).
 - **Why:** [the live view's baseline](live-view-baseline.md) found that the simulated camera is the live view's main cost, and that it always renders on the CPU:
   - ~160 ms a still frame, against its 138 ms interval;
   - over 2 s a frame while jogging;

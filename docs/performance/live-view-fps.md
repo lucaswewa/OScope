@@ -1,6 +1,6 @@
 # The live view at 14.5 fps
 
-- **Status:** complete, for the owner's tests, on the branch `perf/live-view-fps`, stacked on `perf/gpu-simulator`. Not pushed.
+- **Status:** *In review*, in #113, on the branch `perf/live-view-fps` with [the baseline](live-view-baseline.md) and [the GPU simulator](gpu-simulator.md), rebased on `main` at W6.4.
 - **The goal:** the live view at 12 frames a second or more, at 1000 × 667 of the 5472 × 3648 sensor, built with CUDA. The owner had found the GPU and its memory only moderately busy at [the GPU simulator](gpu-simulator.md)'s 7.2 fps.
 - **The result:** 14.5 fps, still and jogging at up to 2 mm/s, with a frame on the page 29 ms after its exposure with the stage still, and 42 ms jogging at 500 µm/s.
 
@@ -109,7 +109,17 @@ All pass, on the owner's laptop, with `-j 6`:
 - `ex-live-view --smoke`, without and with `--features cuda`, now in mode `design`;
 - `cargo deny check`.
 
-**Not run:** `scripts/ci-local.sh`, the two-core runs, and Linux under WSL.
+**The gate, on `main` at W6.1** (`94b4b2b`), before the rebase, on the owner's laptop:
+
+- **The Windows replay,** `scripts/ci-local.sh --changed main --cuda`. `oscope-core`'s timing reaches nearly everything: 77 Rust packages, 58 smoke runs and every end-to-end spec.
+  - **The first run** passed every step but one: `ex-live-view`'s smoke run. Pinned to two CPUs, the CPU build needs over a minute for the full sensor's first tiles, and no preview came within 60 s. `--smoke` now takes the quarter sensor, as before the baseline: 11–12 s on two CPUs.
+  - **Two more runs** on the fix each failed some tests that passed in the other runs, none in what this PR changes:
+    - end-to-end specs: three under load, then one visual test 1 pixel off the baselines, which are the owner's desktop's;
+    - the status test's unplug race, in P50's test since #66: the job must start before the camera is plugged back in, moments later;
+    - `ex-live-recipe`'s smoke budget, 205–222 ms against 200. On two CPUs here it failed 6 times in 10 on this branch, and 4 in 10 on `main`.
+- **Two cores, five times:** the suites and smoke run the PR touches, 45 of 45 passed. They were `oscope-sim`'s stage, camera and devices, `oscope-acquire`'s and `oscope-api`'s preview, `oscope-api`'s devices, the libraries of `oscope-core` and `oscope-compute`, and `ex-live-view`.
+- **Linux under WSL wasn't run.** This laptop's WSL has no Node, can't read `/mnt/c`, and has 7 GB of memory. The owner chose to merge on the Windows replay.
+- **After the rebase on W6.4,** the replay runs again on the commit merged.
 
 ## Follow-ups
 
