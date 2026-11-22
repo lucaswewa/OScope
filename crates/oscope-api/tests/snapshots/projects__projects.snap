@@ -198,6 +198,77 @@ expression: td
       },
       "synchronous": false
     },
+    "delete_record": {
+      "description": "`kind` is `acquisition`, `result` or `report`. Refused while a\nresult was made from it (W6.2).",
+      "title": "Deletes a record of a project, with its files.",
+      "forms": [
+        {
+          "href": "/api/v1/projects/delete_record",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "delete_record_input",
+        "type": "object",
+        "properties": {
+          "project": {
+            "description": "A project: a folder of data on disk (P28).",
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "description": "The kinds of record in a project.",
+            "oneOf": [
+              {
+                "description": "Acquisitions.",
+                "const": "acquisition",
+                "type": "string"
+              },
+              {
+                "description": "Results.",
+                "const": "result",
+                "type": "string"
+              },
+              {
+                "description": "Reports.",
+                "const": "report",
+                "type": "string"
+              }
+            ]
+          },
+          "record": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "kind",
+          "record"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "delete_record_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
     "delete_template": {
       "description": "Deletes a report template, a user's.",
       "title": "Deletes a report template, a user's.",
