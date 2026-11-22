@@ -395,33 +395,48 @@ impl Store {
     /// out of the way first: refused while another result was made from it
     /// (P48).
     pub fn delete_result(&self, project: ProjectId, id: ResultId) -> Result<()> {
+        self.delete_record(project, RecordKind::Result, &id.to_string())
+    }
+
+    /// Deletes record `id` of `project`, of `kind`, with its folder, which is
+    /// renamed out of the way first: refused while a result was made from
+    /// it (P48; W6.2).
+    pub fn delete_record(&self, project: ProjectId, kind: RecordKind, id: &str) -> Result<()> {
         let _lock = self.lock()?;
         let contents = self.contents(project)?;
-        if !contents.results.iter().any(|r| r.id == id) {
+        let known = match kind {
+            RecordKind::Acquisition => contents.acquisitions.iter().any(|r| r.id.to_string() == id),
+            RecordKind::Result => contents.results.iter().any(|r| r.id.to_string() == id),
+            RecordKind::Report => contents.reports.iter().any(|r| r.id.to_string() == id),
+        };
+        if !known {
             return Err(StoreError::NotFound {
-                kind: "result",
-                id: id.to_string(),
+                kind: kind.name(),
+                id: id.to_owned(),
             });
         }
+        let from = |input: &Input| match input {
+            Input::Acquisition(a) => a.to_string() == id,
+            Input::Result(r) => r.to_string() == id,
+        };
         let made: Vec<&str> = contents
             .results
             .iter()
-            .filter(|r| r.provenance.inputs.contains(&Input::Result(id)))
+            .filter(|r| r.provenance.inputs.iter().any(from))
             .map(|r| r.name.as_str())
             .collect();
         if !made.is_empty() {
             return Err(StoreError::Refused(format!(
-                "result {id} is what {} was made from: delete that first",
+                "{} {id} is what {} was made from: delete that first",
+                kind.name(),
                 made.join(", ")
             )));
         }
-        let results = self.folder(project).join(RecordKind::Result.folder());
-        let (folder, going) = (
-            results.join(id.to_string()),
-            results.join(format!("{DELETING}{id}")),
-        );
+        // The ID is one of the project's records': a plain name, safe in a path.
+        let records = self.folder(project).join(kind.folder());
+        let (folder, going) = (records.join(id), records.join(format!("{DELETING}{id}")));
         patiently(|| fs::rename(&folder, &going)).map_err(io(&folder))?;
-        self.index().remove_record(&id.to_string())?;
+        self.index().remove_record(id)?;
         patiently(|| fs::remove_dir_all(&going)).map_err(io(&going))
     }
 

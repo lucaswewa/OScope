@@ -51,7 +51,11 @@ const changes = computed<MenuEntry[]>(() => [
     </div>
     <div class="about">
       <div class="top">
-        <h2 :id="id" class="name">{{ project.name }}</h2>
+        <h2 :id="id" class="name">
+          <RouterLink :to="{ name: 'gallery', query: { project: project.id } }">{{
+            project.name
+          }}</RouterLink>
+        </h2>
         <Menu :items="changes" @select="(what) => emit('change', what)">
           <IconButton icon="more" :label="t('projects.card.changes', { name: project.name })" />
         </Menu>

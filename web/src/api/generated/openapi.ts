@@ -5405,6 +5405,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/delete_record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of delete_record.
+         * @description List all the invocations of delete_record that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_projects_delete_record_get"];
+        put?: never;
+        /**
+         * Deletes a record of a project, with its files.
+         * @description ## Deletes a record of a project, with its files.
+         *
+         *     `kind` is `acquisition`, `result` or `report`. Refused while a
+         *     result was made from it (W6.2).
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_projects_delete_record_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/delete_template": {
         parameters: {
             query?: never;
@@ -12501,6 +12532,33 @@ export interface components {
             links?: components["schemas"]["LinkElement"][];
             input: components["schemas"]["projects_delete_input"];
             output?: components["schemas"]["projects_delete_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        projects_delete_record_input: {
+            /**
+             * Format: uuid
+             * @description A project: a folder of data on disk (P28).
+             */
+            project: string;
+            /** @description The kinds of record in a project. */
+            kind: "acquisition" | "result" | "report";
+            record: string;
+        };
+        projects_delete_record_output: null;
+        projects_delete_record_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["projects_delete_record_input"];
+            output?: components["schemas"]["projects_delete_record_output"] | null;
             log: components["schemas"]["LogRecordModel"][];
             error?: components["schemas"]["ProblemDetails"] | null;
         };
@@ -21029,6 +21087,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["projects_delete_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_projects_delete_record_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of delete_record. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_projects_delete_record_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["projects_delete_record_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["projects_delete_record_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["projects_delete_record_invocation"];
                 };
             };
             /** @description Validation Error */

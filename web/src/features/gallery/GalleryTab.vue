@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRoute } from "vue-router";
 
 import { ApiError } from "@/api/errors";
 import { projectPage, projectThumbnail, type ProjectSummary } from "@/api/projects";
@@ -15,6 +16,7 @@ import {
   whatGoes,
 } from "@/features/gallery/gallery";
 import ProjectCard from "@/features/gallery/ProjectCard.vue";
+import ProjectPage from "@/features/gallery/project/ProjectPage.vue";
 import { kept } from "@/host/kept";
 import Button from "@/ui/Button.vue";
 import Confirm from "@/ui/Confirm.vue";
@@ -35,6 +37,11 @@ import TextField from "@/ui/TextField.vue";
  * takes. The grid is walked with the arrow keys.
  */
 const { t } = useI18n();
+const route = useRoute();
+/** The project whose page is open, as the address says (W6.2). */
+const open = computed(() =>
+  typeof route.query.project === "string" ? route.query.project : undefined,
+);
 const isSort = (value: unknown): value is string => value === "changed" || value === "name";
 const sort = kept("oscope.gallery.sort", "changed", isSort);
 const text = shallowRef("");
@@ -87,9 +94,12 @@ watch([text, tag, sort], () => {
   later();
 });
 watch(page, () => void load(), { immediate: true });
-// Kept live: a change anywhere, from any client, reads the page again.
+// Kept live: a change anywhere, from any client, reads the page again; and,
+// for a change told before the socket listened, every ten seconds (W6.2).
 const changed = useEvent("/api/v1/projects/changed", { keep: 1 });
 watch(() => changed.last.value, later);
+const every = setInterval(later, 10_000);
+onScopeDispose(() => clearInterval(every));
 
 // Each card's newest image, read again as its project changes.
 const thumbnails = shallowRef(new Map<string, { modified: string; url?: string }>());
@@ -226,7 +236,8 @@ async function deleteIt(): Promise<void> {
 </script>
 
 <template>
-  <section class="gallery" :aria-labelledby="'gallery-title'" data-said="gallery">
+  <ProjectPage v-if="open" :project="open" />
+  <section v-else class="gallery" :aria-labelledby="'gallery-title'" data-said="gallery">
     <header class="head">
       <h1 id="gallery-title">{{ t("tabs.gallery.title") }}</h1>
       <Button icon="add" @click="making">{{ t("projects.new") }}</Button>
