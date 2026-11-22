@@ -39,6 +39,7 @@ mod server;
 pub mod settings;
 pub mod status;
 pub mod system;
+pub mod upload;
 mod volume;
 pub mod workspace;
 mod zoom;

@@ -3,7 +3,9 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 import type { ProjectSummary } from "@/api/projects";
+import { useFileDrop } from "@/features/gallery/drop";
 import { descriptionOf } from "@/features/gallery/gallery";
+import { IMPORT_ENDED, importInto, importsOf } from "@/features/gallery/imports";
 import Icon from "@/ui/Icon.vue";
 import IconButton from "@/ui/IconButton.vue";
 import Menu from "@/ui/Menu.vue";
@@ -14,6 +16,7 @@ import Tag from "@/ui/Tag.vue";
  * A project's card (W6.1): its newest image, its name, its sample, its
  * description, its tags, when it was made and changed, and what it holds;
  * and a menu of its changes. The grid it is in walks it with the keys.
+ * Files dropped on it are imported into it (W6.3), as it says.
  */
 const props = defineProps<{ project: ProjectSummary; thumbnail?: string | undefined }>();
 const emit = defineEmits<{ change: [what: string] }>();
@@ -27,6 +30,10 @@ const holds = computed(() =>
     results: props.project.results,
     reports: props.project.reports,
   }),
+);
+const drop = useFileDrop((files) => void importInto(props.project.id, files));
+const importing = computed(
+  () => importsOf(props.project.id).filter((one) => !IMPORT_ENDED.has(one.state)).length,
 );
 const changes = computed<MenuEntry[]>(() => [
   { id: "rename", label: t("projects.change.rename"), icon: "edit" },
@@ -44,7 +51,13 @@ const changes = computed<MenuEntry[]>(() => [
 </script>
 
 <template>
-  <article class="card" :aria-labelledby="id" data-said="card">
+  <article
+    class="card"
+    :class="{ over: drop.over.value }"
+    :aria-labelledby="id"
+    data-said="card"
+    v-on="drop.on"
+  >
     <div class="picture">
       <img v-if="thumbnail" :src="thumbnail" alt="" />
       <Icon v-else name="gallery" class="none" />
@@ -66,6 +79,9 @@ const changes = computed<MenuEntry[]>(() => [
         <li v-for="tag in project.tags" :key="tag"><Tag :label="tag" /></li>
       </ul>
       <p class="said">{{ holds }}</p>
+      <p v-if="importing" class="said" data-said="card-importing" role="status">
+        {{ t("imports.card", { n: importing }, importing) }}
+      </p>
       <p class="said">
         {{
           t("projects.card.dates", { made: when(project.created), changed: when(project.modified) })
@@ -84,6 +100,11 @@ const changes = computed<MenuEntry[]>(() => [
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   background: var(--surface-raised);
+}
+
+.card.over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
 }
 
 .picture {

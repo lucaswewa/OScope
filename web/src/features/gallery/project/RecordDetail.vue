@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { projectThumbnail } from "@/api/projects";
 import { useAction } from "@/api/things/use";
 import DownloadRow from "@/features/gallery/project/DownloadRow.vue";
+import ExportPane from "@/features/gallery/project/ExportPane.vue";
 import {
   detailsOf,
   filesOf,
@@ -20,8 +21,8 @@ import KeyValue from "@/ui/KeyValue.vue";
  * A record of a project (W6.2): its thumbnail; when it was made, and whose;
  * its image's size and levels; an acquisition's camera, objective,
  * calibration and the stage's place; a result's provenance, the recipe,
- * its nodes, and its inputs with their hashes; its files, downloaded; and
- * its deletion, asked first.
+ * its nodes, and its inputs with their hashes; its files, downloaded; its
+ * image exported (W6.3); and its deletion, asked first.
  */
 const props = defineProps<{ contents: Contents; one: AnyRecord }>();
 const emit = defineEmits<{ deleted: [] }>();
@@ -114,6 +115,13 @@ async function deleteIt(): Promise<void> {
         />
       </ul>
     </section>
+
+    <ExportPane
+      v-if="one.kind !== 'report'"
+      :project="contents.project.id"
+      :record="one.record.id"
+      :kind="one.kind"
+    />
 
     <div>
       <Button compact variant="bare" tone="danger" icon="delete" @click="asking = true">

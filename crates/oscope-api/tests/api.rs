@@ -96,8 +96,9 @@ async fn the_system_thing_reports_the_build_the_computer_and_its_folders() {
 
     let td = client.get("/api/v1/system/").await.json();
     let properties = td["properties"].as_object().unwrap();
-    assert_eq!(properties.len(), 10);
+    assert_eq!(properties.len(), 11);
     assert!(properties.contains_key("notices"), "{td}");
+    assert!(properties.contains_key("recordings"), "{td}");
     assert!(properties.values().all(|p| p["readOnly"] == true), "{td}");
     assert_eq!(properties["uptime"]["unit"], "s");
 }

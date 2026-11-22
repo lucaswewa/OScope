@@ -56,6 +56,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0048](0048-the-shell-and-the-lease-s-read-only-mode.md) | The shell, and the lease's read-only mode | Accepted | W2.1 |
 | [0049](0049-the-live-viewer-and-its-overlays.md) | The live viewer and its overlays | Accepted | W3.1 |
 | [0050](0050-the-tile-viewer.md) | The tile viewer | Accepted | W3.8 |
+| [0051](0051-uploads.md) | Uploads | Accepted | W6.3 |
 | [0060](0060-restarts-in-a-dry-run.md) | Restarts in a dry run | Accepted | W4.3 |
 | [0061](0061-gates-test-what-a-change-reaches.md) | Gates test what a change reaches | Accepted | — |
 

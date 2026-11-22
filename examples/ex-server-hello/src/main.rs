@@ -53,8 +53,8 @@ async fn smoke(address: SocketAddr) -> anyhow::Result<()> {
         println!("  {name}: {}", value.body);
     }
     ensure!(
-        properties.len() == 10,
-        "10 properties, not {}",
+        properties.len() == 11,
+        "11 properties, not {}",
         properties.len()
     );
     let ping = get(address, "/api/v1/media/ping").await?;

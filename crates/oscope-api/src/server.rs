@@ -39,7 +39,7 @@ use crate::settings::{ConfigFile, SettingsFile, SettingsThing};
 use crate::status::StatusThing;
 use crate::system::{Notices, System, VERSION};
 use crate::workspace::WorkspaceThing;
-use crate::{data, media, mosaic, pages, volume, zoom};
+use crate::{data, media, mosaic, pages, upload, volume, zoom};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
 /// The OpenAPI document is at the root, `/openapi.json`, with its docs pages
@@ -105,6 +105,9 @@ pub struct ApiBuilder {
     roots: Roots,
     jobs: Option<Jobs>,
     origins: Origins,
+    scratch: Option<Scratched>,
+    /// The largest upload, and how long it waits to be used (W6.3).
+    uploads: (u64, std::time::Duration),
 }
 
 /// The job service, kept for deep zoom; `Debug` names it only.
@@ -114,6 +117,15 @@ struct Jobs(JobService);
 impl std::fmt::Debug for Jobs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("JobService")
+    }
+}
+
+/// The scratch space, kept for uploads; `Debug` names it only.
+struct Scratched(Arc<oscope_store::Scratch>);
+
+impl std::fmt::Debug for Scratched {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Scratch")
     }
 }
 
@@ -333,11 +345,21 @@ impl ApiBuilder {
         self
     }
 
-    /// Serves `scratch`'s health from the `system` Thing, and ingests its
-    /// recordings into the projects with the `projects.ingest` job
-    /// (ADR-0022).
+    /// Serves `scratch`'s health and its recordings from the `system` Thing,
+    /// and ingests them into the projects with the `projects.ingest` job
+    /// (ADR-0022). Stages uploads in it, at `POST /api/v1/upload/{name}`,
+    /// for the `projects.import` job (W6.3, ADR-0051).
     pub fn scratch(mut self, scratch: oscope_store::Scratch) -> Self {
-        self.things = self.things.service(Arc::new(scratch));
+        let scratch = Arc::new(scratch);
+        self.things = self.things.service(Arc::clone(&scratch));
+        self.scratch = Some(Scratched(scratch));
+        self
+    }
+
+    /// Takes uploads of at most `limit` bytes, each removed when it has
+    /// waited `lifetime` unused: by default 16 GiB, and a day.
+    pub fn uploads(mut self, limit: u64, lifetime: std::time::Duration) -> Self {
+        self.uploads = (limit, lifetime);
         self
     }
 
@@ -360,8 +382,14 @@ impl ApiBuilder {
         for (prefix, folder) in &self.pages {
             routes = routes.merge(pages::router(prefix, folder)?);
         }
-        let things = self
-            .things
+        let mut things = self.things;
+        if let Some(Scratched(scratch)) = self.scratch {
+            let (limit, lifetime) = self.uploads;
+            let uploads = Arc::new(upload::Uploads::new(scratch, limit, lifetime));
+            routes = routes.merge(upload::router(Arc::clone(&uploads)));
+            things = things.service(uploads);
+        }
+        let things = things
             .thing("logs", Logs::new(self.logs))
             .layer(middleware::from_fn(statuses))
             .layer(middleware::from_fn_with_state(self.origins, origins::check));
@@ -403,6 +431,8 @@ impl Api {
             roots: roots.clone(),
             jobs: None,
             origins: Origins::default(),
+            scratch: None,
+            uploads: (crate::upload::UPLOAD_LIMIT, crate::upload::UPLOAD_LIFETIME),
         }
     }
 
