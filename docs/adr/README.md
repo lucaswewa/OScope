@@ -20,7 +20,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0012](0012-the-hardware-abstraction-layer.md) | The hardware abstraction layer | Accepted | P09 |
 | [0013](0013-the-simulator-clock-camera-mounting-and-3d-samples.md) | The simulator: its clock, camera mounting and 3D samples | Accepted; extended by 0062 | P10 |
 | [0014](0014-the-preview-protocol-jpeg-over-a-binary-websocket.md) | The preview protocol: JPEG over a binary WebSocket | Accepted; extended by 0035, 0026 | P17 |
-| [0015](0015-the-sidecar-contract-service-mode-and-the-desktop-fast-path.md) | The sidecar contract, service mode and the desktop fast path | Accepted | P19 |
+| [0015](0015-the-sidecar-contract-service-mode-and-the-desktop-fast-path.md) | The sidecar contract, service mode and the desktop fast path | Accepted; its desktop app dropped by 0063 | P19 |
 | [0016](0016-the-job-service.md) | The job service | Accepted | P20 |
 | [0017](0017-the-pipeline-model.md) | The pipeline model | Accepted | P21 |
 | [0018](0018-the-omext-package-format.md) | The `.omext` package format | Accepted | P24 |
@@ -38,7 +38,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0030](0030-reports.md) | Reports: the model, Typst and minijinja, templates and report generators | Accepted | P47 |
 | [0031](0031-authentication-and-the-control-lease.md) | Authentication and the control lease: accounts, sessions, the lease and TLS | Accepted | P49 |
 | [0032](0032-power-actions-and-their-privileges.md) | Power actions and their privileges | Accepted; extended by 0060 | P51 |
-| [0033](0033-packaging-and-release.md) | Packaging and release: the Windows zip, the .deb, the notices and the release workflow | Accepted | P54 |
+| [0033](0033-packaging-and-release.md) | Packaging and release: the Windows zip, the .deb, the notices and the release workflow | Accepted; its Tauri installer dropped by 0063 | P54 |
 | [0034](0034-driver-errors-over-teta-wot.md) | Driver errors' HTTP statuses, and other names, over teta-wot | Accepted | P16 |
 | [0035](0035-live-statistics-on-the-preview-stream.md) | Live statistics on the preview stream | Accepted; extended by 0026 | P18 |
 | [0036](0036-extension-drivers-and-panels.md) | Extension drivers and panels | Accepted | P27 |
@@ -51,7 +51,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0043](0043-generated-api-types-and-the-typed-client.md) | Generated API types and the typed client | Accepted | W1.1 |
 | [0044](0044-things-in-the-app-live-properties-and-events.md) | Things in the app: live properties and events | Accepted | W1.2 |
 | [0045](0045-the-app-s-connection-sessions-and-media-under-security.md) | The app's connection, its sessions, and media under security | Accepted | W1.3 |
-| [0046](0046-the-host-adapter.md) | The host adapter | Accepted | W1.4 |
+| [0046](0046-the-host-adapter.md) | The host adapter | Accepted; its desktop host dropped by 0063 | W1.4 |
 | [0047](0047-the-preview-client-a-worker-and-webgl.md) | The preview client: a worker and WebGL | Accepted | W1.5 |
 | [0048](0048-the-shell-and-the-lease-s-read-only-mode.md) | The shell, and the lease's read-only mode | Accepted | W2.1 |
 | [0049](0049-the-live-viewer-and-its-overlays.md) | The live viewer and its overlays | Accepted | W3.1 |
@@ -63,6 +63,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0060](0060-restarts-in-a-dry-run.md) | Restarts in a dry run | Accepted | W4.3 |
 | [0061](0061-gates-test-what-a-change-reaches.md) | Gates test what a change reaches | Accepted | — |
 | [0062](0062-the-simulated-camera-s-image-on-the-gpu.md) | The simulated camera's image on the GPU | Accepted | The GPU simulator |
+| [0063](0063-no-desktop-app.md) | No desktop app | Accepted | — |
 
 The ADRs still to come, and the phase that writes each one, are listed in [plan §10](../implementation-plan.md#10-planned-adrs).
 

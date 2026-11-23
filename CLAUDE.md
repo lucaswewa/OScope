@@ -6,7 +6,7 @@ OScope (OpenScope) is the control and analysis software for a motorised brightfi
 - a grblHAL XYZ stage;
 - Mitutoyo objectives, swapped by hand.
 
-It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-wot) and a Vue 3 frontend shared by a web build and a Tauri 2 desktop build.
+It has a layered Rust backend on [`teta-wot`](https://github.com/lucaswewa/teta-wot) and a Vue 3 frontend in the browser, which the server serves. There is no desktop app ([ADR-0063](docs/adr/0063-no-desktop-app.md)).
 
 **Where to start.** The documentation index is [`docs/README.md`](docs/README.md).
 

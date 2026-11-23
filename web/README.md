@@ -1,6 +1,6 @@
 # OScope's app
 
-`web/` is OScope's app ([plan §8](../docs/implementation-plan.md#8-milestone-2-phase-overview), [ADR-0039](../docs/adr/0039-the-web-app-its-layers-state-and-routing.md)): one Vue 3 codebase, built for the browser and, from W9, for the desktop app. It talks to `oscope-server`, which also serves its built files.
+`web/` is OScope's app ([plan §8](../docs/implementation-plan.md#8-milestone-2-phase-overview), [ADR-0039](../docs/adr/0039-the-web-app-its-layers-state-and-routing.md)): one Vue 3 codebase, built for the browser. It talks to `oscope-server`, which also serves its built files.
 
 ## Try it
 
@@ -96,7 +96,7 @@ The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042
 
 - **`ui/`:** the components. The only place that imports reka-ui.
 - **`api/`:** the server. The only place that uses `fetch` or a WebSocket.
-- **`host/`:** the platform, behind one interface: storage, files, the clipboard, notifications, the window. The desktop app installs its own.
+- **`host/`:** the platform, behind one interface: storage, files, the clipboard, notifications, the window.
 - **`features/<tab>/`:** a tab, made of the three above.
 - **`app/`:** the shell: the routes, the navigation, the words.
 
@@ -105,7 +105,7 @@ The controls are in `src/ui/`, one file each, on reka-ui's primitives ([ADR-0042
 - `kept` and `session`, text kept by key, between visits or until the window is closed;
 - `files.save` and `files.open`; `copy`; `notify`, which says whether it was shown;
 - `window`: the title and full screen; and `openOutside`, for a web page's or an email's address;
-- `can`: what the desktop app can do and a browser can't. Ask before using it.
+- `can`: what a desktop app could have done and a browser can't, false in the browser: there is no desktop app ([ADR-0063](../docs/adr/0063-no-desktop-app.md)).
 
 Lint refuses the browser's own calls outside `host/`, and names the one to use. Open `#/dev/gallery/host` to try them; a test installs a platform of its own with `installHost`.
 

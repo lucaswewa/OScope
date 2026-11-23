@@ -42,7 +42,7 @@ The backend is a layered Rust service. It serves the instrument over HTTP throug
 | Milestone | Delivers | Hardware |
 |---|---|---|
 | **M1: backend** | The whole Rust backend, with a runnable example in every phase: live preview, jobs, pipelines and extensions, projects in OME-Zarr, calibration, autofocus, scans with live and post-acquisition stitching, deep zoom, depth from focus, volumes, deconvolution, analysis and reports, authentication, status and power | Simulated camera, stage and lights, with 3D procedural samples |
-| **M2: frontend** | The Vue 3 app, shared by the web build and a Tauri 2 desktop build, with every tab in goal.md, a node-graph editor, OpenSeadragon deep zoom, VTK.js 3D, and the desktop app's local fast path | Simulated |
+| **M2: frontend** | The Vue 3 app, in the browser, served by the server, with every tab in goal.md, a node-graph editor, OpenSeadragon deep zoom and VTK.js 3D. A desktop app was dropped after W7 (ADR-0063) | Simulated |
 | **M3: hardware** | The grblHAL and Tucsen drivers, a light driver, continuous on-the-fly scanning with hardware triggers, calibration and tuning on the real instrument, performance work, release 1.0 | Real |
 
 At the end of Milestone 1:
@@ -101,7 +101,7 @@ These came from the planning Q&A on 2026-11-10 (D1–D29) and from the owner's r
 | D18 | Objectives | A single mount, swapped by hand. The user says which objective is fitted, and each objective has its own calibration | ADR-0012 (P09), ADR-0023 (P32) |
 | D19 | Lights | Transmitted brightfield and reflected/coaxial light. The controller isn't decided yet: M1 has an `Illumination` interface with a manual implementation, and the real driver comes in M3 | ADR-0012 (P09) |
 | D20 | grblHAL features | Homing switches, linear encoders, and an aux output for the camera's trigger input. The MIChrome 20 has none, so the trigger waits for the camera that replaces it (P02b) | ADR-0012 (P09), M3 |
-| D21 | Desktop app | The backend stays a separate service (sidecar). The Tauri app gets a local fast path: preview frames through shared memory, and tiles read from disk through a custom protocol, with no HTTP and no re-encoding | ADR-0015 (P19) |
+| D21 | Desktop app | Dropped after W7: the web app is OScope's only frontend (ADR-0063). The backend stays a separate service; the sidecar contract and the shared-memory preview ring that M1 built for a desktop app stay in the server, unused by an app | ADR-0015 (P19), ADR-0063 |
 | D22 | Remote access | Login with a password; one client holds the control lease, and the others view read-only and may ask for control. The local desktop app is trusted | ADR-0031 (P49) |
 | D23 | Simulated samples | Procedural 3D samples in the style of goal.md's three reference images (pathology, confocal, super-resolution), plus a reflective surface. Deterministic from a seed. Your own images or stacks can be loaded at run time. Tucsen's pictures are never committed | ADR-0013 (P10) |
 | D24 | Super-resolution | A sample with sub-diffraction ground truth, plus stock Richardson–Lucy deconvolution (CPU and CUDA). Other super-resolution methods are left to extensions | P14, P43 |
@@ -153,12 +153,9 @@ Each phase does one job end to end: code, tests, an example and docs. It must be
 
 ```text
                 ┌──────────────── OScope host: Windows 11 or Ubuntu LTS, x86_64 ────────────────┐
- Remote browser │ oscope-server (service)                                                         │
+ Browser        │ oscope-server (service)                                                         │
  (Vue app, M2) ─┼─▶ HTTP/WS ─┬─ control plane: teta-wot Things (TDs, properties, actions, events)   │
                 │            └─ media plane: preview WS, DZI tiles, volume bricks, data downloads   │
- Desktop app    │                                                                                 │
- (Tauri 2, M2) ─┼─▶ the same HTTP/WS, plus the local fast path: shared-memory preview ring and     │
-                │   tile cache read straight from disk                                            │
                 │ devices: camera (sim | Tucsen) · stage (sim | grblHAL) · lights · objective     │
                 │ disks:   NVMe scratch (frame logs, caches) · data disk (projects in OME-Zarr)    │
                 │ GPU:     CUDA if present, else CPU  ·  Python extension workers (shared memory)  │
@@ -191,7 +188,6 @@ Each crate depends only on crates in lower layers. A test in P01 reads `cargo me
 | | `oscope-workflows` | Autofocus, exposure, calibration routines, scan planners and engine, analysis runners |
 | L5 Interface | `oscope-api` | teta-wot Things, media-plane routes, authentication and the control lease. **The only crate that depends on `teta-wot`** |
 | L6 Applications | `oscope-server` | The binary: configuration, service mode, the sidecar contract |
-| | `desktop/` (M2) | The Tauri 2 app |
 
 Python authors use `python/oscope-ext/`, which provides the `oscope_ext` package.
 
@@ -208,7 +204,6 @@ OScope/
 ├─ python/oscope-ext/         the Python extension SDK
 ├─ configs/                   sample configurations (simulation.toml, …)
 ├─ web/                       M2: the Vue 3 app
-├─ desktop/                   M2: the Tauri 2 app
 └─ docs/                      §11
 ```
 
@@ -561,7 +556,6 @@ Calibration (ADR-0023) is kept per objective, and per binning where it matters. 
   - Remote browsers over TLS use HTTP/2 (U03). Browsers allow only six HTTP/1.1 connections per server, which throttles tile loading; HTTP/2 multiplexes them.
 - **Changing the display** (levels, gamma) makes tiles cold again, and the old ones are kept under their own cache key. For instant feedback while a slider moves, M2's viewer adjusts the cached 8-bit tiles in WebGL, then fetches exact tiles from the 16-bit data when the slider is released.
 - An exporter writes a static DZI folder for sharing.
-- The desktop app reads cached tiles straight from disk (§5.18).
 
 ### 5.16 3D
 
@@ -594,6 +588,8 @@ Calibration (ADR-0023) is kept per objective, and per binning where it matters. 
 Results carry their provenance.
 
 ### 5.18 Security, control lease, desktop fast path
+
+> The desktop app was dropped after W7 (ADR-0063). What M1 built for it, below, stays in the server, unused by an app.
 
 **Authentication** (ADR-0031):
 
@@ -869,7 +865,7 @@ The full specs are in [milestone-1/phases.md](milestone-1/phases.md). Status run
 
 ## 8. Milestone 2 phase overview
 
-The full specs are in [milestone-2/phases.md](milestone-2/phases.md). Milestone 2 is the app: one Vue 3 codebase in `web/`, built for the browser and, in `desktop/`, for Tauri 2, on the simulated instrument throughout. It was specified on 2026-11-17, as 57 phases in 11 stages, where the outline before it foresaw 40 to 45. Status runs Planned → In progress → In review → Done.
+The full specs are in [milestone-2/phases.md](milestone-2/phases.md). Milestone 2 is the app: one Vue 3 codebase in `web/`, built for the browser, on the simulated instrument throughout. It was specified on 2026-11-17, as 57 phases in 11 stages, where the outline before it foresaw 40 to 45. After W7, stage W9, the desktop app, was dropped (ADR-0063), leaving 52. Status runs Planned → In progress → In review → Done.
 
 **What differs from Milestone 1** ([the specs say how](milestone-2/phases.md#how-milestone-2s-phases-work)):
 
@@ -1007,19 +1003,9 @@ The instrument's settings, its calibration, the simulator's samples, extensions 
 
 **Checkpoint L:** an objective calibrated by the wizard, one's own sample, an extension's panel, and an account.
 
-### Stage W9: Desktop (ends with Checkpoint M)
+### Stage W9: Desktop (dropped)
 
-The same app in Tauri 2, with the server as its sidecar and the fast path for frames and tiles.
-
-| ID | Phase | Depends on | Estimate | ADRs | Status |
-|---|---|---|---|---|---|
-| [W9.1](milestone-2/phases.md#w9-1) | The Tauri shell | W2.2 | 1,300 | 0056 | Planned |
-| [W9.2](milestone-2/phases.md#w9-2) | The sidecar | W9.1 | 1,400 | — | Planned |
-| [W9.3](milestone-2/phases.md#w9-3) | The shared-memory preview | W9.2, W1.5 | 1,600 | 0057 | Planned |
-| [W9.4](milestone-2/phases.md#w9-4) | Tiles from disk | W9.2, W6.4 | 1,100 | — | Planned |
-| [W9.5](milestone-2/phases.md#w9-5) | Installers | W9.4 | 1,400 | 0058 | Planned |
-
-**Checkpoint M:** the desktop app installed, starting its own server, with its live view through shared memory and its tiles from disk.
+Dropped after W7, at the owner's choice: OScope has no desktop app (ADR-0063). Its five phases, W9.1 to W9.5, and Checkpoint M are not built.
 
 ### Stage W10: Quality
 
@@ -1030,7 +1016,7 @@ The app tested as a whole, measured, packaged, and looked back on.
 | [W10.1](milestone-2/phases.md#w10-1) | Workflows end to end | W8.6 | 1,500 | — | Planned |
 | [W10.2](milestone-2/phases.md#w10-2) | Visual baselines and accessibility | W10.1 | 1,200 | — | Planned |
 | [W10.3](milestone-2/phases.md#w10-3) | Front-end budgets | W10.1 | 1,100 | 0059 | Planned |
-| [W10.4](milestone-2/phases.md#w10-4) | The app in the packages, and the look back | W10.3, W9.5 | 1,000 | — | Planned |
+| [W10.4](milestone-2/phases.md#w10-4) | The app in the packages, and the look back | W10.3 | 1,000 | — | Planned |
 
 **Milestone 2** ends with W10.4, as 0.2.0.
 
@@ -1112,10 +1098,8 @@ ADRs are numbered across the project. Upstream phases record their design decisi
 | 0053 | The graph editor on Vue Flow | W7.2 |
 | 0054 | 3D in the app, on VTK.js | W7.7 |
 | 0055 | Accounts over the API | W8.6 |
-| 0056 | The desktop app: Tauri, its permissions and the sidecar | W9.1 |
-| 0057 | The desktop fast path: frames and tiles | W9.3 |
-| 0058 | Installers | W9.5 |
 | 0059 | Front-end budgets | W10.3 |
+| 0063 | No desktop app: W9 dropped, and 0056 to 0058, planned for it, not written | — |
 
 ## 11. Documentation conventions
 
@@ -1153,12 +1137,11 @@ docs/
 | **The camera's real capabilities.** P02b found a rolling shutter, a raw mosaic the SDK has already processed, no camera timestamps and no trigger; the raw rate at full resolution is still unmeasured | The frame model or preview targets need rework in M3 | Capabilities are reported, not assumed. `docs/hardware.md` records them, and the frame model carries the line time and an optional sensor timestamp |
 | **Matching positions to timestamps** in live stitching | Misplaced tiles before refinement | Exposure-midpoint interpolation, latency estimation, encoders, then hardware triggers in M3; the post-acquisition stitch always refines |
 | **Simulator speed at 20 MP** | Slow examples and tests | Cached, pre-blurred levels of detail, rayon, the CUDA path; a scaled-down sensor in tests (P15) |
-| **Browser rendering at 30–60 fps at high resolution** | Jank in M2's live view | Worker decoding and WebGL; viewport-sized frames; the desktop fast path |
+| **Browser rendering at 30–60 fps at high resolution** | Jank in M2's live view | Worker decoding and WebGL; viewport-sized frames |
 | **Deep zoom on demand is slow on cold regions,** or while a scan runs | A sluggish viewer | Tiles aligned to chunks, a chunk cache, coarse levels rendered eagerly, low priority with a thread cap, HTTP/2; budgets measured in P40; the static DZI export as a fallback |
 | **Licences** (the CUDA EULA, the Tucsen SDK, JS libraries) | Shipping something we may not | `cargo-deny`, licence checks per phase, users install the SDK, P07 records the CUDA list |
 | **`teta-wot`'s licence metadata is inconsistent:** its LICENSE file says MIT, but Cargo.toml and the guide say it has no licence | Confusion for an MIT product depending on it | Fixed in U01 |
-| **Milestone 2's scope:** 57 phases, about 83,000 lines by their first estimates | A long milestone | Seven checkpoints give usable increments. Each phase has a second estimate before its code, and the owner is asked when one runs over. The cut line is W5.4 (z-scans and positions), W7.8 (volumes), W7.9's template editor and W9.4 (tiles from disk), which can move to M2.5 |
-| **Two webviews in the desktop app:** WebView2 on Windows, and WebKitGTK on Ubuntu, which lags the browsers | The desktop app fails where the browser works | WebKit runs the main path's tests from W0.1, and both shells do from W9.1 |
+| **Milestone 2's scope:** 52 phases, about 76,200 lines by their first estimates, once W9 was dropped (ADR-0063) | A long milestone | Six checkpoints give usable increments. Each phase has a second estimate before its code, and the owner is asked when one runs over |
 | **The app's tests under the replays' load** | Replays that take much longer, or fail for no fault | Each end-to-end test has a server of its own and waits for conditions; touched suites run five times on two cores; the visual baselines are made on one system |
 | **The server changes while the app is built:** the `pipeline` Thing, uploads, accounts over the API | The API moves under the app | The generated types fail the type check wherever a change reaches. Each change is in the phase that needs it, with its Rust tests |
 | **VTK.js and Vue Flow are large** | A slow first load | Each is a chunk of its own, loaded when its tab first opens; W10.3 budgets every chunk |
@@ -1197,10 +1180,10 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 18 | **Each phase is tried in the app,** and its notes' screenshots are committed, some 100 to 300 kB each | Committed; they could go on the pull request instead |
 | 19 | **Server work inside six of M2's phases** (§8) | Yes |
 | 20 | **Media under security** by the token and `fetch`, with no cookies and no tokens in URLs | Yes: ADR-0045, at W1.3 |
-| 21 | **Browsers:** Chromium for every test; Firefox and WebKit for the main path; both desktop webviews from W9.1 | Yes |
+| 21 | **Browsers:** Chromium for every test; Firefox and WebKit for the main path | Yes |
 | 22 | **Charts and forms from JSON Schema are written here,** with no dependency | Yes; uPlot and Ajv, both MIT, are the alternatives |
-| 23 | **WSL gains** Node 24 and Playwright's browsers at W0.1, and WebKitGTK at W9.1 | Asked again as each is installed |
-| 24 | **CUDA in the installers** | Decided at W9.5 |
+| 23 | **WSL gains** Node 24 and Playwright's browsers at W0.1 | Asked again as each is installed |
+| 24 | **CUDA in the installers** | Dropped with W9's installers (ADR-0063) |
 | 25 | **A checklist for the owner's own run** at each checkpoint, G to M | Yes |
 | 26 | **Milestone 2 ends as 0.2.0** | Yes, by `docs/releasing.md` |
 
@@ -1370,3 +1353,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-23 | W7.7 was estimated at about 1,950 lines before it started (code ~1,000: a depth-from-focus result chosen, its height map and all-in-focus image read by the media plane's volume routes, coarser from afar, ~200; the mesh made from the height map, ~140; VTK.js in a chunk of its own, loaded when first needed: the surface, its texture the all-in-focus image, lit, or coloured by height, ~230; its controls, turn, zoom, the vertical exaggeration, the colour map and a reset, ~130; a profile along a line drawn on the height map, charted in µm, ~160; without WebGL2, the height map as an image and the tab saying so, ~60; and the tab's place in the Workspace, ~80; tests ~300: unit, the mesh from a small height map and the profile's sampling, ~220, and the volume routes' wrappers, ~80; styles ~120; the try-it ~450: its words ~100, and its end-to-end tests ~350, the surface drawn, a profile across a known step giving its height within the method's error, the fallback, axe, and a fixed surface's baseline from a fixed camera; glue ~80: the package, ADR-0054 and its lint rule). That is 22 % over the spec's 1,600. `@kitware/vtk.js` 38.0.5 is BSD-3-Clause, released 2026-11-05. It is one pull request |
 | 2026-11-23 | W7.8 was estimated at about 1,900 lines before it started (code ~960: a z-stack chosen, its bricks fetched by level, a channel each, ~120; the bricks kept to a budget, the least recently used let go, ~90; the volume by ray casting in VTK.js's chunk, its transfer function and clipping, ~230; the transfer function drawn on a chart, its points dragged, ~170; the three orthogonal slices from the slice route, each with its slider, linked to the volume, ~200; deconvolution's result beside its stack, their views linked, ~100; and the tab's place, ~50; tests ~300: unit, the bricks' cache at its budget and the transfer function's mapping, ~220, and the slice and brick wrappers', ~80; styles ~120; the try-it ~460: its words ~110, and its end-to-end tests ~350, the volume drawn, a slice's pixels the server's slice, the views linked, axe, and a fixed volume's baseline from a fixed camera; glue ~60). That is 12 % over the spec's 1,700. No server work is foreseen: the volume routes have slices and bricks by level. It is one pull request |
 | 2026-11-23 | W7.9 was estimated at about 1,690 lines before it started (code ~830: the *Reports* tab's making of one, a project's results chosen, a template and the formats, run as `report.make`, ~160; its reports listed and read, the PDF and the HTML each in a frame, the HTML's sandboxed, and downloaded, ~140; the template editor, its Typst and HTML sources beside a preview, saved, deleted, and a template's errors said where they are, ~280; the choice of results, ~60; the API's wrappers, ~80; and the server's one action, `preview_template`, a chosen result's report, or P47's sample report, rendered through unsaved sources and kept nowhere, ~90, with the tab's place, ~20; tests ~240: unit, the choice of results, ~80, and the wrappers', ~60; the server's action, ~100; styles ~120; the try-it ~440: its words ~110, and its end-to-end tests ~330, a report made and shown, a changed template changing the next report, the HTML's frame sandboxed, axe; glue ~60: the Thing's description's counts and the recorded answers). That is 30 % over the spec's 1,300, and under a third. Checkpoint K's demo script and checklist go in its notes. It is one pull request |
+| 2026-11-23 | **Stage W9, the desktop app, was dropped,** at the owner's choice after W7: the web app is OScope's only frontend (ADR-0063). W9.1 to W9.5, Checkpoint M, and ADRs 0056 to 0058 go, some 6,800 lines by their first estimates: Milestone 2 is 52 phases. W10.3's budgets are set from W1.5's and W6.4's measures alone, and W10.4 depends on W10.3 alone, shipping the app in M1's packages. The server keeps what M1 built for a desktop app, unused by an app. `CLAUDE.md`, `goal.md`, the specs, the web app's README and the notes' template no longer promise one |

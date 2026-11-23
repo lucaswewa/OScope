@@ -156,5 +156,4 @@ It ends with `service-test: ok`, and leaves a transcript in `%TEMP%\oscope-servi
 
 ## Not yet
 
-- **The desktop app and a service:** a service's token and preview ring are its account's alone, and on Windows its ring is in session 0's namespace. The installers will grant the desktop app's users a group, and name the ring in `Global\` (W9).
-- **Packages:** `.deb`, MSI and NSIS come with the desktop app (W9).
+- **Installers for Windows,** MSI or NSIS, were to come with the desktop app (W9), which was dropped after W7 ([ADR-0063](../docs/adr/0063-no-desktop-app.md)): the zip stays. W10.4 puts the app in these packages, which the service serves at `/`.

@@ -57,11 +57,6 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W8.4 | Simulated samples | Planned | — |
 | W8.5 | Extensions and their panels | Planned | — |
 | W8.6 | Accounts | Planned | — |
-| W9.1 | The Tauri shell | Planned | — |
-| W9.2 | The sidecar | Planned | — |
-| W9.3 | The shared-memory preview | Planned | — |
-| W9.4 | Tiles from disk | Planned | — |
-| W9.5 | Installers | Planned | — |
 | W10.1 | Workflows end to end | Planned | — |
 | W10.2 | Visual baselines and accessibility | Planned | — |
 | W10.3 | Front-end budgets | Planned | — |

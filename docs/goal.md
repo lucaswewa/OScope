@@ -9,9 +9,9 @@ The followings are the requirements:
   - Camera: MIchrome 20 USB3.1. The microscope has a camera `MIChrome 20`(https://www.tucsen.com/michrome-20-product/), color, resolution 20MP, 5472(H) x 3648(V), pixel size: 2.4 μm x 2.4 μm, 14.5 fps @ 5472x3648, bit depth: 16/8bit
   - Stage: xyz grblHAL over serial port. The microscope has a motorized stage xyz talking grblHAL via serial port. xy can be used for scanning, z can be used for focusing or z-scan
   - Objectives: 5x, 10x, 20x, 50x Mitutoyo PLAN long working distance.
-* Use Rust as the backend, web and Tauri 2 as the frontend. The web and Tauri 2 frontends share common Vue 3 code.
+* Use Rust as the backend, ~~web and Tauri 2~~ web as the frontend. ~~The web and Tauri 2 frontends share common Vue 3 code.~~ (The desktop app was dropped after W7: [ADR-0063](adr/0063-no-desktop-app.md).)
 * The Rust backend consists of layered architecture.
-* The Web and Tauri 2 frontend handles user controls, live view, workflow, deep-zoom visualization, 3D volume and depth rendering.
+* The Web ~~and Tauri 2~~ frontend handles user controls, live view, workflow, deep-zoom visualization, 3D volume and depth rendering.
 * Dual-Stream strategy:
   - Live view (Preview): In Rust, downsamplle and compress the 12-bit raw frame into a lightweight WebP/JPEG or H.264 and send the lightweight compressed preview frames to the UI as 30-60 fps.
   - Raw data (for analysis/stitching/saving): Keep the prestine 12-bit raw data strictly in Rust memor or flush it directly to a high-speed NVMe scratch disk.
@@ -47,7 +47,7 @@ The followings are the requirements:
   - `Power`: restart the service, reboot the host machine, shutdown
   - `Insturment Status Indicator`: the system status and health condition
 * Soslving the streaming remotely problem:
-  - For the local desktop app (Tauri 2): utlize local zero-copy file sharing or high-speed local memory references to load deep-zoom tiles or live views.
+  - ~~For the local desktop app (Tauri 2): utlize local zero-copy file sharing or high-speed local memory references to load deep-zoom tiles or live views.~~ Dropped: [ADR-0063](adr/0063-no-desktop-app.md).
   - For the remote web browsers: Live preview + deep zoom
 * Use VTK.js to render 3D volumes/surfaces dynamically on the client side, while letting the Rust backend handle tile-serving and data slicing over HTTP/WebSockets.
 * Platforms supported: Linux and Windows
