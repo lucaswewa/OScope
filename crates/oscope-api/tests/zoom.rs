@@ -321,6 +321,26 @@ async fn job(client: &TestClient, kind: &str, params: Value) -> Value {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn one_channel_is_served_alone_as_grey() {
+    let served = serve(false, (512, 384)).await;
+    let grey = |query: &'static str| {
+        let served = &served;
+        async move { means(&decode(&served.tile(9, (0, 0), query).await.body).0) }
+    };
+    // The image is reddish, its blue low: its first channel bright, its third dark, each grey.
+    let (red, blue) = (grey("?channel=0").await, grey("?channel=2").await);
+    for one in [red, blue] {
+        assert!(
+            (one[0] - one[1]).abs() < 2.0 && (one[1] - one[2]).abs() < 2.0,
+            "{one:?}"
+        );
+    }
+    assert!(red[0] > blue[0] + 100.0, "{red:?} {blue:?}");
+    let none = served.tile(9, (0, 0), "?channel=3").await;
+    assert_eq!(none.status, 400);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_dzi_export_is_what_is_served() {
     let served = serve(false, (900, 700)).await;
     let params = json!({"project": served.project, "record": served.id, "format": "dzi"});

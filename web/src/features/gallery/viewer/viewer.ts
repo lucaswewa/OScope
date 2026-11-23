@@ -42,7 +42,8 @@ export function lookOf(look: ViewLook, planes: number): Look {
 
 /** What tells a look's tiles from another's. */
 export function lookKey(look: Look, map: MapName): string {
-  return [look.plane ?? 0, look.black ?? "", look.white ?? "", look.gamma ?? "", map].join(":");
+  const { plane = 0, black = "", white = "", gamma = "", channel = "" } = look;
+  return [plane, black, white, gamma, map, channel].join(":");
 }
 
 /**

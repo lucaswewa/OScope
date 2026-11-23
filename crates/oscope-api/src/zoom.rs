@@ -31,7 +31,7 @@ use std::time::Instant;
 
 use oscope_core::{BayerPattern, ProjectId};
 use oscope_imaging::color::{Curve, Display, DisplayTable};
-use oscope_imaging::zoom::{Dzi, ZoomError};
+use oscope_imaging::zoom::{Dzi, Pyramid, ZoomError};
 use oscope_jobs::{HardwareLock, JobService, JobState};
 use oscope_store::RecordKind;
 use oscope_store::zoom::{
@@ -336,6 +336,8 @@ pub(crate) fn router(zoom: Arc<Zoom>) -> Router {
 struct Look {
     #[serde(default)]
     plane: u32,
+    /// One of its channels alone, as grey: a stain's amount (W7.6).
+    channel: Option<u32>,
     black: Option<f32>,
     white: Option<f32>,
     gamma: Option<f32>,
@@ -361,6 +363,36 @@ impl Look {
             white,
             curve,
         })
+    }
+}
+
+/// One channel of a pyramid's, as grey (W7.6): a stain's amount, alone.
+struct OneChannel<'a> {
+    pyramid: &'a dyn Pyramid,
+    channel: u32,
+}
+
+impl Pyramid for OneChannel<'_> {
+    fn size(&self) -> (u64, u64) {
+        self.pyramid.size()
+    }
+
+    fn channels(&self) -> u32 {
+        1
+    }
+
+    fn coarsest(&self) -> u32 {
+        self.pyramid.coarsest()
+    }
+
+    fn read(&self, halvings: u32, at: (u64, u64), size: (u64, u64)) -> Result<Vec<f32>, ZoomError> {
+        let all = self.pyramid.read(halvings, at, size)?;
+        let step = self.pyramid.channels().max(1) as usize;
+        Ok(all
+            .into_iter()
+            .skip(self.channel as usize)
+            .step_by(step)
+            .collect())
     }
 }
 
@@ -482,9 +514,21 @@ async fn tile(
         Ok(display) => display,
         Err(why) => return problem(StatusCode::BAD_REQUEST, why),
     };
+    let channels = match served.pattern {
+        Some(_) => 3,
+        None => served.image.info().channels,
+    };
+    let channel = look.channel;
+    if let Some(c) = channel.filter(|&c| c >= channels) {
+        let why = format!("no channel {c}: the image has {channels}");
+        return problem(StatusCode::BAD_REQUEST, why);
+    }
     let key = TileKey {
         image: served.key.clone(),
-        look: look_key(&display),
+        look: match channel {
+            Some(c) => format!("{};channel={c}", look_key(&display)),
+            None => look_key(&display),
+        },
         level,
         tile,
     };
@@ -501,7 +545,16 @@ async fn tile(
             let pyramid = served
                 .pyramid(&zoom.chunks)
                 .map_err(|e| ZoomError::Source(e.to_string()))?;
-            oscope_imaging::zoom::tile(&pyramid, level, tile, &table)
+            match channel {
+                Some(channel) => {
+                    let one = OneChannel {
+                        pyramid: &pyramid,
+                        channel,
+                    };
+                    oscope_imaging::zoom::tile(&one, level, tile, &table)
+                }
+                None => oscope_imaging::zoom::tile(&pyramid, level, tile, &table),
+            }
         })?;
         let jpeg = rendered.unwrap_or_default();
         if let (Some(tiles), true) = (&zoom.tiles, settled)

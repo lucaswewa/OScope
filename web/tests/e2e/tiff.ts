@@ -49,3 +49,49 @@ export function tiffOf(width: number, height: number, pages = 1, pattern: Patter
   }
   return file;
 }
+
+/** An 8-bit RGB TIFF of `width` × `height` pixels, each `colour(x, y)`, 0 to 255 (W7.6). */
+export function rgbTiffOf(
+  width: number,
+  height: number,
+  colour: (x: number, y: number) => [number, number, number],
+): Buffer {
+  const fields = 9;
+  const directory = 2 + fields * 12 + 4;
+  // BitsPerSample's three values, after the directory; then the pixels.
+  const bits = 8 + directory;
+  const pixels = bits + 6;
+  const bytes = width * height * 3;
+  const file = Buffer.alloc(pixels + bytes);
+  file.write("II", 0, "latin1");
+  file.writeUInt16LE(42, 2);
+  file.writeUInt32LE(8, 4);
+  const entries: [tag: number, type: 3 | 4, count: number, value: number][] = [
+    [256, 3, 1, width],
+    [257, 3, 1, height],
+    [258, 3, 3, bits],
+    [259, 3, 1, 1],
+    [262, 3, 1, 2],
+    [273, 4, 1, pixels],
+    [277, 3, 1, 3],
+    [278, 3, 1, height],
+    [279, 4, 1, bytes],
+  ];
+  file.writeUInt16LE(fields, 8);
+  entries.forEach(([tag, type, count, value], i) => {
+    const entry = 10 + i * 12;
+    file.writeUInt16LE(tag, entry);
+    file.writeUInt16LE(type, entry + 2);
+    file.writeUInt32LE(count, entry + 4);
+    if (type === 3 && count === 1) file.writeUInt16LE(value, entry + 8);
+    else file.writeUInt32LE(value, entry + 8);
+  });
+  file.writeUInt32LE(0, 10 + fields * 12);
+  for (const [i, b] of [8, 8, 8].entries()) file.writeUInt16LE(b, bits + 2 * i);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const at = pixels + (y * width + x) * 3;
+      colour(x, y).forEach((value, c) => file.writeUInt8(value, at + c));
+    }
+  return file;
+}

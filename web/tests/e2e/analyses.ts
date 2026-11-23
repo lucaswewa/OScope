@@ -4,7 +4,7 @@
 import { Server as Api } from "../../src/api/client.ts";
 import { saveRecipe, type Recipe } from "../../src/api/pipeline.ts";
 import { imported, made } from "./records.ts";
-import { tiffOf } from "./tiff.ts";
+import { rgbTiffOf, tiffOf } from "./tiff.ts";
 
 /** Each disc's cell, in pixels: its radius is 4 to 14, by its place. */
 const CELL = 48;
@@ -38,6 +38,25 @@ export function counting(least: number): Recipe {
     outputs: [{ name: "objects", from: "measure.objects" }],
   };
 }
+
+/** The discs counted, as `counting` does, and their outlines kept too (W7.6). */
+export function outlining(least: number): Recipe {
+  const recipe = counting(least);
+  return {
+    ...recipe,
+    name: "Discs outlined",
+    outputs: [...recipe.outputs, { name: "outlines", from: "measure.outlines" }],
+  };
+}
+
+/** A slide stained with hematoxylin and DAB: blue discs and brown ones, on glass (W7.6). */
+export const stained = (): Buffer =>
+  rgbTiffOf(8 * CELL, 6 * CELL, (x, y) => {
+    const [i, j] = [Math.floor(x / CELL), Math.floor(y / CELL)];
+    const [dx, dy] = [(x % CELL) - CELL / 2, (y % CELL) - CELL / 2];
+    if (dx * dx + dy * dy > 16 * 16) return [235, 235, 235];
+    return (i + j) % 2 === 0 ? [70, 80, 160] : [130, 80, 40];
+  });
 
 /** A project, the discs imported into it, and the recipe kept as `count-discs`. */
 export async function prepared(url: string): Promise<{ project: string; acquisition: string }> {
