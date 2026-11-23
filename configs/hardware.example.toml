@@ -1,0 +1,20 @@
+# Copy to ignored artifacts/r09/<instrument>/profile.toml and fill from observed
+# identities. This unconfigured reference must fail strict prerequisite checks.
+# Legacy reference: MIChrome 20 + grblHAL USB controller; confirm actual hardware.
+version = 1
+
+[camera]
+vid = ""
+pid = ""
+serial = ""
+
+[stage]
+vid = ""
+pid = ""
+serial = ""
+
+[sdk]
+# Absolute path as seen by the collector. In a container, mount the kit read-only
+# at the same path. Use the vendor's Linux x86_64 shared library, never a DLL.
+library = ""
+sha256 = ""

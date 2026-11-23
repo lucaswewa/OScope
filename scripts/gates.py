@@ -6,10 +6,11 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-NAMES = ("docs", "environment", "backend", "cpu", "frontend", "integration", "extensions", "workflows", "runtime")
+NAMES = ("docs", "environment", "backend", "cpu", "frontend", "integration", "extensions", "workflows", "runtime", "hardware")
 BACKEND_INPUTS = ("Cargo.toml", "Cargo.lock", "LICENSE", "rust-toolchain.toml", ".cargo/", "crates/", "python/",
                   "examples/", "xtask/", "configs/runtime.toml", "containers/", ".dockerignore")
 
@@ -70,7 +71,7 @@ def packages(root):
     for path in [*root.glob("crates/*/Cargo.toml"), *root.glob("examples/*/Cargo.toml"),
                  root / "xtask/Cargo.toml"]:
         if path.is_file():
-            document = tomllib.loads(path.read_text())
+            document = tomllib.loads(path.read_text(encoding="utf-8"))
             package = document.get("package", {})
             if "name" in package:
                 deps = set()
@@ -88,7 +89,7 @@ def browser_specs(root, changed, broad=False):
     chosen = []
     for spec in specs:
         relative = spec.relative_to(root).as_posix()
-        text = spec.read_text()
+        text = spec.read_text(encoding="utf-8")
         match = re.search(r"^// Covers: (.+)$", text, re.M)
         covers = match[1].split(",") if match else ["web/src"]
         if relative in changed or any(
@@ -110,6 +111,8 @@ def route(root, changed):
             select(("docs",), path)
         elif path in ("scripts/gates.py", "scripts/check-gates.sh", ".github/workflows/gates.yml") or path.startswith("tests/gates/"):
             select(NAMES, path)
+        elif path.startswith(("scripts/hardware-", "tests/hardware/")) or path in ("scripts/check-hardware.sh", "configs/hardware.example.toml"):
+            select(("hardware",), path)
         elif path.startswith("web/"):
             if path.startswith("web/tests/e2e/") or path == "web/playwright.config.ts":
                 select(("integration",), path)
@@ -193,7 +196,7 @@ def main():
         plan["full"] = True
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(plan, indent=2) + "\n")
+        args.output.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
     if not args.run:
         print(json.dumps(plan, indent=2))
         return
@@ -211,6 +214,7 @@ def main():
         "workflows": ["bash", "scripts/dev.sh", "workflows"],
         "runtime": ["python3", "scripts/check-runtime.py", "--image", os.environ.get("OSCOPE_BACKEND_IMAGE", "oscope-backend:r07"),
                     "--report", "artifacts/runtime.json"],
+        "hardware": [sys.executable, "-m", "unittest", "discover", "-s", "tests/hardware", "-v"],
     }
     subprocess.run(commands[args.run], cwd=ROOT, check=True)
 

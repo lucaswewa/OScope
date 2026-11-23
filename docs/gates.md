@@ -30,9 +30,13 @@ explicit complete checkpoint. CI uses the PR base or the previous pushed commit.
 | extensions | Python/native extension IPC and SDK | Backend tools container |
 | workflows | Longer scientific examples and Python API planning/reporting | Backend tools container |
 | runtime | Packaged TLS, authentication, lifecycle and persistence | Prepared backend image/Python |
+| hardware | Inventory/profile/SDK-metadata fixture tests and Windows inventory smoke | Python 3.11+; PowerShell 7.4+ on Windows; no device/Rust/Node |
 
 Frontend implementation changes select frontend and relevant integration specs.
 Unit-test-only edits select frontend. Browser-harness/spec edits select integration.
+Hardware inventory scripts, their example profile and tests select only the
+hardware-tools category. Its passing CI result qualifies tooling, not physical
+hardware; inventory reports always label functional qualification `not_run`.
 Backend changes select backend/CPU checks and relevant boundary checks; they do not
 select frontend units. Root routing/shared harness changes receive broader checks.
 The package graph comes from Cargo manifests without invoking Cargo. Backend test
@@ -139,3 +143,5 @@ Image identity and frontend source revision remain separate component identities
 GPU, recorder timing, machine-specific visual baselines, hardware endurance and
 release qualification remain explicit gates. See the [R08 manual procedure](phases/r08-frontend-integration.md#manual-test)
 for the complete checkpoint and a browser-accessible simulated application.
+The [R09 hardware runbook](hardware-bringup.md) separates read-only preparation
+from the deferred physical camera/controller/WSL/container feasibility work.

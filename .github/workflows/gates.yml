@@ -31,6 +31,7 @@ jobs:
       extensions: ${{ steps.plan.outputs.extensions }}
       workflows: ${{ steps.plan.outputs.workflows }}
       runtime: ${{ steps.plan.outputs.runtime }}
+      hardware: ${{ steps.plan.outputs.hardware }}
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
@@ -395,10 +396,45 @@ jobs:
             artifacts/r08/
             artifacts/runtime.json
             web/test-results/
+  hardware:
+    name: hardware tools (${{ matrix.os }})
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Run selected tool tests or report not applicable
+        shell: python
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+        run: |
+          import os, subprocess, sys
+          args = [sys.executable, "scripts/gates.py", "--base", os.environ["BASE"], "--committed-only"]
+          if os.environ["FULL"] == "true": args.append("--all")
+          subprocess.run([*args, "--run", "hardware"], check=True)
+      - name: Collect Windows inventory without attaching or opening devices
+        if: ${{ runner.os == 'Windows' && needs.plan.outputs.hardware == 'true' }}
+        shell: pwsh
+        run: |
+          ./scripts/hardware-host.ps1 -Report artifacts/r09/ci-host.json
+          $report = Get-Content artifacts/r09/ci-host.json -Raw | ConvertFrom-Json
+          if ($report.qualification.status -ne 'not_run' -or $report.scope -ne 'inventory_only') {
+            throw 'Inventory must never claim hardware qualification'
+          }
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && needs.plan.outputs.hardware == 'true' && runner.os == 'Windows' }}
+        with: { name: hardware-tools-windows-inventory, path: artifacts/r09/ }
   quality:
     name: Quality gates
     if: ${{ always() }}
-    needs: [plan, backend_image, docs, environment, backend, cpu, frontend, integration, extensions, workflows, runtime]
+    needs: [plan, backend_image, docs, environment, backend, cpu, frontend, integration, extensions, workflows, runtime, hardware]
     runs-on: ubuntu-24.04
     steps:
       - env:

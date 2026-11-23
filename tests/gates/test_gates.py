@@ -32,6 +32,13 @@ class Router(unittest.TestCase):
         self.assertEqual([n for n, on in gates.route(ROOT, ["docs/phases/r08.md"])["gates"].items() if on], ["docs"])
         self.assertEqual([n for n, on in gates.route(ROOT, ["web/src/api/client.test.ts"])["gates"].items() if on], ["frontend"])
 
+    def test_hardware_tooling_does_not_select_application_or_image_builds(self):
+        for name in ["scripts/hardware-host.ps1", "scripts/hardware-linux.py", "tests/hardware/test_inventory.py",
+                     "scripts/check-hardware.sh", "configs/hardware.example.toml"]:
+            with self.subTest(name=name):
+                self.assertEqual([n for n, on in gates.route(ROOT, [name])["gates"].items() if on], ["hardware"])
+                self.assertFalse(gates.backend_input(name))
+
     def test_shared_inputs_and_deleted_unknown_feature(self):
         for name in ["Cargo.lock", "scripts/gates.py", "web/package-lock.json", "python/oscope-ext/README.md"]:
             self.assertTrue(gates.route(ROOT, [name])["gates"]["integration"])

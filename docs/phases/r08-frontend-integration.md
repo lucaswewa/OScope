@@ -1,10 +1,10 @@
 # R08 Vue integration and independent gates
 
-- Status: Complete; awaiting owner review; hosted CI blocked
+- Status: Approved; hosted CI blocked
 - Date: 2026-11-23
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
 - Prerequisite: R07 approved by owner on 2026-11-23
-- Owner approval: Pending
+- Owner approval: Accepted on 2026-11-23
 
 ## Port specification
 
@@ -316,4 +316,5 @@ is available, dispatch `Independent quality gates` with `full=true` once to
 prepare its backend image cache and qualify the full hosted checkpoint.
 
 Physical devices/WSL USB feasibility, production provisioning and instrument
-acceptance remain R09-R12. Owner approval of R08 is pending.
+acceptance remain R09-R12. The owner approved R08 on 2026-11-23 and authorized
+R09 preparation, with physical testing deferred.

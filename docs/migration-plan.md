@@ -25,8 +25,8 @@ skipped. Keep the owner informed as implementation progresses.
 | R05 | Storage, recording, jobs and processing engine | Approved by owner, 2026-11-22 | Record/ingest/reopen; durable jobs; default/CPU gates; 3 pipeline GPU tests; real Python/native extensions; manual procedure |
 | R06 | API and container runtime | Approved by owner, 2026-11-22 | Default/CPU gates; real TLS/API/WebSocket runtime checks; persistent settings/data; signals/restart; required GPU kernels; manual procedure |
 | R07 | Calibration, scans and analysis workflows | Approved by owner, 2026-11-23 | Default/CPU gates; six scientific examples in three modes; required CUDA preview parity; real Python API tests; runtime workflows and restart persistence; manual procedure |
-| R08 | Vue integration and separate final gates | Complete; awaiting owner review; hosted CI blocked | 742 frontend tests; 285 browser passes; required CUDA delivery; separate timing/visual checks; independent router; HTTPS checkpoint; manual procedure |
-| R09 | Real device and WSL hardware feasibility | Planned | Camera SDK in WSL and container; sustained acquisition; stage/USB recovery |
+| R08 | Vue integration and separate final gates | Approved by owner, 2026-11-23; hosted CI blocked | 742 frontend tests; 285 browser passes; required CUDA delivery; separate timing/visual checks; independent router; HTTPS checkpoint; manual procedure |
+| R09 | Real device and WSL hardware feasibility | Preparation complete; physical testing deferred; qualification pending | Inventory tools/runbook; 9 fixture and 7 router tests on Linux/Windows; expected missing-hardware failures; physical SDK/acquisition/stage evidence pending |
 | R10 | Qualified host baseline and provisioning | Planned | Repeatable fresh PC install; unique identity; unattended cold boot |
 | R11 | Factory calibration and acceptance runner | Planned | One reference microscope completes guided installation and physical acceptance |
 | R12 | Release bundles, updates, rollback and inventory | Planned | Offline installation; verified image identity; compatible rollback; traceable reports |

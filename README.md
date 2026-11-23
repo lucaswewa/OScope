@@ -6,10 +6,11 @@ WSL2. The Vue 3 frontend and future Windows Tauri 2 app connect over the API.
 
 The owner approved this direction on 2026-11-22. This is a clean migration branch:
 the existing microscope implementation is available in Git and will be ported in
-small, independently verified phases. R02-R07 are approved. R08 integrates the
-existing Vue app with the Linux backend and separates frontend, backend and
-integration gates. CUDA remains preferred with CPU fallback. Every phase includes
-a manual test procedure in its notes.
+small, independently verified phases. R02-R08 are approved. The existing Vue app
+uses the Linux backend with separate frontend, backend and integration gates.
+R09 prepares hardware inventory tools and the physical bring-up runbook; the
+owner deferred physical testing. CUDA remains preferred with CPU fallback.
+Every phase includes a manual test procedure in its notes.
 
 ## Start here
 
@@ -17,6 +18,7 @@ a manual test procedure in its notes.
 - [Migration plan](docs/migration-plan.md): ordered phases, source mapping, gates and acceptance evidence.
 - [Development environment](docs/development.md): container tools and validation.
 - [Independent gates](docs/gates.md): select checks for the code you changed.
+- [Hardware bring-up](docs/hardware-bringup.md): R09 inventory and deferred physical feasibility.
 - [Factory and field workflow](docs/factory-flow.md): installation, calibration, acceptance, updates and recovery.
 - [Architecture decision](docs/adr/0062-linux-container-backend.md): the accepted platform decision.
 - [Working rules](AGENTS.md): how work on this branch proceeds.
