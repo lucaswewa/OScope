@@ -1,5 +1,6 @@
 ---
 source: crates/oscope-api/tests/projects.rs
+assertion_line: 216
 expression: td
 ---
 {
@@ -310,6 +311,91 @@ expression: td
       "output": {
         "title": "delete_template_output",
         "type": "null"
+      },
+      "synchronous": false
+    },
+    "preview_template": {
+      "description": "OScope's report on `result` of `project`, or a sample report without\nthem, through `typst`, for PDF, and `html`, for HTML: the PDF, in\nbase64, and the HTML. Refused, saying where, when the template is\nwrong, as `save_template` is.",
+      "title": "Previews a report template, keeping nothing.",
+      "forms": [
+        {
+          "href": "/api/v1/projects/preview_template",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "preview_template_input",
+        "type": "object",
+        "properties": {
+          "typst": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          },
+          "project": {
+            "oneOf": [
+              {
+                "description": "A project: a folder of data on disk (P28).",
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "typst",
+          "html"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "A report template's preview, kept nowhere (W7.9).",
+        "title": "preview_template_output",
+        "type": "object",
+        "properties": {
+          "pdf": {
+            "description": "The PDF, in base64.",
+            "type": "string"
+          },
+          "html": {
+            "description": "The HTML.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pdf",
+          "html"
+        ]
       },
       "synchronous": false
     },

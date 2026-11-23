@@ -17,7 +17,7 @@ mod render;
 mod templates;
 
 pub use chart::svg;
-pub use render::{Pdf, from_base64, html, pdf};
+pub use render::{Pdf, from_base64, html, pdf, to_base64};
 pub use templates::{STANDARD, Template, Templates};
 
 /// A report.

@@ -20,7 +20,7 @@ use oscope_acquire::{INGEST, ingest_jobs};
 use oscope_core::ProjectId;
 use oscope_ext::Extensions;
 use oscope_jobs::JobService;
-use oscope_report::{ReportError, Template, Templates};
+use oscope_report::{ReportError, Template, Templates, to_base64};
 use oscope_store::{
     Change, Contents, NewProject, Page, Project, Query as Search, RecordKind, Scratch, Store,
     StoreError,
@@ -28,7 +28,7 @@ use oscope_store::{
 use oscope_workflows::cells::{COUNT, count_jobs};
 use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
 use oscope_workflows::depth::{DEPTH, depth_jobs};
-use oscope_workflows::report::{Generators, MAKE, report_jobs};
+use oscope_workflows::report::{Generators, MAKE, preview, report_jobs};
 use oscope_workflows::stain::{SEPARATE, stain_jobs};
 use oscope_workflows::stitch::{STITCH, stitch_jobs};
 use schemars::JsonSchema;
@@ -119,6 +119,15 @@ pub struct MeasureQuery {
     pub(crate) plane: Option<u32>,
     /// `csv` for CSV, and JSON otherwise.
     pub(crate) format: Option<String>,
+}
+
+/// A report template's preview, kept nowhere (W7.9).
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Preview {
+    /// The PDF, in base64.
+    pub pdf: String,
+    /// The HTML.
+    pub html: String,
 }
 
 /// The projects: one slide or experiment each, holding its acquisitions,
@@ -321,6 +330,40 @@ impl ProjectsThing {
         saved
             .map_err(|e| ActionError::handled(e.to_string()))?
             .map_err(template_error)
+    }
+
+    /// Previews a report template, keeping nothing.
+    ///
+    /// OScope's report on `result` of `project`, or a sample report without
+    /// them, through `typst`, for PDF, and `html`, for HTML: the PDF, in
+    /// base64, and the HTML. Refused, saying where, when the template is
+    /// wrong, as `save_template` is.
+    #[action]
+    async fn preview_template(
+        &self,
+        typst: String,
+        html: String,
+        #[param(default)] project: Option<ProjectId>,
+        #[param(default)] result: Option<String>,
+    ) -> Result<Preview, ActionError> {
+        let on = match (project, result) {
+            (Some(project), Some(result)) => Some((project, result)),
+            (None, None) => None,
+            _ => {
+                return Err(ActionError::handled(
+                    "refused (400): a result is previewed with its project, and a project with a result",
+                ));
+            }
+        };
+        let made = self.blocking(move |store| {
+            let on = on.as_ref().map(|(p, r)| (*p, r.as_str()));
+            preview(store, on, &typst, &html)
+        });
+        let (pdf, html) = made.await.map_err(action_error)?;
+        Ok(Preview {
+            pdf: to_base64(&pdf),
+            html,
+        })
     }
 
     /// Deletes a report template, a user's.

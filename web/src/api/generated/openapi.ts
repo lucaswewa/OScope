@@ -5839,6 +5839,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/preview_template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of preview_template.
+         * @description List all the invocations of preview_template that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_projects_preview_template_get"];
+        put?: never;
+        /**
+         * Previews a report template, keeping nothing.
+         * @description ## Previews a report template, keeping nothing.
+         *
+         *     OScope's report on `result` of `project`, or a sample report without
+         *     them, through `typst`, for PDF, and `html`, for HTML: the PDF, in
+         *     base64, and the HTML. Refused, saying where, when the template is
+         *     wrong, as `save_template` is.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_projects_preview_template_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/project/{id}": {
         parameters: {
             query?: never;
@@ -13286,6 +13319,35 @@ export interface components {
             links?: components["schemas"]["LinkElement"][];
             input: components["schemas"]["projects_delete_template_input"];
             output?: components["schemas"]["projects_delete_template_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        projects_preview_template_input: {
+            typst: string;
+            html: string;
+            project?: string | null;
+            result?: string | null;
+        };
+        /** @description A report template's preview, kept nowhere (W7.9). */
+        projects_preview_template_output: {
+            /** @description The PDF, in base64. */
+            pdf: string;
+            /** @description The HTML. */
+            html: string;
+        };
+        projects_preview_template_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["projects_preview_template_input"];
+            output?: components["schemas"]["projects_preview_template_output"] | null;
             log: components["schemas"]["LogRecordModel"][];
             error?: components["schemas"]["ProblemDetails"] | null;
         };
@@ -22400,6 +22462,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_invocations_api_v1_projects_preview_template_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of preview_template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_projects_preview_template_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["projects_preview_template_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["projects_preview_template_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["projects_preview_template_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
