@@ -100,7 +100,7 @@ test("without WebGL2, the height map is shown alone, and its profile drawn @main
   });
   // The fixed surface: no z-scan, in each browser, beside the other tests.
   await opened(page, server.url, await fixedSurface(server.url));
-  await expect(said(page, "no-webgl")).toBeVisible();
+  await expect(said(page, "surfaces").locator('[data-said="no-webgl"]')).toBeVisible();
   await expect(said(page, "surface")).toHaveCount(0);
   const [from, to] = await profiled(page);
   expect(Number.isFinite(from) && Number.isFinite(to)).toBe(true);

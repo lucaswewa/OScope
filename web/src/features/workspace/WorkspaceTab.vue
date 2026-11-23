@@ -7,6 +7,7 @@ import type { Recipe } from "@/api/pipeline";
 import ResultsPane from "@/features/workspace/analyses/ResultsPane.vue";
 import AnnotatePage from "@/features/workspace/annotate/AnnotatePage.vue";
 import SurfacePage from "@/features/workspace/three-d/SurfacePage.vue";
+import VolumePage from "@/features/workspace/three-d/VolumePage.vue";
 import RunPane from "@/features/workspace/analyses/RunPane.vue";
 import RecipeEditor from "@/features/workspace/editor/RecipeEditor.vue";
 import Tabs from "@/ui/Tabs.vue";
@@ -25,6 +26,7 @@ const tabs = [
   { value: "analyses", label: t("workspace.tabs.analyses") },
   { value: "annotate", label: t("workspace.tabs.annotate") },
   { value: "surfaces", label: t("workspace.tabs.surfaces") },
+  { value: "volumes", label: t("workspace.tabs.volumes") },
 ];
 const editor = useTemplateRef<InstanceType<typeof RecipeEditor>>("editor");
 /** The editor's recipe, as it is now: the one a run takes, unless another is chosen. */
@@ -57,6 +59,9 @@ async function open(recipe: Recipe): Promise<void> {
       </template>
       <template #surfaces>
         <SurfacePage />
+      </template>
+      <template #volumes>
+        <VolumePage />
       </template>
     </Tabs>
   </div>
