@@ -986,7 +986,7 @@ Recipes drawn as graphs, analyses with their provenance, annotations, cells and 
 | [W7.4](milestone-2/phases.md#w7-4) | Analyses and results | W7.3, W6.2 | 1,500 | — | Done |
 | [W7.5](milestone-2/phases.md#w7-5) | Annotations and measurements | W6.4 | 1,800 | — | Done |
 | [W7.6](milestone-2/phases.md#w7-6) | Cells and stains | W7.4, W7.5 | 1,600 | — | Done |
-| [W7.7](milestone-2/phases.md#w7-7) | 3D: surfaces | W7.4 | 1,600 | 0054 | Planned |
+| [W7.7](milestone-2/phases.md#w7-7) | 3D: surfaces | W7.4 | 1,600 | 0054 | In review |
 | [W7.8](milestone-2/phases.md#w7-8) | 3D: volumes and slices | W7.7 | 1,700 | — | Planned |
 | [W7.9](milestone-2/phases.md#w7-9) | Reports | W7.4 | 1,300 | — | Planned |
 
@@ -1110,7 +1110,7 @@ ADRs are numbered across the project. Upstream phases record their design decisi
 | 0051 | Uploads | W6.3 |
 | 0052 | Recipes over the API: the `pipeline` Thing | W7.1 |
 | 0053 | The graph editor on Vue Flow | W7.2 |
-| 0054 | 3D in the app | W7.7 |
+| 0054 | 3D in the app, on VTK.js | W7.7 |
 | 0055 | Accounts over the API | W8.6 |
 | 0056 | The desktop app: Tauri, its permissions and the sidecar | W9.1 |
 | 0057 | The desktop fast path: frames and tiles | W9.3 |
