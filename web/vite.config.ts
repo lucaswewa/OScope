@@ -68,7 +68,8 @@ export default defineConfig({
       "/health": { target: server },
     },
   },
-  build: { outDir: "dist", emptyOutDir: true, sourcemap: true },
+  // VTK.js's chunk, the 3D tab's alone, is near a MB: loaded only with a first surface (ADR-0054).
+  build: { outDir: "dist", emptyOutDir: true, sourcemap: true, chunkSizeWarningLimit: 1_100 },
   test: {
     projects: [
       {

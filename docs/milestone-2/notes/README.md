@@ -47,8 +47,8 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W7.3 | The graph editor: parameters and the library | Done | [W7.3-parameters-library.md](W7.3-parameters-library.md) |
 | W7.4 | Analyses and results | Done | [W7.4-analyses-results.md](W7.4-analyses-results.md) |
 | W7.5 | Annotations and measurements | Done | [W7.5-annotations.md](W7.5-annotations.md) |
-| W7.6 | Cells and stains | In review | [W7.6-cells-stains.md](W7.6-cells-stains.md) |
-| W7.7 | 3D: surfaces | Planned | — |
+| W7.6 | Cells and stains | Done | [W7.6-cells-stains.md](W7.6-cells-stains.md) |
+| W7.7 | 3D: surfaces | In review | [W7.7-surfaces.md](W7.7-surfaces.md) |
 | W7.8 | 3D: volumes and slices | Planned | — |
 | W7.9 | Reports | Planned | — |
 | W8.1 | System, display and devices | Planned | — |

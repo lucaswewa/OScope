@@ -15,10 +15,11 @@ const layers = {
 
 /**
  * A layer's rule: not the layers it may not know, reka-ui only in `ui/`,
- * OpenSeadragon only in `ui/tile-viewer/`, which `tiles` says it is, and Vue
- * Flow and dagre only in the graph editor, which `graphs` says it is.
+ * OpenSeadragon only in `ui/tile-viewer/`, which `tiles` says it is, Vue
+ * Flow and dagre only in the graph editor, which `graphs` says it is, and
+ * VTK.js only in the Workspace's 3D, which `three` says it is.
  */
-function layerRule(layer, forbidden, { tiles = false, graphs = false } = {}) {
+function layerRule(layer, forbidden, { tiles = false, graphs = false, three = false } = {}) {
   const patterns = forbidden.map((name) => ({
     group: [name, `${name}/**`],
     message: `src/${layer}/ may not import from ${name.slice(2)}/ (ADR-0039).`,
@@ -40,6 +41,12 @@ function layerRule(layer, forbidden, { tiles = false, graphs = false } = {}) {
       group: ["@vue-flow/*", "@vue-flow/**", "@dagrejs/*"],
       message:
         "Only src/features/workspace/editor/ imports Vue Flow and dagre: use its GraphCanvas (ADR-0053).",
+    });
+  }
+  if (!three) {
+    patterns.push({
+      group: ["@kitware/vtk.js", "@kitware/vtk.js/**"],
+      message: "Only src/features/workspace/three-d/ imports VTK.js (ADR-0054).",
     });
   }
   return { "no-restricted-imports": ["error", { patterns }] };
@@ -148,6 +155,10 @@ export default tseslint.config(
   {
     files: ["src/features/workspace/editor/**"],
     rules: layerRule("features", layers.features, { graphs: true }),
+  },
+  {
+    files: ["src/features/workspace/three-d/**"],
+    rules: layerRule("features", layers.features, { three: true }),
   },
   {
     files: ["src/app/**", "src/main.ts"],
