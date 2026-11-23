@@ -6,11 +6,11 @@
 import type { Page } from "@playwright/test";
 
 import { Server as Api } from "../../src/api/client.ts";
-import { brick, slice, volumeMeta } from "../../src/api/media.ts";
+import { brick, slice, volumeMeta, type StoredImage } from "../../src/api/media.ts";
 import { rangeOf } from "../../src/features/workspace/three-d/transfer.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
-import { cellsScanned, deconvolved, SIZE, SOFT, stacked, WHOLE } from "./volumes.ts";
+import { cellsScanned, deconvolved, GRAIN, SIZE, SOFT, stacked, WIDE, widened } from "./volumes.ts";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
 
@@ -46,13 +46,20 @@ async function sliceShown(page: Page, axis: "x" | "y" | "z") {
   return { index, width, height, greys };
 }
 
+type Pattern = (x: number, y: number, z: number) => number;
+
 /** What the slice at `index` should show: the stack's samples there, grey over their own range. */
-function sliceOf(axis: "x" | "y" | "z", index: number) {
-  const [nx, ny, nz] = SIZE;
+function sliceOf(
+  axis: "x" | "y" | "z",
+  index: number,
+  size: readonly [number, number, number] = SIZE,
+  written: Pattern = SOFT,
+) {
+  const [nx, ny, nz] = size;
   const [width, height, at] = {
-    z: [nx, ny, (a: number, b: number) => SOFT(a, b, index)],
-    y: [nx, nz, (a: number, b: number) => SOFT(a, index, b)],
-    x: [ny, nz, (a: number, b: number) => SOFT(index, a, b)],
+    z: [nx, ny, (a: number, b: number) => written(a, b, index)],
+    y: [nx, nz, (a: number, b: number) => written(a, index, b)],
+    x: [ny, nz, (a: number, b: number) => written(index, a, b)],
   }[axis] as [number, number, (a: number, b: number) => number];
   const samples = Array.from({ length: width * height }, (_, i) =>
     at(i % width, Math.floor(i / width)),
@@ -130,46 +137,70 @@ test("a slice that comes late isn't drawn over the one asked for since", async (
   expect(await sliceShown(page, "z")).toEqual({ index: 0, ...sliceOf("z", 0) });
 });
 
-test("a z-scan's raw stack is sliced at its finest level, its mosaic's cells, as the server slices it", async ({
+/** The server's slice of `image` at `index`, at its finest level, grey over its own range. */
+async function sliced(on: Api, image: StoredImage, axis: "x" | "y" | "z", index: number) {
+  const voxels = await slice(image, { axis, index, format: "f32" }, { on });
+  const [width, height] = voxels.size.filter((_, i) => i !== { x: 0, y: 1, z: 2 }[axis]) as [
+    number,
+    number,
+  ];
+  const samples = Array.from(
+    { length: width * height },
+    (_, i) => voxels.samples[i * voxels.channels]!,
+  );
+  const [least, most] = rangeOf(samples);
+  const greys = samples.map((v) => Math.round((255 * (v - least)) / (most - least)));
+  return { level: voxels.level, shown: { width, height, greys } };
+}
+
+/** Each slice of `image` in the middle of its axis at the finest level, and as the server slices it there. */
+async function middlesShown(page: Page, on: Api, image: StoredImage) {
+  const finest = (await volumeMeta(image, { on })).levels[0]!;
+  const levels = new Set<number>();
+  for (const axis of ["z", "y", "x"] as const) {
+    const middle = Math.round(0.5 * (finest.size[{ x: 0, y: 1, z: 2 }[axis]]! - 1));
+    await expect(said(page, `slice-${axis}`)).toHaveAttribute("data-index", String(middle));
+    const { index, ...shown } = await sliceShown(page, axis);
+    const server = await sliced(on, image, axis, index);
+    expect(shown, `the ${axis} slice`).toEqual(server.shown);
+    levels.add(server.level);
+  }
+  await expect(said(page, "volumes").getByRole("status").last()).toHaveText("");
+  return { finest, levels: [...levels] };
+}
+
+test("a z-scan's raw stack is sliced at level 1, its mosaic's cells, as the server slices it", async ({
   page,
   server,
 }) => {
   test.setTimeout(180_000);
   let made = { project: "", acquisition: "" };
-  // The whole frame's 5 planes: more voxels at the finest level than the volume's brick holds.
-  const stack = { below_um: 1, above_um: 1, step_um: 0.5 };
-  const making = async (url: string) => (
-    (made = await cellsScanned(url, "Raw", WHOLE, stack)),
-    "Raw"
-  );
+  const making = async (url: string) => ((made = await cellsScanned(url, "Raw")), "Raw");
+  await opened(page, server.url, undefined, making);
+  await expect(said(page, "volume")).toHaveAttribute("data-drawn", "1", { timeout: 30_000 });
+  const image = { project: made.project, kind: "acquisitions" as const, id: made.acquisition };
+  const { finest, levels } = await middlesShown(page, new Api(server.url), image);
+  expect([finest.level, ...levels], "a raw mosaic's finest level, and its slices'").toEqual([1, 1]);
+});
+
+test("a stack larger than the volume's brick is sliced at full size, in the middle of each axis", async ({
+  page,
+  server,
+}) => {
+  let made = { project: "", acquisition: "" };
+  const making = async (url: string) => ((made = await widened(url)), "Wide");
   await opened(page, server.url, undefined, making);
   await expect(said(page, "volume")).toHaveAttribute("data-drawn", "1", { timeout: 30_000 });
   const on = new Api(server.url);
   const image = { project: made.project, kind: "acquisitions" as const, id: made.acquisition };
-  const finest = (await volumeMeta(image, { on })).levels[0]!;
-  const coarser = await brick(image, { max: 128 ** 3 }, { on });
-  expect(coarser.level, "the volume's brick, coarser than the slices").toBeGreaterThan(
-    finest.level,
-  );
+  expect((await brick(image, { max: 128 ** 3 }, { on })).level, "the brick, coarser").toBe(1);
+  const { finest } = await middlesShown(page, on, image);
+  expect(finest.size).toEqual([...WIDE]);
+  // And they are the planes written.
   for (const axis of ["z", "y", "x"] as const) {
-    // Each slice in the middle of its axis, at the finest level.
-    const middle = Math.round(0.5 * (finest.size[{ x: 0, y: 1, z: 2 }[axis]]! - 1));
-    await expect(said(page, `slice-${axis}`)).toHaveAttribute("data-index", String(middle));
     const { index, ...shown } = await sliceShown(page, axis);
-    // The server's own slice there, at the level it slices finest: a raw mosaic's cells.
-    const which = { axis, index, format: "f32" as const };
-    const voxels = await slice(image, which, { on });
-    expect(voxels.level, "a raw mosaic's finest level").toBe(1);
-    const [width, height] = voxels.size.filter((_, i) => i !== { x: 0, y: 1, z: 2 }[axis]);
-    const samples = Array.from(
-      { length: width! * height! },
-      (_, i) => voxels.samples[i * voxels.channels]!,
-    );
-    const [least, most] = rangeOf(samples);
-    const greys = samples.map((v) => Math.round((255 * (v - least)) / (most - least)));
-    expect(shown, `the ${axis} slice`).toEqual({ width, height, greys });
+    expect(shown, `the ${axis} slice, as written`).toEqual(sliceOf(axis, index, WIDE, GRAIN));
   }
-  await expect(said(page, "volumes").getByRole("status").last()).toHaveText("");
 });
 
 /** A drag across `view`, from its middle. */

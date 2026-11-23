@@ -21,6 +21,20 @@ export const SIZE = [48, 40, 24] as const;
 export const SOFT = sphere(6);
 export const SHARPER = sphere(2);
 
+/**
+ * A stack a little larger than the volume's brick holds, 1,100 × 100 × 20
+ * voxels against 128³: its brick is coarser than its slices.
+ */
+export const WIDE = [1_100, 100, 20] as const;
+export const GRAIN = (x: number, y: number, z: number) =>
+  1_000 + ((x * 37 + y * 101 + z * 1_009) % 30_000);
+
+/** A project of the wide stack, *Wide*: its ID, and the stack's. */
+export async function widened(url: string): Promise<{ project: string; acquisition: string }> {
+  const project = await made(url, "Wide");
+  return { project, acquisition: await imported(url, project, "wide.tif", tiffOf(...WIDE, GRAIN)) };
+}
+
 /** A project of the two stacks: its name. */
 export async function stacked(url: string): Promise<string> {
   const project = await made(url, "Stacks");
@@ -31,8 +45,6 @@ export async function stacked(url: string): Promise<string> {
 
 /** The sensor's middle quarter, in its pixels: binned by three, frames of 912 × 608. */
 const MIDDLE = { x: 1_368, y: 912, width: 2_736, height: 1_824 };
-/** All of the sensor: binned by three, frames of 1,824 × 1,216. */
-export const WHOLE = { x: 0, y: 0, width: 5_472, height: 3_648 };
 const BINNED = { mode: "bin3", format: { kind: "bayer16", pattern: "RGGB", significant_bits: 12 } };
 /** The coverslip's middle, where the cells are. */
 const CELLS = { x: 47_000, y: 12_500 };
