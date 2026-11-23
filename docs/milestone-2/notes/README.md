@@ -49,7 +49,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W7.5 | Annotations and measurements | Done | [W7.5-annotations.md](W7.5-annotations.md) |
 | W7.6 | Cells and stains | Done | [W7.6-cells-stains.md](W7.6-cells-stains.md) |
 | W7.7 | 3D: surfaces | Done | [W7.7-surfaces.md](W7.7-surfaces.md) |
-| W7.8 | 3D: volumes and slices | In review | [W7.8-volumes.md](W7.8-volumes.md) |
+| W7.8 | 3D: volumes and slices | Done | [W7.8-volumes.md](W7.8-volumes.md) |
 | W7.9 | Reports | Planned | — |
 | W8.1 | System, display and devices | Planned | — |
 | W8.2 | Calibration sets | Planned | — |
