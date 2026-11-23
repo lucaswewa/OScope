@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
-import { brick, slice, type StoredImage, type Voxels } from "@/api/media";
+import { brick, slice, volumeMeta, type StoredImage, type Voxels } from "@/api/media";
 import { projectContents, projectPage, type ProjectSummary } from "@/api/projects";
 import type { Contents } from "@/features/gallery/project/project";
 import { Bricks } from "@/features/workspace/three-d/bricks";
@@ -93,6 +93,12 @@ const scenes: Scene[] = [];
 const drawn = shallowRef(0);
 const range = shallowRef<[number, number]>([0, 1]);
 const size = shallowRef<[number, number, number]>();
+/** The finest level the server slices, a raw mosaic's cells: its size, and its voxel's in µm, if known. */
+const finest = shallowRef<{
+  level: number;
+  size: [number, number, number];
+  voxel_um: [number, number, number] | null;
+}>();
 const points = shallowRef<Point[]>([...START]);
 const map = shallowRef("Grayscale");
 const MAPS = ["Grayscale", "Viridis (matplotlib)", "Cool to Warm"];
@@ -111,6 +117,8 @@ function dispose(): void {
   for (const scene of scenes.splice(0)) scene.dispose();
   drawn.value = 0;
 }
+// Another stack: no slices until its levels are known.
+watch(chosen, () => (finest.value = undefined));
 /** The latest drawing: an earlier one, still fetching, draws nothing. */
 let drawing = 0;
 watch([chosen, beside, channel, () => left.value, () => right.value], async () => {
@@ -119,8 +127,9 @@ watch([chosen, beside, channel, () => left.value, () => right.value], async () =
   const image = imageOf(chosen.value);
   if (!image) return;
   try {
-    const main = await read(image);
+    const [main, meta] = await Promise.all([read(image), volumeMeta(image)]);
     if (run !== drawing) return;
+    finest.value = meta.levels[0] ?? { level: 0, size: meta.size, voxel_um: meta.voxel_um };
     [range.value, size.value] = [rangeOf(main.samples), main.size];
     if (!webgl2.value) return;
     const other = imageOf(beside.value === "none" ? undefined : beside.value);
@@ -184,11 +193,11 @@ function movePoint(event: PointerEvent): void {
     points.value = moved(points.value, dragging.value, placeOf(event));
 }
 
-// The slices: the server's, each grey over its own range, at its slider's index.
+// The slices: the server's, at its finest level, each grey over its own range, at its slider's index.
 /** The slices' canvases, by axis, as they are drawn. */
 const canvases: Partial<Record<Axis, HTMLCanvasElement>> = {};
 const index = (axis: Axis) => {
-  const n = size.value?.[{ x: 0, y: 1, z: 2 }[axis]] ?? 1;
+  const n = finest.value?.size[{ x: 0, y: 1, z: 2 }[axis]] ?? 1;
   return Math.round(at.value[axis] * (n - 1));
 };
 /** Each axis's latest slice asked for: one that comes after it is drawn, not one before. */
@@ -196,9 +205,9 @@ const asked = { x: 0, y: 0, z: 0 };
 async function drawSlice(axis: Axis): Promise<void> {
   const image = imageOf(chosen.value);
   const canvas = canvases[axis];
-  if (!image || !canvas || !size.value) return;
+  if (!image || !canvas || !finest.value) return;
   const run = ++asked[axis];
-  const which = { axis, index: index(axis), level: 0, format: "f32" as const };
+  const which = { axis, index: index(axis), level: finest.value.level, format: "f32" as const };
   const key = `${image.kind}/${image.id}/slice/${axis}/${which.index}`;
   const voxels = await bricks.of(key, () => slice(image, which));
   kept.value = bricks.size;
@@ -211,6 +220,11 @@ async function drawSlice(axis: Axis): Promise<void> {
   );
   const [least, most] = rangeOf(values);
   [canvas.width, canvas.height] = [a, b];
+  // Its shape the plane's, in µm: a voxel one pixel, stretched as the voxels are.
+  const [u, v] = (finest.value.voxel_um ?? [1, 1, 1]).filter(
+    (_, i) => i !== { x: 0, y: 1, z: 2 }[axis],
+  );
+  canvas.style.setProperty("--aspect", String((a * u!) / (b * v!)));
   const context = canvas.getContext("2d")!;
   const pixels = context.createImageData(a, b);
   values.forEach((v, i) => {
@@ -221,9 +235,14 @@ async function drawSlice(axis: Axis): Promise<void> {
   canvas.dataset.index = String(which.index);
 }
 // After the page is drawn: the canvases are there only once a stack's size is known.
-watch([size, at, channel], () => void Promise.all((["x", "y", "z"] as Axis[]).map(drawSlice)), {
-  flush: "post",
-});
+watch(
+  [finest, at, channel],
+  () =>
+    void Promise.all((["x", "y", "z"] as Axis[]).map(drawSlice)).catch(
+      (thrown: unknown) => (said.value = t("workspace.volume.unread", { why: why(thrown) })),
+    ),
+  { flush: "post" },
+);
 </script>
 
 <template>
@@ -329,12 +348,14 @@ watch([size, at, channel], () => void Promise.all((["x", "y", "z"] as Axis[]).ma
       </div>
       <div class="slices">
         <figure v-for="axis in ['z', 'y', 'x'] as const" :key="axis" class="slice">
-          <canvas
-            :ref="(element) => (canvases[axis] = element as HTMLCanvasElement)"
-            role="img"
-            :aria-label="t('workspace.volume.sliceLabel', { axis })"
-            :data-said="`slice-${axis}`"
-          />
+          <div class="frame">
+            <canvas
+              :ref="(element) => (canvases[axis] = element as HTMLCanvasElement)"
+              role="img"
+              :aria-label="t('workspace.volume.sliceLabel', { axis })"
+              :data-said="`slice-${axis}`"
+            />
+          </div>
           <Field :label="t('workspace.volume.slice', { axis, n: index(axis) + 1 })">
             <Slider
               :model-value="at[axis]"
@@ -435,12 +456,18 @@ h2 {
   margin: 0;
 }
 
-.slice canvas {
-  inline-size: 100%;
+/* A slice within a box of one height, so the sliders line up: as wide as its plane is in µm. */
+.frame {
+  display: grid;
+  place-items: center;
   block-size: 12rem;
-  object-fit: contain;
-  image-rendering: pixelated;
   background: var(--surface-image);
+}
+
+.frame canvas {
+  inline-size: min(100%, 12rem * var(--aspect, 1));
+  aspect-ratio: var(--aspect, 1);
+  image-rendering: pixelated;
 }
 
 .said {

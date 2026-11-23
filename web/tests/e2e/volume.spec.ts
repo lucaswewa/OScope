@@ -5,22 +5,29 @@
 // alone; axe; and a fixed volume's baseline from a fixed camera, cut.
 import type { Page } from "@playwright/test";
 
+import { Server as Api } from "../../src/api/client.ts";
+import { brick, slice, volumeMeta } from "../../src/api/media.ts";
 import { rangeOf } from "../../src/features/workspace/three-d/transfer.ts";
 import { expectAccessible } from "./axe.ts";
 import { expect, inScheme, shot, test } from "./fixtures.ts";
-import { SIZE, SOFT, stacked } from "./volumes.ts";
+import { cellsScanned, deconvolved, SIZE, SOFT, stacked, WHOLE } from "./volumes.ts";
 
 const said = (page: Page, name: string) => page.locator(`[data-said="${name}"]`);
 
-/** The Volumes tab, the stacks' project chosen, and `beside` the first stack if it's given. */
-async function opened(page: Page, url: string, beside?: string): Promise<void> {
-  const project = await stacked(url);
+/** The Volumes tab, the project `making` makes chosen, and `beside` its first stack if it's given. */
+async function opened(
+  page: Page,
+  url: string,
+  beside?: string,
+  making: (url: string) => Promise<string> = stacked,
+): Promise<void> {
+  const project = await making(url);
   await page.goto(`${url}/#/workspace`);
   await page.getByRole("tab", { name: "Volumes" }).click();
   const volumes = said(page, "volumes");
   await volumes.getByRole("combobox", { name: "The project" }).click();
   await page.getByRole("option", { name: project, exact: true }).click();
-  await expect(volumes.getByRole("combobox", { name: "The stack" })).toContainText("sphere");
+  await expect(volumes.getByRole("combobox", { name: "The stack" })).not.toContainText("Choose");
   if (beside) {
     await volumes.getByRole("combobox", { name: "Beside it" }).click();
     await page.getByRole("option", { name: beside, exact: true }).click();
@@ -123,6 +130,48 @@ test("a slice that comes late isn't drawn over the one asked for since", async (
   expect(await sliceShown(page, "z")).toEqual({ index: 0, ...sliceOf("z", 0) });
 });
 
+test("a z-scan's raw stack is sliced at its finest level, its mosaic's cells, as the server slices it", async ({
+  page,
+  server,
+}) => {
+  test.setTimeout(180_000);
+  let made = { project: "", acquisition: "" };
+  // The whole frame's 5 planes: more voxels at the finest level than the volume's brick holds.
+  const stack = { below_um: 1, above_um: 1, step_um: 0.5 };
+  const making = async (url: string) => (
+    (made = await cellsScanned(url, "Raw", WHOLE, stack)),
+    "Raw"
+  );
+  await opened(page, server.url, undefined, making);
+  await expect(said(page, "volume")).toHaveAttribute("data-drawn", "1", { timeout: 30_000 });
+  const on = new Api(server.url);
+  const image = { project: made.project, kind: "acquisitions" as const, id: made.acquisition };
+  const finest = (await volumeMeta(image, { on })).levels[0]!;
+  const coarser = await brick(image, { max: 128 ** 3 }, { on });
+  expect(coarser.level, "the volume's brick, coarser than the slices").toBeGreaterThan(
+    finest.level,
+  );
+  for (const axis of ["z", "y", "x"] as const) {
+    // Each slice in the middle of its axis, at the finest level.
+    const middle = Math.round(0.5 * (finest.size[{ x: 0, y: 1, z: 2 }[axis]]! - 1));
+    await expect(said(page, `slice-${axis}`)).toHaveAttribute("data-index", String(middle));
+    const { index, ...shown } = await sliceShown(page, axis);
+    // The server's own slice there, at the level it slices finest: a raw mosaic's cells.
+    const which = { axis, index, format: "f32" as const };
+    const voxels = await slice(image, which, { on });
+    expect(voxels.level, "a raw mosaic's finest level").toBe(1);
+    const [width, height] = voxels.size.filter((_, i) => i !== { x: 0, y: 1, z: 2 }[axis]);
+    const samples = Array.from(
+      { length: width! * height! },
+      (_, i) => voxels.samples[i * voxels.channels]!,
+    );
+    const [least, most] = rangeOf(samples);
+    const greys = samples.map((v) => Math.round((255 * (v - least)) / (most - least)));
+    expect(shown, `the ${axis} slice`).toEqual({ width, height, greys });
+  }
+  await expect(said(page, "volumes").getByRole("status").last()).toHaveText("");
+});
+
 /** A drag across `view`, from its middle. */
 async function turned(page: Page, view: string): Promise<void> {
   const box = (await said(page, view).boundingBox())!;
@@ -210,10 +259,14 @@ test("a fixed volume, cut, looks as its baseline does, from a fixed camera @visu
   }
 });
 
-test("two volumes, side by side, for the notes' screenshots", async ({ page, server }) => {
+test("the cells' stack and its deconvolution, for the notes' screenshots", async ({
+  page,
+  server,
+}) => {
   test.skip(!process.env.OSCOPE_SHOTS, "only when the shots are taken: OSCOPE_SHOTS=1");
+  test.setTimeout(900_000);
   await page.setViewportSize({ width: 1280, height: 1000 });
-  await opened(page, server.url, "sphere sharper");
+  await opened(page, server.url, "cells in widefield deconvolved", deconvolved);
   await expect(said(page, "volume")).toHaveAttribute("data-drawn", "2", { timeout: 30_000 });
   await turned(page, "volume");
   await page.mouse.move(5, 5);

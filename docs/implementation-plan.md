@@ -987,7 +987,7 @@ Recipes drawn as graphs, analyses with their provenance, annotations, cells and 
 | [W7.5](milestone-2/phases.md#w7-5) | Annotations and measurements | W6.4 | 1,800 | — | Done |
 | [W7.6](milestone-2/phases.md#w7-6) | Cells and stains | W7.4, W7.5 | 1,600 | — | Done |
 | [W7.7](milestone-2/phases.md#w7-7) | 3D: surfaces | W7.4 | 1,600 | 0054 | Done |
-| [W7.8](milestone-2/phases.md#w7-8) | 3D: volumes and slices | W7.7 | 1,700 | — | Planned |
+| [W7.8](milestone-2/phases.md#w7-8) | 3D: volumes and slices | W7.7 | 1,700 | — | In review |
 | [W7.9](milestone-2/phases.md#w7-9) | Reports | W7.4 | 1,300 | — | Planned |
 
 **Checkpoint K:** a recipe drawn and run live; cells counted and DAB measured; annotations; a surface and a volume; the PDF report.
