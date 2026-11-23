@@ -31,6 +31,7 @@ mod media;
 pub mod mosaic;
 pub mod origins;
 mod pages;
+pub mod pipeline;
 pub mod power;
 pub mod preview;
 pub mod projects;

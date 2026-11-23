@@ -507,9 +507,11 @@ pub(crate) struct LeaseCheck(pub(crate) Arc<Security>);
 
 impl Authorizer for LeaseCheck {
     fn authorize(&self, principal: &Principal, access: &Access<'_>) -> bool {
-        // One's own display preferences aren't the instrument's state (P52).
+        // One's own display preferences aren't the instrument's state (P52),
+        // and checking a recipe changes nothing (W7.1, ADR-0052).
         let own = (access.thing, access.affordance) == (Some("settings"), Some("display"));
-        if !access.changes_state || access.thing == Some("auth") || own {
+        let checks = (access.thing, access.affordance) == (Some("pipeline"), Some("check"));
+        if !access.changes_state || access.thing == Some("auth") || own || checks {
             return true;
         }
         principal.id().is_some_and(|who| self.0.lease.holds(who))

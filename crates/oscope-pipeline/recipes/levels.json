@@ -1,0 +1,8 @@
+{
+  "format": 1,
+  "name": "Levels and gamma",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [{ "id": "levels", "node": "display.levels", "params": { "black": 0.05, "white": 0.85, "gamma": 2.2 } }],
+  "edges": [{ "from": "input.image", "to": "levels.image" }],
+  "outputs": [{ "name": "image", "from": "levels.image" }]
+}

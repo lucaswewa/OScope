@@ -1,0 +1,29 @@
+{
+  "format": 1,
+  "name": "Nuclei counted",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [
+    { "id": "stains", "node": "stain.deconvolve", "params": { "stains": "he" } },
+    { "id": "haematoxylin", "node": "convert.format", "params": { "channels": "red" } },
+    { "id": "blur", "node": "filter.gaussian", "params": { "sigma": 1.0 } },
+    { "id": "threshold", "node": "threshold.otsu" },
+    { "id": "open", "node": "morphology.open", "params": { "radius": 1 } },
+    { "id": "split", "node": "cells.split" },
+    { "id": "measure", "node": "cells.measure", "params": { "pixel_um": [0.24, 0.24] } }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "stains.image" },
+    { "from": "stains.amounts", "to": "haematoxylin.image" },
+    { "from": "haematoxylin.image", "to": "blur.image" },
+    { "from": "blur.image", "to": "threshold.image" },
+    { "from": "threshold.mask", "to": "open.mask" },
+    { "from": "open.mask", "to": "split.mask" },
+    { "from": "split.labels", "to": "measure.labels" },
+    { "from": "input.image", "to": "measure.image" }
+  ],
+  "outputs": [
+    { "name": "objects", "from": "measure.objects" },
+    { "name": "outlines", "from": "measure.outlines" },
+    { "name": "mask", "from": "open.mask" }
+  ]
+}

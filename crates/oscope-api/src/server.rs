@@ -31,6 +31,7 @@ use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
 use crate::mosaic::{LiveMosaicThing, Mosaics};
 use crate::origins::{self, Origins};
+use crate::pipeline::PipelineThing;
 use crate::power::{PowerConfig, PowerThing};
 use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
@@ -420,7 +421,8 @@ impl Api {
             .service(Arc::new(roots.clone()))
             .thing("system", System::from_config(roots.clone()))
             .thing("status", StatusThing::default())
-            .thing("settings", SettingsThing::default());
+            .thing("settings", SettingsThing::default())
+            .thing("pipeline", PipelineThing::default());
         ApiBuilder {
             things,
             pages: Vec::new(),

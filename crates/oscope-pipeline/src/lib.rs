@@ -46,6 +46,7 @@
 //! ```
 
 mod batch;
+pub mod library;
 mod live;
 mod memo;
 mod node;
@@ -60,6 +61,7 @@ mod tile;
 mod value;
 
 pub use batch::{Batch, ReadItem, WriteItem};
+pub use library::{Kept, Library, LibraryError, Listed, check};
 pub use live::{Live, LiveResult, LiveStats};
 pub use memo::MemoStats;
 pub use node::{

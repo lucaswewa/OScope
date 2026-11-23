@@ -291,7 +291,9 @@ async fn every_affordance_that_changes_state_refuses_a_caller_without_the_lease(
                 continue;
             }
             let answer = alice.send(Method::POST, &path, Some(&json!({}))).await;
-            assert_eq!(answer.status, 403, "{path}: {}", answer.text());
+            // Checking a recipe changes nothing, and needs no lease (W7.1).
+            let free = path == "/api/v1/pipeline/check";
+            assert_eq!(answer.status == 403, !free, "{path}: {}", answer.text());
             checked.push(path);
         }
         let properties = td["properties"].as_object().cloned().unwrap_or_default();
