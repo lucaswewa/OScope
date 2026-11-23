@@ -44,7 +44,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W6.4 | The deep-zoom viewer | Done | [W6.4-deep-zoom.md](W6.4-deep-zoom.md) |
 | W7.1 | Recipes over the API | Done | [W7.1-recipes-api.md](W7.1-recipes-api.md) |
 | W7.2 | The graph editor: the canvas | Done | [W7.2-graph-canvas.md](W7.2-graph-canvas.md) |
-| W7.3 | The graph editor: parameters and the library | Planned | — |
+| W7.3 | The graph editor: parameters and the library | In review | [W7.3-parameters-library.md](W7.3-parameters-library.md) |
 | W7.4 | Analyses and results | Planned | — |
 | W7.5 | Annotations and measurements | Planned | — |
 | W7.6 | Cells and stains | Planned | — |

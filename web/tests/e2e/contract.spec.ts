@@ -28,11 +28,13 @@ import {
 import {
   checkRecipe,
   deleteRecipe,
+  liveRecipe,
   pipelineNodes,
   recipeList,
   recipeNamed,
   runRecipe,
   saveRecipe,
+  setLiveRecipe,
   type Recipe,
 } from "../../src/api/pipeline.ts";
 import { expect, test } from "./fixtures.ts";
@@ -280,4 +282,25 @@ test("the pipeline's catalogue, check, library and run are as the wrappers have 
   const project = await act("/api/v1/projects/create", { name: "run" }, { on });
   const refused = await thrown(runRecipe(project.id, { named: "smooth" }, [], { on }));
   expect(refused.message).toContain("no records");
+});
+
+test("the live recipe, set and cleared, and its check, are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  await call((signal) => on.api.PUT("/api/v1/preview/recipe_budget_ms", { body: 5_000, signal }));
+  const levels = (await recipeNamed("levels", { on })).recipe;
+  const check = await setLiveRecipe(levels, { on });
+  expect(Object.keys(check!).sort()).toEqual([
+    "budget_ms",
+    "height",
+    "step_ms",
+    "steps",
+    "time_ms",
+    "width",
+  ]);
+  expect(Object.keys(check!.step_ms)).toEqual(["levels"]);
+  expect((await liveRecipe({ on }))?.name).toBe(levels.name);
+  expect(await setLiveRecipe(null, { on })).toBeNull();
+  expect(await liveRecipe({ on })).toBeNull();
 });

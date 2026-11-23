@@ -10,7 +10,7 @@ import {
   type NodeChange,
 } from "@vue-flow/core";
 import { MiniMap } from "@vue-flow/minimap";
-import { computed, shallowRef, useId, useTemplateRef } from "vue";
+import { computed, useId, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 
 import type { Fault, Recipe } from "@/api/pipeline";
@@ -29,18 +29,18 @@ import GraphNode from "@/features/workspace/editor/GraphNode.vue";
  * The recipe drawn as a graph (W7.2, ADR-0053), on Vue Flow: the recipe
  * draws it, and what is done to it comes back as the recipe it makes, an
  * edit. A connection between unlike ports is refused as it is dragged. The
- * selection is kept here, as the nodes are drawn again with each edit.
+ * selection is the editor's, as the nodes are drawn again with each edit.
  */
 const props = defineProps<{ recipe: Recipe; catalogue: Catalogue; faults: readonly Fault[] }>();
 const emit = defineEmits<{ edit: [recipe: Recipe] }>();
 const { t } = useI18n();
 
 const flow = useId();
-const { screenToFlowCoordinate, fitView } = useVueFlow(flow);
+const { screenToFlowCoordinate, fitView, zoomTo } = useVueFlow(flow);
 const frame = useTemplateRef<HTMLElement>("frame");
 
-/** The nodes selected, by ID. */
-const selected = shallowRef<ReadonlySet<string>>(new Set());
+/** The nodes selected, by ID: the editor's, as the nodes are drawn again with each edit. */
+const selected = defineModel<ReadonlySet<string>>("selected", { default: () => new Set() });
 const view = computed(() => drawn(props.recipe, props.catalogue, props.faults));
 const nodes = computed(() =>
   view.value.nodes.map((node) => ({
@@ -136,10 +136,6 @@ function edgesChanged(changes: EdgeChange[]): void {
 }
 
 defineExpose({
-  /** The nodes selected, by ID. */
-  selected: () => [...selected.value],
-  /** Selects nodes `ids`, and only them. */
-  select: (ids: readonly string[]) => (selected.value = new Set(ids)),
   /** The middle of the view, in the graph's units: where a new node goes. */
   middle(): [number, number] {
     const box = frame.value?.getBoundingClientRect();
@@ -149,6 +145,8 @@ defineExpose({
   },
   /** Shows the whole graph, no larger than it is drawn. */
   fit,
+  /** Shows it at its own size, where each port is 24 px tall (W7.3). */
+  actual: () => zoomTo(1),
 });
 </script>
 
@@ -170,7 +168,13 @@ defineExpose({
       <template v-for="kind in ['step', 'inputs', 'outputs']" :key="kind" #[`node-${kind}`]="node">
         <GraphNode :id="node.id" :data="node.data" :selected="node.selected" />
       </template>
-      <MiniMap pannable zoomable :aria-label="t('workspace.editor.minimap')" />
+      <MiniMap
+        :width="140"
+        :height="90"
+        pannable
+        zoomable
+        :aria-label="t('workspace.editor.minimap')"
+      />
     </VueFlow>
   </div>
 </template>

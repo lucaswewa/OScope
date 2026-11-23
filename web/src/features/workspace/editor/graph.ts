@@ -244,6 +244,12 @@ export function withEdge(recipe: Recipe, from: End, to: End): Recipe {
   return { ...recipe, edges: [...others, { from: referenceOf(from), to: target }] };
 }
 
+/** `recipe` with node `id`'s parameters `params` (W7.3). */
+export function withParams(recipe: Recipe, id: string, params: unknown): Recipe {
+  const nodes = recipe.nodes.map((used) => (used.id === id ? { ...used, params } : used));
+  return { ...recipe, nodes };
+}
+
 /** `recipe` without the edge into `to`: the same recipe, if it has none. */
 export function withoutEdge(recipe: Recipe, to: End): Recipe {
   if (to.node === OUTPUTS) {

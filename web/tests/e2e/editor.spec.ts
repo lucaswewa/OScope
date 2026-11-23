@@ -169,6 +169,8 @@ test("a recipe's file is exported, and imported without loss", async ({ page, se
   const layout = { ...recipe.layout, gaussian: [300, 240] };
   const moved = `${JSON.stringify({ ...recipe, layout }, null, 2)}\n`;
   await said(page, "editor").getByRole("button", { name: "New", exact: true }).click();
+  // Its changes aren't saved (W7.3): asked first.
+  await page.getByRole("alertdialog").getByRole("button", { name: "Leave them" }).click();
   await expect(edges(page)).toHaveCount(0);
   await imported(page, "blurred.json", moved);
   await expect(edges(page)).toHaveCount(3);

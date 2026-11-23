@@ -92,3 +92,24 @@ export async function runRecipe(
   const input = { project, recipe, records, ...(roi ? { roi } : {}), ...(tile ? { tile } : {}) };
   return (await act("/api/v1/pipeline/run", input, following)) as JobRef[];
 }
+
+/** What a live recipe was checked to take: the whole, each step, and the budget. */
+export type LiveCheck = NonNullable<Schema<"preview_set_live_recipe_output">>;
+
+/** The recipe the preview runs now, if any (P22). */
+export function liveRecipe(options: On = {}): Promise<Recipe | null> {
+  const address = (options.on ?? server).address("/api/v1/preview/live_recipe");
+  return fetched(address, (answer) => answer.json() as Promise<Recipe | null>, options);
+}
+
+/**
+ * Has the preview run `recipe` on each frame, or none: what it was checked
+ * to take. The server refuses one that can't run live, or is over budget.
+ */
+export async function setLiveRecipe(
+  recipe: Recipe | null,
+  options: Following = {},
+): Promise<LiveCheck | null> {
+  const input = recipe ? { recipe } : {};
+  return (await act("/api/v1/preview/set_live_recipe", input, options)) ?? null;
+}
