@@ -45,6 +45,13 @@ import {
   resultList,
   summaryOf,
 } from "../../src/api/workspace.ts";
+import {
+  annotate,
+  annotationsOf,
+  measurementsAddress,
+  measurementsOf,
+  removeAnnotation,
+} from "../../src/api/annotations.ts";
 import { counting, prepared } from "./analyses.ts";
 import { expect, test } from "./fixtures.ts";
 import { fast } from "./sim.ts";
@@ -344,4 +351,43 @@ test("the Workspace's runs, results, difference and deletion are as the wrappers
   expect([summary.input, summary.rows]).toEqual([acquisition, { objects: 48 }]);
   await deleteResult(project, b, { on });
   expect((await resultList(project, { on })).map((one) => one.id)).toEqual([a]);
+});
+
+test("a record's annotations, kept, read, measured and removed, are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  const { project, acquisition } = await prepared(server.url);
+  const record = { project, kind: "acquisition" as const, id: acquisition };
+  const square = [
+    [
+      [10, 10],
+      [40, 10],
+      [40, 40],
+      [10, 40],
+      [10, 10],
+    ],
+  ];
+  const feature = {
+    type: "Feature" as const,
+    geometry: { type: "Polygon" as const, coordinates: square },
+    properties: { name: "a square", shape: "rectangle" },
+  };
+  const kept = await annotate(record, "annotations", feature, { on });
+  expect(kept.id).toBeTruthy();
+  const read = await annotationsOf(record, { on });
+  expect(read.layers.annotations!.features).toEqual([kept]);
+  const [measured] = await measurementsOf(record, "annotations", { on });
+  expect([measured!.id, measured!.name, measured!.unit, measured!.length, measured!.area]).toEqual([
+    kept.id,
+    "a square",
+    "px",
+    120,
+    900,
+  ]);
+  expect(measured!.centroid).toEqual([25, 25]);
+  const csv = await (await fetch(measurementsAddress(record, "annotations", true, on))).text();
+  expect(csv.split("\r\n")[1]).toMatch(/^annotations,\d+,a square,Polygon,120,900,25,25,/);
+  await removeAnnotation(record, "annotations", kept.id!, { on });
+  expect(await measurementsOf(record, "annotations", { on })).toEqual([]);
 });
