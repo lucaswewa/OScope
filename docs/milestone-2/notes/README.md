@@ -41,7 +41,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W6.1 | Projects | Done | [W6.1-projects.md](W6.1-projects.md) |
 | W6.2 | A project's records | Done | [W6.2-records.md](W6.2-records.md) |
 | W6.3 | Imports, exports and uploads | Done | [W6.3-files.md](W6.3-files.md) |
-| W6.4 | The deep-zoom viewer | In review | [W6.4-deep-zoom.md](W6.4-deep-zoom.md) |
+| W6.4 | The deep-zoom viewer | Done | [W6.4-deep-zoom.md](W6.4-deep-zoom.md) |
 | W7.1 | Recipes over the API | Planned | — |
 | W7.2 | The graph editor: the canvas | Planned | — |
 | W7.3 | The graph editor: parameters and the library | Planned | — |
