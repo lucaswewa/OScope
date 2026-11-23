@@ -208,7 +208,7 @@ const lineIn = computed(() => {
     </p>
     <template v-if="map">
       <div v-if="webgl2" class="controls">
-        <Field :label="t('workspace.surface.exaggeration')">
+        <Field class="scaled" :label="t('workspace.surface.exaggeration')">
           <Slider v-model="exaggeration" :min="1" :max="40" :step="1" />
         </Field>
         <Field v-if="picture" :label="t('workspace.surface.colouring')">
@@ -307,6 +307,11 @@ h2 {
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-3);
   align-items: end;
+}
+
+/* A slider's field, wide enough for its scale beside its number. */
+.scaled {
+  inline-size: 16rem;
 }
 
 .body {
