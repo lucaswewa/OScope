@@ -47,6 +47,8 @@ const props = defineProps<{
   shapes?: readonly Shape[] | undefined;
   /** Whether a drag draws a rectangle, which `draw` then says, instead of panning. */
   drawing?: boolean;
+  /** Whether `view` says every view, the page's own fits too, not only its user's moves (W7.6). */
+  tell?: boolean;
 }>();
 const emit = defineEmits<{
   pick: [at: Point];
@@ -112,9 +114,9 @@ function fitTo(rect: Rect | undefined): void {
   viewer.viewport.fitBounds(new OpenSeadragon.Rect(x, y, width, height), true);
 }
 
-/** What the view shows, on the stage, said while its user moves it. */
+/** What the view shows, on the stage, said while its user moves it, or always if told to. */
 function said(): void {
-  if (!viewer || !props.placement || !moved) return;
+  if (!viewer || !props.placement || !(moved || props.tell)) return;
   const { x, y, width, height } = viewer.viewport.getBounds(true);
   emit("view", viewportRectToStage(props.placement, { x, y, width, height }));
 }

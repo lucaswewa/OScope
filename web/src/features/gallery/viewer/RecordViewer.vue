@@ -34,6 +34,10 @@ const props = defineProps<{
   own?: boolean;
   /** Whether presses and drags draw, for the annotations (W7.5). */
   drawing?: boolean;
+  /** One channel alone, as grey: a stain's amount (W7.6). */
+  channel?: number | undefined;
+  /** Whether every view is said, the page's own fits too (W7.6). */
+  tell?: boolean;
 }>();
 const emit = defineEmits<{
   view: [rect: Rect];
@@ -50,7 +54,10 @@ const stored = computed<StoredImage>(() => ({
   id: props.one.record.id,
 }));
 const info = computed(() => imageOf(props.one));
-const query = computed(() => lookOf(props.look, info.value?.planes ?? 1));
+const query = computed(() => ({
+  ...lookOf(props.look, info.value?.planes ?? 1),
+  ...(props.channel === undefined ? {} : { channel: props.channel }),
+}));
 
 /** A tile through a colour map's table, as a PNG. */
 async function mapped(picture: Blob, table: Uint8Array): Promise<Blob> {
@@ -102,6 +109,7 @@ defineExpose({ snapshot: () => tileViewer.value?.snapshot() ?? Promise.resolve(u
       :placement="placement"
       :fit="fit"
       :drawing="drawing"
+      :tell="tell"
       @view="(rect) => emit('view', rect)"
       @press="(at) => emit('press', at)"
       @draw="(rect) => emit('draw', rect)"

@@ -37,7 +37,9 @@ fn the_stock_recipes_are_listed_first_and_each_can_run() {
             "green",
             "inverted",
             "levels",
-            "smooth"
+            "smooth",
+            "stains-hdab",
+            "stains-he"
         ]
     );
     for one in &listed {

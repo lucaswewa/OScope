@@ -17,13 +17,16 @@ use crate::recipe::{Problem, Recipe};
 use crate::registry::Registry;
 
 /// The stock recipes: name, then their JSON.
-const STOCK: [(&str, &str); 6] = [
+const STOCK: [(&str, &str); 8] = [
     ("count-nuclei", include_str!("../recipes/count-nuclei.json")),
     ("false-colour", include_str!("../recipes/false-colour.json")),
     ("green", include_str!("../recipes/green.json")),
     ("inverted", include_str!("../recipes/inverted.json")),
     ("levels", include_str!("../recipes/levels.json")),
     ("smooth", include_str!("../recipes/smooth.json")),
+    // The stains, separated (W7.6), and DAB scored.
+    ("stains-hdab", include_str!("../recipes/stains-hdab.json")),
+    ("stains-he", include_str!("../recipes/stains-he.json")),
 ];
 
 /// A recipe in the library, as it is listed.

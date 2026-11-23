@@ -16,6 +16,7 @@ import {
   type Summary,
 } from "@/api/workspace";
 import { comparison, type Row } from "@/features/workspace/analyses/compare";
+import ResultView from "@/features/workspace/analyses/ResultView.vue";
 import { provenanceOf, type Contents, type Result } from "@/features/gallery/project/project";
 import Button from "@/ui/Button.vue";
 import Confirm from "@/ui/Confirm.vue";
@@ -59,6 +60,10 @@ const counts = (one: Analysed) =>
   Object.entries(summaries.value[one.id]?.rows ?? {})
     .map(([table, n]) => t("workspace.results.rows", { table, n }, n))
     .join(", ");
+
+/** The result shown on its image (W7.6), if one is. */
+const shownId = shallowRef<string>();
+const shown = computed(() => results.value.find((one) => one.id === shownId.value));
 
 /** The two compared: the first chosen, then the second. */
 const chosen = shallowRef<string[]>([]);
@@ -154,6 +159,14 @@ const compared = computed(() => chosen.value.length === 2);
         <div class="actions">
           <ToggleButton
             compact
+            :model-value="shownId === one.id"
+            :aria-label="t('workspace.results.showOne', { name: one.name })"
+            @update:model-value="(on) => (shownId = on ? one.id : undefined)"
+          >
+            {{ t("workspace.results.show") }}
+          </ToggleButton>
+          <ToggleButton
+            compact
             :model-value="chosen.includes(one.id)"
             :aria-label="t('workspace.results.compareOne', { name: one.name })"
             @update:model-value="toggle(one.id)"
@@ -214,6 +227,12 @@ const compared = computed(() => chosen.value.length === 2);
         </tbody>
       </table>
     </section>
+    <ResultView
+      v-if="shown && contents"
+      :result="shown"
+      :summary="summaries[shown.id]"
+      :contents="contents"
+    />
     <p class="said" role="status" data-said="results-said">{{ said }}</p>
     <Confirm
       v-model:open="asking"
