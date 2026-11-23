@@ -7795,6 +7795,13 @@ export interface components {
                         /** @description The node's output, or recipe input, it gives: `node.port`. */
                         from: string;
                     }[];
+                    /**
+                     * @description Where an editor drew each node, by its ID: `[x, y]`, in its own
+                     *     units. The engine ignores it (W7.2).
+                     */
+                    layout?: {
+                        [key: string]: number[];
+                    };
                 };
             };
             records: ({
@@ -7911,6 +7918,13 @@ export interface components {
                     /** @description The node's output, or recipe input, it gives: `node.port`. */
                     from: string;
                 }[];
+                /**
+                 * @description Where an editor drew each node, by its ID: `[x, y]`, in its own
+                 *     units. The engine ignores it (W7.2).
+                 */
+                layout?: {
+                    [key: string]: number[];
+                };
             };
         };
         pipeline_save_recipe_output: null;
@@ -9026,6 +9040,13 @@ export interface components {
                 /** @description The node's output, or recipe input, it gives: `node.port`. */
                 from: string;
             }[];
+            /**
+             * @description Where an editor drew each node, by its ID: `[x, y]`, in its own
+             *     units. The engine ignores it (W7.2).
+             */
+            layout?: {
+                [key: string]: number[];
+            };
         } | null;
         /** @description How previews look. */
         preview_look_value: {
@@ -9178,6 +9199,13 @@ export interface components {
                     /** @description The node's output, or recipe input, it gives: `node.port`. */
                     from: string;
                 }[];
+                /**
+                 * @description Where an editor drew each node, by its ID: `[x, y]`, in its own
+                 *     units. The engine ignores it (W7.2).
+                 */
+                layout?: {
+                    [key: string]: number[];
+                };
             } | null;
         };
         preview_set_live_recipe_output: {
@@ -13833,6 +13861,13 @@ export interface components {
                         /** @description The node's output, or recipe input, it gives: `node.port`. */
                         from: string;
                     }[];
+                    /**
+                     * @description Where an editor drew each node, by its ID: `[x, y]`, in its own
+                     *     units. The engine ignores it (W7.2).
+                     */
+                    layout?: {
+                        [key: string]: number[];
+                    };
                 };
                 /** @description The image: an acquisition's or a result's. */
                 input: {

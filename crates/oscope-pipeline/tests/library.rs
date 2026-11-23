@@ -247,3 +247,30 @@ fn check_finds_a_bad_parameter_at_its_node_and_json_that_isnt_a_recipe_at_the_re
         ("recipe", None)
     );
 }
+
+#[test]
+fn a_recipes_layout_is_kept_and_the_engine_ignores_it() {
+    // W7.2: where the editor drew each node.
+    let folder = tempfile::tempdir().unwrap();
+    let registry = stock::registry(folder.path());
+    let library = Library::open(&folder.path().join("recipes"));
+    let mut json = serde_json::to_value(recipe("Laid out")).unwrap();
+    json["layout"] = json!({ "input": [0.0, 80.0], "blur": [240.0, 80.5], "nothing": [1.0, 2.0] });
+    let laid: Recipe = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(laid.layout["blur"], [240.0, 80.5]);
+    // Its JSON says it; a recipe without one says nothing of it.
+    assert_eq!(
+        serde_json::to_value(&laid).unwrap()["layout"],
+        json["layout"]
+    );
+    assert!(
+        serde_json::to_value(recipe("plain"))
+            .unwrap()
+            .get("layout")
+            .is_none()
+    );
+    // Kept, and read back; and no fault for it, a node not in the recipe among it.
+    library.save("laid-out", &laid).unwrap();
+    assert_eq!(library.get("laid-out").unwrap().recipe, laid);
+    assert_eq!(check(&registry, &json, false), Vec::<Problem>::new());
+}

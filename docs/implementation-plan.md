@@ -980,8 +980,8 @@ Recipes drawn as graphs, analyses with their provenance, annotations, cells and 
 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
-| [W7.1](milestone-2/phases.md#w7-1) | Recipes over the API | W1.1 | 1,200 | 0052 | In review |
-| [W7.2](milestone-2/phases.md#w7-2) | The graph editor: the canvas | W7.1, W2.2 | 2,000 | 0053 | Planned |
+| [W7.1](milestone-2/phases.md#w7-1) | Recipes over the API | W1.1 | 1,200 | 0052 | Done |
+| [W7.2](milestone-2/phases.md#w7-2) | The graph editor: the canvas | W7.1, W2.2 | 2,000 | 0053 | In review |
 | [W7.3](milestone-2/phases.md#w7-3) | The graph editor: parameters and the library | W7.2, W0.6 | 1,600 | — | Planned |
 | [W7.4](milestone-2/phases.md#w7-4) | Analyses and results | W7.3, W6.2 | 1,500 | — | Planned |
 | [W7.5](milestone-2/phases.md#w7-5) | Annotations and measurements | W6.4 | 1,800 | — | Planned |
@@ -1109,7 +1109,7 @@ ADRs are numbered across the project. Upstream phases record their design decisi
 | 0050 | The tile viewer | W3.8 |
 | 0051 | Uploads | W6.3 |
 | 0052 | Recipes over the API: the `pipeline` Thing | W7.1 |
-| 0053 | The graph editor | W7.2 |
+| 0053 | The graph editor on Vue Flow | W7.2 |
 | 0054 | 3D in the app | W7.7 |
 | 0055 | Accounts over the API | W8.6 |
 | 0056 | The desktop app: Tauri, its permissions and the sidecar | W9.1 |
@@ -1362,3 +1362,4 @@ The first draft's points, with the owner's answers from 2026-11-10. All are reso
 | 2026-11-22 | RUSTSEC-2026-0592, a stack overflow in `url` 2.5.8's `Url::origin()` on nested `blob:` URLs, made `cargo deny` fail on every branch. `url` reaches OScope only through `hayagriva`, the reports' bibliography crate, and nothing calls `Url::origin()`. At the owner's choice, `url` 2.5.9 and `form_urlencoded` 1.2.3, which it needs, are taken now, released 2026-11-20 at 23:03 UTC, under the two-week rule. They are checked again on 2026-12-04, once two weeks old: not yanked, the same licence, and `cargo deny check` passing |
 | 2026-11-22 | Outside the phases, at the owner's request: **the live view's performance**, in three steps on one pull request, #113. [Its baseline](performance/live-view-baseline.md) measured each step from the simulated camera to the page; [the simulated camera's image on the GPU](performance/gpu-simulator.md) moved the camera's H&E tiles and exposure there; and [the live view at 14.5 fps](performance/live-view-fps.md) streams `ex-live-view` in mode `design` and takes the stage's lock out of each frame. **ADR-0062, *The simulated camera's image on the GPU*,** wasn't planned: it takes the next free number above the reserved 0059, after 0060 and 0061, and extends ADR-0013. |
 | 2026-11-23 | W7.1 was estimated at about 1,250 lines before it started (code ~600: the recipe library in `oscope-pipeline`, stock recipes read-only beside the user's in the data root, names that would leave its folder refused, ~150; `check`, each fault with the node and the port it is at, ~120; the `pipeline` Thing, its catalogue, `check`, the library's routes and actions, `run` as `workspace.run` jobs, and `check` free of the lease, ~250; the client's wrappers, ~80; tests ~450: the library's round trip and its names, ~120, `check` on a cycle, a type mismatch and a missing input together, ~150, the Thing over HTTP, ~140, and the contract's wrappers, ~40; styles none; the try-it ~60, its `curl` session in the notes; glue ~140: the stock recipes' JSON, the server's wiring and the generated types' script). That is 4 % over the spec's 1,200. It is one pull request |
+| 2026-11-23 | W7.2 was estimated at about 2,380 lines before it started (code ~1,150: the editor's page and its canvas on Vue Flow, ~250; a node, its ports coloured by type and its faults, ~150; the palette, searched, ~120; the recipe and the graph as one, each loading from the other, and the nodes' places kept in the recipe, ~180; undo, redo, copy and paste, ~100; the keyboard's path, the focus between nodes and ports and a connection made from it, ~150; `check` as the graph changes, its faults on their nodes and ports, ~60; a recipe's file imported and exported, ~50; the automatic layout, ~40; and **server** work the spec didn't name, ~50: a recipe's optional `layout`, its nodes' places, which the engine ignores; tests ~450: unit, the graph to the recipe and back for every stock recipe, undo and redo, the types' rule and the keyboard's moves, ~380, and in Rust, the layout kept, ~70; styles ~200; the try-it ~500: its words ~100, and its end-to-end tests ~400, a graph built by hand passing `check`, a broken one's faults shown, the keyboard's path, axe and the baselines; glue ~80: the packages, ADR-0053's lint rule and the tab). That is 19 % over the spec's 2,000. Vue Flow 1.48.2, its minimap 1.5.4, and `@dagrejs/dagre` 3.1.3 are MIT, each over two weeks old. It was begun while W7.1's gate ran. It is one pull request |
