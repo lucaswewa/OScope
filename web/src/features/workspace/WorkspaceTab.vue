@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { emptyRecipe } from "@/features/workspace/editor/graph";
 import type { Recipe } from "@/api/pipeline";
 import ResultsPane from "@/features/workspace/analyses/ResultsPane.vue";
+import AnnotatePage from "@/features/workspace/annotate/AnnotatePage.vue";
 import RunPane from "@/features/workspace/analyses/RunPane.vue";
 import RecipeEditor from "@/features/workspace/editor/RecipeEditor.vue";
 import Tabs from "@/ui/Tabs.vue";
@@ -12,14 +13,16 @@ import Tabs from "@/ui/Tabs.vue";
 /**
  * The Workspace (W7): where data is processed, analysed and reported. The
  * graph editor (W7.2, W7.3), and the analyses (W7.4): a recipe run on a
- * project's image, and its results. Each tab keeps what it holds while the
- * other is shown.
+ * project's image, and its results; and annotations (W7.5), drawn and
+ * measured on a record's image. Each tab keeps what it holds while another
+ * is shown.
  */
 const { t } = useI18n();
 const tab = shallowRef("recipe");
 const tabs = [
   { value: "recipe", label: t("workspace.tabs.recipe") },
   { value: "analyses", label: t("workspace.tabs.analyses") },
+  { value: "annotate", label: t("workspace.tabs.annotate") },
 ];
 const editor = useTemplateRef<InstanceType<typeof RecipeEditor>>("editor");
 /** The editor's recipe, as it is now: the one a run takes, unless another is chosen. */
@@ -46,6 +49,9 @@ async function open(recipe: Recipe): Promise<void> {
           <RunPane v-model:project="project" :editing="editing" @ran="runs++" />
           <ResultsPane :project="project" :version="runs" @open="open" />
         </div>
+      </template>
+      <template #annotate>
+        <AnnotatePage />
       </template>
     </Tabs>
   </div>

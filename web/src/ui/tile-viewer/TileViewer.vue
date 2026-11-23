@@ -48,7 +48,17 @@ const props = defineProps<{
   /** Whether a drag draws a rectangle, which `draw` then says, instead of panning. */
   drawing?: boolean;
 }>();
-const emit = defineEmits<{ pick: [at: Point]; draw: [rect: Rect]; view: [rect: Rect] }>();
+const emit = defineEmits<{
+  pick: [at: Point];
+  draw: [rect: Rect];
+  view: [rect: Rect];
+  /** While drawing (W7.5): a press without a drag, where it was. */
+  press: [at: Point];
+  /** While drawing: the rectangle as it is dragged. */
+  drag: [rect: Rect];
+  /** Where the pointer is over the image, if it is. */
+  hover: [at: Point | undefined];
+}>();
 const { t } = useI18n();
 
 const host = ref<HTMLDivElement>();
@@ -287,8 +297,14 @@ onMounted(() => {
     viewer.addHandler(by, () => (moved = true));
   tracker = new OpenSeadragon.MouseTracker({
     element: viewer.canvas,
-    moveHandler: (event) => (pointer.value = stageAt(event.position)),
-    leaveHandler: () => (pointer.value = undefined),
+    moveHandler: (event) => {
+      pointer.value = stageAt(event.position);
+      emit("hover", pointer.value);
+    },
+    leaveHandler: () => {
+      pointer.value = undefined;
+      emit("hover", undefined);
+    },
     pressHandler: (event) => {
       const at = props.drawing ? stageAt(event.position) : undefined;
       dragged.value = at ? { from: at, to: at } : undefined;
@@ -296,11 +312,14 @@ onMounted(() => {
     dragHandler: (event) => {
       const at = dragged.value && stageAt(event.position);
       if (dragged.value && at) dragged.value = { from: dragged.value.from, to: at };
+      if (dragged.value) emit("drag", between(dragged.value.from, dragged.value.to));
     },
     releaseHandler: () => {
+      const from = dragged.value?.from;
       const rect = dragged.value && between(dragged.value.from, dragged.value.to);
       dragged.value = undefined;
       if (rect && rect.width > 0 && rect.height > 0) emit("draw", rect);
+      else if (from) emit("press", from);
     },
   });
   dragging();
@@ -364,6 +383,8 @@ watch(
             />
             <polygon v-else :class="shape.kind" :points="pointsIn(placement, shape)" />
           </template>
+          <!-- What a page draws over the image itself, in its pixels (W7.5). -->
+          <slot name="over" :placement="placement" />
         </template>
       </svg>
       <figure v-if="scale" class="scale" data-said="tile-scale">
