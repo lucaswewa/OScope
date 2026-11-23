@@ -1,7 +1,7 @@
 //! Reports as a job (P47): OScope's generator's report on a mosaic and its
 //! count of cells, as PDF, HTML and JSON; one result chosen; a template of
 //! the user's; an extension's report, its image in base64; refusals; a
-//! cancel.
+//! cancel. And a template's preview (W7.9), on a result, kept nowhere.
 
 use std::sync::Arc;
 
@@ -11,7 +11,7 @@ use oscope_store::{
     ImageInfo, Input, NewProject, NodeVersion, PixelSize, Provenance, SampleType, Samples, Store,
     StoreError,
 };
-use oscope_workflows::report::{Format, Generators, ReportOptions, make};
+use oscope_workflows::report::{Format, Generators, ReportOptions, make, preview};
 use serde_json::{Value, json};
 
 struct Made {
@@ -261,6 +261,51 @@ fn a_report_on_the_results_is_made_as_pdf_html_and_json() {
             "a grey image, whole",
             "A region of 40 × 30 pixels at its middle, at full size"
         ]
+    );
+}
+
+#[test]
+fn a_template_is_previewed_on_one_result_or_the_sample_keeping_nothing() {
+    let m = made();
+    let standard = m.templates.get(STANDARD).unwrap();
+    // A heading of the user's, unsaved, on the count alone.
+    let html = standard
+        .html
+        .replace("<body>", "<body><p>Previewed here</p>");
+    let on = Some((m.project, m.cells.as_str()));
+    let (pdf, page) = preview(&m.store, on, &standard.typst, &html).unwrap();
+    assert!(pdf.starts_with(b"%PDF-"));
+    assert!(page.contains("<p>Previewed here</p>"), "{page}");
+    assert!(page.contains("<h2>a mosaic: cells</h2>"));
+    assert!(!page.contains("<h2>a mosaic</h2>"));
+    assert!(page.contains("<h1>slides: results</h1>"));
+    // Kept nowhere: no report, no template.
+    let contents = m.store.contents(m.project).unwrap();
+    assert!(contents.reports.is_empty());
+    assert_eq!(m.templates.names().unwrap(), [STANDARD]);
+    // Without a result, the sample report.
+    let (_, page) = preview(&m.store, None, &standard.typst, &standard.html).unwrap();
+    assert!(page.contains("<h1>A sample report</h1>"), "{page}");
+    // A template that doesn't render, and a result that isn't there, refused.
+    let broken = preview(&m.store, on, "#[", &standard.html).unwrap_err();
+    assert!(
+        matches!(&broken, StoreError::Refused(why) if why.contains("line 1")),
+        "{broken}"
+    );
+    let html = standard
+        .html
+        .replace("{{ report.title }}", "{{ report.title ");
+    let broken = preview(&m.store, None, &standard.typst, &html).unwrap_err();
+    assert!(matches!(broken, StoreError::Refused(_)), "{broken}");
+    let nowhere = preview(
+        &m.store,
+        Some((m.project, "nowhere")),
+        &standard.typst,
+        &standard.html,
+    );
+    assert!(
+        matches!(nowhere, Err(StoreError::Refused(_))),
+        "{nowhere:?}"
     );
 }
 

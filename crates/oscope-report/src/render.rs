@@ -191,14 +191,19 @@ pub fn pdf(template: &str, report: &Report, images: &Images) -> Result<Pdf, Repo
 
 /// `data` as a `data:` URI, PNG or JPEG by its first bytes.
 fn data_uri(data: &[u8]) -> String {
-    const SIXTY_FOUR: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let kind = if data.starts_with(&[0xff, 0xd8]) {
         "jpeg"
     } else {
         "png"
     };
-    let mut out = format!("data:image/{kind};base64,");
+    format!("data:image/{kind};base64,{}", to_base64(data))
+}
+
+/// `data` in base64, padded.
+pub fn to_base64(data: &[u8]) -> String {
+    const SIXTY_FOUR: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b = [
             chunk[0],

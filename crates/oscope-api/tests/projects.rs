@@ -217,6 +217,60 @@ async fn the_projects_thing_describes_itself() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_report_template_is_previewed_over_http_keeping_nothing() {
+    let folder = tempfile::tempdir().unwrap();
+    let client = server(folder.path()).await;
+    let standard = client
+        .get("/api/v1/projects/template/standard")
+        .await
+        .json();
+    let typst = standard["typst"].as_str().unwrap();
+    let html = standard["html"]
+        .as_str()
+        .unwrap()
+        .replace("<body>", "<body><p>Previewed here</p>");
+    // The sample report, through the unsaved sources: its PDF in base64.
+    let previewed = invoke(
+        &client,
+        "preview_template",
+        json!({"typst": typst, "html": html}),
+    )
+    .await;
+    assert_eq!(previewed["status"], "completed", "{previewed}");
+    let pdf = oscope_report::from_base64(previewed["output"]["pdf"].as_str().unwrap()).unwrap();
+    assert!(pdf.starts_with(b"%PDF-"));
+    let page = previewed["output"]["html"].as_str().unwrap();
+    assert!(page.contains("<p>Previewed here</p>") && page.contains("A sample report"));
+    // Refused: a template that doesn't render, saying where; a project
+    // without its result.
+    let broken = json!({"typst": "#[", "html": html});
+    let refused = invoke(&client, "preview_template", broken).await;
+    let error = refused["error"].to_string();
+    assert!(
+        error.contains("refused (400)") && error.contains("line 1"),
+        "{refused}"
+    );
+    let project = invoke(&client, "create", json!({"name": "previews"})).await;
+    let id = project["output"]["id"].as_str().unwrap().to_owned();
+    let alone = json!({"typst": typst, "html": html, "project": id});
+    let refused = invoke(&client, "preview_template", alone).await;
+    assert!(
+        refused["error"].to_string().contains("refused (400)"),
+        "{refused}"
+    );
+    // Kept nowhere.
+    let names = client.get("/api/v1/projects/templates").await.json();
+    assert_eq!(names, json!(["standard"]));
+    assert!(
+        !folder.path().join("templates").exists()
+            || std::fs::read_dir(folder.path().join("templates"))
+                .unwrap()
+                .next()
+                .is_none()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn report_templates_are_listed_kept_checked_and_deleted_over_http() {
     let folder = tempfile::tempdir().unwrap();
     let client = server(folder.path()).await;

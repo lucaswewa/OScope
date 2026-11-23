@@ -6,6 +6,8 @@ import { expect, type Page } from "@playwright/test";
  * levels A and AA and axe's own good practices: no violation, each named
  * with the elements it was found on.
  *
+ * A frame sandboxed with nothing allowed is left out (W7.9).
+ *
  * With `layer`, a selector, only what is inside it is checked: for a list or
  * a dialog that is open. The library hides the page behind an open layer
  * from a screen reader, as it should, and axe then finds a page with no
@@ -13,7 +15,10 @@ import { expect, type Page } from "@playwright/test";
  */
 export async function expectAccessible(page: Page, layer?: string): Promise<void> {
   const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
-  const axe = new AxeBuilder({ page }).withTags(tags);
+  // A frame sandboxed with nothing allowed runs no script, axe's own among
+  // them, and axe would wait on it to the end of the test: its document is
+  // a report through a user's template (W7.9), not the app's, and is left out.
+  const axe = new AxeBuilder({ page }).withTags(tags).exclude('iframe[sandbox=""]');
   if (layer) axe.include(layer).disableRules(["region"]);
   const { violations, passes } = await axe.analyze();
   const found = violations.map((violation) => {
