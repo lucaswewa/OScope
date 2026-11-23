@@ -4,3 +4,27 @@
 !containers/
 !containers/**
 !rust-toolchain.toml
+!Cargo.toml
+!Cargo.lock
+!.cargo/
+!.cargo/config.toml
+!LICENSE
+!crates/
+!crates/**
+!examples/
+!examples/**
+!xtask/
+!xtask/**
+!python/
+!python/**
+!configs/
+!configs/runtime.toml
+# Keep local recordings, environments and build products out of every target.
+**/.oscope
+**/target
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.pyc
+**/*.omext

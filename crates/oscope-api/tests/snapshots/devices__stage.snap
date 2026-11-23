@@ -1,0 +1,884 @@
+---
+source: crates/oscope-api/tests/devices.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Stage",
+  "properties": {
+    "capabilities": {
+      "description": "Its axes' travel, speeds, homing, encoders and trigger output.",
+      "title": "What the stage is and offers.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "model": {
+          "description": "The controller's maker and model.",
+          "type": "string"
+        },
+        "x": {
+          "description": "x's soft limits.",
+          "type": "object",
+          "properties": {
+            "min": {
+              "description": "The least position.",
+              "type": "number"
+            },
+            "max": {
+              "description": "The greatest position.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ]
+        },
+        "y": {
+          "description": "y's soft limits.",
+          "type": "object",
+          "properties": {
+            "min": {
+              "description": "The least position.",
+              "type": "number"
+            },
+            "max": {
+              "description": "The greatest position.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ]
+        },
+        "z": {
+          "description": "z's soft limits.",
+          "type": "object",
+          "properties": {
+            "min": {
+              "description": "The least position.",
+              "type": "number"
+            },
+            "max": {
+              "description": "The greatest position.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ]
+        },
+        "max_speed": {
+          "description": "The fastest speed along a move's path.",
+          "type": "number"
+        },
+        "default_speed": {
+          "description": "The speed of a move that names none.",
+          "type": "number"
+        },
+        "homing": {
+          "description": "Whether it can home, on its switches.",
+          "type": "boolean"
+        },
+        "encoders": {
+          "description": "Whether its positions come from linear encoders, rather than from\ncounted steps.",
+          "type": "boolean"
+        },
+        "trigger_output": {
+          "description": "Whether it has a trigger output, to fire a camera at positions (D20).",
+          "type": "boolean"
+        },
+        "report_interval": {
+          "description": "How often it reports its position.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "model",
+        "x",
+        "y",
+        "z",
+        "max_speed",
+        "default_speed",
+        "homing",
+        "encoders",
+        "trigger_output",
+        "report_interval"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/stage/capabilities",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "moving": {
+      "description": "Whether it is moving or homing.",
+      "title": "Whether it is moving or homing.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/stage/moving",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "position": {
+      "description": "Where it is, as last reported, and when.",
+      "title": "Where it is, as last reported, and when.",
+      "writeOnly": false,
+      "readOnly": true,
+      "unit": "µm",
+      "type": "object",
+      "properties": {
+        "time": {
+          "description": "When.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "position": {
+          "description": "Where.",
+          "type": "object",
+          "properties": {
+            "x": {
+              "description": "The stage's x axis.",
+              "type": "number"
+            },
+            "y": {
+              "description": "The stage's y axis.",
+              "type": "number"
+            },
+            "z": {
+              "description": "The focus axis.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ]
+        }
+      },
+      "required": [
+        "time",
+        "position"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/stage/position",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "speed": {
+      "description": "Saved. None for the stage's own default.",
+      "title": "The speed for moves and jogs that don't give one.",
+      "writeOnly": false,
+      "readOnly": false,
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "unit": "µm/s",
+      "forms": [
+        {
+          "href": "/api/v1/stage/speed",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/stage/speed",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/stage/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true
+    },
+    "status": {
+      "description": "What it is doing.",
+      "title": "What it is doing.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "Still, and ready.",
+          "type": "object",
+          "properties": {
+            "state": {
+              "const": "idle",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        },
+        {
+          "description": "Moving or jogging.",
+          "type": "object",
+          "properties": {
+            "state": {
+              "const": "moving",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        },
+        {
+          "description": "Homing.",
+          "type": "object",
+          "properties": {
+            "state": {
+              "const": "homing",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        },
+        {
+          "description": "Paused by a feed hold. A stop ends the motion.",
+          "type": "object",
+          "properties": {
+            "state": {
+              "const": "hold",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        },
+        {
+          "description": "Stopped by a fault, such as a limit switch, until the alarm is\ncleared.",
+          "type": "object",
+          "properties": {
+            "reason": {
+              "description": "The controller's reason.",
+              "type": "string"
+            },
+            "state": {
+              "const": "alarm",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ]
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/stage/status",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "clear_alarm": {
+      "description": "Clears an alarm, once its cause is dealt with.",
+      "title": "Clears an alarm, once its cause is dealt with.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/clear_alarm",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "clear_alarm_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "title": "clear_alarm_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
+    "halt": {
+      "description": "A jog, or a move in progress. It doesn't wait its turn. If the stage\nwas moving, `moved` then says where it came to rest. (`stop` is the\nname of every Thing's own stopping, in `teta-wot`: ADR-0034.)",
+      "title": "Stops the stage.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/halt",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "halt_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "title": "halt_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
+    "home": {
+      "description": "Homes the stage, which needs it before moving.",
+      "title": "Homes the stage, which needs it before moving.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/home",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "home_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "description": "Where the stage was, and when: on OScope's clock, after the report's\nlatency is subtracted (ADR-0007).",
+        "title": "home_output",
+        "type": "object",
+        "properties": {
+          "time": {
+            "description": "When.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "position": {
+            "description": "Where.",
+            "type": "object",
+            "properties": {
+              "x": {
+                "description": "The stage's x axis.",
+                "type": "number"
+              },
+              "y": {
+                "description": "The stage's y axis.",
+                "type": "number"
+              },
+              "z": {
+                "description": "The focus axis.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "z"
+            ]
+          }
+        },
+        "required": [
+          "time",
+          "position"
+        ]
+      },
+      "synchronous": false
+    },
+    "jog": {
+      "description": "Along `axis`, towards its maximum or its minimum, until `halt`.",
+      "title": "Starts jogging along an axis.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/jog",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "jog_input",
+        "type": "object",
+        "properties": {
+          "axis": {
+            "description": "One of the stage's axes.",
+            "oneOf": [
+              {
+                "description": "x.",
+                "const": "x",
+                "type": "string"
+              },
+              {
+                "description": "y.",
+                "const": "y",
+                "type": "string"
+              },
+              {
+                "description": "z, the focus axis.",
+                "const": "z",
+                "type": "string"
+              }
+            ]
+          },
+          "towards_max": {
+            "type": "boolean"
+          },
+          "speed": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "axis",
+          "towards_max"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "jog_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
+    "move_by": {
+      "description": "Moves by (`dx`, `dy`, `dz`) µm.",
+      "title": "Moves by (`dx`, `dy`, `dz`) µm.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/move_by",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "move_by_input",
+        "type": "object",
+        "properties": {
+          "dx": {
+            "type": "number"
+          },
+          "dy": {
+            "type": "number"
+          },
+          "dz": {
+            "type": "number"
+          },
+          "speed": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "dx",
+          "dy",
+          "dz"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where the stage was, and when: on OScope's clock, after the report's\nlatency is subtracted (ADR-0007).",
+        "title": "move_by_output",
+        "type": "object",
+        "properties": {
+          "time": {
+            "description": "When.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "position": {
+            "description": "Where.",
+            "type": "object",
+            "properties": {
+              "x": {
+                "description": "The stage's x axis.",
+                "type": "number"
+              },
+              "y": {
+                "description": "The stage's y axis.",
+                "type": "number"
+              },
+              "z": {
+                "description": "The focus axis.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "z"
+            ]
+          }
+        },
+        "required": [
+          "time",
+          "position"
+        ]
+      },
+      "synchronous": false
+    },
+    "move_to": {
+      "description": "Moves to (`x`, `y`, `z`) µm, at `speed` µm/s or the saved speed.",
+      "title": "Moves to (`x`, `y`, `z`) µm, at `speed` µm/s or the saved speed.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/move_to",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "move_to_input",
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          },
+          "speed": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where the stage was, and when: on OScope's clock, after the report's\nlatency is subtracted (ADR-0007).",
+        "title": "move_to_output",
+        "type": "object",
+        "properties": {
+          "time": {
+            "description": "When.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "position": {
+            "description": "Where.",
+            "type": "object",
+            "properties": {
+              "x": {
+                "description": "The stage's x axis.",
+                "type": "number"
+              },
+              "y": {
+                "description": "The stage's y axis.",
+                "type": "number"
+              },
+              "z": {
+                "description": "The focus axis.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "z"
+            ]
+          }
+        },
+        "required": [
+          "time",
+          "position"
+        ]
+      },
+      "synchronous": false
+    }
+  },
+  "events": {
+    "alarm": {
+      "description": "The stage went into alarm: the controller's reason.",
+      "title": "The stage went into alarm: the controller's reason.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/alarm",
+          "op": [
+            "subscribeevent",
+            "unsubscribeevent"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/stage/ws",
+          "op": [
+            "subscribeevent"
+          ]
+        }
+      ],
+      "data": {
+        "type": "string"
+      }
+    },
+    "moved": {
+      "description": "A move or homing arrived, or `halt` or a cancelled invocation stopped\none, or a jog.",
+      "title": "The stage came to rest after moving, and where.",
+      "forms": [
+        {
+          "href": "/api/v1/stage/moved",
+          "op": [
+            "subscribeevent",
+            "unsubscribeevent"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/stage/ws",
+          "op": [
+            "subscribeevent"
+          ]
+        }
+      ],
+      "data": {
+        "description": "Where the stage was, and when: on OScope's clock, after the report's\nlatency is subtracted (ADR-0007).",
+        "type": "object",
+        "properties": {
+          "time": {
+            "description": "When.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "position": {
+            "description": "Where.",
+            "type": "object",
+            "properties": {
+              "x": {
+                "description": "The stage's x axis.",
+                "type": "number"
+              },
+              "y": {
+                "description": "The stage's y axis.",
+                "type": "number"
+              },
+              "z": {
+                "description": "The focus axis.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "z"
+            ]
+          }
+        },
+        "required": [
+          "time",
+          "position"
+        ]
+      }
+    }
+  },
+  "description": "The stage: its position and status, moves, jogs, homing and stopping.\nA move whose invocation is cancelled stops the stage where it is, as\n`halt` does. While a hardware job runs, moves, jogs and homing are\nrefused as busy (409); `halt` and `clear_alarm` never are.",
+  "forms": [
+    {
+      "href": "/api/v1/stage/properties",
+      "op": [
+        "readallproperties",
+        "writemultipleproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/stage/properties",
+      "op": [
+        "observeallproperties",
+        "unobserveallproperties"
+      ],
+      "subprotocol": "sse"
+    },
+    {
+      "href": "/api/v1/stage/actions",
+      "op": [
+        "queryallactions"
+      ]
+    },
+    {
+      "href": "/api/v1/stage/events",
+      "op": [
+        "subscribeallevents",
+        "unsubscribeallevents"
+      ],
+      "subprotocol": "sse"
+    }
+  ],
+  "base": "http://127.0.0.1:8220/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Actuator"
+}

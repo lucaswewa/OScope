@@ -6,11 +6,10 @@ WSL2. The Vue 3 frontend and future Windows Tauri 2 app connect over the API.
 
 The owner approved this direction on 2026-11-22. This is a clean migration branch:
 the existing microscope implementation is available in Git and will be ported in
-small, independently verified phases. R00 planning and R01's development image and
-real GPU probe are complete, and R02 is approved. R03 ports compute, imaging,
-stitching and volume algorithms with CUDA defaults and explicit CPU fallback.
-Device services and the server are later phases. Every phase includes a manual
-test procedure in its notes.
+small, independently verified phases. R02-R05 are approved. R06 adds the core
+HTTP/WebSocket API and Linux runtime container, with CUDA preferred and CPU
+fallback. Capture, preview, calibration and scan workflows follow in R07. Every
+phase includes a manual test procedure in its notes.
 
 ## Start here
 
@@ -59,10 +58,13 @@ ingest and reopen synthetic frames, or run the recipe checkpoint:
 cargo run -p ex-pipeline --locked -- --smoke
 ```
 
-See the [R05 manual procedure](docs/phases/r05-storage-processing.md#manual-test)
-for CUDA, CPU fallback, durable jobs and real extension execution, and the
-[development instructions](docs/development.md). The backend gate is independent
-of frontend tooling.
+For the simulated Linux server, follow the
+[R06 manual procedure](docs/phases/r06-api-runtime.md#manual-test): build the
+runtime image, test it in isolation, create an account and launch the persistent
+GPU-enabled deployment. The [R05 procedure](docs/phases/r05-storage-processing.md#manual-test)
+covers the processing libraries and real extension execution. See also the
+[development instructions](docs/development.md). Backend and container runtime
+gates run independently of frontend tooling.
 
 ## License
 

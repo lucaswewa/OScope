@@ -3,8 +3,10 @@
 The Linux x86_64 development container contains the pinned Rust toolchain, CUDA
 compilation tools, Python, uv and cargo-deny. Tool checks and a required-device
 CUDA probe validate the environment. The current application checkpoint uses
-simulated devices, recording/ingest, durable jobs and recipe processing. Physical
-drivers, the server and production readiness remain later phases.
+simulated devices, recording/ingest, durable jobs, recipe processing and the core
+API/runtime container. Physical drivers and production readiness remain later
+phases. See the [R06 manual procedure](phases/r06-api-runtime.md#manual-test) for
+the separate runtime image, account setup and deployment acceptance check.
 
 ## WSL prerequisites
 

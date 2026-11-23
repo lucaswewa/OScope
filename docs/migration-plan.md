@@ -22,8 +22,8 @@ skipped. Keep the owner informed as implementation progresses.
 | R02 | Minimal Linux workspace, core and architecture checks | Approved by owner, 2026-11-22; hosted CI blocked | 41 tests; core-tour smoke; actual-manifest rejection; locked dependency parity; Linux container gate |
 | R03 | Compute and algorithm libraries | Approved by owner, 2026-11-22 | CUDA-default and CPU-only gates; 13 GPU numerical tests; required-device rejection; source/lock parity; manual procedure |
 | R04 | HAL, simulator, frame bus and live acquisition | Approved by owner, 2026-11-22 | Default/CPU-only gates; 15 numerical GPU tests; simulated acquisition metadata, fan-out and cancellation; manual procedure |
-| R05 | Storage, recording, jobs and processing engine | Complete locally; owner review pending | Record/ingest/reopen; durable jobs; default/CPU gates; 3 pipeline GPU tests; real Python/native extensions; manual procedure |
-| R06 | API and container runtime | Planned | Health/readiness, authenticated control/media, signals, restart and persistent state |
+| R05 | Storage, recording, jobs and processing engine | Approved by owner, 2026-11-22 | Record/ingest/reopen; durable jobs; default/CPU gates; 3 pipeline GPU tests; real Python/native extensions; manual procedure |
+| R06 | API and container runtime | Complete locally; owner review pending | Default/CPU gates; real TLS/API/WebSocket runtime checks; persistent settings/data; signals/restart; required GPU kernels; manual procedure |
 | R07 | Calibration, scans and analysis workflows | Planned | Runnable simulated microscope checkpoint; scientific outputs match references |
 | R08 | Vue integration and separate final gates | Planned | Existing frontend behavior over API; container-isolated contract/browser tests |
 | R09 | Real device and WSL hardware feasibility | Planned | Camera SDK in WSL and container; sustained acquisition; stage/USB recovery |

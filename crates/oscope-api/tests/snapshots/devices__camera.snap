@@ -1,0 +1,2350 @@
+---
+source: crates/oscope-api/tests/devices.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Camera",
+  "properties": {
+    "capabilities": {
+      "description": "Its sensor, modes and rates, pixel formats, exposure and gain ranges,\nROI rules and triggers.",
+      "title": "What the camera is and offers.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "model": {
+          "description": "The camera's maker and model.",
+          "type": "string"
+        },
+        "sensor_width": {
+          "description": "The sensor's width in pixels.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "sensor_height": {
+          "description": "The sensor's height in pixels.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "pixel_size": {
+          "description": "The size of a sensor pixel.",
+          "type": "number"
+        },
+        "shutter": {
+          "description": "How its rows are exposed.",
+          "oneOf": [
+            {
+              "description": "Every row at once.",
+              "const": "global",
+              "type": "string"
+            },
+            {
+              "description": "Row after row, each a line time after the one above, so motion shears\nthe frame. The MIChrome 20's is (P02b).",
+              "const": "rolling",
+              "type": "string"
+            }
+          ]
+        },
+        "modes": {
+          "description": "Its modes. The first is the default.",
+          "type": "array",
+          "items": {
+            "description": "One of a camera's modes: a frame size, its binning, and its rates.",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Its name, by which settings choose it.",
+                "type": "string"
+              },
+              "width": {
+                "description": "The frame's width in pixels, without an ROI.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "height": {
+                "description": "The frame's height in pixels, without an ROI.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "binning": {
+                "description": "How many sensor pixels each of its pixels combines, along each axis.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "rates": {
+                "description": "The pixel formats it offers, each with its fastest rate.",
+                "type": "array",
+                "items": {
+                  "description": "The fastest frame rate of a mode in one pixel format, at a short\nexposure.",
+                  "type": "object",
+                  "properties": {
+                    "format": {
+                      "description": "The pixel format.",
+                      "oneOf": [
+                        {
+                          "description": "A Bayer mosaic in 16-bit samples, of which `significant_bits` carry\ndata, aligned high.",
+                          "type": "object",
+                          "properties": {
+                            "pattern": {
+                              "description": "The mosaic's first cell.",
+                              "oneOf": [
+                                {
+                                  "description": "Red, green; green, blue. The MIChrome 20's.",
+                                  "const": "RGGB",
+                                  "type": "string"
+                                },
+                                {
+                                  "description": "Green, red; blue, green.",
+                                  "const": "GRBG",
+                                  "type": "string"
+                                },
+                                {
+                                  "description": "Green, blue; red, green.",
+                                  "const": "GBRG",
+                                  "type": "string"
+                                },
+                                {
+                                  "description": "Blue, green; green, red.",
+                                  "const": "BGGR",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "significant_bits": {
+                              "description": "How many of the 16 bits carry data.",
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 255
+                            },
+                            "kind": {
+                              "const": "bayer16",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "pattern",
+                            "significant_bits"
+                          ]
+                        },
+                        {
+                          "description": "A Bayer mosaic in 8-bit samples.",
+                          "type": "object",
+                          "properties": {
+                            "pattern": {
+                              "description": "The mosaic's first cell.",
+                              "oneOf": [
+                                {
+                                  "description": "Red, green; green, blue. The MIChrome 20's.",
+                                  "const": "RGGB",
+                                  "type": "string"
+                                },
+                                {
+                                  "description": "Green, red; blue, green.",
+                                  "const": "GRBG",
+                                  "type": "string"
+                                },
+                                {
+                                  "description": "Green, blue; red, green.",
+                                  "const": "GBRG",
+                                  "type": "string"
+                                },
+                                {
+                                  "description": "Blue, green; green, red.",
+                                  "const": "BGGR",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "kind": {
+                              "const": "bayer8",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "pattern"
+                          ]
+                        },
+                        {
+                          "description": "Grey, 8 bits.",
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "mono8",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "description": "Grey, 16 bits.",
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "mono16",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "description": "Red, green and blue, 8 bits each.",
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "rgb8",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "description": "Red, green and blue, 16 bits each.",
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "rgb16",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "description": "Red, green, blue and alpha, 8 bits each.",
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "rgba8",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "description": "Planes of 32-bit floats, one after another.",
+                          "type": "object",
+                          "properties": {
+                            "planes": {
+                              "description": "How many planes.",
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 255
+                            },
+                            "kind": {
+                              "const": "planar_f32",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "planes"
+                          ]
+                        }
+                      ]
+                    },
+                    "fps": {
+                      "description": "Frames per second.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "format",
+                    "fps"
+                  ]
+                }
+              },
+              "line_time": {
+                "description": "With a rolling shutter, how much later each row starts than the one\nabove it.",
+                "oneOf": [
+                  {
+                    "description": "A duration in milliseconds (ms), such as an exposure time.",
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "width",
+              "height",
+              "binning",
+              "rates"
+            ]
+          }
+        },
+        "exposure_min": {
+          "description": "The shortest exposure.",
+          "type": "number"
+        },
+        "exposure_max": {
+          "description": "The longest exposure.",
+          "type": "number"
+        },
+        "gain_min": {
+          "description": "The least gain, in the camera's units.",
+          "type": "number"
+        },
+        "gain_max": {
+          "description": "The most gain.",
+          "type": "number"
+        },
+        "roi": {
+          "description": "The ROIs it accepts, or `None` if it accepts none.",
+          "oneOf": [
+            {
+              "description": "The ROIs a camera accepts.",
+              "type": "object",
+              "properties": {
+                "x_step": {
+                  "description": "The camera rounds an ROI's x offset and width down to multiples of\nthis. The MIChrome 20's is 2 (P02b).",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "y_step": {
+                  "description": "The same, for the y offset and height.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "min_size": {
+                  "description": "The least width and height.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "raises_rate": {
+                  "description": "Whether a smaller ROI raises the frame rate. The MIChrome 20's\ndoesn't (P02b).",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "x_step",
+                "y_step",
+                "min_size",
+                "raises_rate"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trigger": {
+          "description": "How it can be triggered.",
+          "type": "object",
+          "properties": {
+            "software": {
+              "description": "By software.",
+              "type": "boolean"
+            },
+            "external": {
+              "description": "By its trigger input. The MIChrome 20 has none; the camera that will\nreplace it has one (P02b).",
+              "type": "boolean"
+            },
+            "output": {
+              "description": "Whether it has a trigger output, which marks each exposure.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "software",
+            "external",
+            "output"
+          ]
+        },
+        "sensor_timestamps": {
+          "description": "Whether its frames carry the sensor's own timestamps. The\nMIChrome 20's don't (P02b).",
+          "type": "boolean"
+        },
+        "temperature": {
+          "description": "Whether it reports its sensor's temperature.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "model",
+        "sensor_width",
+        "sensor_height",
+        "pixel_size",
+        "shutter",
+        "modes",
+        "exposure_min",
+        "exposure_max",
+        "gain_min",
+        "gain_max",
+        "trigger",
+        "sensor_timestamps",
+        "temperature"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/camera/capabilities",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "exposure": {
+      "description": "The exposure of each row.",
+      "title": "The exposure of each row.",
+      "writeOnly": false,
+      "readOnly": false,
+      "unit": "ms",
+      "type": "number",
+      "forms": [
+        {
+          "href": "/api/v1/camera/exposure",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        }
+      ]
+    },
+    "format": {
+      "description": "The pixel format: set with `set_mode`.",
+      "title": "The pixel format: set with `set_mode`.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "A Bayer mosaic in 16-bit samples, of which `significant_bits` carry\ndata, aligned high.",
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "description": "The mosaic's first cell.",
+              "oneOf": [
+                {
+                  "description": "Red, green; green, blue. The MIChrome 20's.",
+                  "const": "RGGB",
+                  "type": "string"
+                },
+                {
+                  "description": "Green, red; blue, green.",
+                  "const": "GRBG",
+                  "type": "string"
+                },
+                {
+                  "description": "Green, blue; red, green.",
+                  "const": "GBRG",
+                  "type": "string"
+                },
+                {
+                  "description": "Blue, green; green, red.",
+                  "const": "BGGR",
+                  "type": "string"
+                }
+              ]
+            },
+            "significant_bits": {
+              "description": "How many of the 16 bits carry data.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "kind": {
+              "const": "bayer16",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "pattern",
+            "significant_bits"
+          ]
+        },
+        {
+          "description": "A Bayer mosaic in 8-bit samples.",
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "description": "The mosaic's first cell.",
+              "oneOf": [
+                {
+                  "description": "Red, green; green, blue. The MIChrome 20's.",
+                  "const": "RGGB",
+                  "type": "string"
+                },
+                {
+                  "description": "Green, red; blue, green.",
+                  "const": "GRBG",
+                  "type": "string"
+                },
+                {
+                  "description": "Green, blue; red, green.",
+                  "const": "GBRG",
+                  "type": "string"
+                },
+                {
+                  "description": "Blue, green; green, red.",
+                  "const": "BGGR",
+                  "type": "string"
+                }
+              ]
+            },
+            "kind": {
+              "const": "bayer8",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "pattern"
+          ]
+        },
+        {
+          "description": "Grey, 8 bits.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "mono8",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Grey, 16 bits.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "mono16",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Red, green and blue, 8 bits each.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "rgb8",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Red, green and blue, 16 bits each.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "rgb16",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Red, green, blue and alpha, 8 bits each.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "rgba8",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Planes of 32-bit floats, one after another.",
+          "type": "object",
+          "properties": {
+            "planes": {
+              "description": "How many planes.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "kind": {
+              "const": "planar_f32",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "planes"
+          ]
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/camera/format",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "gain": {
+      "description": "The gain, in the camera's units.",
+      "title": "The gain, in the camera's units.",
+      "writeOnly": false,
+      "readOnly": false,
+      "type": "number",
+      "forms": [
+        {
+          "href": "/api/v1/camera/gain",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        }
+      ]
+    },
+    "mode": {
+      "description": "The mode, by name: set with `set_mode`.",
+      "title": "The mode, by name: set with `set_mode`.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "string",
+      "forms": [
+        {
+          "href": "/api/v1/camera/mode",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "roi": {
+      "description": "In full-sensor pixels, or none for the whole sensor. The camera rounds\nit to its rules.",
+      "title": "The region of the sensor read out.",
+      "writeOnly": false,
+      "readOnly": false,
+      "oneOf": [
+        {
+          "description": "A rectangle of whole pixels: the column and row of its top-left pixel, and\nits size.",
+          "type": "object",
+          "properties": {
+            "x": {
+              "description": "The column of its left edge.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "y": {
+              "description": "The row of its top edge.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "width": {
+              "description": "Its width in pixels.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "height": {
+              "description": "Its height in pixels.",
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/camera/roi",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        }
+      ]
+    },
+    "saved": {
+      "description": "Saved, and applied again when the server starts, if the camera still\ntakes them.",
+      "title": "The settings as last applied.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "What a camera is set to.",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "description": "The mode, by name.",
+              "type": "string"
+            },
+            "format": {
+              "description": "The pixel format of its frames.",
+              "oneOf": [
+                {
+                  "description": "A Bayer mosaic in 16-bit samples, of which `significant_bits` carry\ndata, aligned high.",
+                  "type": "object",
+                  "properties": {
+                    "pattern": {
+                      "description": "The mosaic's first cell.",
+                      "oneOf": [
+                        {
+                          "description": "Red, green; green, blue. The MIChrome 20's.",
+                          "const": "RGGB",
+                          "type": "string"
+                        },
+                        {
+                          "description": "Green, red; blue, green.",
+                          "const": "GRBG",
+                          "type": "string"
+                        },
+                        {
+                          "description": "Green, blue; red, green.",
+                          "const": "GBRG",
+                          "type": "string"
+                        },
+                        {
+                          "description": "Blue, green; green, red.",
+                          "const": "BGGR",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "significant_bits": {
+                      "description": "How many of the 16 bits carry data.",
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "kind": {
+                      "const": "bayer16",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "pattern",
+                    "significant_bits"
+                  ]
+                },
+                {
+                  "description": "A Bayer mosaic in 8-bit samples.",
+                  "type": "object",
+                  "properties": {
+                    "pattern": {
+                      "description": "The mosaic's first cell.",
+                      "oneOf": [
+                        {
+                          "description": "Red, green; green, blue. The MIChrome 20's.",
+                          "const": "RGGB",
+                          "type": "string"
+                        },
+                        {
+                          "description": "Green, red; blue, green.",
+                          "const": "GRBG",
+                          "type": "string"
+                        },
+                        {
+                          "description": "Green, blue; red, green.",
+                          "const": "GBRG",
+                          "type": "string"
+                        },
+                        {
+                          "description": "Blue, green; green, red.",
+                          "const": "BGGR",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "kind": {
+                      "const": "bayer8",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "pattern"
+                  ]
+                },
+                {
+                  "description": "Grey, 8 bits.",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "mono8",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "description": "Grey, 16 bits.",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "mono16",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "description": "Red, green and blue, 8 bits each.",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "rgb8",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "description": "Red, green and blue, 16 bits each.",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "rgb16",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "description": "Red, green, blue and alpha, 8 bits each.",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "rgba8",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "description": "Planes of 32-bit floats, one after another.",
+                  "type": "object",
+                  "properties": {
+                    "planes": {
+                      "description": "How many planes.",
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "kind": {
+                      "const": "planar_f32",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "planes"
+                  ]
+                }
+              ]
+            },
+            "exposure": {
+              "description": "How long each row is exposed.",
+              "type": "number"
+            },
+            "gain": {
+              "description": "The gain, in the camera's units.",
+              "type": "number"
+            },
+            "roi": {
+              "description": "The sensor's pixels to read, in full-sensor coordinates (ADR-0007),\nor `None` for the whole sensor.",
+              "oneOf": [
+                {
+                  "description": "A rectangle of whole pixels: the column and row of its top-left pixel, and\nits size.",
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "description": "The column of its left edge.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "y": {
+                      "description": "The row of its top edge.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "width": {
+                      "description": "Its width in pixels.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "height": {
+                      "description": "Its height in pixels.",
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "width",
+                    "height"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "trigger": {
+              "description": "What starts each exposure.",
+              "oneOf": [
+                {
+                  "description": "Nothing: the camera runs freely, frame after frame.",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "free_running",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "description": "Each call to [`Camera::trigger`].",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "software",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "description": "An edge on the camera's trigger input, such as a pulse from the\nstage's trigger output (D20).",
+                  "type": "object",
+                  "properties": {
+                    "edge": {
+                      "description": "Which edge.",
+                      "oneOf": [
+                        {
+                          "description": "From low to high.",
+                          "const": "rising",
+                          "type": "string"
+                        },
+                        {
+                          "description": "From high to low.",
+                          "const": "falling",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "kind": {
+                      "const": "external",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "edge"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "format",
+            "exposure",
+            "gain",
+            "trigger"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/camera/saved",
+          "op": [
+            "readproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/camera/saved",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/camera/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true
+    },
+    "settings": {
+      "description": "The mode, pixel format, exposure, gain, ROI and trigger.",
+      "title": "All its settings.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "The mode, by name.",
+          "type": "string"
+        },
+        "format": {
+          "description": "The pixel format of its frames.",
+          "oneOf": [
+            {
+              "description": "A Bayer mosaic in 16-bit samples, of which `significant_bits` carry\ndata, aligned high.",
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "description": "The mosaic's first cell.",
+                  "oneOf": [
+                    {
+                      "description": "Red, green; green, blue. The MIChrome 20's.",
+                      "const": "RGGB",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Green, red; blue, green.",
+                      "const": "GRBG",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Green, blue; red, green.",
+                      "const": "GBRG",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Blue, green; green, red.",
+                      "const": "BGGR",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "significant_bits": {
+                  "description": "How many of the 16 bits carry data.",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "kind": {
+                  "const": "bayer16",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "pattern",
+                "significant_bits"
+              ]
+            },
+            {
+              "description": "A Bayer mosaic in 8-bit samples.",
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "description": "The mosaic's first cell.",
+                  "oneOf": [
+                    {
+                      "description": "Red, green; green, blue. The MIChrome 20's.",
+                      "const": "RGGB",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Green, red; blue, green.",
+                      "const": "GRBG",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Green, blue; red, green.",
+                      "const": "GBRG",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Blue, green; green, red.",
+                      "const": "BGGR",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "kind": {
+                  "const": "bayer8",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "pattern"
+              ]
+            },
+            {
+              "description": "Grey, 8 bits.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "mono8",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "Grey, 16 bits.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "mono16",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "Red, green and blue, 8 bits each.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "rgb8",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "Red, green and blue, 16 bits each.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "rgb16",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "Red, green, blue and alpha, 8 bits each.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "rgba8",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "Planes of 32-bit floats, one after another.",
+              "type": "object",
+              "properties": {
+                "planes": {
+                  "description": "How many planes.",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "kind": {
+                  "const": "planar_f32",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "planes"
+              ]
+            }
+          ]
+        },
+        "exposure": {
+          "description": "How long each row is exposed.",
+          "type": "number"
+        },
+        "gain": {
+          "description": "The gain, in the camera's units.",
+          "type": "number"
+        },
+        "roi": {
+          "description": "The sensor's pixels to read, in full-sensor coordinates (ADR-0007),\nor `None` for the whole sensor.",
+          "oneOf": [
+            {
+              "description": "A rectangle of whole pixels: the column and row of its top-left pixel, and\nits size.",
+              "type": "object",
+              "properties": {
+                "x": {
+                  "description": "The column of its left edge.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "y": {
+                  "description": "The row of its top edge.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "width": {
+                  "description": "Its width in pixels.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "height": {
+                  "description": "Its height in pixels.",
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "x",
+                "y",
+                "width",
+                "height"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trigger": {
+          "description": "What starts each exposure.",
+          "oneOf": [
+            {
+              "description": "Nothing: the camera runs freely, frame after frame.",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "free_running",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "Each call to [`Camera::trigger`].",
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "software",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "description": "An edge on the camera's trigger input, such as a pulse from the\nstage's trigger output (D20).",
+              "type": "object",
+              "properties": {
+                "edge": {
+                  "description": "Which edge.",
+                  "oneOf": [
+                    {
+                      "description": "From low to high.",
+                      "const": "rising",
+                      "type": "string"
+                    },
+                    {
+                      "description": "From high to low.",
+                      "const": "falling",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "kind": {
+                  "const": "external",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "edge"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "format",
+        "exposure",
+        "gain",
+        "trigger"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/camera/settings",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "streaming": {
+      "description": "Whether it is streaming.",
+      "title": "Whether it is streaming.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/camera/streaming",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "temperature": {
+      "description": "The sensor's temperature, if the camera reports one.",
+      "title": "The sensor's temperature, if the camera reports one.",
+      "writeOnly": false,
+      "readOnly": true,
+      "unit": "°C",
+      "type": "number",
+      "forms": [
+        {
+          "href": "/api/v1/camera/temperature",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "trigger": {
+      "description": "What starts each exposure.",
+      "title": "What starts each exposure.",
+      "writeOnly": false,
+      "readOnly": false,
+      "oneOf": [
+        {
+          "description": "Nothing: the camera runs freely, frame after frame.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "free_running",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Each call to [`Camera::trigger`].",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "software",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "An edge on the camera's trigger input, such as a pulse from the\nstage's trigger output (D20).",
+          "type": "object",
+          "properties": {
+            "edge": {
+              "description": "Which edge.",
+              "oneOf": [
+                {
+                  "description": "From low to high.",
+                  "const": "rising",
+                  "type": "string"
+                },
+                {
+                  "description": "From high to low.",
+                  "const": "falling",
+                  "type": "string"
+                }
+              ]
+            },
+            "kind": {
+              "const": "external",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "edge"
+          ]
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/camera/trigger",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "set_mode": {
+      "description": "Refused while streaming.",
+      "title": "Sets the mode and the pixel format together.",
+      "forms": [
+        {
+          "href": "/api/v1/camera/set_mode",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "set_mode_input",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "format": {
+            "description": "How a frame stores its pixels: interleaved samples, row by row, or planes\none after another. Samples of more than one byte are little-endian.",
+            "oneOf": [
+              {
+                "description": "A Bayer mosaic in 16-bit samples, of which `significant_bits` carry\ndata, aligned high.",
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "description": "The mosaic's first cell.",
+                    "oneOf": [
+                      {
+                        "description": "Red, green; green, blue. The MIChrome 20's.",
+                        "const": "RGGB",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, red; blue, green.",
+                        "const": "GRBG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, blue; red, green.",
+                        "const": "GBRG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Blue, green; green, red.",
+                        "const": "BGGR",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "significant_bits": {
+                    "description": "How many of the 16 bits carry data.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "kind": {
+                    "const": "bayer16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pattern",
+                  "significant_bits"
+                ]
+              },
+              {
+                "description": "A Bayer mosaic in 8-bit samples.",
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "description": "The mosaic's first cell.",
+                    "oneOf": [
+                      {
+                        "description": "Red, green; green, blue. The MIChrome 20's.",
+                        "const": "RGGB",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, red; blue, green.",
+                        "const": "GRBG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, blue; red, green.",
+                        "const": "GBRG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Blue, green; green, red.",
+                        "const": "BGGR",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "const": "bayer8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pattern"
+                ]
+              },
+              {
+                "description": "Grey, 8 bits.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "mono8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Grey, 16 bits.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "mono16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green and blue, 8 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgb8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green and blue, 16 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgb16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green, blue and alpha, 8 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgba8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Planes of 32-bit floats, one after another.",
+                "type": "object",
+                "properties": {
+                  "planes": {
+                    "description": "How many planes.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "kind": {
+                    "const": "planar_f32",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "planes"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "mode",
+          "format"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "What a camera is set to.",
+        "title": "set_mode_output",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "description": "The mode, by name.",
+            "type": "string"
+          },
+          "format": {
+            "description": "The pixel format of its frames.",
+            "oneOf": [
+              {
+                "description": "A Bayer mosaic in 16-bit samples, of which `significant_bits` carry\ndata, aligned high.",
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "description": "The mosaic's first cell.",
+                    "oneOf": [
+                      {
+                        "description": "Red, green; green, blue. The MIChrome 20's.",
+                        "const": "RGGB",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, red; blue, green.",
+                        "const": "GRBG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, blue; red, green.",
+                        "const": "GBRG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Blue, green; green, red.",
+                        "const": "BGGR",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "significant_bits": {
+                    "description": "How many of the 16 bits carry data.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "kind": {
+                    "const": "bayer16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pattern",
+                  "significant_bits"
+                ]
+              },
+              {
+                "description": "A Bayer mosaic in 8-bit samples.",
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "description": "The mosaic's first cell.",
+                    "oneOf": [
+                      {
+                        "description": "Red, green; green, blue. The MIChrome 20's.",
+                        "const": "RGGB",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, red; blue, green.",
+                        "const": "GRBG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, blue; red, green.",
+                        "const": "GBRG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Blue, green; green, red.",
+                        "const": "BGGR",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "const": "bayer8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pattern"
+                ]
+              },
+              {
+                "description": "Grey, 8 bits.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "mono8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Grey, 16 bits.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "mono16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green and blue, 8 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgb8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green and blue, 16 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgb16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green, blue and alpha, 8 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgba8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Planes of 32-bit floats, one after another.",
+                "type": "object",
+                "properties": {
+                  "planes": {
+                    "description": "How many planes.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "kind": {
+                    "const": "planar_f32",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "planes"
+                ]
+              }
+            ]
+          },
+          "exposure": {
+            "description": "How long each row is exposed.",
+            "type": "number"
+          },
+          "gain": {
+            "description": "The gain, in the camera's units.",
+            "type": "number"
+          },
+          "roi": {
+            "description": "The sensor's pixels to read, in full-sensor coordinates (ADR-0007),\nor `None` for the whole sensor.",
+            "oneOf": [
+              {
+                "description": "A rectangle of whole pixels: the column and row of its top-left pixel, and\nits size.",
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "description": "The column of its left edge.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "y": {
+                    "description": "The row of its top edge.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "width": {
+                    "description": "Its width in pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "height": {
+                    "description": "Its height in pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trigger": {
+            "description": "What starts each exposure.",
+            "oneOf": [
+              {
+                "description": "Nothing: the camera runs freely, frame after frame.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "free_running",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Each call to [`Camera::trigger`].",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "software",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "An edge on the camera's trigger input, such as a pulse from the\nstage's trigger output (D20).",
+                "type": "object",
+                "properties": {
+                  "edge": {
+                    "description": "Which edge.",
+                    "oneOf": [
+                      {
+                        "description": "From low to high.",
+                        "const": "rising",
+                        "type": "string"
+                      },
+                      {
+                        "description": "From high to low.",
+                        "const": "falling",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "const": "external",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "edge"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "mode",
+          "format",
+          "exposure",
+          "gain",
+          "trigger"
+        ]
+      },
+      "synchronous": false
+    },
+    "start_streaming": {
+      "description": "Starts streaming, as set, into acquisition.",
+      "title": "Starts streaming, as set, into acquisition.",
+      "forms": [
+        {
+          "href": "/api/v1/camera/start_streaming",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "start_streaming_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "title": "start_streaming_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
+    "stop_streaming": {
+      "description": "Stops streaming.",
+      "title": "Stops streaming.",
+      "forms": [
+        {
+          "href": "/api/v1/camera/stop_streaming",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "stop_streaming_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "title": "stop_streaming_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
+    "trigger_exposure": {
+      "description": "Starts one exposure, with the software trigger set.",
+      "title": "Starts one exposure, with the software trigger set.",
+      "forms": [
+        {
+          "href": "/api/v1/camera/trigger_exposure",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "trigger_exposure_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "title": "trigger_exposure_output",
+        "type": "null"
+      },
+      "synchronous": false
+    }
+  },
+  "events": {
+    "mode_changed": {
+      "description": "The mode or the pixel format changed.",
+      "title": "The mode or the pixel format changed.",
+      "forms": [
+        {
+          "href": "/api/v1/camera/mode_changed",
+          "op": [
+            "subscribeevent",
+            "unsubscribeevent"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/camera/ws",
+          "op": [
+            "subscribeevent"
+          ]
+        }
+      ],
+      "data": {
+        "description": "A mode and a pixel format, set together.",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "description": "The mode, by name.",
+            "type": "string"
+          },
+          "format": {
+            "description": "The pixel format.",
+            "oneOf": [
+              {
+                "description": "A Bayer mosaic in 16-bit samples, of which `significant_bits` carry\ndata, aligned high.",
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "description": "The mosaic's first cell.",
+                    "oneOf": [
+                      {
+                        "description": "Red, green; green, blue. The MIChrome 20's.",
+                        "const": "RGGB",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, red; blue, green.",
+                        "const": "GRBG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, blue; red, green.",
+                        "const": "GBRG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Blue, green; green, red.",
+                        "const": "BGGR",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "significant_bits": {
+                    "description": "How many of the 16 bits carry data.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "kind": {
+                    "const": "bayer16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pattern",
+                  "significant_bits"
+                ]
+              },
+              {
+                "description": "A Bayer mosaic in 8-bit samples.",
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "description": "The mosaic's first cell.",
+                    "oneOf": [
+                      {
+                        "description": "Red, green; green, blue. The MIChrome 20's.",
+                        "const": "RGGB",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, red; blue, green.",
+                        "const": "GRBG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Green, blue; red, green.",
+                        "const": "GBRG",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Blue, green; green, red.",
+                        "const": "BGGR",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "const": "bayer8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pattern"
+                ]
+              },
+              {
+                "description": "Grey, 8 bits.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "mono8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Grey, 16 bits.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "mono16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green and blue, 8 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgb8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green and blue, 16 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgb16",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Red, green, blue and alpha, 8 bits each.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "rgba8",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "description": "Planes of 32-bit floats, one after another.",
+                "type": "object",
+                "properties": {
+                  "planes": {
+                    "description": "How many planes.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "kind": {
+                    "const": "planar_f32",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "planes"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "mode",
+          "format"
+        ]
+      }
+    }
+  },
+  "description": "The camera: its settings, and streaming. Frames go to acquisition,\nwhich completes them with the stage's position, the objective and the\nlights, and publishes them on the frame bus.",
+  "forms": [
+    {
+      "href": "/api/v1/camera/properties",
+      "op": [
+        "readallproperties",
+        "writemultipleproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/camera/properties",
+      "op": [
+        "observeallproperties",
+        "unobserveallproperties"
+      ],
+      "subprotocol": "sse"
+    },
+    {
+      "href": "/api/v1/camera/actions",
+      "op": [
+        "queryallactions"
+      ]
+    },
+    {
+      "href": "/api/v1/camera/events",
+      "op": [
+        "subscribeallevents",
+        "unsubscribeallevents"
+      ],
+      "subprotocol": "sse"
+    }
+  ],
+  "base": "http://127.0.0.1:8220/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Sensor"
+}

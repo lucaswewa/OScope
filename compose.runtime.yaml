@@ -1,0 +1,30 @@
+name: oscope-runtime
+services:
+  backend:
+    image: oscope-backend:r06
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: containers/development.Dockerfile
+      target: runtime
+      args:
+        SOURCE_REVISION: ${OSCOPE_SOURCE_REVISION:-unknown}
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      NVIDIA_VISIBLE_DEVICES: void
+    shm_size: ${OSCOPE_RUNTIME_SHM_SIZE:-1gb}
+    ports:
+      - "127.0.0.1:${OSCOPE_PORT:-8210}:8210"
+    volumes:
+      - state:/var/lib/oscope/data
+      - scratch:/var/lib/oscope/scratch
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m,mode=1777
+volumes:
+  state:
+  scratch:

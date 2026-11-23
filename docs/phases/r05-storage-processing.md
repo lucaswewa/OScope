@@ -1,9 +1,9 @@
 # R05 Storage, processing and recording
 
-- Status: Complete locally; owner review pending
+- Status: Approved
 - Date: 2026-11-22
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
-- Owner approval: Pending
+- Owner approval: Accepted on 2026-11-22
 - Scope: durable data, jobs, recipes, extensions and bounded recording
 
 ## Port specification

@@ -1,0 +1,74 @@
+name: Container runtime
+on:
+  pull_request:
+    paths:
+      - Cargo.*
+      - .cargo/**
+      - crates/oscope-api/**
+      - crates/oscope-server/**
+      - crates/oscope-store/**
+      - examples/**
+      - python/**
+      - rust-toolchain.toml
+      - containers/**
+      - configs/runtime.toml
+      - compose.runtime*.yaml
+      - .dockerignore
+      - scripts/runtime.sh
+      - scripts/check-runtime.py
+      - .github/workflows/runtime.yml
+  push:
+    branches: [main, codex/linux-container-rebuild]
+    paths:
+      - Cargo.*
+      - .cargo/**
+      - crates/oscope-api/**
+      - crates/oscope-server/**
+      - crates/oscope-store/**
+      - examples/**
+      - python/**
+      - rust-toolchain.toml
+      - containers/**
+      - configs/runtime.toml
+      - compose.runtime*.yaml
+      - .dockerignore
+      - scripts/runtime.sh
+      - scripts/check-runtime.py
+      - .github/workflows/runtime.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: runtime-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the CUDA-enabled runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          tags: oscope-backend:r06
+          load: true
+          build-args: SOURCE_REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=oscope-runtime
+          cache-to: type=gha,scope=oscope-runtime,mode=max,ignore-error=true
+      - name: Validate deployment configuration
+        run: bash scripts/runtime.sh config
+      - name: Test real TLS, API, WebSocket and persistence without GPU injection
+        run: sudo python3 scripts/check-runtime.py --report artifacts/runtime.json
+      - name: Preserve runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-evidence
+          path: artifacts/runtime.json
+      # GPU injection and an actual kernel are required on the qualified host:
+      # bash scripts/runtime.sh gpu-check

@@ -1,0 +1,35 @@
+# R06 simulated runtime checkpoint. Real devices are qualified in R09.
+version = 2
+
+[network]
+address = "0.0.0.0"
+port = 8210
+
+[storage]
+data_root = "/var/lib/oscope/data"
+scratch_root = "/var/lib/oscope/scratch"
+
+[logging]
+level = "info"
+ring = 5000
+keep_days = 30
+
+[devices]
+camera = "sim"
+stage = "sim"
+illumination = "sim"
+objective = "sim"
+
+[simulator]
+sensor = "quarter"
+
+[shm]
+enabled = false
+
+[python]
+uv = "/usr/local/bin/uv"
+sdk = "/opt/oscope/sdk"
+
+[power]
+dry_run = false
+dry_run_restart = false
