@@ -86,7 +86,6 @@ test("without WebGL2, the height map is shown alone, and its profile drawn @main
   page,
   server,
 }) => {
-  test.setTimeout(300_000);
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (
@@ -99,8 +98,8 @@ test("without WebGL2, the height map is shown alone, and its profile drawn @main
         : (original as (...args: unknown[]) => unknown).call(this, kind, ...rest);
     } as typeof original;
   });
-  await surfaced(server.url);
-  await opened(page, server.url);
+  // The fixed surface: no z-scan, in each browser, beside the other tests.
+  await opened(page, server.url, await fixedSurface(server.url));
   await expect(said(page, "no-webgl")).toBeVisible();
   await expect(said(page, "surface")).toHaveCount(0);
   const [from, to] = await profiled(page);
@@ -108,9 +107,7 @@ test("without WebGL2, the height map is shown alone, and its profile drawn @main
 });
 
 test("the surfaces have no violation axe can find, in either theme", async ({ page, server }) => {
-  test.setTimeout(300_000);
-  await surfaced(server.url);
-  await opened(page, server.url);
+  await opened(page, server.url, await fixedSurface(server.url));
   await expect(said(page, "surface")).toHaveAttribute("data-drawn", "true", { timeout: 60_000 });
   await profiled(page);
   for (const scheme of ["light", "dark"] as const) {
