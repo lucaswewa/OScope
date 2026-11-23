@@ -20,3 +20,4 @@ src/features/scan/histo/recorded-histo.json
 src/features/gallery/project/recorded-contents.json
 # Generated: the node catalogue and the stock recipes, recorded from a server (scripts/record-pipeline.mjs).
 src/features/workspace/editor/recorded-pipeline.json
+src/features/workspace/analyses/recorded-analyses.json

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ListedRecipe, NodeDescriptor, Recipe } from "@/api/pipeline";
 
-import { changesOf, defaultsOf, paramsOf } from "./changes";
+import { changesOf, defaultsOf, keptParams, paramsOf } from "./changes";
 import { costOf, costsOf } from "./costs";
 import { catalogueOf, emptyRecipe, moved, withNode, withParams } from "./graph";
 import { nameFor, nameProblem, replaces } from "./library";
@@ -25,6 +25,17 @@ describe("a node's parameters", () => {
     const otsu = { id: "otsu", node: "threshold.otsu", params: {} };
     expect(paramsOf(otsu, catalogue)).toEqual({ bins: 256 });
     expect(paramsOf({ ...otsu, params: { bins: 64 } }, catalogue)).toEqual({ bins: 64 });
+  });
+
+  it("are kept as the node had them: one at its default left out, unless it was set", () => {
+    const measure = catalogue.get("cells.measure");
+    const form = { pixel_um: [1, 1], min_area: 300 };
+    expect(keptParams(form, { min_area: 10 }, measure)).toEqual({ min_area: 300 });
+    expect(keptParams(form, { pixel_um: [1, 1] }, measure)).toEqual(form);
+    expect(keptParams({ ...form, pixel_um: [2, 2] }, {}, measure)).toEqual({
+      ...form,
+      pixel_um: [2, 2],
+    });
   });
 });
 

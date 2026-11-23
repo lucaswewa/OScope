@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 import type { Recipe } from "@/api/pipeline";
-import { paramsOf } from "@/features/workspace/editor/changes";
+import { keptParams, paramsOf } from "@/features/workspace/editor/changes";
 import { withParams, type Catalogue } from "@/features/workspace/editor/graph";
 import Field from "@/ui/Field.vue";
 import SchemaForm from "@/ui/schema-form/SchemaForm.vue";
@@ -47,7 +47,9 @@ const name = computed({
         :model-value="params"
         :schema="descriptor.params"
         :label="t('workspace.editor.pane.params', { node: used.id })"
-        @update:model-value="emit('edit', withParams(recipe, used.id, $event))"
+        @update:model-value="
+          emit('edit', withParams(recipe, used.id, keptParams($event, used.params, descriptor)))
+        "
       />
       <p class="said" :class="{ changed: changed.length }" data-said="changed">
         {{
