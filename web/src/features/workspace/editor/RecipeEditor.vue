@@ -408,7 +408,7 @@ function escape(event: KeyboardEvent): void {
     </p>
     <p v-if="liveSaid" class="said" :class="{ failed: unlive }" data-said="live">{{ liveSaid }}</p>
     <p v-if="unread" class="said failed" role="alert">{{ unread }}</p>
-    <div class="body">
+    <div class="body" :class="{ living }">
       <NodePalette :nodes="nodes" @add="add" />
       <!-- The recipe's own faults, over the canvas's corner: it keeps its size as they come and go. -->
       <div class="stage">
@@ -509,6 +509,11 @@ function escape(event: KeyboardEvent): void {
   grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr) minmax(14rem, 18rem);
   gap: var(--space-2);
   min-block-size: 24rem;
+}
+
+/* Live, the image needs room under its viewer's tools: the page scrolls if it must. */
+.body.living {
+  min-block-size: 38rem;
 }
 
 .said {
