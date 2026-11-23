@@ -14,10 +14,11 @@ const layers = {
 };
 
 /**
- * A layer's rule: not the layers it may not know, reka-ui only in `ui/`, and
- * OpenSeadragon only in `ui/tile-viewer/`, which `tiles` says it is.
+ * A layer's rule: not the layers it may not know, reka-ui only in `ui/`,
+ * OpenSeadragon only in `ui/tile-viewer/`, which `tiles` says it is, and Vue
+ * Flow and dagre only in the graph editor, which `graphs` says it is.
  */
-function layerRule(layer, forbidden, tiles = false) {
+function layerRule(layer, forbidden, { tiles = false, graphs = false } = {}) {
   const patterns = forbidden.map((name) => ({
     group: [name, `${name}/**`],
     message: `src/${layer}/ may not import from ${name.slice(2)}/ (ADR-0039).`,
@@ -32,6 +33,13 @@ function layerRule(layer, forbidden, tiles = false) {
     patterns.push({
       group: ["openseadragon"],
       message: "Only src/ui/tile-viewer/ imports OpenSeadragon: use TileViewer (ADR-0050).",
+    });
+  }
+  if (!graphs) {
+    patterns.push({
+      group: ["@vue-flow/*", "@vue-flow/**", "@dagrejs/*"],
+      message:
+        "Only src/features/workspace/editor/ imports Vue Flow and dagre: use its GraphCanvas (ADR-0053).",
     });
   }
   return { "no-restricted-imports": ["error", { patterns }] };
@@ -135,7 +143,11 @@ export default tseslint.config(
   })),
   {
     files: ["src/ui/tile-viewer/**"],
-    rules: layerRule("ui", layers.ui, true),
+    rules: layerRule("ui", layers.ui, { tiles: true }),
+  },
+  {
+    files: ["src/features/workspace/editor/**"],
+    rules: layerRule("features", layers.features, { graphs: true }),
   },
   {
     files: ["src/app/**", "src/main.ts"],

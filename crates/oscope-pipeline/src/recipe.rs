@@ -1,5 +1,6 @@
 //! Recipes: nodes, and the edges between their ports, as versioned JSON.
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use schemars::JsonSchema;
@@ -33,6 +34,10 @@ pub struct Recipe {
     pub edges: Vec<Edge>,
     /// What it gives.
     pub outputs: Vec<RecipeOutput>,
+    /// Where an editor drew each node, by its ID: `[x, y]`, in its own
+    /// units. The engine ignores it (W7.2).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub layout: BTreeMap<String, [f64; 2]>,
 }
 
 /// A node in a recipe.

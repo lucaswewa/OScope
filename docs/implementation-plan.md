@@ -981,7 +981,7 @@ Recipes drawn as graphs, analyses with their provenance, annotations, cells and 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
 | [W7.1](milestone-2/phases.md#w7-1) | Recipes over the API | W1.1 | 1,200 | 0052 | Done |
-| [W7.2](milestone-2/phases.md#w7-2) | The graph editor: the canvas | W7.1, W2.2 | 2,000 | 0053 | Planned |
+| [W7.2](milestone-2/phases.md#w7-2) | The graph editor: the canvas | W7.1, W2.2 | 2,000 | 0053 | In review |
 | [W7.3](milestone-2/phases.md#w7-3) | The graph editor: parameters and the library | W7.2, W0.6 | 1,600 | — | Planned |
 | [W7.4](milestone-2/phases.md#w7-4) | Analyses and results | W7.3, W6.2 | 1,500 | — | Planned |
 | [W7.5](milestone-2/phases.md#w7-5) | Annotations and measurements | W6.4 | 1,800 | — | Planned |
@@ -1109,7 +1109,7 @@ ADRs are numbered across the project. Upstream phases record their design decisi
 | 0050 | The tile viewer | W3.8 |
 | 0051 | Uploads | W6.3 |
 | 0052 | Recipes over the API: the `pipeline` Thing | W7.1 |
-| 0053 | The graph editor | W7.2 |
+| 0053 | The graph editor on Vue Flow | W7.2 |
 | 0054 | 3D in the app | W7.7 |
 | 0055 | Accounts over the API | W8.6 |
 | 0056 | The desktop app: Tauri, its permissions and the sidecar | W9.1 |
