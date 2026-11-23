@@ -981,6 +981,308 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pipeline/changed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A recipe in the library was kept or deleted.
+         * @description ## A recipe in the library was kept or deleted.
+         *
+         *     Its name.
+         *
+         *     Server-sent events: each event's data, as JSON in a `data:` line, following this schema:
+         *
+         *     ```json
+         *     {
+         *       "$ref": "#/components/schemas/pipeline_changed_data"
+         *     }
+         *     ```
+         */
+        get: operations["subscribe_event_api_v1_pipeline_changed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of check.
+         * @description List all the invocations of check that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_pipeline_check_get"];
+        put?: never;
+        /**
+         * Checks a recipe: every fault, at once.
+         * @description ## Checks a recipe: every fault, at once.
+         *
+         *     Each fault says where it is, with the node and the port it is at
+         *     where it is at one: none if the recipe can run here. JSON that isn't
+         *     a recipe is one fault, at `recipe`. It changes nothing, and needs no
+         *     lease (ADR-0052).
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_pipeline_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/delete_recipe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of delete_recipe.
+         * @description List all the invocations of delete_recipe that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_pipeline_delete_recipe_get"];
+        put?: never;
+        /**
+         * Deletes a recipe from the library: a user's.
+         * @description ## Deletes a recipe from the library: a user's.
+         *
+         *     Deletes a recipe from the library: a user's.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_pipeline_delete_recipe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The nodes recipes may use.
+         * @description ## The nodes recipes may use.
+         *
+         *     The stock nodes (P22) and the extensions' (P25), each with its ports
+         *     and its parameters' schema, as `preview/nodes` gives them.
+         */
+        get: operations["get_property_api_v1_pipeline_nodes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/recipe/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recipe
+         * @description A recipe in the library, by its name: its JSON, and whether it is
+         *     stock.
+         */
+        get: operations["recipe_api_v1_pipeline_recipe__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recipes
+         * @description The recipes in the library: the stock ones first, each by name.
+         */
+        get: operations["recipes_api_v1_pipeline_recipes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of run.
+         * @description List all the invocations of run that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_pipeline_run_get"];
+        put?: never;
+        /**
+         * Runs a recipe on a project's records: a `workspace.run` job each.
+         * @description ## Runs a recipe on a project's records: a `workspace.run` job each.
+         *
+         *     The recipe is the library's, `{"named": "count-nuclei"}`, or one
+         *     given, `{"given": {…}}`. It takes an image, `image`, and runs on each
+         *     record, or on a region of it in µm, its outputs kept as a result of
+         *     the project (P48). Refused, before any job, for a recipe with faults.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_pipeline_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/save_recipe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of save_recipe.
+         * @description List all the invocations of save_recipe that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_pipeline_save_recipe_get"];
+        put?: never;
+        /**
+         * Keeps a recipe in the library, by name.
+         * @description ## Keeps a recipe in the library, by name.
+         *
+         *     In place of one of that name. A name has 1 to 64 characters of
+         *     `a`–`z`, `0`–`9`, `-` and `_`, and isn't a stock recipe's. The recipe
+         *     is kept whether or not `check` finds faults in it.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_pipeline_save_recipe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read All Properties
+         * @description Every property of `pipeline` (`readallproperties`), or their changes (`observeallproperties`).
+         */
+        get: operations["read_all_properties_api_v1_pipeline_properties_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query All Actions
+         * @description The invocations of each action of `pipeline`, newest first (`queryallactions`).
+         */
+        get: operations["query_all_actions_api_v1_pipeline_actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscribe All Events
+         * @description Server-sent events: every event of `pipeline`, named after it (`subscribeallevents`).
+         */
+        get: operations["subscribe_all_events_api_v1_pipeline_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Thing Description
+         * @description The W3C Thing Description of `pipeline`: its properties, actions and events, and how to use them.
+         */
+        get: operations["things_pipeline_api_v1_pipeline__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/camera/capabilities": {
         parameters: {
             query?: never;
@@ -7315,6 +7617,319 @@ export interface components {
             /** @description The port: 0 lets the system choose. */
             port: number;
         } | null;
+        pipeline_changed_data: string;
+        pipeline_check_input: {
+            recipe: unknown;
+        };
+        /** @description A recipe's faults, as `check` gives them. */
+        pipeline_check_output: {
+            /** @description Every fault found, each where it is: none if the recipe can run. */
+            faults: {
+                /**
+                 * @description Where: `nodes[1] (blur)`, `edges[0]`, `outputs[2]`, with a JSON
+                 *     pointer into a node's parameters, or `recipe` for all of it.
+                 */
+                at: string;
+                /**
+                 * @description The node it is at, by its ID in the recipe, if it is at one: `input`
+                 *     for the recipe's own inputs (W7.1).
+                 */
+                node?: string | null;
+                /** @description The node's port it is at, if it is at one. */
+                port?: string | null;
+                /** @description What. */
+                message: string;
+            }[];
+        };
+        pipeline_check_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["pipeline_check_input"];
+            output?: components["schemas"]["pipeline_check_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        pipeline_delete_recipe_input: {
+            name: string;
+        };
+        pipeline_delete_recipe_output: null;
+        pipeline_delete_recipe_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["pipeline_delete_recipe_input"];
+            output?: components["schemas"]["pipeline_delete_recipe_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        pipeline_nodes_value: {
+            /** @description Its ID, dotted: `test.box_blur`. */
+            id: string;
+            /** @description Its version, raised when what it gives, or its parameters, change. */
+            version: number;
+            /** @description Its category, for people: `filter`. */
+            category: string;
+            /** @description What it does, in a line. */
+            description: string;
+            /** @description Its inputs. */
+            inputs: {
+                /** @description Its name: letters, digits and `_`. */
+                name: string;
+                /** @description Its values' type. */
+                type: "image" | "stack" | "mask" | "table" | "geometry" | "json" | "report";
+                /** @description For a node's input: whether it may be left without an edge. */
+                optional?: boolean;
+            }[];
+            /** @description Its outputs. */
+            outputs: {
+                /** @description Its name: letters, digits and `_`. */
+                name: string;
+                /** @description Its values' type. */
+                type: "image" | "stack" | "mask" | "table" | "geometry" | "json" | "report";
+                /** @description For a node's input: whether it may be left without an edge. */
+                optional?: boolean;
+            }[];
+            /** @description Its parameters' JSON Schema, in the part [`crate::schema`] knows. */
+            params: unknown;
+            /** @description What it can do. */
+            capabilities: {
+                /** @description It runs on the CPU. */
+                cpu: boolean;
+                /** @description It runs on the GPU, with CUDA. */
+                cuda: boolean;
+                /** @description It is quick enough to run on every frame of the live view. */
+                live: boolean;
+                /**
+                 * @description It can run tile by tile: each output pixel depends only on the input
+                 *     pixels within its halo, and its outputs are rasters of its raster
+                 *     inputs' size.
+                 */
+                tileable: boolean;
+                /**
+                 * @description The pixels around a tile it reads, unless its step says
+                 *     ([`Step::halo`]).
+                 */
+                halo: number;
+            };
+        }[];
+        pipeline_run_input: {
+            /**
+             * Format: uuid
+             * @description A project: a folder of data on disk (P28).
+             */
+            project: string;
+            /** @description The recipe a run uses: one in the library, by name, or one given. */
+            recipe: {
+                named: string;
+            } | {
+                /**
+                 * @description A recipe (ADR-0017): nodes with their parameters, the edges between
+                 *     their ports, and the recipe's own inputs and outputs.
+                 */
+                given: {
+                    /** @description Its format: 1, for now. */
+                    format: number;
+                    /**
+                     * @description A name for people.
+                     * @default
+                     */
+                    name: string;
+                    /**
+                     * @description What it takes, each named and typed: `input.<name>` in its edges.
+                     * @default []
+                     */
+                    inputs: {
+                        /** @description Its name: letters, digits and `_`. */
+                        name: string;
+                        /** @description Its values' type. */
+                        type: "image" | "stack" | "mask" | "table" | "geometry" | "json" | "report";
+                        /** @description For a node's input: whether it may be left without an edge. */
+                        optional?: boolean;
+                    }[];
+                    /** @description Its nodes. */
+                    nodes: {
+                        /** @description Its ID in the recipe: letters, digits and `_`, and not `input`. */
+                        id: string;
+                        /** @description Which node it is: its descriptor's ID. */
+                        node: string;
+                        /**
+                         * @description The node's version the recipe was made for: the registry's must be
+                         *     the same, when given.
+                         */
+                        version?: number | null;
+                        /**
+                         * @description Its parameters, which the node's schema checks.
+                         * @default {}
+                         */
+                        params: unknown;
+                    }[];
+                    /**
+                     * @description Its edges.
+                     * @default []
+                     */
+                    edges: {
+                        /** @description The output: `blur.image`, or `input.image` for a recipe input. */
+                        from: string;
+                        /** @description The input: `threshold.image`. */
+                        to: string;
+                    }[];
+                    /** @description What it gives. */
+                    outputs: {
+                        /** @description Its name. */
+                        name: string;
+                        /** @description The node's output, or recipe input, it gives: `node.port`. */
+                        from: string;
+                    }[];
+                };
+            };
+            records: ({
+                /** @constant */
+                kind: "acquisition";
+                /**
+                 * Format: uuid
+                 * @description An acquisition: one run that records frames into a project (P29).
+                 */
+                id: string;
+            } | {
+                /** @constant */
+                kind: "result";
+                /**
+                 * Format: uuid
+                 * @description A result: an image, a table or a report that a job made.
+                 */
+                id: string;
+            })[];
+            roi?: {
+                /** @description Its left edge. */
+                x: number;
+                /** @description Its top edge. */
+                y: number;
+                /** @description Its width. */
+                width: number;
+                /** @description Its height. */
+                height: number;
+            } | null;
+            tile?: number | null;
+        };
+        pipeline_run_output: {
+            /**
+             * Format: uuid
+             * @description The job.
+             */
+            id: string;
+            /** @description Where it is, as it is now. */
+            href: string;
+        }[];
+        pipeline_run_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["pipeline_run_input"];
+            output?: components["schemas"]["pipeline_run_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        pipeline_save_recipe_input: {
+            name: string;
+            /**
+             * @description A recipe (ADR-0017): nodes with their parameters, the edges between
+             *     their ports, and the recipe's own inputs and outputs.
+             */
+            recipe: {
+                /** @description Its format: 1, for now. */
+                format: number;
+                /**
+                 * @description A name for people.
+                 * @default
+                 */
+                name: string;
+                /**
+                 * @description What it takes, each named and typed: `input.<name>` in its edges.
+                 * @default []
+                 */
+                inputs: {
+                    /** @description Its name: letters, digits and `_`. */
+                    name: string;
+                    /** @description Its values' type. */
+                    type: "image" | "stack" | "mask" | "table" | "geometry" | "json" | "report";
+                    /** @description For a node's input: whether it may be left without an edge. */
+                    optional?: boolean;
+                }[];
+                /** @description Its nodes. */
+                nodes: {
+                    /** @description Its ID in the recipe: letters, digits and `_`, and not `input`. */
+                    id: string;
+                    /** @description Which node it is: its descriptor's ID. */
+                    node: string;
+                    /**
+                     * @description The node's version the recipe was made for: the registry's must be
+                     *     the same, when given.
+                     */
+                    version?: number | null;
+                    /**
+                     * @description Its parameters, which the node's schema checks.
+                     * @default {}
+                     */
+                    params: unknown;
+                }[];
+                /**
+                 * @description Its edges.
+                 * @default []
+                 */
+                edges: {
+                    /** @description The output: `blur.image`, or `input.image` for a recipe input. */
+                    from: string;
+                    /** @description The input: `threshold.image`. */
+                    to: string;
+                }[];
+                /** @description What it gives. */
+                outputs: {
+                    /** @description Its name. */
+                    name: string;
+                    /** @description The node's output, or recipe input, it gives: `node.port`. */
+                    from: string;
+                }[];
+            };
+        };
+        pipeline_save_recipe_output: null;
+        pipeline_save_recipe_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["pipeline_save_recipe_input"];
+            output?: components["schemas"]["pipeline_save_recipe_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
         /** @description What a camera is and offers. It doesn't change while the camera is open. */
         camera_capabilities_value: {
             /** @description The camera's maker and model. */
@@ -14857,6 +15472,415 @@ export interface operations {
         };
     };
     things_settings_api_v1_settings__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThingDescription"];
+                };
+            };
+        };
+    };
+    subscribe_event_api_v1_pipeline_changed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-sent events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_pipeline_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_pipeline_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["pipeline_check_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_check_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_check_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_pipeline_delete_recipe_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of delete_recipe. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_pipeline_delete_recipe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["pipeline_delete_recipe_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_delete_recipe_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_delete_recipe_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_property_api_v1_pipeline_nodes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Value of nodes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_nodes_value"];
+                };
+            };
+        };
+    };
+    recipe_api_v1_pipeline_recipe__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    recipes_api_v1_pipeline_recipes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_invocations_api_v1_pipeline_run_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_pipeline_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["pipeline_run_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_run_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_run_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_pipeline_save_recipe_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of save_recipe. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_pipeline_save_recipe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["pipeline_save_recipe_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_save_recipe_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["pipeline_save_recipe_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_all_properties_api_v1_pipeline_properties_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
+    query_all_actions_api_v1_pipeline_actions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["InvocationSummary"][];
+                    };
+                };
+            };
+        };
+    };
+    subscribe_all_events_api_v1_pipeline_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-sent events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
+    things_pipeline_api_v1_pipeline__get: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,0 +1,8 @@
+{
+  "format": 1,
+  "name": "False colour",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [{ "id": "colour", "node": "display.false_colour", "params": { "map": "fire", "black": 0.3, "white": 0.95 } }],
+  "edges": [{ "from": "input.image", "to": "colour.image" }],
+  "outputs": [{ "name": "image", "from": "colour.image" }]
+}

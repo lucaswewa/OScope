@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "name": "Inverted",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [
+    { "id": "levels", "node": "display.levels" },
+    { "id": "invert", "node": "display.lut", "params": { "table": [1.0, 0.0] } }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "levels.image" },
+    { "from": "levels.image", "to": "invert.image" }
+  ],
+  "outputs": [{ "name": "image", "from": "invert.image" }]
+}

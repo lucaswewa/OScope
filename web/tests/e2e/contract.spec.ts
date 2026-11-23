@@ -25,6 +25,16 @@ import {
   type StoredImage,
   type TailMessage,
 } from "../../src/api/media.ts";
+import {
+  checkRecipe,
+  deleteRecipe,
+  pipelineNodes,
+  recipeList,
+  recipeNamed,
+  runRecipe,
+  saveRecipe,
+  type Recipe,
+} from "../../src/api/pipeline.ts";
 import { expect, test } from "./fixtures.ts";
 import { fast } from "./sim.ts";
 
@@ -227,4 +237,47 @@ test("the formats, a file staged and the recordings waiting are as the wrappers 
   expect(Object.keys(staged).sort()).toEqual(["bytes", "expires", "id", "name"]);
   expect([staged.name, staged.bytes]).toEqual(["a file.tif", 12]);
   expect(await waitingRecordings({ on })).toEqual([]);
+});
+
+test("the pipeline's catalogue, check, library and run are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  const nodes = await pipelineNodes({ on });
+  const gaussian = nodes.find((node) => node.id === "filter.gaussian")!;
+  expect(gaussian.inputs.map((port) => port.name)).toEqual(["image"]);
+  expect(gaussian.outputs.map((port) => port.name)).toEqual(["image"]);
+  const blur = (sigma: number): Recipe => ({
+    format: 1,
+    name: "contract",
+    inputs: [{ name: "image", type: "image" }],
+    nodes: [{ id: "blur", node: "filter.gaussian", params: { sigma } }],
+    edges: [{ from: "input.image", to: "blur.image" }],
+    outputs: [{ name: "image", from: "blur.image" }],
+  });
+  expect(await checkRecipe(blur(2), { on })).toEqual([]);
+  const broken = { ...blur(2), edges: [] };
+  const faults = await checkRecipe(broken, { on });
+  expect(faults).toEqual([
+    {
+      at: "nodes[0] (blur)",
+      node: "blur",
+      port: "image",
+      message: "its input `image` has no edge",
+    },
+  ]);
+  // The library: the stock recipes first, and one kept, read and deleted.
+  const listed = await recipeList({ on });
+  expect(Object.keys(listed[0]!).sort()).toEqual(["name", "stock", "title"]);
+  expect(listed.filter((one) => one.stock).length).toBeGreaterThan(0);
+  await saveRecipe("contract", blur(3), { on });
+  const kept = await recipeNamed("contract", { on });
+  expect(Object.keys(kept).sort()).toEqual(["name", "recipe", "stock"]);
+  expect([kept.stock, kept.recipe.nodes[0]!.params]).toEqual([false, { sigma: 3 }]);
+  await deleteRecipe("contract", { on });
+  expect((await thrown(recipeNamed("contract", { on }))).status).toBe(404);
+  // A run's input, as the server reads it: refused here for having no records.
+  const project = await act("/api/v1/projects/create", { name: "run" }, { on });
+  const refused = await thrown(runRecipe(project.id, { named: "smooth" }, [], { on }));
+  expect(refused.message).toContain("no records");
 });

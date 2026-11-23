@@ -110,8 +110,44 @@ pub struct Problem {
     /// Where: `nodes[1] (blur)`, `edges[0]`, `outputs[2]`, with a JSON
     /// pointer into a node's parameters, or `recipe` for all of it.
     pub at: String,
+    /// The node it is at, by its ID in the recipe, if it is at one: `input`
+    /// for the recipe's own inputs (W7.1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node: Option<String>,
+    /// The node's port it is at, if it is at one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<String>,
     /// What.
     pub message: String,
+}
+
+impl Problem {
+    /// A problem at `at`, at no node.
+    pub fn new(at: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            at: at.into(),
+            node: None,
+            port: None,
+            message: message.into(),
+        }
+    }
+
+    /// The same, at `node`, and `port` if given.
+    #[must_use]
+    pub fn on(mut self, node: &str, port: Option<&str>) -> Self {
+        self.node = Some(node.to_owned());
+        self.port = port.map(str::to_owned);
+        self
+    }
+
+    /// The same, at the node and port `reference`, `node.port`, names.
+    #[must_use]
+    pub fn on_port(self, reference: &str) -> Self {
+        match reference.split_once('.') {
+            Some((node, port)) => self.on(node, Some(port)),
+            None => self,
+        }
+    }
 }
 
 impl fmt::Display for Problem {
@@ -128,10 +164,9 @@ pub struct RecipeError {
 }
 
 impl RecipeError {
-    fn one(at: &str, message: String) -> RecipeError {
-        let at = at.to_owned();
+    pub(crate) fn one(at: &str, message: String) -> RecipeError {
         RecipeError {
-            problems: vec![Problem { at, message }],
+            problems: vec![Problem::new(at, message)],
         }
     }
 }
