@@ -13,6 +13,8 @@ defineProps<{
   tabs: readonly { value: string; label: string; icon?: IconName; disabled?: boolean }[];
   /** What the tabs are, to a screen reader. */
   label: string;
+  /** Each tab's content kept, hidden, while another is shown: what it holds stays as it was. */
+  keep?: boolean;
 }>();
 const chosen = defineModel<string>({ required: true });
 
@@ -22,7 +24,12 @@ function choose(value: string | number): void {
 </script>
 
 <template>
-  <TabsRoot class="tabs" :model-value="chosen" @update:model-value="choose">
+  <TabsRoot
+    class="tabs"
+    :model-value="chosen"
+    :unmount-on-hide="!keep"
+    @update:model-value="choose"
+  >
     <TabsList class="list" :aria-label="label">
       <TabsTrigger
         v-for="tab in tabs"

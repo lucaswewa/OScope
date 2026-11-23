@@ -33,6 +33,24 @@ function canonical(value: unknown): string {
   );
 }
 
+/**
+ * `params`, from a node's form, as the node keeps them (W7.4): one at its
+ * default left out, unless the node set it before. A recipe says no more
+ * than it did, and a result's provenance no more than was changed.
+ */
+export function keptParams(
+  params: unknown,
+  before: unknown,
+  descriptor: NodeDescriptor | undefined,
+): unknown {
+  if (!isRecord(params)) return params;
+  const [defaults, had] = [defaultsOf(descriptor), isRecord(before) ? before : {}];
+  const kept = Object.entries(params).filter(
+    ([name, value]) => name in had || canonical(value) !== canonical(defaults[name]),
+  );
+  return Object.fromEntries(kept);
+}
+
 export interface Changes {
   /** Whether anything differs that saving would keep: places too. */
   unsaved: boolean;

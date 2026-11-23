@@ -71,6 +71,8 @@ import ToolbarButton from "@/ui/ToolbarButton.vue";
  * left; and the recipe run live as it changes, each node's cost on it.
  */
 const { t } = useI18n();
+/** The recipe as it is now, each time it changes: for the Workspace's runs (W7.4). */
+const emit = defineEmits<{ recipe: [recipe: Recipe] }>();
 const history = useHistory(emptyRecipe(t("workspace.editor.untitled")));
 const recipe = history.now;
 const canvas = useTemplateRef<InstanceType<typeof GraphCanvas>>("canvas");
@@ -122,9 +124,11 @@ function answered(go: boolean): void {
   answer?.(go);
   answer = undefined;
 }
-const unlessKept = (action: () => unknown) => async () => {
-  if (await mayLeave()) await action();
-};
+const unlessKept =
+  <A extends unknown[]>(action: (...given: A) => unknown) =>
+  async (...given: A) => {
+    if (await mayLeave()) await action(...given);
+  };
 onBeforeRouteLeave(mayLeave);
 function unloading(event: BeforeUnloadEvent): void {
   if (changes.value.unsaved) event.preventDefault();
@@ -285,6 +289,16 @@ async function layOut(): Promise<void> {
   await canvas.value?.fit();
 }
 const start = unlessKept(() => begin(emptyRecipe(t("workspace.editor.untitled"))));
+watch(recipe, (now) => emit("recipe", now), { immediate: true });
+defineExpose({
+  /** `given` opened, such as a result's recipe (W7.4): laid out if it has no places. */
+  open: unlessKept(async (given: Recipe) => {
+    const placed = Object.keys(given.layout ?? {}).length > 0;
+    begin(placed ? given : laidOut(given, catalogue.value));
+    await nextTick();
+    await canvas.value?.fit();
+  }),
+});
 
 const importFile = unlessKept(async () => {
   const [file] = await host().files.open({ accept: [".json", "application/json"] });

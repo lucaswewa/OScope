@@ -37,6 +37,15 @@ import {
   setLiveRecipe,
   type Recipe,
 } from "../../src/api/pipeline.ts";
+import {
+  analyse,
+  deleteResult,
+  difference,
+  rerun,
+  resultList,
+  summaryOf,
+} from "../../src/api/workspace.ts";
+import { counting, prepared } from "./analyses.ts";
 import { expect, test } from "./fixtures.ts";
 import { fast } from "./sim.ts";
 
@@ -303,4 +312,36 @@ test("the live recipe, set and cleared, and its check, are as the wrappers have 
   expect((await liveRecipe({ on }))?.name).toBe(levels.name);
   expect(await setLiveRecipe(null, { on })).toBeNull();
   expect(await liveRecipe({ on })).toBeNull();
+});
+
+test("the Workspace's runs, results, difference and deletion are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  const { project, acquisition } = await prepared(server.url);
+  const input = { kind: "acquisition" as const, id: acquisition };
+  const made = async (job: JobRef) =>
+    (await finished(job, { on, timeout: 60_000 })).results[0]!.split("/").pop()!;
+  const a = await made(await analyse(project, { recipe: counting(10), input }, { on }));
+  const b = await made(await rerun(project, a, { measure: { min_area: 300 } }, { on }));
+  const listed = await resultList(project, { on });
+  expect(listed.map((one) => one.id)).toEqual([a, b]);
+  expect(Object.keys(listed[0]!).sort()).toEqual([
+    "created",
+    "files",
+    "id",
+    "image",
+    "name",
+    "project",
+    "provenance",
+  ]);
+  expect(listed[0]!.files).toEqual(["objects.csv", "summary.json"]);
+  expect(listed[0]!.provenance.inputs).toEqual([input]);
+  expect(await difference(project, a, b, { on })).toEqual([
+    { path: "/recipe/workspace.run/recipe/nodes/measure/params/min_area", before: 10, after: 300 },
+  ]);
+  const summary = await summaryOf(project, a, { on });
+  expect([summary.input, summary.rows]).toEqual([acquisition, { objects: 48 }]);
+  await deleteResult(project, b, { on });
+  expect((await resultList(project, { on })).map((one) => one.id)).toEqual([a]);
 });

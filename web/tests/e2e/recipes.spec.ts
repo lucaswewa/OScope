@@ -69,11 +69,12 @@ test("a parameter changed reaches the live image @main", async ({ page, server }
   const brightness = async () => mean((await rgbOf(page, image)).map(luminance));
   await expect.poll(brightness, { timeout: 30_000 }).toBeGreaterThan(10);
   const before = await brightness();
-  // White at 0.3 of the range, where it was 0.85: the image brighter.
+  // White at 0.2 of the range, where it was 0.85: the image a quarter brighter at least,
+  // its black margins and all.
   await chosen(page, "levels");
-  await param(page, "White").fill("0.3");
+  await param(page, "White").fill("0.2");
   await param(page, "White").press("Enter");
-  await expect.poll(brightness, { timeout: 30_000 }).toBeGreaterThan(before + 20);
+  await expect.poll(brightness, { timeout: 30_000 }).toBeGreaterThan(before * 1.25);
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);
     await shot(page, `W7.3-live-${scheme}`);
