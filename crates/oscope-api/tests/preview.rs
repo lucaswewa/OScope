@@ -609,6 +609,15 @@ async fn a_live_recipe_runs_on_each_preview_once_checked() {
         (json!(["levels", "invert"]), json!(320))
     );
     assert!(check["time_ms"].as_f64().unwrap() <= check["budget_ms"].as_f64().unwrap());
+    // Each step timed on its own (W7.3), within the whole: they run one after the other.
+    let steps = check["step_ms"].as_object().unwrap();
+    assert_eq!(steps.keys().collect::<Vec<_>>(), ["invert", "levels"]);
+    let each: Vec<f64> = steps.values().map(|ms| ms.as_f64().unwrap()).collect();
+    assert!(each.iter().all(|ms| *ms > 0.0), "{steps:?}");
+    assert!(
+        each.iter().sum::<f64>() <= check["time_ms"].as_f64().unwrap(),
+        "{check}"
+    );
     // Previews made before it may still be on their way.
     let deadline = Instant::now() + Duration::from_secs(30);
     loop {

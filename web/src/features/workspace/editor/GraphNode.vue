@@ -20,6 +20,8 @@ const editor = inject(EDITOR)!;
 
 const faulty = computed(() => Object.keys(props.data.faults).length > 0);
 const own = computed(() => props.data.faults[""] ?? []);
+// What it costs live, while the recipe runs live (W7.3).
+const cost = computed(() => editor.costs.value.get(props.id));
 const linkingHere = (port: string) =>
   editor.linking.value?.node === props.id && editor.linking.value.port === port;
 const portLabel = (side: "input" | "output", port: { name: string; type: string }) =>
@@ -33,6 +35,9 @@ const portLabel = (side: "input" | "output", port: { name: string; type: string 
         data.kind === "step" ? id : t(`workspace.editor.ends.${data.kind}`)
       }}</span>
       <span v-if="data.node" class="node">{{ data.node }}</span>
+      <span v-if="cost" class="cost" :class="{ over: cost.over }" data-said="cost">
+        {{ t("workspace.editor.live.step", { ms: cost.ms, percent: cost.percent }) }}
+      </span>
     </div>
     <div class="ports">
       <ul class="side inputs">
@@ -201,6 +206,15 @@ const portLabel = (side: "input" | "output", port: { name: string; type: string 
 
 .optional {
   color: var(--text-muted);
+}
+
+.cost {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cost.over {
+  color: var(--danger);
 }
 
 .handle {

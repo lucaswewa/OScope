@@ -33,7 +33,7 @@ mod ring;
 pub mod wire;
 
 pub use adapt::Adaptation;
-pub use recipe::LiveRecipe;
+pub use recipe::{LiveRecipe, Timing};
 pub use ring::{RingSettings, publish};
 
 use std::sync::{Arc, PoisonError, RwLock};

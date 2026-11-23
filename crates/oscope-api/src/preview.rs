@@ -14,7 +14,7 @@ use oscope_acquire::mosaic::LookSource;
 use oscope_acquire::preview::wire::{Header, MASK, STATISTICS, TILES};
 use oscope_acquire::preview::{
     Adaptation, LiveRecipe, Look, Preview, PreviewError, PreviewRequest, Rendered, RingSettings,
-    publish,
+    Timing, publish,
 };
 use oscope_acquire::stats::StatsRequest;
 use oscope_compute::{Compute, ComputeConfig, Image, Shape, cpu};
@@ -184,6 +184,9 @@ pub struct RecipeCheck {
     pub steps: Vec<String>,
     /// Its time on an RGB image the default viewport's size, in ms.
     pub time_ms: f64,
+    /// Each step's own time in that run, in ms, by its ID (W7.3). Steps
+    /// on separate branches may run at once, so they can add up to more.
+    pub step_ms: BTreeMap<String, f64>,
     /// That image's width.
     pub width: u32,
     /// Its height.
@@ -220,7 +223,7 @@ fn check(
     engine: &Arc<Engine>,
     recipe: &Recipe,
     size: (u32, u32),
-) -> Result<(LiveRecipe, Duration), String> {
+) -> Result<(LiveRecipe, Timing), String> {
     let plan = engine.plan(recipe).map_err(|error| error.to_string())?;
     let live = LiveRecipe::new(Arc::clone(engine), Arc::new(plan))?;
     let time = live
@@ -349,8 +352,9 @@ impl PreviewThing {
         let (engine, planned) = (Arc::clone(&service.engine), recipe.clone());
         let checked = tokio::task::spawn_blocking(move || check(&engine, &planned, size)).await;
         let checked = checked.map_err(|error| ActionError::handled(error.to_string()))?;
-        let (live, time) = checked.map_err(refused)?;
-        let (time_ms, budget_ms) = (time.as_secs_f64() * 1e3, self.recipe_budget_ms.get());
+        let (live, timing) = checked.map_err(refused)?;
+        let ms = |time: Duration| time.as_secs_f64() * 1e3;
+        let (time_ms, budget_ms) = (ms(timing.total), self.recipe_budget_ms.get());
         if time_ms > budget_ms {
             let (w, h) = size;
             return Err(refused(format!(
@@ -362,9 +366,11 @@ impl PreviewThing {
         self.live_recipe
             .set(Some(recipe))
             .map_err(|e| ActionError::handled(e.to_string()))?;
+        let step_ms = timing.steps.into_iter().map(|(id, time)| (id, ms(time)));
         Ok(Some(RecipeCheck {
             steps,
             time_ms,
+            step_ms: step_ms.collect(),
             width: size.0,
             height: size.1,
             budget_ms,

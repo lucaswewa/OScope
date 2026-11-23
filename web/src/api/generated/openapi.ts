@@ -9213,6 +9213,13 @@ export interface components {
             steps: string[];
             /** @description Its time on an RGB image the default viewport's size, in ms. */
             time_ms: number;
+            /**
+             * @description Each step's own time in that run, in ms, by its ID (W7.3). Steps
+             *     on separate branches may run at once, so they can add up to more.
+             */
+            step_ms: {
+                [key: string]: number;
+            };
             /** @description That image's width. */
             width: number;
             /** @description Its height. */
