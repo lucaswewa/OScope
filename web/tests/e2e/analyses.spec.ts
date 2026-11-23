@@ -78,6 +78,7 @@ test("a result made again is the same, and a parameter changed shows in the diff
   await expect(said(page, "results-said")).toHaveText("Discs counted made again.", {
     timeout: 60_000,
   });
+  await expect(results(page)).toHaveCount(2);
   await compared(page, 0, 1);
   await expect(said(page, "compared")).toContainText("They were made alike, and made the same.");
   // Its recipe opened in the editor, the least area raised, and run.

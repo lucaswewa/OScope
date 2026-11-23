@@ -91,8 +91,9 @@ async function again(one: Analysed): Promise<void> {
   said.value = t("workspace.results.making", { name: one.name });
   try {
     await finished(await rerun(props.project!, one.id));
-    said.value = t("workspace.results.made", { name: one.name });
+    // Said once the list shows it: what is pressed next is where it is.
     await load();
+    said.value = t("workspace.results.made", { name: one.name });
   } catch (thrown) {
     said.value = t("workspace.results.unmade", { name: one.name, why: why(thrown) });
   } finally {
@@ -107,8 +108,8 @@ async function remove(): Promise<void> {
   if (!one) return;
   try {
     await deleteResult(props.project!, one.id);
-    said.value = t("workspace.results.deleted", { name: one.name });
     await load();
+    said.value = t("workspace.results.deleted", { name: one.name });
   } catch (thrown) {
     said.value = t("workspace.results.undeleted", { name: one.name, why: why(thrown) });
   }
