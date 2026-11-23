@@ -4,6 +4,8 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 
 import { useConnection } from "@/api/connection/connection";
+import { useAccountDisplay } from "@/features/display/account";
+import { useDisplay } from "@/features/display/display";
 import { useCanControl } from "@/api/connection/lease";
 import { onActionFailed } from "@/api/things/use";
 import ReadOnlyLine from "@/app/ReadOnlyLine.vue";
@@ -39,6 +41,14 @@ const content = ref<HTMLElement>();
 const boundary = ref<InstanceType<typeof TabBoundary>>();
 const connection = useConnection();
 useLeaseRequests();
+// The theme follows the account's, as the server keeps it (W8.1).
+const account = useAccountDisplay();
+const display = useDisplay();
+watch(
+  () => account.display?.theme,
+  (theme) => theme && display.follow(theme),
+  { immediate: true },
+);
 
 /** How long the server may take to answer at the start before the app says it is looking. */
 const LATE = 2_000;

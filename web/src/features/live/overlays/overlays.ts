@@ -5,6 +5,7 @@ import { defineStore } from "pinia";
 import { shallowRef } from "vue";
 
 import type { Line, PixelRect } from "@/api/preview/message";
+import { useAccountDisplay } from "@/features/display/account";
 import { MAPS, type MapName } from "@/features/live/colourMaps";
 import { kept } from "@/host/kept";
 
@@ -30,9 +31,11 @@ const isLayers = (value: unknown): value is Layers =>
   );
 
 export const useOverlays = defineStore("overlays", () => {
+  // The scale bar as the account prefers it, in a browser that hasn't chosen its own (W8.1).
+  const scale = useAccountDisplay().display?.scale_bar ?? true;
   const layers = kept<Layers>(
     "oscope.live.layers",
-    { crosshair: false, grid: false, scale: true, saturated: false, values: false },
+    { crosshair: false, grid: false, scale, saturated: false, values: false },
     isLayers,
   );
   /** The colour map: the image's own colours, unless one is chosen (W3.6). */

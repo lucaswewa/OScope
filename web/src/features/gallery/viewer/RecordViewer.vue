@@ -3,6 +3,7 @@ import { computed, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { tile, type StoredImage } from "@/api/media";
+import { useAccountDisplay } from "@/features/display/account";
 import type { AnyRecord, Contents } from "@/features/gallery/project/project";
 import {
   dziLevels,
@@ -47,6 +48,8 @@ const emit = defineEmits<{
   hover: [at: Point | undefined];
 }>();
 const { t } = useI18n();
+/** The account's preferences: its scale bar (W8.1). */
+const account = useAccountDisplay();
 
 const stored = computed<StoredImage>(() => ({
   project: props.contents.project.id,
@@ -110,6 +113,7 @@ defineExpose({ snapshot: () => tileViewer.value?.snapshot() ?? Promise.resolve(u
       :fit="fit"
       :drawing="drawing"
       :tell="tell"
+      :scale-bar="account.display?.scale_bar ?? true"
       @view="(rect) => emit('view', rect)"
       @press="(at) => emit('press', at)"
       @draw="(rect) => emit('draw', rect)"

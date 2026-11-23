@@ -101,4 +101,44 @@ describe("the display's theme and accent", () => {
     expect(root.getAttribute("data-theme")).toBe("dark");
     expect(root.getAttribute("data-accent")).toBe("dusk");
   });
+
+  describe("the theme's two sources (W8.1)", () => {
+    it("paints this computer's theme first, then follows the account's, and keeps it for the next visit", () => {
+      visit().display.theme = "dark";
+      const next = visit();
+      expect(next.root.getAttribute("data-theme")).toBe("dark");
+      next.display.follow("light");
+      expect(next.root.getAttribute("data-theme")).toBe("light");
+      expect(keptNow()).toEqual({ theme: "light", accent: "magenta", account: "light" });
+      expect(visit().display.theme).toBe("light");
+    });
+
+    it("keeps a choice made here alone, across a visit, until the account says something new", () => {
+      const first = visit();
+      first.display.follow("system");
+      first.display.theme = "dark";
+      // The account's answer from before, now and on the next visit: the choice stands.
+      first.display.follow("system");
+      expect(first.root.getAttribute("data-theme")).toBe("dark");
+      const next = visit();
+      next.display.follow("system");
+      expect(next.root.getAttribute("data-theme")).toBe("dark");
+      // Another browser chooses light, while this one is closed or open: followed.
+      next.display.follow("light");
+      expect(next.root.getAttribute("data-theme")).toBe("light");
+    });
+
+    it("follows the account's on a computer that has followed none, even where it is the theme already", () => {
+      const { display } = visit();
+      display.follow("system");
+      expect(keptNow()).toEqual({ theme: "system", accent: "magenta", account: "system" });
+    });
+
+    it("leaves the accent to this computer", () => {
+      const { display } = visit();
+      display.accent = "fern";
+      display.follow("dark");
+      expect([display.theme, display.accent]).toEqual(["dark", "fern"]);
+    });
+  });
 });
