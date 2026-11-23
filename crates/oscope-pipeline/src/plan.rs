@@ -71,8 +71,7 @@ struct Found {
 }
 
 fn problem(at: impl Into<String>, message: impl Into<String>) -> Problem {
-    let (at, message) = (at.into(), message.into());
-    Problem { at, message }
+    Problem::new(at, message)
 }
 
 impl Plan {
@@ -99,10 +98,13 @@ impl Plan {
         let mut inputs = HashMap::new();
         for (i, port) in recipe.inputs.iter().enumerate() {
             if !is_name(&port.name) || inputs.insert(port.name.as_str(), i).is_some() {
-                problems.push(problem(
-                    format!("inputs[{i}]"),
-                    "it isn't a name, or names another input too",
-                ));
+                problems.push(
+                    problem(
+                        format!("inputs[{i}]"),
+                        "it isn't a name, or names another input too",
+                    )
+                    .on(INPUT, Some(&port.name)),
+                );
             }
         }
         let mut ids = HashMap::new();
@@ -110,10 +112,13 @@ impl Plan {
         for (i, used) in recipe.nodes.iter().enumerate() {
             let at = format!("nodes[{i}] ({})", used.id);
             if !is_name(&used.id) || used.id == INPUT || ids.insert(used.id.as_str(), i).is_some() {
-                problems.push(problem(
-                    &at,
-                    "its ID isn't a name, is `input`, or is another node's too",
-                ));
+                problems.push(
+                    problem(
+                        &at,
+                        "its ID isn't a name, is `input`, or is another node's too",
+                    )
+                    .on(&used.id, None),
+                );
             }
             found.push(find(registry, used, gpu, &at, &mut problems));
         }
@@ -137,16 +142,20 @@ impl Plan {
                             "`{}` gives {gives}, and `{}` takes {takes}",
                             edge.from, edge.to
                         );
-                        problems.push(problem(&at, message));
+                        problems.push(problem(&at, message).on_port(&edge.to));
                     } else if let Some(slot) = slot
                         && slot.replace(source).is_some()
                     {
-                        problems.push(problem(&at, format!("`{}` has another edge too", edge.to)));
+                        let message = format!("`{}` has another edge too", edge.to);
+                        problems.push(problem(&at, message).on_port(&edge.to));
                     }
                 }
                 (from, to) => {
-                    for message in [from.err(), to.err()].into_iter().flatten() {
-                        problems.push(problem(&at, message));
+                    if let Err(message) = from {
+                        problems.push(problem(&at, message).on_port(&edge.from));
+                    }
+                    if let Err(message) = to {
+                        problems.push(problem(&at, message).on_port(&edge.to));
                     }
                 }
             }
@@ -155,11 +164,10 @@ impl Plan {
             let Some(found) = found else { continue };
             for (p, port) in found.node.descriptor().inputs.iter().enumerate() {
                 if !port.optional && !fed.contains(&(n, p)) {
-                    let at = format!("nodes[{n}] ({})", recipe.nodes[n].id);
-                    problems.push(problem(
-                        at,
-                        format!("its input `{}` has no edge", port.name),
-                    ));
+                    let id = &recipe.nodes[n].id;
+                    let at = format!("nodes[{n}] ({id})");
+                    let message = format!("its input `{}` has no edge", port.name);
+                    problems.push(problem(at, message).on(id, Some(&port.name)));
                 }
             }
         }
@@ -176,7 +184,7 @@ impl Plan {
             match lookup.from(&found, &output.from) {
                 Ok(Some((source, _))) => outputs.push((output.name.clone(), source)),
                 Ok(None) => {}
-                Err(message) => problems.push(problem(&at, message)),
+                Err(message) => problems.push(problem(&at, message).on_port(&output.from)),
             }
         }
         if recipe.outputs.is_empty() {
@@ -184,10 +192,10 @@ impl Plan {
         }
         let order = order(&found).unwrap_or_else(|cycle| {
             let names: Vec<&str> = cycle.iter().map(|&n| recipe.nodes[n].id.as_str()).collect();
-            problems.push(problem(
-                "edges",
-                format!("they make a cycle: {}", names.join(" → ")),
-            ));
+            let message = format!("they make a cycle: {}", names.join(" → "));
+            // Once, at the node it starts from: the message names the rest.
+            let first = names.first().copied().unwrap_or_default();
+            problems.push(problem("edges", message).on(first, None));
             Vec::new()
         });
         if !problems.is_empty() {
@@ -326,6 +334,21 @@ impl fmt::Display for Plan {
 /// Finds a recipe's node in the registry, and checks its version, devices
 /// and parameters.
 fn find(
+    registry: &Registry,
+    used: &NodeUse,
+    gpu: bool,
+    at: &str,
+    problems: &mut Vec<Problem>,
+) -> Option<Found> {
+    let start = problems.len();
+    let found = find_at(registry, used, gpu, at, problems);
+    for problem in &mut problems[start..] {
+        problem.node = Some(used.id.clone());
+    }
+    found
+}
+
+fn find_at(
     registry: &Registry,
     used: &NodeUse,
     gpu: bool,

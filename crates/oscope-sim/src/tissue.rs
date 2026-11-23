@@ -7,8 +7,8 @@ use std::f64::consts::PI;
 use oscope_compute::{Image, Shape};
 use oscope_core::{Point2, Rect, Um};
 
-use crate::noise::{coverage, fractal, hash, nth, value};
-use crate::sample::{Layer, LayerKind, Sample, render_pixels};
+use crate::noise::{coverage, fractal, hash, mix, nth, value};
+use crate::sample::{GpuModel, Layer, LayerKind, Sample, render_pixels};
 
 /// The stains' optical densities in red, green and blue, for a unit of
 /// stain, normalised (Ruifrok and Johnston, 2001).
@@ -402,6 +402,74 @@ impl Sample for HeTissue {
         }
         render_pixels(origin, pixel, width, height, |x0, y0| {
             self.density(index, x0, y0, pixel.0)
+        })
+    }
+
+    /// The section for `kernels/tissue.cu`, whose `#define`s name these
+    /// places:
+    ///
+    /// - **numbers:** 0, the nuclei's grid; 1, the holes'; 2 and 3, each
+    ///   stain's optical density per µm; 4, the mean thickness; 5, 1 for
+    ///   DAB; 6, the share of nuclei with DAB; 7–9, its levels; 10 and 11,
+    ///   the fibres' direction's sine and cosine; then from 16, six for each
+    ///   island: its centre, its radii, and its angle's cosine and sine;
+    /// - **salts:** the seed mixed with each salt, as `noise::hash` mixes
+    ///   it: the edges' three octaves, the holes, the thickness's three
+    ///   octaves, the nuclei, the cellularity, the chromatin's three
+    ///   octaves, the two bends, and the fibres' six octaves.
+    fn gpu_model(&self) -> Option<GpuModel> {
+        let (per_um, vector) = self.second();
+        let (sin, cos) = (PI * nth(hash(self.seed, FIBRE_ANGLE, 0, 0), 0)).sin_cos();
+        let mut numbers = vec![0.0; 16];
+        numbers[..12].copy_from_slice(&[
+            Self::CELL,
+            Self::HOLE_CELL,
+            PER_UM_H,
+            per_um,
+            Self::THICKNESS.0,
+            f64::from(u8::from(self.dab)),
+            DAB_POSITIVE,
+            DAB_LEVELS[0],
+            DAB_LEVELS[1],
+            DAB_LEVELS[2],
+            sin,
+            cos,
+        ]);
+        for island in &self.islands {
+            let (sin, cos) = island.angle.sin_cos();
+            numbers.extend([
+                island.centre.x,
+                island.centre.y,
+                island.radii.0,
+                island.radii.1,
+                cos,
+                sin,
+            ]);
+        }
+        let salted = |salt: u64| mix(self.seed ^ salt.wrapping_mul(0x9e37_79b9_7f4a_7c15));
+        let octaves = |salt: u64, n: u64| (0..n).map(move |k| salted(salt.wrapping_add(k)));
+        let salts = octaves(EDGES, 3)
+            .chain([salted(HOLES)])
+            .chain(octaves(THICKNESS, 3))
+            .chain([salted(NUCLEI), salted(CELLULARITY)])
+            .chain(octaves(CHROMATIN, 3))
+            .chain([salted(FIBRE_ANGLE + 1), salted(FIBRE_ANGLE + 2)])
+            .chain(octaves(FIBRES, 6))
+            .collect();
+        let vectors = [
+            HEMATOXYLIN[0],
+            HEMATOXYLIN[1],
+            HEMATOXYLIN[2],
+            vector[0],
+            vector[1],
+            vector[2],
+        ]
+        .map(|v| v as f32);
+        Some(GpuModel::HeTissue {
+            numbers,
+            salts,
+            islands: self.islands.len() as u32,
+            vectors,
         })
     }
 }

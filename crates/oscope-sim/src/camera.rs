@@ -3,13 +3,13 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use oscope_core::{
     BayerPattern, Clock, FrameId, FrameMeta, FramePool, Ms, PixelFormat, PixelRect, Point2, Rect,
-    Timestamp, Um,
+    Timestamp, Um, timing,
 };
 use oscope_hal::{
     Camera, CameraCapabilities, CameraMode, CameraSettings, Error, FrameSink, HalFuture, ModeRate,
@@ -18,8 +18,6 @@ use oscope_hal::{
 use rayon::prelude::*;
 
 use crate::clock::SimClock;
-#[cfg(feature = "cuda")]
-use crate::gpu::GpuFrame;
 use crate::noise::hash;
 use crate::optics::Optics;
 use crate::sensor::{Random, SensorModel};
@@ -29,6 +27,29 @@ use crate::world::{Light, World};
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// The threads cameras render on, one pool in the process: the processor's
+/// threads less the quarter `oscope-compute`'s live pool takes, so that the
+/// preview beside the camera keeps threads of its own (ADR-0062). On rayon's
+/// global pool, all the threads, the camera's frames left the preview
+/// waiting for cores. With 4 threads or fewer, as on CI's runners, there
+/// are too few to share out, and the camera takes them all, as it did.
+fn render_pool() -> &'static rayon::ThreadPool {
+    static POOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
+    POOL.get_or_init(|| {
+        let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
+        let live = (threads / 4).max(2);
+        let camera = match threads <= 4 {
+            true => threads,
+            false => threads - live,
+        };
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(camera)
+            .thread_name(|k| format!("simulated camera {k}"))
+            .build()
+            .expect("the simulated camera's threads")
+    })
 }
 
 /// The 8-bit raw mosaic.
@@ -338,13 +359,41 @@ impl SimCamera {
     }
 
     /// Exposes frames on `cuda`'s GPU from now on, holding up to `slots`
-    /// rendered tiles there: 345 cover a full frame. If the GPU fails, the
-    /// camera goes back to the CPU.
+    /// tiles there, and as many of the H&E section's layer tiles (ADR-0062):
+    /// a full frame at 10× needs 345 and 408. If the GPU fails, the camera
+    /// goes back to the CPU.
     #[cfg(feature = "cuda")]
     pub fn use_gpu(&self, cuda: oscope_compute::cuda::Cuda, slots: usize) -> Result<(), String> {
-        let tiles = crate::gpu::GpuTiles::new(cuda, slots).map_err(|e| e.to_string())?;
+        let response = self.inner.config.response;
+        let tiles = crate::gpu::GpuTiles::new(cuda, slots, response).map_err(|e| e.to_string())?;
         *lock(&self.inner.gpu) = Some(tiles);
         Ok(())
+    }
+
+    /// Pinned memory on the GPU's host, for a frame pool whose frames the
+    /// GPU copies back by DMA: while frames are exposed there.
+    #[cfg(feature = "cuda")]
+    pub fn pinned_allocator(&self) -> Option<oscope_compute::cuda::PinnedAllocator> {
+        lock(&self.inner.gpu)
+            .as_ref()
+            .map(crate::gpu::GpuTiles::pinned_allocator)
+    }
+
+    /// The most new tiles a frame on the GPU makes before it falls back to
+    /// the coarse level: [`gpu::BUDGET`](crate::gpu::BUDGET) by default.
+    #[cfg(feature = "cuda")]
+    pub fn set_tile_budget(&self, tiles: usize) {
+        if let Some(gpu) = lock(&self.inner.gpu).as_mut() {
+            gpu.set_budget(tiles);
+        }
+    }
+
+    /// How the GPU's tiles have done, while frames are exposed there.
+    #[cfg(feature = "cuda")]
+    pub fn gpu_stats(&self) -> Option<crate::gpu::GpuStats> {
+        lock(&self.inner.gpu)
+            .as_ref()
+            .map(crate::gpu::GpuTiles::stats)
     }
 
     /// Whether frames are exposed on the GPU.
@@ -402,9 +451,9 @@ impl Drop for SimCamera {
     }
 }
 
-/// One frame's counts, before they are packed.
-struct Counts {
-    values: Vec<u16>,
+/// What a frame is, once rendered: the sensor's pixels it shows, its
+/// size, its binning and its line time.
+struct Shape {
     roi: PixelRect,
     width: u32,
     height: u32,
@@ -445,13 +494,24 @@ impl Inner {
     }
 
     /// Renders the frame whose first row starts at `start`, at the stage's
-    /// true positions, as 12-bit counts.
-    fn render(&self, settings: &CameraSettings, start: Timestamp, frame: u64) -> Option<Counts> {
+    /// true positions, into `out`: each sample in the frame's format, 16
+    /// bits aligned high or 8 bits. On the GPU if the camera uses it.
+    fn render(
+        &self,
+        settings: &CameraSettings,
+        start: Timestamp,
+        frame: u64,
+        out: &mut [u8],
+    ) -> Option<Shape> {
+        let _rendering = timing::start("camera.render");
         let mut view = *lock(&self.view);
         // The sensor's pixel is the camera's own, whatever the optics say.
         view.optics.sensor_pixel = self.config.pixel_size;
         let mode = self.capabilities.mode(&settings.mode).ok()?;
         let (roi, width, height) = self.capabilities.frame_shape(settings).ok()?;
+        let bytes = settings.format.sample_bytes();
+        let row_bytes = width as usize * bytes;
+        let out = out.get_mut(..row_bytes * height as usize)?;
         let k = mode.binning.max(1);
         let line = mode.line_time.unwrap_or(Ms(0.0));
         let line_d = line.to_duration()?;
@@ -489,10 +549,13 @@ impl Inner {
             Point2::new(f64::MAX, f64::MAX),
             Point2::new(f64::MIN, f64::MIN),
         );
+        // The stage's path during the frame, taken once: its threads find
+        // positions on it without the stage's lock.
+        let path = self.stage.true_path(start);
         let span = end.0.saturating_sub(start.0);
         for j in 0..=32_u64 {
             let at = Timestamp(start.0 + span * j / 32);
-            let s = self.stage.true_position(at);
+            let s = path.at(at);
             for c in &corners {
                 lo = Point2::new(lo.x.min(s.x.0 + c.x), lo.y.min(s.y.0 + c.y));
                 hi = Point2::new(hi.x.max(s.x.0 + c.x), hi.y.max(s.y.0 + c.y));
@@ -515,38 +578,32 @@ impl Inner {
             .read()
             .unwrap_or_else(PoisonError::into_inner)
             .clone();
-        // The rendered tiles, from the cache: only those it lacks are
-        // rendered now.
-        let z = self.stage.true_position(middle).z;
-        let field = self.tiles.field(&world, &optics, view.path, z, region);
-        let sample = |x: f64, y: f64, c: usize| field.sample(x, y, c);
+        let z = path.at(middle).z;
 
         // Where the stage is during each row's exposure: enough places to
         // blur its motion a pixel at a time, up to 64.
+        let motion = timing::start("camera.motion");
         let rows: Vec<Vec<Point2>> = (0..height)
             .into_par_iter()
             .map(|v| {
                 let first = start + line_d * v;
-                let (a, b) = (
-                    self.stage.true_position(first),
-                    self.stage.true_position(first + exposure),
-                );
+                let (a, b) = (path.at(first), path.at(first + exposure));
                 let moved = ((b.x.0 - a.x.0).powi(2) + (b.y.0 - a.y.0).powi(2)).sqrt() / p;
                 let n = (moved.ceil() as u64 + 1).clamp(1, 64);
                 (0..n)
                     .map(|j| {
                         let at = first + exposure.mul_f64((j as f64 + 0.5) / n as f64);
-                        let s = self.stage.true_position(at);
+                        let s = path.at(at);
                         Point2::new(s.x.0, s.y.0)
                     })
                     .collect()
             })
             .collect();
+        motion.stop();
         let sensor = self.config.sensor;
         let exposure_ms = settings.exposure.0;
         let scale = view.light * sensor.electrons_per_ms * exposure_ms * f64::from(k * k);
-        let counts = |values| Counts {
-            values,
+        let shape = Shape {
             roi,
             width,
             height,
@@ -562,8 +619,14 @@ impl Inner {
                     let (o, x, y) = (local(0.0, 0.0), local(1.0, 0.0), local(0.0, 1.0));
                     [x.x - o.x, y.x - o.x, o.x, x.y - o.y, y.y - o.y, o.y]
                 };
-                let job = GpuFrame {
-                    field: &field,
+                let request = crate::gpu::Request {
+                    world: world.clone(),
+                    optics,
+                    light: view.path,
+                    z,
+                    region,
+                };
+                let job = crate::gpu::GpuFrame {
                     rows: &rows,
                     affine,
                     size: (width, height),
@@ -575,25 +638,40 @@ impl Inner {
                     seed: self.config.seed,
                     frame,
                     vignette: [vx0, vy0, f64::from(k), half_diagonal, vignetting],
+                    bytes: bytes as u32,
                 };
-                match device.expose(&job) {
-                    Ok(values) => return Some(counts(values)),
+                let field = timing::time("camera.field", || device.field(&request, &self.tiles));
+                let exposed = field.and_then(|field| {
+                    timing::time("camera.expose_gpu", || device.expose(&field, &job, out))
+                });
+                match exposed {
+                    Ok(()) => {
+                        device.ahead(self.ahead(&request, settings, start, end));
+                        return Some(shape);
+                    }
                     // The GPU failed: this frame and the rest on the CPU.
                     Err(_) => *gpu = None,
                 }
             }
         }
 
-        // Each row, over its own exposure; then the sensor.
-        let mut values = vec![0_u16; width as usize * height as usize];
-        values
-            .par_chunks_mut(width as usize)
+        // The rendered tiles, from the cache: only those it lacks are
+        // rendered now.
+        let field = timing::time("camera.field", || {
+            self.tiles.field(&world, &optics, view.path, z, region)
+        });
+        let sample = |x: f64, y: f64, c: usize| field.sample(x, y, c);
+
+        // Each row, over its own exposure; then the sensor; each count
+        // packed into the frame as it is made.
+        let exposing = timing::start("camera.expose");
+        out.par_chunks_mut(row_bytes)
             .enumerate()
             .for_each(|(v, row)| {
                 let places = &rows[v];
                 let n = places.len();
                 let mut random = Random::new(hash(self.config.seed, frame, v as i64, 0));
-                for (u, out) in row.iter_mut().enumerate() {
+                for u in 0..width as usize {
                     let here = local(u as f64, v as f64);
                     // RGGB: red, green / green, blue.
                     let c = [[0, 1], [1, 2]][v % 2][u % 2];
@@ -604,16 +682,87 @@ impl Inner {
                         / n as f64;
                     let (dx, dy) = (vx0 + f64::from(k) * u as f64, vy0 + f64::from(k) * v as f64);
                     let falloff = vignette(vignetting, dx, dy, half_diagonal);
-                    *out = sensor.count(
+                    let count = sensor.count(
                         light * scale * falloff,
                         exposure_ms / 1e3,
                         k * k,
                         settings.gain,
                         &mut random,
                     );
+                    match bytes {
+                        1 => row[u] = (count >> 4) as u8,
+                        _ => row[2 * u..2 * u + 2].copy_from_slice(&(count << 4).to_le_bytes()),
+                    }
                 }
             });
-        Some(counts(values))
+        exposing.stop();
+        Some(shape)
+    }
+
+    /// Where the frame after the one from `start` to `end` will look, at
+    /// the stage's velocity during it: `request`'s region, moved on by a
+    /// frame's interval; none if the stage is still.
+    #[cfg(feature = "cuda")]
+    fn ahead(
+        &self,
+        request: &crate::gpu::Request,
+        settings: &CameraSettings,
+        start: Timestamp,
+        end: Timestamp,
+    ) -> Option<crate::gpu::Request> {
+        let (a, b) = (
+            self.stage.true_position(start),
+            self.stage.true_position(end),
+        );
+        let span = end.saturating_since(start).as_secs_f64();
+        if span <= 0.0 {
+            return None;
+        }
+        let ahead = self.interval(settings).as_secs_f64() / span;
+        let (dx, dy) = ((b.x.0 - a.x.0) * ahead, (b.y.0 - a.y.0) * ahead);
+        let region = request.region;
+        let moved = Rect::new(
+            region.origin.x + dx,
+            region.origin.y + dy,
+            region.size.width,
+            region.size.height,
+        );
+        let still = (dx * dx + dy * dy).sqrt() < request.optics.pixel_size().0;
+        (!still).then(|| crate::gpu::Request {
+            region: moved,
+            ..request.clone()
+        })
+    }
+
+    /// Makes the tiles that wait for the time between frames, until the
+    /// clock reaches `deadline`; in stepped time, all of them, so that
+    /// frames don't depend on how fast the host is.
+    #[cfg(feature = "cuda")]
+    fn work_until(&self, deadline: Timestamp, stop: &AtomicBool) {
+        let stepped = self.clock.rate() == crate::clock::Rate::Stepped;
+        while !stop.load(Ordering::Acquire) && (stepped || self.clock.now() < deadline) {
+            if !self.work_once() {
+                return;
+            }
+        }
+    }
+
+    /// Makes one batch of the tiles that wait. Whether more wait.
+    #[cfg(feature = "cuda")]
+    fn work_once(&self) -> bool {
+        let mut gpu = lock(&self.gpu);
+        let Some(device) = gpu.as_mut() else {
+            return false;
+        };
+        let work = || render_pool().install(|| device.work(&self.tiles));
+        match timing::time("camera.prefetch", work) {
+            Ok(more) => more,
+            // The GPU failed: the rest on the CPU.
+            Err(_) => {
+                *gpu = None;
+                false
+            }
+        }
     }
 
     /// Streams from `begins` until `stop`: the camera's thread.
@@ -636,7 +785,11 @@ impl Inner {
                 Trigger::FreeRunning => next,
                 Trigger::Software => match triggers.recv_timeout(Duration::from_millis(5)) {
                     Ok(at) => at,
-                    Err(RecvTimeoutError::Timeout) => continue,
+                    Err(RecvTimeoutError::Timeout) => {
+                        #[cfg(feature = "cuda")]
+                        self.work_once();
+                        continue;
+                    }
                     Err(RecvTimeoutError::Disconnected) => return,
                 },
                 Trigger::External { .. } => {
@@ -646,6 +799,8 @@ impl Inner {
                         .into_iter()
                         .find(|p| p.time > last_pulse);
                     let Some(pulse) = pulse else {
+                        #[cfg(feature = "cuda")]
+                        self.work_once();
                         let soon = self.clock.now() + Duration::from_millis(1);
                         if !self.clock.block_until(soon, stop) {
                             return;
@@ -656,39 +811,38 @@ impl Inner {
                     pulse.time
                 }
             };
+            // Until the frame exists, the GPU makes the tiles that wait.
+            #[cfg(feature = "cuda")]
+            self.work_until(start + span, stop);
             // The frame exists once its last row's exposure has ended.
             if !self.clock.block_until(start + span, stop) {
                 return;
             }
-            if let Some(counts) = self.render(&settings, start, id.0) {
-                match pool.take() {
-                    None => dropped += 1,
-                    Some(mut buffer) => {
-                        let bytes = buffer.bytes_mut();
-                        if first.format == BAYER8 {
-                            for (b, c) in bytes.iter_mut().zip(&counts.values) {
-                                *b = (c >> 4) as u8;
-                            }
-                        } else {
-                            for (b, c) in
-                                bytes.as_chunks_mut::<2>().0.iter_mut().zip(&counts.values)
-                            {
-                                *b = (c << 4).to_le_bytes();
-                            }
-                        }
+            // How late the camera starts on the frame, after its exposure.
+            let late = self.clock.now().saturating_since(start + span);
+            timing::record("camera.wake_late", late);
+            // A slab to render into; with none free, the frame is dropped
+            // without rendering it.
+            match pool.take() {
+                None => dropped += 1,
+                Some(mut buffer) => {
+                    let bytes = buffer.bytes_mut();
+                    let rendered =
+                        render_pool().install(|| self.render(&settings, start, id.0, bytes));
+                    if let Some(shape) = rendered {
                         let mut meta = FrameMeta::new(
                             id,
                             first.format,
-                            counts.width,
-                            counts.height,
+                            shape.width,
+                            shape.height,
                             self.clock.now(),
                         );
-                        meta.roi = counts.roi;
-                        meta.binning = counts.binning;
+                        meta.roi = shape.roi;
+                        meta.binning = shape.binning;
                         meta.mode = settings.mode.clone();
                         meta.exposure_start = start;
                         meta.exposure = settings.exposure;
-                        meta.line_time = Some(counts.line);
+                        meta.line_time = Some(shape.line);
                         meta.gain = settings.gain;
                         let black = f64::from(self.config.sensor.black);
                         meta.black_level = if first.format == BAYER8 {

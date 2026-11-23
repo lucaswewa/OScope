@@ -18,3 +18,6 @@ src/features/scan/recorded-scan.json
 src/features/scan/histo/recorded-histo.json
 # Generated: a project's contents, recorded from the simulated instrument (scripts/record-contents.mjs).
 src/features/gallery/project/recorded-contents.json
+# Generated: the node catalogue and the stock recipes, recorded from a server (scripts/record-pipeline.mjs).
+src/features/workspace/editor/recorded-pipeline.json
+src/features/workspace/analyses/recorded-analyses.json

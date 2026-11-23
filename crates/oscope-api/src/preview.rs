@@ -14,11 +14,11 @@ use oscope_acquire::mosaic::LookSource;
 use oscope_acquire::preview::wire::{Header, MASK, STATISTICS, TILES};
 use oscope_acquire::preview::{
     Adaptation, LiveRecipe, Look, Preview, PreviewError, PreviewRequest, Rendered, RingSettings,
-    publish,
+    Timing, publish,
 };
 use oscope_acquire::stats::StatsRequest;
 use oscope_compute::{Compute, ComputeConfig, Image, Shape, cpu};
-use oscope_core::{Frame, PixelRect};
+use oscope_core::{Frame, PixelRect, timing};
 use oscope_ext::Extensions;
 use oscope_imaging::color::{ColourCorrection, Curve, Display, encode_tiff16};
 use oscope_jobs::JobService;
@@ -184,6 +184,9 @@ pub struct RecipeCheck {
     pub steps: Vec<String>,
     /// Its time on an RGB image the default viewport's size, in ms.
     pub time_ms: f64,
+    /// Each step's own time in that run, in ms, by its ID (W7.3). Steps
+    /// on separate branches may run at once, so they can add up to more.
+    pub step_ms: BTreeMap<String, f64>,
     /// That image's width.
     pub width: u32,
     /// Its height.
@@ -220,7 +223,7 @@ fn check(
     engine: &Arc<Engine>,
     recipe: &Recipe,
     size: (u32, u32),
-) -> Result<(LiveRecipe, Duration), String> {
+) -> Result<(LiveRecipe, Timing), String> {
     let plan = engine.plan(recipe).map_err(|error| error.to_string())?;
     let live = LiveRecipe::new(Arc::clone(engine), Arc::new(plan))?;
     let time = live
@@ -349,8 +352,9 @@ impl PreviewThing {
         let (engine, planned) = (Arc::clone(&service.engine), recipe.clone());
         let checked = tokio::task::spawn_blocking(move || check(&engine, &planned, size)).await;
         let checked = checked.map_err(|error| ActionError::handled(error.to_string()))?;
-        let (live, time) = checked.map_err(refused)?;
-        let (time_ms, budget_ms) = (time.as_secs_f64() * 1e3, self.recipe_budget_ms.get());
+        let (live, timing) = checked.map_err(refused)?;
+        let ms = |time: Duration| time.as_secs_f64() * 1e3;
+        let (time_ms, budget_ms) = (ms(timing.total), self.recipe_budget_ms.get());
         if time_ms > budget_ms {
             let (w, h) = size;
             return Err(refused(format!(
@@ -362,9 +366,11 @@ impl PreviewThing {
         self.live_recipe
             .set(Some(recipe))
             .map_err(|e| ActionError::handled(e.to_string()))?;
+        let step_ms = timing.steps.into_iter().map(|(id, time)| (id, ms(time)));
         Ok(Some(RecipeCheck {
             steps,
             time_ms,
+            step_ms: step_ms.collect(),
             width: size.0,
             height: size.1,
             budget_ms,
@@ -656,9 +662,17 @@ impl PreviewThing {
                     false => break,
                 },
             };
+            // How long since the camera finished the frame: acquisition, and
+            // its wait on the bus.
+            let age = service.devices.clock.now();
+            timing::record(
+                "stream.frame_age",
+                age.saturating_since(frame.meta().host_time),
+            );
             // Behind on acknowledging: wait, then take the newest frame,
             // counting those it replaced.
             let mut missed = false;
+            let acknowledged = timing::start("stream.ack_wait");
             while subscriber.params().unshown(sequence) >= AHEAD {
                 if !subscriber.changed().await {
                     break 'session;
@@ -668,6 +682,7 @@ impl PreviewThing {
                     (frame, missed) = (newer, true);
                 }
             }
+            acknowledged.stop();
             let (request, max_fps) = self.request(&subscriber.params(), &adaptation);
             next = Instant::now() + Duration::from_secs_f64(1.0 / max_fps);
             let look = Look::from(&self.look.get());
@@ -676,7 +691,9 @@ impl PreviewThing {
                 .params()
                 .stats
                 .filter(|_| measured.is_none_or(|at| at.elapsed() >= STATS_EVERY));
+            let queued = Instant::now();
             let made = tokio::task::spawn_blocking(move || {
+                timing::record("stream.spawn", queued.elapsed());
                 let mut made = preview.render(&frame, &request, &look, gpu);
                 if let Err(PreviewError::Roi { .. }) = made {
                     let whole = PreviewRequest {
@@ -713,10 +730,12 @@ impl PreviewThing {
             let ready = service.devices.clock.now();
             let header = Header::of(&frame, &rendered, quality, sequence, ready);
             let latency = header.ready.saturating_since(header.exposure_end);
+            timing::record("stream.latency", latency);
             let blocks: Vec<(u8, &[u8])> = blocks.iter().map(|(k, b)| (*k, b.as_slice())).collect();
-            let message = header.message(&rendered.jpeg, &blocks);
+            let message =
+                timing::time("stream.message", || header.message(&rendered.jpeg, &blocks));
             let bytes = message.len();
-            if !subscriber.send(message) {
+            if !timing::time("stream.send", || subscriber.send(message)) {
                 break;
             }
             // Timed from the sending, so that messages with statistics go at

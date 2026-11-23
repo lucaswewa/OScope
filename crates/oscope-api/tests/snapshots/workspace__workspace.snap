@@ -699,6 +699,18 @@ expression: td
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "layout": {
+                    "description": "Where an editor drew each node, by its ID: `[x, y]`, in its own\nunits. The engine ignores it (W7.2).",
+                    "type": "object",
+                    "additionalProperties": {
+                      "items": {
+                        "type": "number"
+                      },
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    }
                   }
                 },
                 "required": [

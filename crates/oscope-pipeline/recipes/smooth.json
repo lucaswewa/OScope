@@ -1,0 +1,8 @@
+{
+  "format": 1,
+  "name": "Smoothed",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [{ "id": "blur", "node": "filter.gaussian", "params": { "sigma": 2.0 } }],
+  "edges": [{ "from": "input.image", "to": "blur.image" }],
+  "outputs": [{ "name": "image", "from": "blur.image" }]
+}

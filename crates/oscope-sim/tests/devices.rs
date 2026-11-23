@@ -90,3 +90,46 @@ async fn a_configuration_the_simulator_cannot_be_is_refused_before_it_is_made() 
         assert_eq!(made.err(), Some(refused));
     }
 }
+
+#[tokio::test]
+async fn the_camera_renders_on_the_gpu_unless_told_not_to() {
+    use oscope_sim::{Simulator, SimulatorConfig};
+    let quarter = |gpu: bool| SimulatorConfig {
+        sensor: "quarter".to_owned(),
+        gpu,
+        ..SimulatorConfig::default()
+    };
+    let simulator = Simulator::new(&quarter(false), std::path::Path::new("."))
+        .await
+        .unwrap();
+    assert!(!simulator.camera.on_gpu());
+    assert_eq!(
+        simulator.on_cpu.as_deref(),
+        Some("the configuration says `gpu = false`")
+    );
+    // By default: on the GPU, with `OSCOPE_CUDA=1` and a build with CUDA;
+    // without CUDA, on the CPU, saying so.
+    let simulator = Simulator::new(&quarter(true), std::path::Path::new("."))
+        .await
+        .unwrap();
+    if !cfg!(feature = "cuda") {
+        assert!(!simulator.camera.on_gpu());
+        assert_eq!(simulator.on_cpu.as_deref(), Some("the build has no CUDA"));
+    } else if std::env::var("OSCOPE_CUDA").as_deref() == Ok("1") {
+        assert!(simulator.camera.on_gpu(), "{:?}", simulator.on_cpu);
+        assert_eq!(simulator.on_cpu, None);
+    }
+}
+
+#[test]
+fn the_gpu_s_tiles_are_sized_by_the_sensor_and_the_free_memory() {
+    use oscope_sim::devices::{GPU_SLOTS, SLOT_BYTES, gpu_slots};
+    let free = 8 << 30;
+    // The full sensor: three frames of 368 tiles, at most 1024; the quarter
+    // sensor, three of 35.
+    assert_eq!(gpu_slots(5472, 3648, free), Some(GPU_SLOTS));
+    assert_eq!(gpu_slots(1368, 912, free), Some(105));
+    // A quarter of what's free, and none below a frame's worth.
+    assert_eq!(gpu_slots(5472, 3648, 4 * 500 * SLOT_BYTES), Some(500));
+    assert_eq!(gpu_slots(5472, 3648, 1 << 30), None);
+}

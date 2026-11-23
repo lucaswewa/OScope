@@ -17,12 +17,14 @@ export interface Tab {
   page: () => Promise<Component>;
 }
 
-const waiting = () => import("@/features/shell/TabPlaceholder.vue");
-
 export const TABS: readonly Tab[] = [
   { name: "control", icon: "control", page: () => import("@/features/control/ControlTab.vue") },
   { name: "scan", icon: "scan", page: () => import("@/features/scan/ScanTab.vue") },
-  { name: "workspace", icon: "workspace", comes: "W7", page: waiting },
+  {
+    name: "workspace",
+    icon: "workspace",
+    page: () => import("@/features/workspace/WorkspaceTab.vue"),
+  },
   { name: "gallery", icon: "gallery", page: () => import("@/features/gallery/GalleryTab.vue") },
   { name: "jobs", icon: "jobs", page: () => import("@/features/jobs/JobsTab.vue") },
   {

@@ -64,6 +64,8 @@ export function descriptorOf(xml: string): ZoomDescriptor {
  */
 export interface Look {
   plane?: number;
+  /** One channel alone, as grey: a stain's amount (W7.6). */
+  channel?: number;
   black?: number;
   white?: number;
   gamma?: number;

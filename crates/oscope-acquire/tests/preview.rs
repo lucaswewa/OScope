@@ -449,6 +449,49 @@ fn the_preview_budget() {
     }
 }
 
+/// `ex-live-view`'s preview with nothing beside it: 1000 × 667 of a 20 MP
+/// frame at quality 80, each step's times over 15 previews, on the CPU and,
+/// with CUDA, on the GPU. The live view's benchmark times the same steps
+/// while the simulated camera renders (`docs/performance/
+/// live-view-baseline.md`). Run it with `cargo test --release -p
+/// oscope-acquire --test preview the_live_view_s_preview -- --ignored
+/// --nocapture`.
+#[test]
+#[ignore = "a benchmark: run it in release"]
+fn the_live_view_s_preview() {
+    use oscope_core::timing;
+    let frame = full_frame();
+    let preview = preview(&ComputeConfig::default());
+    let request = PreviewRequest {
+        quality: 80,
+        ..request((1000, 667), None)
+    };
+    let look = Look::default();
+    let paths: &[bool] = match preview.has_gpu() {
+        true => &[false, true],
+        false => &[false],
+    };
+    for &gpu in paths {
+        preview.render(&frame, &request, &look, gpu).unwrap();
+        timing::reset();
+        timing::enable(true);
+        for _ in 0..15 {
+            let rendered = preview.render(&frame, &request, &look, gpu).unwrap();
+            assert_eq!((rendered.width, rendered.height), (1000, 667));
+            assert_eq!(rendered.gpu, gpu);
+        }
+        timing::enable(false);
+        println!("{}:", if gpu { "GPU" } else { "CPU" });
+        for s in timing::snapshot() {
+            let (p50, mean, p95) = (s.p50_ms, s.mean_ms, s.p95_ms);
+            println!(
+                "  {:24} p50 {p50:6.1}  mean {mean:6.1}  p95 {p95:6.1} ms",
+                s.step
+            );
+        }
+    }
+}
+
 /// With `OSCOPE_CUDA=1`, the GPU's previews are the CPU's, to the byte.
 #[cfg(feature = "cuda")]
 #[test]

@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use oscope_compute::{Image, Lane, Shape};
 use oscope_pipeline::stock::Region;
-use oscope_pipeline::{Engine, Plan, PortType, RunOptions, Value, Values};
+use oscope_pipeline::{Engine, Plan, PortType, RunOptions, StepReport, Value, Values};
 
 use super::PreviewError;
 
@@ -24,6 +24,15 @@ pub struct LiveRecipe {
     engine: Arc<Engine>,
     plan: Arc<Plan>,
     region: bool,
+}
+
+/// What a live recipe takes, timed (W7.3): the whole run, and each step.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Timing {
+    /// From its inputs to its outputs.
+    pub total: Duration,
+    /// Each step's own time, by its ID in the recipe, in the plan's order.
+    pub steps: Vec<(String, Duration)>,
 }
 
 impl fmt::Debug for LiveRecipe {
@@ -73,6 +82,16 @@ impl LiveRecipe {
         image: Value,
         region: Region,
     ) -> Result<(Image, Duration), PreviewError> {
+        let (shown, took, _) = self.run_reported(image, region)?;
+        Ok((shown, took))
+    }
+
+    /// As [`run`](Self::run), with each step's report.
+    fn run_reported(
+        &self,
+        image: Value,
+        region: Region,
+    ) -> Result<(Image, Duration, Vec<StepReport>), PreviewError> {
         let started = Instant::now();
         let failed = |message: String| PreviewError::Recipe(message);
         let size = match &image {
@@ -107,12 +126,12 @@ impl LiveRecipe {
             );
             return Err(failed(message));
         }
-        Ok((shown, started.elapsed()))
+        Ok((shown, started.elapsed(), run.report.steps))
     }
 
-    /// How long a run takes on an RGB image of `width` × `height`: the
-    /// middle of three runs, after one to warm up.
-    pub fn time(&self, width: u32, height: u32) -> Result<Duration, PreviewError> {
+    /// How long a run takes on an RGB image of `width` × `height`, and each
+    /// of its steps: the middle of three runs, after one to warm up.
+    pub fn time(&self, width: u32, height: u32) -> Result<Timing, PreviewError> {
         let shape = Shape::new(width.max(1), height.max(1), 3);
         let data = (0..shape.len()).map(|i| (i % 251) as f32 / 250.0).collect();
         let image = Image::from_vec(shape, data)?;
@@ -126,11 +145,13 @@ impl LiveRecipe {
             frame_height: h,
         };
         self.run(Value::image(image.clone()), region)?;
-        let mut times = Vec::with_capacity(3);
+        let mut runs = Vec::with_capacity(3);
         for _ in 0..3 {
-            times.push(self.run(Value::image(image.clone()), region)?.1);
+            let (_, total, steps) = self.run_reported(Value::image(image.clone()), region)?;
+            let steps = steps.into_iter().map(|step| (step.id, step.time)).collect();
+            runs.push(Timing { total, steps });
         }
-        times.sort();
-        Ok(times[1])
+        runs.sort_by_key(|timing| timing.total);
+        Ok(runs.swap_remove(1))
     }
 }

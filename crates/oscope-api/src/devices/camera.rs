@@ -213,11 +213,21 @@ impl CameraThing {
             .capabilities()
             .frame_shape(&settings)
             .map_err(action_error)?;
-        let pool = FramePool::new(
-            settings.format.frame_bytes(width, height),
-            SLABS,
-            &HeapAllocator,
-        );
+        // Pinned memory when the simulated camera renders on the GPU, which
+        // copies each frame back into it by DMA (ADR-0062).
+        #[cfg(feature = "cuda")]
+        let pinned = devices
+            .simulator
+            .as_ref()
+            .and_then(|s| s.camera.pinned_allocator());
+        #[cfg(feature = "cuda")]
+        let allocator: &dyn oscope_core::SlabAllocator = match &pinned {
+            Some(pinned) => pinned,
+            None => &HeapAllocator,
+        };
+        #[cfg(not(feature = "cuda"))]
+        let allocator = &HeapAllocator;
+        let pool = FramePool::new(settings.format.frame_bytes(width, height), SLABS, allocator);
         let sink = devices.acquisition.sink();
         devices.camera.start(pool, sink).await.map_err(action_error)
     }

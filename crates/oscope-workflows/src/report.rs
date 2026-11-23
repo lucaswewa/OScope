@@ -17,13 +17,13 @@ use oscope_imaging::zoom::Pyramid;
 use oscope_jobs::{Factory, Job, JobCtx, JobSpec, Resource, Stop};
 use oscope_report::{
     Block, Chart, ChartKind, Field, Images, Report, STANDARD, Section, Templates, from_base64,
-    html, pdf,
+    html, pdf, sample,
 };
 use oscope_store::zoom::{ChunkCache, StoredImage, StoredPyramid, default_display, record_image};
 use oscope_store::{Input, RecordKind, Store, StoreError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 
 /// The job's kind.
 pub const MAKE: &str = "report.make";
@@ -344,6 +344,31 @@ fn generated(made: Value) -> Result<(Report, Images), StoreError> {
         images.insert(name.clone(), bytes);
     }
     Ok((report, images))
+}
+
+/// A template's preview (W7.9): OScope's report on `result` of `project`,
+/// or the sample report without one, through `typst` and `html`, kept
+/// nowhere: the PDF's bytes and the HTML. A template's error is refused,
+/// saying where it is.
+pub fn preview(
+    store: &Store,
+    on: Option<(ProjectId, &str)>,
+    typst: &str,
+    html_source: &str,
+) -> Result<(Vec<u8>, String), StoreError> {
+    let refused = |e: oscope_report::ReportError| StoreError::Refused(e.to_string());
+    let (report, images) = match on {
+        Some((project, result)) => {
+            let date = Utc::now().format("%Y-%m-%d").to_string();
+            results_report(store, project, &json!({ "results": [result] }), date)?
+        }
+        None => sample(),
+    };
+    let made = pdf(typst, &report, &images).map_err(refused)?;
+    Ok((
+        made.bytes,
+        html(html_source, &report, &images).map_err(refused)?,
+    ))
 }
 
 /// Makes a report on `project` as `options` say, through `templates`, by

@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "name": "Stains separated: H-DAB, and DAB scored",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [
+    { "id": "stains", "node": "stain.deconvolve", "params": { "stains": "hdab" } },
+    { "id": "dab", "node": "stain.dab", "params": { "stains": "hdab" } },
+    { "id": "score", "node": "stain.dab_score" }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "stains.image" },
+    { "from": "input.image", "to": "dab.image" },
+    { "from": "dab.classes", "to": "score.classes" }
+  ],
+  "outputs": [
+    { "name": "amounts", "from": "stains.amounts" },
+    { "name": "classes", "from": "dab.classes" },
+    { "name": "score", "from": "score.score" }
+  ]
+}

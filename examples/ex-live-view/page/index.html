@@ -20,17 +20,22 @@
   h1 { font-size: 1.4rem; margin: 0 0 4px; }
   .muted { color: var(--muted); }
   .bad { color: var(--bad); }
-  canvas { display: block; width: 100%; aspect-ratio: 3 / 2; background: #000; border: 1px solid var(--line); touch-action: none; }
+  canvas { display: block; width: 1000px; max-width: 100%; aspect-ratio: 1000 / 667; background: #000; border: 1px solid var(--line); touch-action: none; }
   .readout { font: 0.95rem/1.4 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
   button, input { font: inherit; padding: 4px 10px; }
   input[type=number] { width: 7em; }
+  table { border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; margin: 8px 0; }
+  th, td { padding: 2px 8px; border-bottom: 1px solid var(--line); text-align: right; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  tr.part td:first-child { padding-left: 24px; color: var(--muted); }
+  .scroll { overflow-x: auto; }
 </style>
 </head>
 <body>
 <h1>Live view</h1>
-<p class="muted">The simulated camera's frames through the <code>preview</code> Thing's binary WebSocket. Scroll to zoom: the server sends the region asked for.</p>
-<canvas id="view"></canvas>
+<p class="muted">The simulated camera's frames through the <code>preview</code> Thing's binary WebSocket, always 1000 × 667 of the whole 5472 × 3648 sensor, with each step's times.</p>
+<canvas id="view" width="1000" height="667"></canvas>
 <div class="readout" id="stats">connecting…</div>
 <div class="readout" id="position"></div>
 <div class="row">
@@ -45,10 +50,19 @@
 </div>
 <div class="row">
   <label>quality <input type="range" id="quality" min="20" max="100" value="80"></label>
-  <button id="whole">Whole frame</button>
+  <button id="copy">Copy the timings</button>
 </div>
 <p class="muted" id="expected"></p>
 <p id="message" class="muted"></p>
+<h2>Timings</h2>
+<p class="muted">Each step over the last 30 s, in ms: the server's from <code>/bench/timings.json</code>, the page's measured here.</p>
+<div class="scroll">
+<table id="steps">
+  <thead><tr><th>Step</th><th>Name</th><th>per s</th><th>mean</th><th>p50</th><th>p95</th><th>max</th></tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+<p class="muted" id="tiles"></p>
 <script src="app.js"></script>
 </body>
 </html>

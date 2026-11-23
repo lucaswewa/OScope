@@ -25,6 +25,34 @@ import {
   type StoredImage,
   type TailMessage,
 } from "../../src/api/media.ts";
+import {
+  checkRecipe,
+  deleteRecipe,
+  liveRecipe,
+  pipelineNodes,
+  recipeList,
+  recipeNamed,
+  runRecipe,
+  saveRecipe,
+  setLiveRecipe,
+  type Recipe,
+} from "../../src/api/pipeline.ts";
+import {
+  analyse,
+  deleteResult,
+  difference,
+  rerun,
+  resultList,
+  summaryOf,
+} from "../../src/api/workspace.ts";
+import {
+  annotate,
+  annotationsOf,
+  measurementsAddress,
+  measurementsOf,
+  removeAnnotation,
+} from "../../src/api/annotations.ts";
+import { counting, prepared } from "./analyses.ts";
 import { expect, test } from "./fixtures.ts";
 import { fast } from "./sim.ts";
 
@@ -227,4 +255,139 @@ test("the formats, a file staged and the recordings waiting are as the wrappers 
   expect(Object.keys(staged).sort()).toEqual(["bytes", "expires", "id", "name"]);
   expect([staged.name, staged.bytes]).toEqual(["a file.tif", 12]);
   expect(await waitingRecordings({ on })).toEqual([]);
+});
+
+test("the pipeline's catalogue, check, library and run are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  const nodes = await pipelineNodes({ on });
+  const gaussian = nodes.find((node) => node.id === "filter.gaussian")!;
+  expect(gaussian.inputs.map((port) => port.name)).toEqual(["image"]);
+  expect(gaussian.outputs.map((port) => port.name)).toEqual(["image"]);
+  const blur = (sigma: number): Recipe => ({
+    format: 1,
+    name: "contract",
+    inputs: [{ name: "image", type: "image" }],
+    nodes: [{ id: "blur", node: "filter.gaussian", params: { sigma } }],
+    edges: [{ from: "input.image", to: "blur.image" }],
+    outputs: [{ name: "image", from: "blur.image" }],
+  });
+  expect(await checkRecipe(blur(2), { on })).toEqual([]);
+  const broken = { ...blur(2), edges: [] };
+  const faults = await checkRecipe(broken, { on });
+  expect(faults).toEqual([
+    {
+      at: "nodes[0] (blur)",
+      node: "blur",
+      port: "image",
+      message: "its input `image` has no edge",
+    },
+  ]);
+  // The library: the stock recipes first, and one kept, read and deleted.
+  const listed = await recipeList({ on });
+  expect(Object.keys(listed[0]!).sort()).toEqual(["name", "stock", "title"]);
+  expect(listed.filter((one) => one.stock).length).toBeGreaterThan(0);
+  await saveRecipe("contract", blur(3), { on });
+  const kept = await recipeNamed("contract", { on });
+  expect(Object.keys(kept).sort()).toEqual(["name", "recipe", "stock"]);
+  expect([kept.stock, kept.recipe.nodes[0]!.params]).toEqual([false, { sigma: 3 }]);
+  await deleteRecipe("contract", { on });
+  expect((await thrown(recipeNamed("contract", { on }))).status).toBe(404);
+  // A run's input, as the server reads it: refused here for having no records.
+  const project = await act("/api/v1/projects/create", { name: "run" }, { on });
+  const refused = await thrown(runRecipe(project.id, { named: "smooth" }, [], { on }));
+  expect(refused.message).toContain("no records");
+});
+
+test("the live recipe, set and cleared, and its check, are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  await call((signal) => on.api.PUT("/api/v1/preview/recipe_budget_ms", { body: 5_000, signal }));
+  const levels = (await recipeNamed("levels", { on })).recipe;
+  const check = await setLiveRecipe(levels, { on });
+  expect(Object.keys(check!).sort()).toEqual([
+    "budget_ms",
+    "height",
+    "step_ms",
+    "steps",
+    "time_ms",
+    "width",
+  ]);
+  expect(Object.keys(check!.step_ms)).toEqual(["levels"]);
+  expect((await liveRecipe({ on }))?.name).toBe(levels.name);
+  expect(await setLiveRecipe(null, { on })).toBeNull();
+  expect(await liveRecipe({ on })).toBeNull();
+});
+
+test("the Workspace's runs, results, difference and deletion are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  const { project, acquisition } = await prepared(server.url);
+  const input = { kind: "acquisition" as const, id: acquisition };
+  const made = async (job: JobRef) =>
+    (await finished(job, { on, timeout: 60_000 })).results[0]!.split("/").pop()!;
+  const a = await made(await analyse(project, { recipe: counting(10), input }, { on }));
+  const b = await made(await rerun(project, a, { measure: { min_area: 300 } }, { on }));
+  const listed = await resultList(project, { on });
+  expect(listed.map((one) => one.id)).toEqual([a, b]);
+  expect(Object.keys(listed[0]!).sort()).toEqual([
+    "created",
+    "files",
+    "id",
+    "image",
+    "name",
+    "project",
+    "provenance",
+  ]);
+  expect(listed[0]!.files).toEqual(["objects.csv", "summary.json"]);
+  expect(listed[0]!.provenance.inputs).toEqual([input]);
+  expect(await difference(project, a, b, { on })).toEqual([
+    { path: "/recipe/workspace.run/recipe/nodes/measure/params/min_area", before: 10, after: 300 },
+  ]);
+  const summary = await summaryOf(project, a, { on });
+  expect([summary.input, summary.rows]).toEqual([acquisition, { objects: 48 }]);
+  await deleteResult(project, b, { on });
+  expect((await resultList(project, { on })).map((one) => one.id)).toEqual([a]);
+});
+
+test("a record's annotations, kept, read, measured and removed, are as the wrappers have them", async ({
+  server,
+}) => {
+  const on = new Server(server.url);
+  const { project, acquisition } = await prepared(server.url);
+  const record = { project, kind: "acquisition" as const, id: acquisition };
+  const square = [
+    [
+      [10, 10],
+      [40, 10],
+      [40, 40],
+      [10, 40],
+      [10, 10],
+    ],
+  ];
+  const feature = {
+    type: "Feature" as const,
+    geometry: { type: "Polygon" as const, coordinates: square },
+    properties: { name: "a square", shape: "rectangle" },
+  };
+  const kept = await annotate(record, "annotations", feature, { on });
+  expect(kept.id).toBeTruthy();
+  const read = await annotationsOf(record, { on });
+  expect(read.layers.annotations!.features).toEqual([kept]);
+  const [measured] = await measurementsOf(record, "annotations", { on });
+  expect([measured!.id, measured!.name, measured!.unit, measured!.length, measured!.area]).toEqual([
+    kept.id,
+    "a square",
+    "px",
+    120,
+    900,
+  ]);
+  expect(measured!.centroid).toEqual([25, 25]);
+  const csv = await (await fetch(measurementsAddress(record, "annotations", true, on))).text();
+  expect(csv.split("\r\n")[1]).toMatch(/^annotations,\d+,a square,Polygon,120,900,25,25,/);
+  await removeAnnotation(record, "annotations", kept.id!, { on });
+  expect(await measurementsOf(record, "annotations", { on })).toEqual([]);
 });

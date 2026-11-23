@@ -225,6 +225,7 @@ impl ObjectiveMount for SimMount {
 /// lost_steps = [0.0, 5.0]  # the chance a move loses steps, and how far behind it falls, in µm
 /// vignetting = 0.0        # the optics' falloff, 1 / (1 + s r²)²: s
 /// response = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]   # the sensor's colour
+/// gpu = true              # the camera on the GPU, when built with CUDA and there is one
 ///
 /// [[simulator.samples]]   # beyond the built-in ones
 /// name = "my section"
@@ -274,6 +275,9 @@ pub struct SimulatorConfig {
     pub response: [[f64; 3]; 3],
     /// Samples beyond the built-in ones.
     pub samples: Vec<SampleEntry>,
+    /// Whether the camera renders its frames on the GPU, when the build has
+    /// CUDA and there is a GPU (ADR-0062).
+    pub gpu: bool,
 }
 
 impl Default for SimulatorConfig {
@@ -295,6 +299,7 @@ impl Default for SimulatorConfig {
             vignetting: 0.0,
             response: crate::camera::IDEAL,
             samples: Vec::new(),
+            gpu: true,
         }
     }
 }
@@ -316,6 +321,9 @@ pub struct Simulator {
     pub loader: Arc<SlideLoader>,
     /// Faults injected that aren't a device's (P50).
     pub faults: Arc<SimFaults>,
+    /// Why the camera renders on the CPU, if it does: `gpu = false`, a build
+    /// without CUDA, or the GPU's error.
+    pub on_cpu: Option<String>,
 }
 
 /// Faults to inject that aren't a device's (P50): the camera's and the
@@ -442,6 +450,7 @@ impl Simulator {
             Arc::clone(&world),
             optics,
         ));
+        let on_cpu = gpu(&camera, config.gpu);
         let lights = Arc::new(SimLights::new(Arc::clone(&camera)));
         let mount = Arc::new(SimMount::scaled(
             catalogue,
@@ -474,6 +483,51 @@ impl Simulator {
             mount,
             loader,
             faults: Arc::default(),
+            on_cpu,
         })
+    }
+}
+
+/// The most tiles, and layer tiles, a camera holds on the GPU: 0.9 GB in
+/// all, nearly three full frames' worth (ADR-0062).
+pub const GPU_SLOTS: usize = 1024;
+
+/// The bytes a tile and a layer tile take on the GPU, in half precision.
+pub const SLOT_BYTES: usize = 257 * 257 * 3 * 2 + 256 * 256 * 4 * 2;
+
+/// The tiles a camera holds on the GPU, for a sensor of `width` × `height`
+/// with `free` bytes free on the GPU: three frames' worth at full
+/// resolution, up to [`GPU_SLOTS`] and a quarter of the free memory, so
+/// that servers side by side, as in tests, share the GPU. None if that is
+/// less than one frame's worth: the camera then stays on the CPU.
+pub fn gpu_slots(width: u32, height: u32, free: usize) -> Option<usize> {
+    let tile = crate::tiles::TILE;
+    let frame = (width / tile + 2) as usize * (height / tile + 2) as usize;
+    let slots = (3 * frame).clamp(64, GPU_SLOTS).min(free / 4 / SLOT_BYTES);
+    (slots >= frame).then_some(slots)
+}
+
+/// Puts `camera` on the GPU if `wanted` and it can: why not, if it can't.
+fn gpu(camera: &SimCamera, wanted: bool) -> Option<String> {
+    if !wanted {
+        return Some("the configuration says `gpu = false`".to_owned());
+    }
+    #[cfg(feature = "cuda")]
+    {
+        let capabilities = oscope_hal::Camera::capabilities(camera);
+        let (width, height) = (capabilities.sensor_width, capabilities.sensor_height);
+        let put = || -> Result<(), String> {
+            let cuda = oscope_compute::cuda::Cuda::open(0).map_err(|e| e.to_string())?;
+            let (free, _) = cuda.memory().map_err(|e| e.to_string())?;
+            let slots = gpu_slots(width, height, free)
+                .ok_or_else(|| format!("the GPU has {} MB free, too little", free >> 20))?;
+            camera.use_gpu(cuda, slots)
+        };
+        put().err()
+    }
+    #[cfg(not(feature = "cuda"))]
+    {
+        let _ = camera;
+        Some("the build has no CUDA".to_owned())
     }
 }

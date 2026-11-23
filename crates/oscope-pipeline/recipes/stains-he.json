@@ -1,0 +1,8 @@
+{
+  "format": 1,
+  "name": "Stains separated: H&E",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [{ "id": "stains", "node": "stain.deconvolve", "params": { "stains": "he" } }],
+  "edges": [{ "from": "input.image", "to": "stains.image" }],
+  "outputs": [{ "name": "amounts", "from": "stains.amounts" }]
+}

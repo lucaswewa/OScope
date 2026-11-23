@@ -14,7 +14,7 @@ import {
   type ViewLook,
 } from "@/features/gallery/viewer/viewer";
 import { tableOf } from "@/features/live/colourMaps";
-import type { Rect } from "@/ui/tile-viewer/coordinates";
+import type { Point, Rect } from "@/ui/tile-viewer/coordinates";
 import type { TiledImage } from "@/ui/tile-viewer/source";
 import TileViewer from "@/ui/tile-viewer/TileViewer.vue";
 
@@ -30,8 +30,22 @@ const props = defineProps<{
   one: AnyRecord;
   look: ViewLook;
   fit?: Rect | undefined;
+  /** The image at its own origin, not on the stage: its µm from its top-left corner (W7.5). */
+  own?: boolean;
+  /** Whether presses and drags draw, for the annotations (W7.5). */
+  drawing?: boolean;
+  /** One channel alone, as grey: a stain's amount (W7.6). */
+  channel?: number | undefined;
+  /** Whether every view is said, the page's own fits too (W7.6). */
+  tell?: boolean;
 }>();
-const emit = defineEmits<{ view: [rect: Rect] }>();
+const emit = defineEmits<{
+  view: [rect: Rect];
+  press: [at: Point];
+  draw: [rect: Rect];
+  drag: [rect: Rect];
+  hover: [at: Point | undefined];
+}>();
 const { t } = useI18n();
 
 const stored = computed<StoredImage>(() => ({
@@ -40,7 +54,10 @@ const stored = computed<StoredImage>(() => ({
   id: props.one.record.id,
 }));
 const info = computed(() => imageOf(props.one));
-const query = computed(() => lookOf(props.look, info.value?.planes ?? 1));
+const query = computed(() => ({
+  ...lookOf(props.look, info.value?.planes ?? 1),
+  ...(props.channel === undefined ? {} : { channel: props.channel }),
+}));
 
 /** A tile through a colour map's table, as a PNG. */
 async function mapped(picture: Blob, table: Uint8Array): Promise<Blob> {
@@ -74,7 +91,10 @@ const image = computed<TiledImage | undefined>(() => {
     },
   };
 });
-const placement = computed(() => placementOf(props.one, props.contents, query.value.plane ?? 0));
+const placement = computed(() => {
+  const at = placementOf(props.one, props.contents, query.value.plane ?? 0);
+  return at && props.own ? { ...at, x_um: 0, y_um: 0 } : at;
+});
 const tileViewer = shallowRef<InstanceType<typeof TileViewer>>();
 /** The view as it is drawn, a PNG. */
 defineExpose({ snapshot: () => tileViewer.value?.snapshot() ?? Promise.resolve(undefined) });
@@ -88,8 +108,16 @@ defineExpose({ snapshot: () => tileViewer.value?.snapshot() ?? Promise.resolve(u
       :image="image"
       :placement="placement"
       :fit="fit"
+      :drawing="drawing"
+      :tell="tell"
       @view="(rect) => emit('view', rect)"
-    />
+      @press="(at) => emit('press', at)"
+      @draw="(rect) => emit('draw', rect)"
+      @drag="(rect) => emit('drag', rect)"
+      @hover="(at) => emit('hover', at)"
+    >
+      <template #over="scope"><slot name="over" v-bind="scope" /></template>
+    </TileViewer>
   </div>
 </template>
 
