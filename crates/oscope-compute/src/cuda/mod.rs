@@ -25,7 +25,10 @@ mod sim;
 
 pub use color::DemosaicKernel;
 pub use registration::Correlation;
-pub use sim::{Exposure, TileAtlas};
+pub use sim::{
+    Blur, Exposure, HeModel, LayerAtlas, LayerJob, TileAtlas, TileBatch, TileGrid, TileJob,
+    half_to_f32,
+};
 
 /// The image kernels, compiled from `kernels/image.cu` by `build.rs`.
 const IMAGE_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/image.fatbin"));
@@ -48,6 +51,9 @@ const DECONVOLVE_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/deco
 
 /// The simulated camera's kernel, compiled from `kernels/sim.cu`.
 const SIM_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sim.fatbin"));
+
+/// The H&E section's tiles, compiled from `kernels/tissue.cu` (ADR-0062).
+const TISSUE_KERNELS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/tissue.fatbin"));
 
 /// Threads in a block.
 const BLOCK: u32 = 256;
@@ -85,6 +91,12 @@ struct Kernels {
     correct: CudaFunction,
     display: CudaFunction,
     expose: CudaFunction,
+    he_layers: CudaFunction,
+    gather_layers: CudaFunction,
+    blur_line: CudaFunction,
+    box_line: CudaFunction,
+    compose: CudaFunction,
+    to_half: CudaFunction,
     convolve: CudaFunction,
     median: CudaFunction,
     bilateral: CudaFunction,
@@ -136,6 +148,7 @@ impl Cuda {
         let module = context.load_module(Ptx::from_binary(IMAGE_KERNELS.to_vec()))?;
         let color = context.load_module(Ptx::from_binary(COLOR_KERNELS.to_vec()))?;
         let sim = context.load_module(Ptx::from_binary(SIM_KERNELS.to_vec()))?;
+        let tissue = context.load_module(Ptx::from_binary(TISSUE_KERNELS.to_vec()))?;
         let filters = context.load_module(Ptx::from_binary(FILTER_KERNELS.to_vec()))?;
         let registration = context.load_module(Ptx::from_binary(REGISTRATION_KERNELS.to_vec()))?;
         let focus = context.load_module(Ptx::from_binary(FOCUS_KERNELS.to_vec()))?;
@@ -151,6 +164,12 @@ impl Cuda {
             correct: color.load_function("correct")?,
             display: color.load_function("display")?,
             expose: sim.load_function("expose")?,
+            he_layers: tissue.load_function("he_layers")?,
+            gather_layers: tissue.load_function("gather_layers")?,
+            blur_line: tissue.load_function("blur_line")?,
+            box_line: tissue.load_function("box_line")?,
+            compose: tissue.load_function("compose")?,
+            to_half: tissue.load_function("to_half")?,
             convolve: filters.load_function("convolve")?,
             median: filters.load_function("median")?,
             bilateral: filters.load_function("bilateral")?,
@@ -203,6 +222,12 @@ impl Cuda {
             Lane::Live => &self.live,
             Lane::Batch => &self.batch,
         }
+    }
+
+    /// The GPU's free memory and its total, in bytes.
+    pub fn memory(&self) -> Result<(usize, usize), ComputeError> {
+        self.context.bind_to_thread()?;
+        Ok(result::mem_get_info()?)
     }
 
     /// Waits until the lane's work on the GPU is done.

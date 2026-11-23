@@ -376,6 +376,49 @@ async fn the_stage_settles_after_a_move() {
 }
 
 #[tokio::test]
+async fn a_path_gives_the_true_positions_the_stage_gives() {
+    // The default stage, with its backlash, acceleration and settling: a
+    // move, a jog and its stop, and a reversal, each a change of phase.
+    let config = SimStageConfig {
+        require_homing: false,
+        start: mm(10.0, 10.0, 5.0),
+        ..SimStageConfig::default()
+    };
+    let (clock, stage) = stage(config);
+    let s = Arc::clone(&stage);
+    drive(&clock, async move {
+        s.move_to(mm(12.0, 10.0, 5.0), Some(UmPerS(5_000.0))).await
+    })
+    .await
+    .unwrap();
+    clock.advance(Duration::from_millis(20));
+    stage.jog(Axis::X, true, Some(UmPerS(500.0))).await.unwrap();
+    clock.advance(Duration::from_millis(200));
+    let s = Arc::clone(&stage);
+    drive(&clock, async move { s.stop().await }).await.unwrap();
+    let s = Arc::clone(&stage);
+    drive(
+        &clock,
+        async move { s.move_to(mm(11.0, 10.5, 5.0), None).await },
+    )
+    .await
+    .unwrap();
+    // From starts all through that, at every half millisecond to past now:
+    // the same positions, to the bit.
+    let last = clock.now().0 / 1_000_000 + 100;
+    for from in (0..last).step_by(25) {
+        let path = stage.true_path(Timestamp(from * 1_000_000));
+        for at in (2 * from..2 * last).map(|h| Timestamp(h * 500_000)) {
+            assert_eq!(
+                path.at(at),
+                stage.true_position(at),
+                "from {from} ms, at {at:?}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn reports_arrive_every_interval_after_the_latency() {
     let (clock, stage) = stage(exact(None));
     clock.advance_to(Timestamp(1_003_000_000));

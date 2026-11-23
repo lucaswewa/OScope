@@ -36,6 +36,26 @@ pub struct Layer {
     pub kind: LayerKind,
 }
 
+/// A sample's model as the GPU's kernels take it (ADR-0062). Only the H&E
+/// section has one; other samples render their tiles on the CPU.
+#[derive(Clone, Debug, PartialEq)]
+pub enum GpuModel {
+    /// The H&E section, for `oscope-compute`'s `kernels/tissue.cu`: its
+    /// numbers and salted seeds, as [`HeTissue`](crate::HeTissue) lays them
+    /// out, how many islands the numbers hold, and its stains' vectors,
+    /// hematoxylin's then the second stain's.
+    HeTissue {
+        /// The numbers.
+        numbers: Vec<f64>,
+        /// The salted seeds.
+        salts: Vec<u64>,
+        /// The islands.
+        islands: u32,
+        /// The vectors.
+        vectors: [f32; 6],
+    },
+}
+
 /// A sample on a slide, in slide coordinates: micrometres from the slide's
 /// corner, with z up from its top surface.
 pub trait Sample: Send + Sync {
@@ -58,6 +78,12 @@ pub trait Sample: Send + Sync {
     /// two pixels averages away, and a coarse rendering matches a fine one
     /// averaged down: the levels of detail (ADR-0013).
     fn render(&self, index: usize, origin: Point2, pixel: Um, width: u32, height: u32) -> Image;
+
+    /// Its model for the GPU's kernels, if it has one: then the GPU makes
+    /// its tiles in transmitted light (ADR-0062). None by default.
+    fn gpu_model(&self) -> Option<GpuModel> {
+        None
+    }
 
     /// The height above the slide's top surface at which it is sharpest at
     /// `at`, in slide coordinates: the truth autofocus is held to (P34). By

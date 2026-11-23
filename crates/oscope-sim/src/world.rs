@@ -227,38 +227,11 @@ impl World {
         };
         let focal = field.z.0 - self.focus_at(field.centre).0;
         let layers = slide.sample.layers();
-        let seen: Vec<bool> = layers
-            .iter()
-            .map(|l| match (l.kind, fluorescence) {
-                (LayerKind::Fluorescent(dye), Some((line, _))) => dye.excited_by(line) > 1e-6,
-                (LayerKind::Fluorescent(_), None) => false,
-                (_, light) => light.is_none(),
-            })
-            .collect();
-        let sigmas: Vec<f64> = layers
-            .iter()
-            .map(|l| {
-                let wavelength = match l.kind {
-                    LayerKind::Fluorescent(dye) => dye.peaks().1,
-                    _ => optics.wavelength,
-                };
-                let at = Optics {
-                    wavelength,
-                    ..*optics
-                };
-                at.blur(Um(focal - l.z.0)).0 / p
-            })
-            .collect();
-        // The margin the blur needs, up to the blur's cap: beyond it, the
-        // blur repeats the field's edge.
-        let margin = sigmas
-            .iter()
-            .zip(&seen)
-            .filter(|(_, seen)| **seen)
-            .fold(0.0_f64, |m, (s, _)| m.max(*s))
-            .min(MOST_BLUR)
-            .mul_add(3.0, 1.0)
-            .ceil() as u32;
+        let Blurs {
+            seen,
+            sigmas,
+            margin,
+        } = self.blurs(field, optics, light);
         let (we, he) = (w + 2 * margin, h + 2 * margin);
         let origin = Point2::new(
             corner.x - f64::from(margin) * p - slide.origin.x,
@@ -403,6 +376,101 @@ impl World {
             });
         out
     }
+}
+
+impl World {
+    /// The slide's layers that `light` sees, each layer's blur for `field`
+    /// as a standard deviation in pixels, and the margin the blur needs: as
+    /// [`World::render`] blurs them, and the GPU's tiles too (ADR-0062).
+    pub(crate) fn blurs(&self, field: &Field, optics: &Optics, light: Light) -> Blurs {
+        let p = optics.pixel_size().0;
+        let fluorescence = match light {
+            Light::Fluorescence { line, confocal } => Some((line, confocal)),
+            _ => None,
+        };
+        let Some(slide) = &self.slide else {
+            return Blurs {
+                seen: Vec::new(),
+                sigmas: Vec::new(),
+                margin: 1,
+            };
+        };
+        let focal = field.z.0 - self.focus_at(field.centre).0;
+        let layers = slide.sample.layers();
+        let seen: Vec<bool> = layers
+            .iter()
+            .map(|l| match (l.kind, fluorescence) {
+                (LayerKind::Fluorescent(dye), Some((line, _))) => dye.excited_by(line) > 1e-6,
+                (LayerKind::Fluorescent(_), None) => false,
+                (_, light) => light.is_none(),
+            })
+            .collect();
+        let sigmas: Vec<f64> = layers
+            .iter()
+            .map(|l| {
+                let wavelength = match l.kind {
+                    LayerKind::Fluorescent(dye) => dye.peaks().1,
+                    _ => optics.wavelength,
+                };
+                let at = Optics {
+                    wavelength,
+                    ..*optics
+                };
+                at.blur(Um(focal - l.z.0)).0 / p
+            })
+            .collect();
+        // The margin the blur needs, up to the blur's cap: beyond it, the
+        // blur repeats the field's edge.
+        let margin = sigmas
+            .iter()
+            .zip(&seen)
+            .filter(|(_, seen)| **seen)
+            .fold(0.0_f64, |m, (s, _)| m.max(*s))
+            .min(MOST_BLUR)
+            .mul_add(3.0, 1.0)
+            .ceil() as u32;
+        Blurs {
+            seen,
+            sigmas,
+            margin,
+        }
+    }
+}
+
+/// What [`World::blurs`] gives.
+pub(crate) struct Blurs {
+    /// Whether the light sees each layer.
+    pub seen: Vec<bool>,
+    /// Each layer's blur, in pixels.
+    pub sigmas: Vec<f64>,
+    /// The margin the blurs need, in pixels.
+    pub margin: u32,
+}
+
+/// The largest blur, in pixels, at which a layer renders at the field's own
+/// pixel: the GPU's tiles go no further (ADR-0062).
+#[cfg(feature = "cuda")]
+pub(crate) const FINEST_BLUR: f64 = MOST_BLUR;
+
+/// The glass, as the GPU's tiles compose it (ADR-0062): the slide's
+/// rectangle and the coverslip's, on the slide; a surface's transmittance;
+/// an edge's; and the width of an edge's dark band.
+#[cfg(feature = "cuda")]
+pub(crate) fn glass(slide: &Slide) -> [f64; 11] {
+    let (size, c) = (Slide::SIZE, slide.coverslip);
+    [
+        0.0,
+        0.0,
+        size.width,
+        size.height,
+        c.origin.x,
+        c.origin.y,
+        c.size.width,
+        c.size.height,
+        SURFACE,
+        EDGE,
+        EDGE_WIDTH,
+    ]
 }
 
 /// How much of the pixel of side `p` around `(x, y)` lies inside `rect`.

@@ -16,6 +16,8 @@
 //!
 //! - [`tiles`]: the [`TileCache`] of rendered tiles the camera samples, so
 //!   that it renders each piece of the world once, not every frame;
+//! - `gpu`, with the `cuda` feature: the tiles in the GPU's memory, the H&E
+//!   section's made there, and the camera's exposure there (ADR-0062);
 //! - [`world`]: the [`World`], a [`Slide`] with its coverslip and sample on
 //!   the stage, and [`World::render`], which gives the image of a [`Field`]
 //!   in transmitted, reflected or fluorescent [`Light`];
@@ -52,7 +54,7 @@ pub mod colour_target;
 pub mod devices;
 pub mod fluorescence;
 #[cfg(feature = "cuda")]
-mod gpu;
+pub mod gpu;
 pub mod import;
 pub mod motion;
 pub mod noise;
@@ -77,9 +79,9 @@ pub use fluorescence::{Dye, Excitation};
 pub use import::{ImportLight, Imported};
 pub use motion::Segment;
 pub use optics::Optics;
-pub use sample::{Layer, LayerKind, Sample};
+pub use sample::{GpuModel, Layer, LayerKind, Sample};
 pub use sensor::SensorModel;
-pub use stage::{LostSteps, Pulse, Settling, SimStage, SimStageConfig};
+pub use stage::{LostSteps, Pulse, Settling, SimStage, SimStageConfig, TruePath};
 pub use structures::Structures;
 pub use surface::Surface;
 pub use target::TestTarget;

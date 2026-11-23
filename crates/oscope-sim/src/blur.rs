@@ -12,7 +12,7 @@ pub const BOXES_FROM: f64 = 8.0;
 /// How many box filters stand in for a large Gaussian. Four come within
 /// 2% of its standard deviation, and within 5% of its peak anywhere along
 /// an axis.
-const BOXES: usize = 4;
+pub(crate) const BOXES: usize = 4;
 
 /// Blurs `image`, of any number of channels, with a Gaussian of standard
 /// deviation `sigma` pixels, one axis after the other, repeating the edge
@@ -53,7 +53,7 @@ pub fn gaussian(image: &mut Image, sigma: f64) {
 }
 
 /// A Gaussian's weights from −3σ to 3σ, summing to 1.
-fn kernel(sigma: f64) -> Vec<f32> {
+pub(crate) fn kernel(sigma: f64) -> Vec<f32> {
     let radius = (3.0 * sigma).ceil() as i64;
     let raw: Vec<f64> = (-radius..=radius)
         .map(|k| (-(k * k) as f64 / (2.0 * sigma * sigma)).exp())

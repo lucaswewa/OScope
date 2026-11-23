@@ -402,3 +402,61 @@ async fn the_rolling_shutter_shears_a_jog() {
         "{slope} against {expected}"
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_frame_with_no_free_slab_is_dropped_without_rendering_it() {
+    // One slab, which the first frame keeps.
+    let rig = rig(
+        SimCameraConfig::small(768, 576),
+        true,
+        Point2::new(30_000.0, 10_000.0),
+        Rate::Stepped,
+    );
+    let settings = rig.camera.settings().await.unwrap();
+    let (_, w, h) = rig.camera.capabilities().frame_shape(&settings).unwrap();
+    let rate = rig
+        .camera
+        .capabilities()
+        .mode(&settings.mode)
+        .unwrap()
+        .fps(settings.format)
+        .unwrap();
+    let pool = oscope_core::FramePool::new(
+        settings.format.frame_bytes(w, h),
+        1,
+        &oscope_core::HeapAllocator,
+    );
+    let (sender, frames) = std::sync::mpsc::channel();
+    let sink: oscope_hal::FrameSink = Arc::new(move |buffer, meta| {
+        let _ = sender.send((buffer, meta));
+    });
+    rig.camera.start(pool.clone(), sink).await.unwrap();
+    let end = |k: u32| {
+        Timestamp(0) + Duration::from_secs_f64(f64::from(k) / rate) - Duration::from_millis(1)
+    };
+    rig.clock.advance_to(end(1));
+    let kept = frames.recv_timeout(Duration::from_secs(60)).unwrap();
+    let looked = rig.camera.cache_stats();
+    // The second frame finds no slab: it is counted, and not rendered, so
+    // it never asks the cache for its tiles.
+    rig.clock.advance_to(end(2));
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while pool.stats().exhausted == 0 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the second frame never asked for a slab"
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    let after = rig.camera.cache_stats();
+    assert_eq!(
+        (after.hits, after.misses),
+        (looked.hits, looked.misses),
+        "the dropped frame was rendered"
+    );
+    drop(kept);
+    rig.clock.advance_to(end(3));
+    let (_, meta) = frames.recv_timeout(Duration::from_secs(60)).unwrap();
+    assert_eq!(meta.dropped_before, 1);
+    rig.camera.stop().await.unwrap();
+}

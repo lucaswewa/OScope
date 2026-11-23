@@ -158,6 +158,10 @@ impl Devices {
         ];
         let simulator = if names.iter().any(|n| *n == "sim") {
             let simulator = Arc::new(Simulator::new(&config.simulator, base).await?);
+            match &simulator.on_cpu {
+                None => tracing::info!("the simulated camera renders on the GPU"),
+                Some(why) => tracing::info!("the simulated camera renders on the CPU: {why}"),
+            }
             let stage = Arc::clone(&simulator.stage);
             tokio::spawn(async move { stage.run().await });
             Some(simulator)

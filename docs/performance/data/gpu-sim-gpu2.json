@@ -1,0 +1,1569 @@
+{
+  "label": "pool-gpu2",
+  "url": "http://127.0.0.1:8218/",
+  "at": "2026-11-21T08:34:17.078Z",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "threads": 20,
+    "memory_gb": 16,
+    "os": "Windows_NT 10.0.26300"
+  },
+  "browser": "chrome 157.0.8103.80, headless",
+  "windows": {
+    "start": {
+      "at": "2026-11-21T08:33:14.022Z",
+      "size": [
+        1000,
+        667
+      ],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "webgl": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Ti Laptop GPU (0x000024A0) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "steps": {
+        "acquisition.position_wait": {
+          "step": "acquisition.position_wait",
+          "count": 217,
+          "per_s": 7.235742299761568,
+          "mean_ms": 0.0014700460829493096,
+          "p50_ms": 0.0014,
+          "p95_ms": 0.002,
+          "max_ms": 0.0043
+        },
+        "acquisition.publish": {
+          "step": "acquisition.publish",
+          "count": 217,
+          "per_s": 7.2357340585539855,
+          "mean_ms": 0.008706912442396318,
+          "p50_ms": 0.0078,
+          "p95_ms": 0.013,
+          "max_ms": 0.0409
+        },
+        "camera.expose_gpu": {
+          "step": "camera.expose_gpu",
+          "count": 217,
+          "per_s": 7.235746396133499,
+          "mean_ms": 14.002700921658992,
+          "p50_ms": 18.148899999999998,
+          "p95_ms": 20.8086,
+          "max_ms": 23.546
+        },
+        "camera.field": {
+          "step": "camera.field",
+          "count": 217,
+          "per_s": 7.2387883961297055,
+          "mean_ms": 0.10079032258064512,
+          "p50_ms": 0.0655,
+          "p95_ms": 0.2812,
+          "max_ms": 0.4597
+        },
+        "camera.gpu_layers": {
+          "step": "camera.gpu_layers",
+          "count": 3,
+          "per_s": 33.05501014788811,
+          "mean_ms": 27.371533333333332,
+          "p50_ms": 37.5238,
+          "p95_ms": 38.8863,
+          "max_ms": 38.8863
+        },
+        "camera.gpu_tiles": {
+          "step": "camera.gpu_tiles",
+          "count": 3,
+          "per_s": 36.92094118863278,
+          "mean_ms": 5.6885,
+          "p50_ms": 7.7814,
+          "p95_ms": 7.820900000000001,
+          "max_ms": 7.820900000000001
+        },
+        "camera.motion": {
+          "step": "camera.motion",
+          "count": 217,
+          "per_s": 7.23874790760808,
+          "mean_ms": 8.044643317972351,
+          "p50_ms": 7.838299999999999,
+          "p95_ms": 14.3377,
+          "max_ms": 40.9737
+        },
+        "camera.prefetch": {
+          "step": "camera.prefetch",
+          "count": 220,
+          "per_s": 7.32059231373708,
+          "mean_ms": 0.5563659090909091,
+          "p50_ms": 0.1056,
+          "p95_ms": 0.1959,
+          "max_ms": 46.8543
+        },
+        "camera.render": {
+          "step": "camera.render",
+          "count": 217,
+          "per_s": 7.2357482382904355,
+          "mean_ms": 22.263647004608305,
+          "p50_ms": 25.095200000000002,
+          "p95_ms": 31.575400000000002,
+          "max_ms": 64.5494
+        },
+        "camera.wake_late": {
+          "step": "camera.wake_late",
+          "count": 217,
+          "per_s": 7.2397416204591,
+          "mean_ms": 0.830570746543779,
+          "p50_ms": 0.8034020000000001,
+          "p95_ms": 1.666618,
+          "max_ms": 2.633443
+        },
+        "preview.gpu.bin": {
+          "step": "preview.gpu.bin",
+          "count": 215,
+          "per_s": 7.230088254173631,
+          "mean_ms": 1.5594376744186043,
+          "p50_ms": 2.4205,
+          "p95_ms": 2.4499,
+          "max_ms": 2.5526
+        },
+        "preview.gpu.black": {
+          "step": "preview.gpu.black",
+          "count": 215,
+          "per_s": 7.229910379787733,
+          "mean_ms": 0.5344962790697674,
+          "p50_ms": 0.8128000000000001,
+          "p95_ms": 0.8311,
+          "max_ms": 2.4958
+        },
+        "preview.gpu.demosaic": {
+          "step": "preview.gpu.demosaic",
+          "count": 215,
+          "per_s": 7.230615113664847,
+          "mean_ms": 3.3910358139534895,
+          "p50_ms": 5.2106,
+          "p95_ms": 5.2594,
+          "max_ms": 7.2486
+        },
+        "preview.gpu.to_display": {
+          "step": "preview.gpu.to_display",
+          "count": 215,
+          "per_s": 7.229463680581511,
+          "mean_ms": 3.0862427906976735,
+          "p50_ms": 3.439,
+          "p95_ms": 4.0257000000000005,
+          "max_ms": 5.4415000000000004
+        },
+        "preview.gpu.to_f32": {
+          "step": "preview.gpu.to_f32",
+          "count": 215,
+          "per_s": 7.231749488953553,
+          "mean_ms": 12.67371162790698,
+          "p50_ms": 18.180600000000002,
+          "p95_ms": 18.8526,
+          "max_ms": 20.545
+        },
+        "preview.jpeg": {
+          "step": "preview.jpeg",
+          "count": 215,
+          "per_s": 7.2293148500967614,
+          "mean_ms": 2.7618999999999994,
+          "p50_ms": 2.6862,
+          "p95_ms": 3.1903,
+          "max_ms": 5.2333
+        },
+        "preview.render": {
+          "step": "preview.render",
+          "count": 215,
+          "per_s": 7.229315143160287,
+          "mean_ms": 28.42474790697674,
+          "p50_ms": 36.9381,
+          "p95_ms": 38.849000000000004,
+          "max_ms": 41.4231
+        },
+        "preview.resize": {
+          "step": "preview.resize",
+          "count": 215,
+          "per_s": 7.2293130428722145,
+          "mean_ms": 4.123499069767442,
+          "p50_ms": 3.8733,
+          "p95_ms": 5.7127,
+          "max_ms": 9.2639
+        },
+        "stream.ack_wait": {
+          "step": "stream.ack_wait",
+          "count": 215,
+          "per_s": 7.235377748709441,
+          "mean_ms": 0.0003790697674418605,
+          "p50_ms": 0.0003,
+          "p95_ms": 0.0007,
+          "max_ms": 0.0022
+        },
+        "stream.frame_age": {
+          "step": "stream.frame_age",
+          "count": 215,
+          "per_s": 7.235376965895452,
+          "mean_ms": 0.04762186046511629,
+          "p50_ms": 0.039799999999999995,
+          "p95_ms": 0.09720000000000001,
+          "max_ms": 0.2018
+        },
+        "stream.latency": {
+          "step": "stream.latency",
+          "count": 215,
+          "per_s": 7.229319661225973,
+          "mean_ms": 52.04510857209302,
+          "p50_ms": 63.749427,
+          "p95_ms": 70.849419,
+          "max_ms": 101.87392200000001
+        },
+        "stream.message": {
+          "step": "stream.message",
+          "count": 215,
+          "per_s": 7.2293275251159335,
+          "mean_ms": 0.012840465116279072,
+          "p50_ms": 0.0094,
+          "p95_ms": 0.0363,
+          "max_ms": 0.0686
+        },
+        "stream.send": {
+          "step": "stream.send",
+          "count": 215,
+          "per_s": 7.229328331043511,
+          "mean_ms": 0.0015776744186046516,
+          "p50_ms": 0.0014,
+          "p95_ms": 0.0027,
+          "max_ms": 0.009300000000000001
+        },
+        "stream.spawn": {
+          "step": "stream.spawn",
+          "count": 215,
+          "per_s": 7.235381736170826,
+          "mean_ms": 0.02212837209302326,
+          "p50_ms": 0.0176,
+          "p95_ms": 0.0466,
+          "max_ms": 0.2377
+        },
+        "page.transit": {
+          "count": 217,
+          "per_s": 7.2304885600950675,
+          "mean_ms": 0.7412874423963134,
+          "p50_ms": 0.557861328125,
+          "p95_ms": 1.4375,
+          "max_ms": 1.934326171875
+        },
+        "page.decode": {
+          "count": 217,
+          "per_s": 7.2304885600950675,
+          "mean_ms": 2.941474653334112,
+          "p50_ms": 2.899999976158142,
+          "p95_ms": 3.399999976158142,
+          "max_ms": 5.199999988079071
+        },
+        "page.draw": {
+          "count": 217,
+          "per_s": 7.2304885600950675,
+          "mean_ms": 1.3525345622119815,
+          "p50_ms": 1.300000011920929,
+          "p95_ms": 1.5,
+          "max_ms": 2.199999988079071
+        },
+        "page.end_to_end": {
+          "count": 217,
+          "per_s": 7.2304885600950675,
+          "mean_ms": 57.3871811545939,
+          "p50_ms": 68.572265625,
+          "p95_ms": 75.825927734375,
+          "max_ms": 107.28662109375
+        },
+        "page.next_frame": {
+          "count": 217,
+          "per_s": 7.2304885600950675,
+          "mean_ms": 1.5741935476729398,
+          "p50_ms": 0.3999999761581421,
+          "p95_ms": 10.700000047683716,
+          "max_ms": 15.600000023841858
+        },
+        "page.interval": {
+          "count": 217,
+          "per_s": 7.2304885600950675,
+          "mean_ms": 138.33271889395428,
+          "p50_ms": 138,
+          "p95_ms": 147.69999998807907,
+          "max_ms": 190.0999999642372
+        }
+      },
+      "server": {
+        "clock_to_epoch_ms": 1795249936081.3992,
+        "window_s": 30,
+        "camera": {
+          "gpu": true,
+          "tiles": {
+            "hits": 0,
+            "misses": 0,
+            "held": 0,
+            "bytes": 0
+          }
+        },
+        "frames": {
+          "published": 220,
+          "unplaced": 0,
+          "refused": 0
+        },
+        "steps": [
+          {
+            "step": "acquisition.position_wait",
+            "count": 217,
+            "per_s": 7.235742299761568,
+            "mean_ms": 0.0014700460829493096,
+            "p50_ms": 0.0014,
+            "p95_ms": 0.002,
+            "max_ms": 0.0043
+          },
+          {
+            "step": "acquisition.publish",
+            "count": 217,
+            "per_s": 7.2357340585539855,
+            "mean_ms": 0.008706912442396318,
+            "p50_ms": 0.0078,
+            "p95_ms": 0.013,
+            "max_ms": 0.0409
+          },
+          {
+            "step": "camera.expose_gpu",
+            "count": 217,
+            "per_s": 7.235746396133499,
+            "mean_ms": 14.002700921658992,
+            "p50_ms": 18.148899999999998,
+            "p95_ms": 20.8086,
+            "max_ms": 23.546
+          },
+          {
+            "step": "camera.field",
+            "count": 217,
+            "per_s": 7.2387883961297055,
+            "mean_ms": 0.10079032258064512,
+            "p50_ms": 0.0655,
+            "p95_ms": 0.2812,
+            "max_ms": 0.4597
+          },
+          {
+            "step": "camera.gpu_layers",
+            "count": 3,
+            "per_s": 33.05501014788811,
+            "mean_ms": 27.371533333333332,
+            "p50_ms": 37.5238,
+            "p95_ms": 38.8863,
+            "max_ms": 38.8863
+          },
+          {
+            "step": "camera.gpu_tiles",
+            "count": 3,
+            "per_s": 36.92094118863278,
+            "mean_ms": 5.6885,
+            "p50_ms": 7.7814,
+            "p95_ms": 7.820900000000001,
+            "max_ms": 7.820900000000001
+          },
+          {
+            "step": "camera.motion",
+            "count": 217,
+            "per_s": 7.23874790760808,
+            "mean_ms": 8.044643317972351,
+            "p50_ms": 7.838299999999999,
+            "p95_ms": 14.3377,
+            "max_ms": 40.9737
+          },
+          {
+            "step": "camera.prefetch",
+            "count": 220,
+            "per_s": 7.32059231373708,
+            "mean_ms": 0.5563659090909091,
+            "p50_ms": 0.1056,
+            "p95_ms": 0.1959,
+            "max_ms": 46.8543
+          },
+          {
+            "step": "camera.render",
+            "count": 217,
+            "per_s": 7.2357482382904355,
+            "mean_ms": 22.263647004608305,
+            "p50_ms": 25.095200000000002,
+            "p95_ms": 31.575400000000002,
+            "max_ms": 64.5494
+          },
+          {
+            "step": "camera.wake_late",
+            "count": 217,
+            "per_s": 7.2397416204591,
+            "mean_ms": 0.830570746543779,
+            "p50_ms": 0.8034020000000001,
+            "p95_ms": 1.666618,
+            "max_ms": 2.633443
+          },
+          {
+            "step": "preview.gpu.bin",
+            "count": 215,
+            "per_s": 7.230088254173631,
+            "mean_ms": 1.5594376744186043,
+            "p50_ms": 2.4205,
+            "p95_ms": 2.4499,
+            "max_ms": 2.5526
+          },
+          {
+            "step": "preview.gpu.black",
+            "count": 215,
+            "per_s": 7.229910379787733,
+            "mean_ms": 0.5344962790697674,
+            "p50_ms": 0.8128000000000001,
+            "p95_ms": 0.8311,
+            "max_ms": 2.4958
+          },
+          {
+            "step": "preview.gpu.demosaic",
+            "count": 215,
+            "per_s": 7.230615113664847,
+            "mean_ms": 3.3910358139534895,
+            "p50_ms": 5.2106,
+            "p95_ms": 5.2594,
+            "max_ms": 7.2486
+          },
+          {
+            "step": "preview.gpu.to_display",
+            "count": 215,
+            "per_s": 7.229463680581511,
+            "mean_ms": 3.0862427906976735,
+            "p50_ms": 3.439,
+            "p95_ms": 4.0257000000000005,
+            "max_ms": 5.4415000000000004
+          },
+          {
+            "step": "preview.gpu.to_f32",
+            "count": 215,
+            "per_s": 7.231749488953553,
+            "mean_ms": 12.67371162790698,
+            "p50_ms": 18.180600000000002,
+            "p95_ms": 18.8526,
+            "max_ms": 20.545
+          },
+          {
+            "step": "preview.jpeg",
+            "count": 215,
+            "per_s": 7.2293148500967614,
+            "mean_ms": 2.7618999999999994,
+            "p50_ms": 2.6862,
+            "p95_ms": 3.1903,
+            "max_ms": 5.2333
+          },
+          {
+            "step": "preview.render",
+            "count": 215,
+            "per_s": 7.229315143160287,
+            "mean_ms": 28.42474790697674,
+            "p50_ms": 36.9381,
+            "p95_ms": 38.849000000000004,
+            "max_ms": 41.4231
+          },
+          {
+            "step": "preview.resize",
+            "count": 215,
+            "per_s": 7.2293130428722145,
+            "mean_ms": 4.123499069767442,
+            "p50_ms": 3.8733,
+            "p95_ms": 5.7127,
+            "max_ms": 9.2639
+          },
+          {
+            "step": "stream.ack_wait",
+            "count": 215,
+            "per_s": 7.235377748709441,
+            "mean_ms": 0.0003790697674418605,
+            "p50_ms": 0.0003,
+            "p95_ms": 0.0007,
+            "max_ms": 0.0022
+          },
+          {
+            "step": "stream.frame_age",
+            "count": 215,
+            "per_s": 7.235376965895452,
+            "mean_ms": 0.04762186046511629,
+            "p50_ms": 0.039799999999999995,
+            "p95_ms": 0.09720000000000001,
+            "max_ms": 0.2018
+          },
+          {
+            "step": "stream.latency",
+            "count": 215,
+            "per_s": 7.229319661225973,
+            "mean_ms": 52.04510857209302,
+            "p50_ms": 63.749427,
+            "p95_ms": 70.849419,
+            "max_ms": 101.87392200000001
+          },
+          {
+            "step": "stream.message",
+            "count": 215,
+            "per_s": 7.2293275251159335,
+            "mean_ms": 0.012840465116279072,
+            "p50_ms": 0.0094,
+            "p95_ms": 0.0363,
+            "max_ms": 0.0686
+          },
+          {
+            "step": "stream.send",
+            "count": 215,
+            "per_s": 7.229328331043511,
+            "mean_ms": 0.0015776744186046516,
+            "p50_ms": 0.0014,
+            "p95_ms": 0.0027,
+            "max_ms": 0.009300000000000001
+          },
+          {
+            "step": "stream.spawn",
+            "count": 215,
+            "per_s": 7.235381736170826,
+            "mean_ms": 0.02212837209302326,
+            "p50_ms": 0.0176,
+            "p95_ms": 0.0466,
+            "max_ms": 0.2377
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "session": 1,
+          "fps": 8,
+          "latency_ms": 67.0271525,
+          "bytes_per_s": 902274,
+          "sent": 217,
+          "dropped": 0,
+          "quality": 80,
+          "width": 1000,
+          "height": 667,
+          "gpu": true,
+          "recipe_ms": null
+        }
+      ]
+    },
+    "still": {
+      "at": "2026-11-21T08:33:45.535Z",
+      "size": [
+        1000,
+        667
+      ],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "webgl": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Ti Laptop GPU (0x000024A0) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "steps": {
+        "acquisition.position_wait": {
+          "step": "acquisition.position_wait",
+          "count": 218,
+          "per_s": 7.240361600608121,
+          "mean_ms": 0.0017518348623853201,
+          "p50_ms": 0.0015,
+          "p95_ms": 0.0025,
+          "max_ms": 0.0275
+        },
+        "acquisition.publish": {
+          "step": "acquisition.publish",
+          "count": 217,
+          "per_s": 7.240177191269794,
+          "mean_ms": 0.009272811059907836,
+          "p50_ms": 0.0081,
+          "p95_ms": 0.0201,
+          "max_ms": 0.0448
+        },
+        "camera.expose_gpu": {
+          "step": "camera.expose_gpu",
+          "count": 218,
+          "per_s": 7.240358967388278,
+          "mean_ms": 15.078502752293577,
+          "p50_ms": 18.1995,
+          "p95_ms": 20.968,
+          "max_ms": 22.5386
+        },
+        "camera.field": {
+          "step": "camera.field",
+          "count": 218,
+          "per_s": 7.240218926336658,
+          "mean_ms": 0.08585688073394496,
+          "p50_ms": 0.06509999999999999,
+          "p95_ms": 0.2319,
+          "max_ms": 0.5539
+        },
+        "camera.motion": {
+          "step": "camera.motion",
+          "count": 218,
+          "per_s": 7.240219651047838,
+          "mean_ms": 7.5920555045871545,
+          "p50_ms": 7.7301,
+          "p95_ms": 10.1656,
+          "max_ms": 20.7466
+        },
+        "camera.prefetch": {
+          "step": "camera.prefetch",
+          "count": 217,
+          "per_s": 7.240162144772003,
+          "mean_ms": 0.11080552995391703,
+          "p50_ms": 0.1079,
+          "p95_ms": 0.1897,
+          "max_ms": 0.428
+        },
+        "camera.render": {
+          "step": "camera.render",
+          "count": 218,
+          "per_s": 7.240361987135965,
+          "mean_ms": 22.877051376146788,
+          "p50_ms": 25.655399999999997,
+          "p95_ms": 29.057,
+          "max_ms": 39.1053
+        },
+        "camera.wake_late": {
+          "step": "camera.wake_late",
+          "count": 218,
+          "per_s": 7.240293089199636,
+          "mean_ms": 0.8493724908256882,
+          "p50_ms": 0.786272,
+          "p95_ms": 1.757185,
+          "max_ms": 2.2552779999999997
+        },
+        "preview.gpu.bin": {
+          "step": "preview.gpu.bin",
+          "count": 217,
+          "per_s": 7.240297298540161,
+          "mean_ms": 1.7231737327188934,
+          "p50_ms": 2.4232,
+          "p95_ms": 2.4511,
+          "max_ms": 4.5267
+        },
+        "preview.gpu.black": {
+          "step": "preview.gpu.black",
+          "count": 217,
+          "per_s": 7.24030004098345,
+          "mean_ms": 0.5864682027649772,
+          "p50_ms": 0.8169,
+          "p95_ms": 0.8352,
+          "max_ms": 2.4727
+        },
+        "preview.gpu.demosaic": {
+          "step": "preview.gpu.demosaic",
+          "count": 217,
+          "per_s": 7.240289095492102,
+          "mean_ms": 3.6711414746543767,
+          "p50_ms": 5.2104,
+          "p95_ms": 5.2474,
+          "max_ms": 7.0762
+        },
+        "preview.gpu.to_display": {
+          "step": "preview.gpu.to_display",
+          "count": 217,
+          "per_s": 7.240318971179636,
+          "mean_ms": 3.2624658986175126,
+          "p50_ms": 3.5976,
+          "p95_ms": 4.0447,
+          "max_ms": 5.8378
+        },
+        "preview.gpu.to_f32": {
+          "step": "preview.gpu.to_f32",
+          "count": 217,
+          "per_s": 7.240271742951689,
+          "mean_ms": 13.74355115207374,
+          "p50_ms": 18.567,
+          "p95_ms": 18.8945,
+          "max_ms": 20.8569
+        },
+        "preview.jpeg": {
+          "step": "preview.jpeg",
+          "count": 217,
+          "per_s": 7.240910759609888,
+          "mean_ms": 2.803622580645161,
+          "p50_ms": 2.6929,
+          "p95_ms": 3.4092,
+          "max_ms": 5.5263
+        },
+        "preview.render": {
+          "step": "preview.render",
+          "count": 217,
+          "per_s": 7.2408945206659405,
+          "mean_ms": 30.188664516129027,
+          "p50_ms": 37.333400000000005,
+          "p95_ms": 38.7295,
+          "max_ms": 41.1317
+        },
+        "preview.resize": {
+          "step": "preview.resize",
+          "count": 217,
+          "per_s": 7.240566043586236,
+          "mean_ms": 4.117128110599078,
+          "p50_ms": 3.8767,
+          "p95_ms": 5.4257,
+          "max_ms": 10.5788
+        },
+        "stream.ack_wait": {
+          "step": "stream.ack_wait",
+          "count": 217,
+          "per_s": 7.24017680297229,
+          "mean_ms": 0.0005110599078341016,
+          "p50_ms": 0.00039999999999999996,
+          "p95_ms": 0.0007,
+          "max_ms": 0.0143
+        },
+        "stream.frame_age": {
+          "step": "stream.frame_age",
+          "count": 217,
+          "per_s": 7.240176778703699,
+          "mean_ms": 0.05184793087557606,
+          "p50_ms": 0.0406,
+          "p95_ms": 0.103001,
+          "max_ms": 0.6097
+        },
+        "stream.latency": {
+          "step": "stream.latency",
+          "count": 217,
+          "per_s": 7.240973749924745,
+          "mean_ms": 54.35916925345623,
+          "p50_ms": 64.338826,
+          "p95_ms": 68.605712,
+          "max_ms": 77.618777
+        },
+        "stream.message": {
+          "step": "stream.message",
+          "count": 217,
+          "per_s": 7.240979138742453,
+          "mean_ms": 0.011418433179723499,
+          "p50_ms": 0.0099,
+          "p95_ms": 0.017900000000000003,
+          "max_ms": 0.0487
+        },
+        "stream.send": {
+          "step": "stream.send",
+          "count": 217,
+          "per_s": 7.240979891235655,
+          "mean_ms": 0.0016036866359447016,
+          "p50_ms": 0.0013,
+          "p95_ms": 0.0031,
+          "max_ms": 0.0073
+        },
+        "stream.spawn": {
+          "step": "stream.spawn",
+          "count": 217,
+          "per_s": 7.240169376790555,
+          "mean_ms": 0.023289861751152073,
+          "p50_ms": 0.018199999999999997,
+          "p95_ms": 0.041,
+          "max_ms": 0.1681
+        },
+        "page.transit": {
+          "count": 217,
+          "per_s": 7.232837080356314,
+          "mean_ms": 0.7334423153081797,
+          "p50_ms": 0.59619140625,
+          "p95_ms": 1.3232421875,
+          "max_ms": 1.5234375
+        },
+        "page.decode": {
+          "count": 217,
+          "per_s": 7.232837080356314,
+          "mean_ms": 2.9096774219917263,
+          "p50_ms": 2.899999976158142,
+          "p95_ms": 3.199999988079071,
+          "max_ms": 3.900000035762787
+        },
+        "page.draw": {
+          "count": 217,
+          "per_s": 7.232837080356314,
+          "mean_ms": 1.3635944666401032,
+          "p50_ms": 1.300000011920929,
+          "p95_ms": 1.5999999642372131,
+          "max_ms": 2
+        },
+        "page.end_to_end": {
+          "count": 217,
+          "per_s": 7.232837080356314,
+          "mean_ms": 59.74387848322293,
+          "p50_ms": 69.300537109375,
+          "p95_ms": 73.580322265625,
+          "max_ms": 83.068359375
+        },
+        "page.next_frame": {
+          "count": 217,
+          "per_s": 7.232837080356314,
+          "mean_ms": 1.3294930886563068,
+          "p50_ms": 0.3999999761581421,
+          "p95_ms": 10,
+          "max_ms": 15.099999964237213
+        },
+        "page.interval": {
+          "count": 217,
+          "per_s": 7.232837080356314,
+          "mean_ms": 138.19861751135593,
+          "p50_ms": 137.9000000357628,
+          "p95_ms": 145.79999995231628,
+          "max_ms": 180.80000001192093
+        }
+      },
+      "server": {
+        "clock_to_epoch_ms": 1795249936081.3992,
+        "window_s": 30,
+        "camera": {
+          "gpu": true,
+          "tiles": {
+            "hits": 0,
+            "misses": 0,
+            "held": 0,
+            "bytes": 0
+          }
+        },
+        "frames": {
+          "published": 444,
+          "unplaced": 0,
+          "refused": 0
+        },
+        "steps": [
+          {
+            "step": "acquisition.position_wait",
+            "count": 218,
+            "per_s": 7.240361600608121,
+            "mean_ms": 0.0017518348623853201,
+            "p50_ms": 0.0015,
+            "p95_ms": 0.0025,
+            "max_ms": 0.0275
+          },
+          {
+            "step": "acquisition.publish",
+            "count": 217,
+            "per_s": 7.240177191269794,
+            "mean_ms": 0.009272811059907836,
+            "p50_ms": 0.0081,
+            "p95_ms": 0.0201,
+            "max_ms": 0.0448
+          },
+          {
+            "step": "camera.expose_gpu",
+            "count": 218,
+            "per_s": 7.240358967388278,
+            "mean_ms": 15.078502752293577,
+            "p50_ms": 18.1995,
+            "p95_ms": 20.968,
+            "max_ms": 22.5386
+          },
+          {
+            "step": "camera.field",
+            "count": 218,
+            "per_s": 7.240218926336658,
+            "mean_ms": 0.08585688073394496,
+            "p50_ms": 0.06509999999999999,
+            "p95_ms": 0.2319,
+            "max_ms": 0.5539
+          },
+          {
+            "step": "camera.motion",
+            "count": 218,
+            "per_s": 7.240219651047838,
+            "mean_ms": 7.5920555045871545,
+            "p50_ms": 7.7301,
+            "p95_ms": 10.1656,
+            "max_ms": 20.7466
+          },
+          {
+            "step": "camera.prefetch",
+            "count": 217,
+            "per_s": 7.240162144772003,
+            "mean_ms": 0.11080552995391703,
+            "p50_ms": 0.1079,
+            "p95_ms": 0.1897,
+            "max_ms": 0.428
+          },
+          {
+            "step": "camera.render",
+            "count": 218,
+            "per_s": 7.240361987135965,
+            "mean_ms": 22.877051376146788,
+            "p50_ms": 25.655399999999997,
+            "p95_ms": 29.057,
+            "max_ms": 39.1053
+          },
+          {
+            "step": "camera.wake_late",
+            "count": 218,
+            "per_s": 7.240293089199636,
+            "mean_ms": 0.8493724908256882,
+            "p50_ms": 0.786272,
+            "p95_ms": 1.757185,
+            "max_ms": 2.2552779999999997
+          },
+          {
+            "step": "preview.gpu.bin",
+            "count": 217,
+            "per_s": 7.240297298540161,
+            "mean_ms": 1.7231737327188934,
+            "p50_ms": 2.4232,
+            "p95_ms": 2.4511,
+            "max_ms": 4.5267
+          },
+          {
+            "step": "preview.gpu.black",
+            "count": 217,
+            "per_s": 7.24030004098345,
+            "mean_ms": 0.5864682027649772,
+            "p50_ms": 0.8169,
+            "p95_ms": 0.8352,
+            "max_ms": 2.4727
+          },
+          {
+            "step": "preview.gpu.demosaic",
+            "count": 217,
+            "per_s": 7.240289095492102,
+            "mean_ms": 3.6711414746543767,
+            "p50_ms": 5.2104,
+            "p95_ms": 5.2474,
+            "max_ms": 7.0762
+          },
+          {
+            "step": "preview.gpu.to_display",
+            "count": 217,
+            "per_s": 7.240318971179636,
+            "mean_ms": 3.2624658986175126,
+            "p50_ms": 3.5976,
+            "p95_ms": 4.0447,
+            "max_ms": 5.8378
+          },
+          {
+            "step": "preview.gpu.to_f32",
+            "count": 217,
+            "per_s": 7.240271742951689,
+            "mean_ms": 13.74355115207374,
+            "p50_ms": 18.567,
+            "p95_ms": 18.8945,
+            "max_ms": 20.8569
+          },
+          {
+            "step": "preview.jpeg",
+            "count": 217,
+            "per_s": 7.240910759609888,
+            "mean_ms": 2.803622580645161,
+            "p50_ms": 2.6929,
+            "p95_ms": 3.4092,
+            "max_ms": 5.5263
+          },
+          {
+            "step": "preview.render",
+            "count": 217,
+            "per_s": 7.2408945206659405,
+            "mean_ms": 30.188664516129027,
+            "p50_ms": 37.333400000000005,
+            "p95_ms": 38.7295,
+            "max_ms": 41.1317
+          },
+          {
+            "step": "preview.resize",
+            "count": 217,
+            "per_s": 7.240566043586236,
+            "mean_ms": 4.117128110599078,
+            "p50_ms": 3.8767,
+            "p95_ms": 5.4257,
+            "max_ms": 10.5788
+          },
+          {
+            "step": "stream.ack_wait",
+            "count": 217,
+            "per_s": 7.24017680297229,
+            "mean_ms": 0.0005110599078341016,
+            "p50_ms": 0.00039999999999999996,
+            "p95_ms": 0.0007,
+            "max_ms": 0.0143
+          },
+          {
+            "step": "stream.frame_age",
+            "count": 217,
+            "per_s": 7.240176778703699,
+            "mean_ms": 0.05184793087557606,
+            "p50_ms": 0.0406,
+            "p95_ms": 0.103001,
+            "max_ms": 0.6097
+          },
+          {
+            "step": "stream.latency",
+            "count": 217,
+            "per_s": 7.240973749924745,
+            "mean_ms": 54.35916925345623,
+            "p50_ms": 64.338826,
+            "p95_ms": 68.605712,
+            "max_ms": 77.618777
+          },
+          {
+            "step": "stream.message",
+            "count": 217,
+            "per_s": 7.240979138742453,
+            "mean_ms": 0.011418433179723499,
+            "p50_ms": 0.0099,
+            "p95_ms": 0.017900000000000003,
+            "max_ms": 0.0487
+          },
+          {
+            "step": "stream.send",
+            "count": 217,
+            "per_s": 7.240979891235655,
+            "mean_ms": 0.0016036866359447016,
+            "p50_ms": 0.0013,
+            "p95_ms": 0.0031,
+            "max_ms": 0.0073
+          },
+          {
+            "step": "stream.spawn",
+            "count": 217,
+            "per_s": 7.240169376790555,
+            "mean_ms": 0.023289861751152073,
+            "p50_ms": 0.018199999999999997,
+            "p95_ms": 0.041,
+            "max_ms": 0.1681
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "session": 1,
+          "fps": 8,
+          "latency_ms": 48.020748999999995,
+          "bytes_per_s": 902343,
+          "sent": 445,
+          "dropped": 0,
+          "quality": 80,
+          "width": 1000,
+          "height": 667,
+          "gpu": true,
+          "recipe_ms": null
+        }
+      ]
+    },
+    "jog": {
+      "at": "2026-11-21T08:34:17.070Z",
+      "size": [
+        1000,
+        667
+      ],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "webgl": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Ti Laptop GPU (0x000024A0) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "steps": {
+        "acquisition.position_wait": {
+          "step": "acquisition.position_wait",
+          "count": 217,
+          "per_s": 7.237747046296373,
+          "mean_ms": 0.001988940092165899,
+          "p50_ms": 0.0015,
+          "p95_ms": 0.0025,
+          "max_ms": 0.0198
+        },
+        "acquisition.publish": {
+          "step": "acquisition.publish",
+          "count": 217,
+          "per_s": 7.237747046296373,
+          "mean_ms": 0.009244239631336413,
+          "p50_ms": 0.0079,
+          "p95_ms": 0.019,
+          "max_ms": 0.0352
+        },
+        "camera.expose_gpu": {
+          "step": "camera.expose_gpu",
+          "count": 217,
+          "per_s": 7.237687725640569,
+          "mean_ms": 25.998416129032282,
+          "p50_ms": 23.9042,
+          "p95_ms": 34.221399999999996,
+          "max_ms": 46.468799999999995
+        },
+        "camera.field": {
+          "step": "camera.field",
+          "count": 217,
+          "per_s": 7.237109848790139,
+          "mean_ms": 0.08220875576036867,
+          "p50_ms": 0.0764,
+          "p95_ms": 0.1095,
+          "max_ms": 0.161
+        },
+        "camera.gpu_layers": {
+          "step": "camera.gpu_layers",
+          "count": 218,
+          "per_s": 7.245880106101589,
+          "mean_ms": 9.252405504587152,
+          "p50_ms": 11.7804,
+          "p95_ms": 24.8873,
+          "max_ms": 31.7642
+        },
+        "camera.gpu_tiles": {
+          "step": "camera.gpu_tiles",
+          "count": 218,
+          "per_s": 7.245910156203591,
+          "mean_ms": 4.21106972477064,
+          "p50_ms": 3.8171,
+          "p95_ms": 7.131,
+          "max_ms": 9.566699999999999
+        },
+        "camera.motion": {
+          "step": "camera.motion",
+          "count": 217,
+          "per_s": 7.237112661563472,
+          "mean_ms": 40.81594884792628,
+          "p50_ms": 35.405,
+          "p95_ms": 68.5245,
+          "max_ms": 83.7272
+        },
+        "camera.prefetch": {
+          "step": "camera.prefetch",
+          "count": 434,
+          "per_s": 14.458339175520788,
+          "mean_ms": 6.996329953917052,
+          "p50_ms": 3.6304000000000003,
+          "p95_ms": 19.5743,
+          "max_ms": 39.105199999999996
+        },
+        "camera.render": {
+          "step": "camera.render",
+          "count": 217,
+          "per_s": 7.237746949287148,
+          "mean_ms": 67.17265161290321,
+          "p50_ms": 62.1353,
+          "p95_ms": 96.511,
+          "max_ms": 109.2299
+        },
+        "camera.wake_late": {
+          "step": "camera.wake_late",
+          "count": 217,
+          "per_s": 7.239956596460204,
+          "mean_ms": 0.8882313686635942,
+          "p50_ms": 0.856615,
+          "p95_ms": 1.796301,
+          "max_ms": 5.385868
+        },
+        "preview.gpu.bin": {
+          "step": "preview.gpu.bin",
+          "count": 218,
+          "per_s": 7.2458002882406065,
+          "mean_ms": 0.8171596330275225,
+          "p50_ms": 0.5963999999999999,
+          "p95_ms": 2.6416,
+          "max_ms": 5.3502
+        },
+        "preview.gpu.black": {
+          "step": "preview.gpu.black",
+          "count": 218,
+          "per_s": 7.24580215120186,
+          "mean_ms": 0.31739128440366965,
+          "p50_ms": 0.27240000000000003,
+          "p95_ms": 0.7423,
+          "max_ms": 3.233
+        },
+        "preview.gpu.demosaic": {
+          "step": "preview.gpu.demosaic",
+          "count": 218,
+          "per_s": 7.245792570268478,
+          "mean_ms": 0.8515027522935776,
+          "p50_ms": 0.7162,
+          "p95_ms": 1.4715,
+          "max_ms": 5.2593
+        },
+        "preview.gpu.to_display": {
+          "step": "preview.gpu.to_display",
+          "count": 218,
+          "per_s": 7.2458332168267905,
+          "mean_ms": 2.730441743119267,
+          "p50_ms": 2.6401,
+          "p95_ms": 4.8707,
+          "max_ms": 6.1031
+        },
+        "preview.gpu.to_f32": {
+          "step": "preview.gpu.to_f32",
+          "count": 218,
+          "per_s": 7.2458214825056935,
+          "mean_ms": 10.889644036697247,
+          "p50_ms": 12.0694,
+          "p95_ms": 25.331599999999998,
+          "max_ms": 31.968999999999998
+        },
+        "preview.jpeg": {
+          "step": "preview.jpeg",
+          "count": 218,
+          "per_s": 7.245975943086058,
+          "mean_ms": 2.25812385321101,
+          "p50_ms": 2.3222,
+          "p95_ms": 2.6776999999999997,
+          "max_ms": 4.3782
+        },
+        "preview.render": {
+          "step": "preview.render",
+          "count": 218,
+          "per_s": 7.245972918653716,
+          "mean_ms": 21.995316055045883,
+          "p50_ms": 22.7308,
+          "p95_ms": 38.976499999999994,
+          "max_ms": 47.8221
+        },
+        "preview.resize": {
+          "step": "preview.resize",
+          "count": 218,
+          "per_s": 7.24599728355242,
+          "mean_ms": 3.868616055045875,
+          "p50_ms": 3.7334,
+          "p95_ms": 4.4885,
+          "max_ms": 5.9505
+        },
+        "stream.ack_wait": {
+          "step": "stream.ack_wait",
+          "count": 217,
+          "per_s": 7.2377477253610225,
+          "mean_ms": 0.0003474654377880184,
+          "p50_ms": 0.0003,
+          "p95_ms": 0.0005,
+          "max_ms": 0.0011
+        },
+        "stream.frame_age": {
+          "step": "stream.frame_age",
+          "count": 217,
+          "per_s": 7.2377477253610225,
+          "mean_ms": 0.04224932258064518,
+          "p50_ms": 0.0375,
+          "p95_ms": 0.06830000000000001,
+          "max_ms": 0.126
+        },
+        "stream.latency": {
+          "step": "stream.latency",
+          "count": 218,
+          "per_s": 7.245958909516041,
+          "mean_ms": 90.46624304128441,
+          "p50_ms": 87.446915,
+          "p95_ms": 120.679995,
+          "max_ms": 154.966971
+        },
+        "stream.message": {
+          "step": "stream.message",
+          "count": 218,
+          "per_s": 7.24595755457641,
+          "mean_ms": 0.008743577981651379,
+          "p50_ms": 0.0078,
+          "p95_ms": 0.0235,
+          "max_ms": 0.0399
+        },
+        "stream.send": {
+          "step": "stream.send",
+          "count": 218,
+          "per_s": 7.245957336818303,
+          "mean_ms": 0.001533486238532111,
+          "p50_ms": 0.0013,
+          "p95_ms": 0.003,
+          "max_ms": 0.0108
+        },
+        "stream.spawn": {
+          "step": "stream.spawn",
+          "count": 217,
+          "per_s": 7.237746076204238,
+          "mean_ms": 0.019235023041474644,
+          "p50_ms": 0.0153,
+          "p95_ms": 0.0376,
+          "max_ms": 0.1306
+        },
+        "page.transit": {
+          "count": 217,
+          "per_s": 7.248030280662738,
+          "mean_ms": 0.7715068764400922,
+          "p50_ms": 0.782958984375,
+          "p95_ms": 1.34228515625,
+          "max_ms": 3.06396484375
+        },
+        "page.decode": {
+          "count": 217,
+          "per_s": 7.248030280662738,
+          "mean_ms": 2.2364055272620944,
+          "p50_ms": 2.399999976158142,
+          "p95_ms": 2.900000035762787,
+          "max_ms": 4
+        },
+        "page.draw": {
+          "count": 217,
+          "per_s": 7.248030280662738,
+          "mean_ms": 1.3373271908078874,
+          "p50_ms": 1.300000011920929,
+          "p95_ms": 1.5,
+          "max_ms": 2.099999964237213
+        },
+        "page.end_to_end": {
+          "count": 217,
+          "per_s": 7.248030280662738,
+          "mean_ms": 94.80975144909274,
+          "p50_ms": 92.18994140625,
+          "p95_ms": 126.22998046875,
+          "max_ms": 160.902587890625
+        },
+        "page.next_frame": {
+          "count": 217,
+          "per_s": 7.248030280662738,
+          "mean_ms": 1.6244239631336406,
+          "p50_ms": 0.3999999761581421,
+          "p95_ms": 10.699999988079071,
+          "max_ms": 24.69999998807907
+        },
+        "page.interval": {
+          "count": 217,
+          "per_s": 7.248030280662738,
+          "mean_ms": 138.1092165898068,
+          "p50_ms": 139,
+          "p95_ms": 177.5,
+          "max_ms": 219
+        }
+      },
+      "server": {
+        "clock_to_epoch_ms": 1795249936081.399,
+        "window_s": 30,
+        "camera": {
+          "gpu": true,
+          "tiles": {
+            "hits": 0,
+            "misses": 0,
+            "held": 0,
+            "bytes": 0
+          }
+        },
+        "frames": {
+          "published": 676,
+          "unplaced": 0,
+          "refused": 0
+        },
+        "steps": [
+          {
+            "step": "acquisition.position_wait",
+            "count": 217,
+            "per_s": 7.237747046296373,
+            "mean_ms": 0.001988940092165899,
+            "p50_ms": 0.0015,
+            "p95_ms": 0.0025,
+            "max_ms": 0.0198
+          },
+          {
+            "step": "acquisition.publish",
+            "count": 217,
+            "per_s": 7.237747046296373,
+            "mean_ms": 0.009244239631336413,
+            "p50_ms": 0.0079,
+            "p95_ms": 0.019,
+            "max_ms": 0.0352
+          },
+          {
+            "step": "camera.expose_gpu",
+            "count": 217,
+            "per_s": 7.237687725640569,
+            "mean_ms": 25.998416129032282,
+            "p50_ms": 23.9042,
+            "p95_ms": 34.221399999999996,
+            "max_ms": 46.468799999999995
+          },
+          {
+            "step": "camera.field",
+            "count": 217,
+            "per_s": 7.237109848790139,
+            "mean_ms": 0.08220875576036867,
+            "p50_ms": 0.0764,
+            "p95_ms": 0.1095,
+            "max_ms": 0.161
+          },
+          {
+            "step": "camera.gpu_layers",
+            "count": 218,
+            "per_s": 7.245880106101589,
+            "mean_ms": 9.252405504587152,
+            "p50_ms": 11.7804,
+            "p95_ms": 24.8873,
+            "max_ms": 31.7642
+          },
+          {
+            "step": "camera.gpu_tiles",
+            "count": 218,
+            "per_s": 7.245910156203591,
+            "mean_ms": 4.21106972477064,
+            "p50_ms": 3.8171,
+            "p95_ms": 7.131,
+            "max_ms": 9.566699999999999
+          },
+          {
+            "step": "camera.motion",
+            "count": 217,
+            "per_s": 7.237112661563472,
+            "mean_ms": 40.81594884792628,
+            "p50_ms": 35.405,
+            "p95_ms": 68.5245,
+            "max_ms": 83.7272
+          },
+          {
+            "step": "camera.prefetch",
+            "count": 434,
+            "per_s": 14.458339175520788,
+            "mean_ms": 6.996329953917052,
+            "p50_ms": 3.6304000000000003,
+            "p95_ms": 19.5743,
+            "max_ms": 39.105199999999996
+          },
+          {
+            "step": "camera.render",
+            "count": 217,
+            "per_s": 7.237746949287148,
+            "mean_ms": 67.17265161290321,
+            "p50_ms": 62.1353,
+            "p95_ms": 96.511,
+            "max_ms": 109.2299
+          },
+          {
+            "step": "camera.wake_late",
+            "count": 217,
+            "per_s": 7.239956596460204,
+            "mean_ms": 0.8882313686635942,
+            "p50_ms": 0.856615,
+            "p95_ms": 1.796301,
+            "max_ms": 5.385868
+          },
+          {
+            "step": "preview.gpu.bin",
+            "count": 218,
+            "per_s": 7.2458002882406065,
+            "mean_ms": 0.8171596330275225,
+            "p50_ms": 0.5963999999999999,
+            "p95_ms": 2.6416,
+            "max_ms": 5.3502
+          },
+          {
+            "step": "preview.gpu.black",
+            "count": 218,
+            "per_s": 7.24580215120186,
+            "mean_ms": 0.31739128440366965,
+            "p50_ms": 0.27240000000000003,
+            "p95_ms": 0.7423,
+            "max_ms": 3.233
+          },
+          {
+            "step": "preview.gpu.demosaic",
+            "count": 218,
+            "per_s": 7.245792570268478,
+            "mean_ms": 0.8515027522935776,
+            "p50_ms": 0.7162,
+            "p95_ms": 1.4715,
+            "max_ms": 5.2593
+          },
+          {
+            "step": "preview.gpu.to_display",
+            "count": 218,
+            "per_s": 7.2458332168267905,
+            "mean_ms": 2.730441743119267,
+            "p50_ms": 2.6401,
+            "p95_ms": 4.8707,
+            "max_ms": 6.1031
+          },
+          {
+            "step": "preview.gpu.to_f32",
+            "count": 218,
+            "per_s": 7.2458214825056935,
+            "mean_ms": 10.889644036697247,
+            "p50_ms": 12.0694,
+            "p95_ms": 25.331599999999998,
+            "max_ms": 31.968999999999998
+          },
+          {
+            "step": "preview.jpeg",
+            "count": 218,
+            "per_s": 7.245975943086058,
+            "mean_ms": 2.25812385321101,
+            "p50_ms": 2.3222,
+            "p95_ms": 2.6776999999999997,
+            "max_ms": 4.3782
+          },
+          {
+            "step": "preview.render",
+            "count": 218,
+            "per_s": 7.245972918653716,
+            "mean_ms": 21.995316055045883,
+            "p50_ms": 22.7308,
+            "p95_ms": 38.976499999999994,
+            "max_ms": 47.8221
+          },
+          {
+            "step": "preview.resize",
+            "count": 218,
+            "per_s": 7.24599728355242,
+            "mean_ms": 3.868616055045875,
+            "p50_ms": 3.7334,
+            "p95_ms": 4.4885,
+            "max_ms": 5.9505
+          },
+          {
+            "step": "stream.ack_wait",
+            "count": 217,
+            "per_s": 7.2377477253610225,
+            "mean_ms": 0.0003474654377880184,
+            "p50_ms": 0.0003,
+            "p95_ms": 0.0005,
+            "max_ms": 0.0011
+          },
+          {
+            "step": "stream.frame_age",
+            "count": 217,
+            "per_s": 7.2377477253610225,
+            "mean_ms": 0.04224932258064518,
+            "p50_ms": 0.0375,
+            "p95_ms": 0.06830000000000001,
+            "max_ms": 0.126
+          },
+          {
+            "step": "stream.latency",
+            "count": 218,
+            "per_s": 7.245958909516041,
+            "mean_ms": 90.46624304128441,
+            "p50_ms": 87.446915,
+            "p95_ms": 120.679995,
+            "max_ms": 154.966971
+          },
+          {
+            "step": "stream.message",
+            "count": 218,
+            "per_s": 7.24595755457641,
+            "mean_ms": 0.008743577981651379,
+            "p50_ms": 0.0078,
+            "p95_ms": 0.0235,
+            "max_ms": 0.0399
+          },
+          {
+            "step": "stream.send",
+            "count": 218,
+            "per_s": 7.245957336818303,
+            "mean_ms": 0.001533486238532111,
+            "p50_ms": 0.0013,
+            "p95_ms": 0.003,
+            "max_ms": 0.0108
+          },
+          {
+            "step": "stream.spawn",
+            "count": 217,
+            "per_s": 7.237746076204238,
+            "mean_ms": 0.019235023041474644,
+            "p50_ms": 0.0153,
+            "p95_ms": 0.0376,
+            "max_ms": 0.1306
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "session": 1,
+          "fps": 8,
+          "latency_ms": 93.183533,
+          "bytes_per_s": 711690,
+          "sent": 673,
+          "dropped": 0,
+          "quality": 80,
+          "width": 1000,
+          "height": 667,
+          "gpu": true,
+          "recipe_ms": null
+        }
+      ],
+      "stage": {
+        "from": {
+          "x": 39999,
+          "y": 11999,
+          "z": 5001
+        },
+        "to": {
+          "x": 55750.35495,
+          "y": 11999,
+          "z": 5001
+        },
+        "speed": 500
+      }
+    }
+  }
+}

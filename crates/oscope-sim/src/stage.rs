@@ -203,6 +203,52 @@ fn point(a: [f64; 3]) -> Xyz {
     Xyz::new(Um(a[0]), Um(a[1]), Um(a[2]))
 }
 
+/// The true position at `at`, in `phase`: the commanded one through the
+/// backlash, `half` each way, plus the steps lost and the overshoot left.
+fn true_in(phase: &Phase, at: Timestamp, half: f64, settling: &Settling) -> Xyz {
+    let c = axes(match phase.motion {
+        Some(segment) => segment.position(at),
+        None => phase.rest,
+    });
+    let mut t = [0, 1, 2].map(|i| phase.play[i].clamp(c[i] - half, c[i] + half) + phase.lost[i]);
+    if let Some((end, dir)) = phase
+        .settle
+        .filter(|(end, _)| at >= *end && phase.motion.is_none())
+    {
+        let since = (at.0 - end.0) as f64 / 1e6;
+        let left = settling.overshoot.0 * (-since / settling.time.0.max(1e-9)).exp();
+        for i in 0..3 {
+            t[i] += dir[i] * left;
+        }
+    }
+    point(t)
+}
+
+/// The stage's true path from a moment on, as it was known when it was
+/// taken ([`SimStage::true_path`]).
+#[derive(Clone, Debug)]
+pub struct TruePath {
+    /// The phases from the one covering the start, oldest first.
+    phases: Vec<Phase>,
+    half: f64,
+    settling: Settling,
+}
+
+impl TruePath {
+    /// The true position at `at`, from the path's start on: what
+    /// [`SimStage::true_position`] gave when the path was taken.
+    pub fn at(&self, at: Timestamp) -> Xyz {
+        let phase = self
+            .phases
+            .iter()
+            .rev()
+            .find(|p| p.since <= at)
+            .or(self.phases.first())
+            .expect("a path has its current phase");
+        true_in(phase, at, self.half, &self.settling)
+    }
+}
+
 fn index(axis: Axis) -> usize {
     match axis {
         Axis::X => 0,
@@ -381,24 +427,37 @@ impl SimStage {
         self.truth(&state, at)
     }
 
+    /// The true path from `from` on, as the stage knows it now: its phases
+    /// since then, copied. Positions on it are found without the stage's
+    /// lock, which the camera's threads would otherwise queue for, a
+    /// hundred thousand times a frame while it moves.
+    pub fn true_path(&self, from: Timestamp) -> TruePath {
+        let state = self.state();
+        let mut phases: Vec<Phase> = match from >= state.since {
+            true => Vec::new(),
+            // From the phase that covered `from`, or the oldest remembered,
+            // as `phase` finds them.
+            false => {
+                let first = state.past.iter().rposition(|p| p.since <= from);
+                state
+                    .past
+                    .iter()
+                    .skip(first.unwrap_or(0))
+                    .copied()
+                    .collect()
+            }
+        };
+        phases.push(Self::current(&state));
+        TruePath {
+            phases,
+            half: self.config.backlash.0 / 2.0,
+            settling: self.config.settling,
+        }
+    }
+
     fn truth(&self, state: &State, at: Timestamp) -> Xyz {
         let half = self.config.backlash.0 / 2.0;
-        let phase = Self::phase(state, at);
-        let c = axes(Self::commanded(state, at));
-        let mut t =
-            [0, 1, 2].map(|i| phase.play[i].clamp(c[i] - half, c[i] + half) + phase.lost[i]);
-        if let Some((end, dir)) = phase
-            .settle
-            .filter(|(end, _)| at >= *end && phase.motion.is_none())
-        {
-            let s = &self.config.settling;
-            let since = (at.0 - end.0) as f64 / 1e6;
-            let left = s.overshoot.0 * (-since / s.time.0.max(1e-9)).exp();
-            for i in 0..3 {
-                t[i] += dir[i] * left;
-            }
-        }
-        point(t)
+        true_in(&Self::phase(state, at), at, half, &self.config.settling)
     }
 
     /// What a report at `at` says: the true position with encoders, the

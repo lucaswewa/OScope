@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
-use oscope_core::{Frame, LightState};
+use oscope_core::{Frame, LightState, timing};
 use oscope_hal::{FrameSink, PositionTrack};
 
 use crate::bus::FrameBus;
@@ -106,13 +106,16 @@ impl Acquisition {
                 )
             };
             if let Some(track) = track {
+                let waiting = timing::start("acquisition.position_wait");
                 let middle = meta.exposure_midpoint();
                 let deadline = Instant::now() + inner.wait;
                 while track.latest().is_none_or(|s| s.time < middle) && Instant::now() < deadline {
                     std::thread::sleep(Duration::from_millis(1));
                 }
                 meta.position = track.at(middle);
+                waiting.stop();
             }
+            let _publishing = timing::start("acquisition.publish");
             if meta.position.is_none() {
                 inner.unplaced.fetch_add(1, Ordering::Relaxed);
             }

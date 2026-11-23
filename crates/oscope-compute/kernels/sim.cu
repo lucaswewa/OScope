@@ -7,9 +7,13 @@
 // row's exposure, and turns it into counts as the sensor model does: shot
 // noise, dark current, read noise, a black level and a 12-bit ADC.
 //
-// The twins agree without noise to within a count: the CPU works in doubles,
-// this in floats. With noise they agree in distribution, not draw by draw:
-// each pixel here draws from a counter-based generator of its own.
+// The twins agree without noise to within a count, from the same tiles: the
+// CPU works in doubles, this in floats. With noise they agree in
+// distribution, not draw by draw: each pixel here draws from a
+// counter-based generator of its own. Tiles here are half precision
+// (ADR-0062), so from the CPU's tiles they agree within two counts.
+
+#include <cuda_fp16.h>
 
 // SplitMix64's finaliser (Steele, Lea and Flood, 2014), as oscope-sim's.
 __device__ unsigned long long mix(unsigned long long z) {
@@ -48,7 +52,7 @@ struct Draws {
 // Channel `c` at (x, y), in micrometres from the grid's corner: between the
 // four nearest pixel centres, from the tile that holds them. Each tile has
 // `tile` + 1 pixels a side, one beyond the next tile's start.
-__device__ float sample(const float* atlas, const int* grid, unsigned int columns,
+__device__ float sample(const __half* atlas, const int* grid, unsigned int columns,
                         unsigned int rows, unsigned int tile, float pixel, float x, float y,
                         int c) {
     float fx = fminf(fmaxf(x / pixel - 0.5f, 0.0f), (float)(columns * tile - 1));
@@ -59,9 +63,11 @@ __device__ float sample(const float* atlas, const int* grid, unsigned int column
     unsigned int column = ix / tile, row = iy / tile;
     unsigned int lx = ix - column * tile, ly = iy - row * tile;
     unsigned long long side = tile + 1;
-    const float* t = atlas + (unsigned long long)grid[row * columns + column] * side * side * 3;
-    float p00 = t[(ly * side + lx) * 3 + c], p10 = t[(ly * side + lx + 1) * 3 + c];
-    float p01 = t[((ly + 1) * side + lx) * 3 + c], p11 = t[((ly + 1) * side + lx + 1) * 3 + c];
+    const __half* t = atlas + (unsigned long long)grid[row * columns + column] * side * side * 3;
+    float p00 = __half2float(t[(ly * side + lx) * 3 + c]);
+    float p10 = __half2float(t[(ly * side + lx + 1) * 3 + c]);
+    float p01 = __half2float(t[((ly + 1) * side + lx) * 3 + c]);
+    float p11 = __half2float(t[((ly + 1) * side + lx + 1) * 3 + c]);
     float top = p00 + (p10 - p00) * ax;
     float bottom = p01 + (p11 - p01) * ax;
     return top + (bottom - top) * ay;
@@ -70,8 +76,10 @@ __device__ float sample(const float* atlas, const int* grid, unsigned int column
 // One frame, `width` x `height`. Pixel (u, v) sees the stage point
 // (a u + b v + c, d u + e v + f) from the stage's place; row v's `samples[v]`
 // places are at `places[(v * most + j) * 2]`, in micrometres from the grid's
-// corner. Counts are black + electrons x cpe, rounded, from 0 to 4095.
-extern "C" __global__ void expose(const float* atlas, const int* grid, unsigned int columns,
+// corner. Counts are black + electrons x cpe, rounded, from 0 to 4095, and
+// go out as the frame's format packs them: `bytes` 2 for 16-bit samples
+// aligned high, little-endian, 1 for 8 bits.
+extern "C" __global__ void expose(const __half* atlas, const int* grid, unsigned int columns,
                                   unsigned int rows, unsigned int tile, float pixel,
                                   const float* places, const unsigned int* samples,
                                   unsigned int most, float a, float b, float c, float d, float e,
@@ -79,7 +87,8 @@ extern "C" __global__ void expose(const float* atlas, const int* grid, unsigned 
                                   float dark, float read, float black, float cpe,
                                   unsigned int noise, unsigned long long seed,
                                   unsigned long long frame, float vx0, float vy0, float vk,
-                                  float vr2, float vs, unsigned short* out) {
+                                  float vr2, float vs, unsigned int bytes,
+                                  unsigned char* out) {
     unsigned int u = blockIdx.x * blockDim.x + threadIdx.x;
     if (u >= width) return;
     for (unsigned int v = blockIdx.y; v < height; v += gridDim.y) {
@@ -103,6 +112,12 @@ extern "C" __global__ void expose(const float* atlas, const int* grid, unsigned 
             electrons = draws.poisson(mean) + draws.normal() * read;
         }
         float counts = roundf(black + electrons * cpe);
-        out[(unsigned long long)v * width + u] = (unsigned short)fminf(fmaxf(counts, 0.0f), 4095.0f);
+        unsigned int count = (unsigned int)fminf(fmaxf(counts, 0.0f), 4095.0f);
+        unsigned long long at = (unsigned long long)v * width + u;
+        if (bytes == 2) {
+            ((unsigned short*)out)[at] = (unsigned short)(count << 4);
+        } else {
+            out[at] = (unsigned char)(count >> 4);
+        }
     }
 }
