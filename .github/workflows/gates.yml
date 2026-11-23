@@ -1,0 +1,412 @@
+name: Independent quality gates
+on:
+  pull_request:
+  push:
+    branches: [main, codex/linux-container-rebuild]
+  workflow_dispatch:
+    inputs:
+      full:
+        type: boolean
+        default: true
+        description: Run the full checkpoint and prepare a missing backend image
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      base: ${{ steps.plan.outputs.base }}
+      full: ${{ steps.plan.outputs.full }}
+      backend_key: ${{ steps.plan.outputs.backend_key }}
+      backend_revision: ${{ steps.plan.outputs.backend_revision }}
+      docs: ${{ steps.plan.outputs.docs }}
+      environment: ${{ steps.plan.outputs.environment }}
+      backend: ${{ steps.plan.outputs.backend }}
+      cpu: ${{ steps.plan.outputs.cpu }}
+      frontend: ${{ steps.plan.outputs.frontend }}
+      integration: ${{ steps.plan.outputs.integration }}
+      extensions: ${{ steps.plan.outputs.extensions }}
+      workflows: ${{ steps.plan.outputs.workflows }}
+      runtime: ${{ steps.plan.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - run: bash scripts/check-gates.sh
+      - id: plan
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          FULL: ${{ inputs.full || false }}
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess
+          base=os.environ.get("BASE", "")
+          if not base or set(base)=={"0"}:
+              base=subprocess.check_output(["git","rev-parse","HEAD^"],text=True).strip()
+          args=["python3","scripts/gates.py","--base",base,"--committed-only","--output","artifacts/gate-plan.json"]
+          full=os.environ.get("FULL")=="true"
+          if full: args.append("--all")
+          subprocess.run(args,check=True)
+          plan=json.load(open("artifacts/gate-plan.json"))
+          with open(os.environ["GITHUB_OUTPUT"],"a") as out:
+              for key,value in {**plan["gates"],"base":base,"full":full}.items():
+                  print(key+"="+(str(value).lower() if isinstance(value,bool) else value),file=out)
+              for key,flag in [("backend_key","--backend-key"),("backend_revision","--backend-revision")]:
+                  print(key+"="+subprocess.check_output(["python3","scripts/gates.py",flag],text=True).strip(),file=out)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: { name: gate-plan, path: artifacts/gate-plan.json }
+  backend_image:
+    name: Prepared backend image
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: actions/cache/restore@v4
+        if: ${{ needs.plan.outputs.integration == 'true' || needs.plan.outputs.runtime == 'true' }}
+        id: cache
+        with:
+          path: artifacts/backend-image.tar
+          key: oscope-backend-amd64-${{ needs.plan.outputs.backend_key }}
+      - name: Require explicit preparation on a cache miss
+        if: ${{ (needs.plan.outputs.integration == 'true' || needs.plan.outputs.runtime == 'true') && steps.cache.outputs.cache-hit != 'true' && needs.plan.outputs.backend != 'true' && needs.plan.outputs.full != 'true' }}
+        run: |
+          echo "Prepared backend image is missing. Run this workflow with full=true to populate it." >&2
+          exit 1
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ (needs.plan.outputs.integration == 'true' || needs.plan.outputs.runtime == 'true') && steps.cache.outputs.cache-hit != 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ (needs.plan.outputs.integration == 'true' || needs.plan.outputs.runtime == 'true') && steps.cache.outputs.cache-hit != 'true' }}
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          tags: oscope-backend:ci
+          load: true
+          cache-from: type=gha,scope=oscope-runtime
+          cache-to: type=gha,scope=oscope-runtime,mode=max,ignore-error=true
+          build-args: SOURCE_REVISION=${{ needs.plan.outputs.backend_revision }}
+      - if: ${{ (needs.plan.outputs.integration == 'true' || needs.plan.outputs.runtime == 'true') && steps.cache.outputs.cache-hit != 'true' }}
+        run: mkdir -p artifacts && docker save oscope-backend:ci -o artifacts/backend-image.tar
+      - uses: actions/cache/save@v4
+        if: ${{ (needs.plan.outputs.integration == 'true' || needs.plan.outputs.runtime == 'true') && steps.cache.outputs.cache-hit != 'true' }}
+        with:
+          path: artifacts/backend-image.tar
+          key: oscope-backend-amd64-${{ needs.plan.outputs.backend_key }}
+      - if: ${{ !(needs.plan.outputs.integration == 'true' || needs.plan.outputs.runtime == 'true') }}
+        run: echo "backend image preparation not applicable"
+  docs:
+    name: docs
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          python3 scripts/gates.py "${args[@]}" --run docs
+  environment:
+    name: environment
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ needs.plan.outputs.environment == 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ needs.plan.outputs.environment == 'true' }}
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: development
+          platforms: linux/amd64
+          tags: oscope-development:r02
+          load: true
+          cache-from: type=gha,scope=oscope-development
+          cache-to: type=gha,scope=oscope-development,mode=max,ignore-error=true
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          python3 scripts/gates.py "${args[@]}" --run environment
+  backend:
+    name: backend
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ needs.plan.outputs.backend == 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ needs.plan.outputs.backend == 'true' }}
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: development
+          platforms: linux/amd64
+          tags: oscope-development:r02
+          load: true
+          cache-from: type=gha,scope=oscope-development
+          cache-to: type=gha,scope=oscope-development,mode=max,ignore-error=true
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          python3 scripts/gates.py "${args[@]}" --run backend
+  cpu:
+    name: cpu
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ needs.plan.outputs.cpu == 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ needs.plan.outputs.cpu == 'true' }}
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: development
+          platforms: linux/amd64
+          tags: oscope-development:r02
+          load: true
+          cache-from: type=gha,scope=oscope-development
+          cache-to: type=gha,scope=oscope-development,mode=max,ignore-error=true
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          python3 scripts/gates.py "${args[@]}" --run cpu
+  frontend:
+    name: frontend
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ needs.plan.outputs.frontend == 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ needs.plan.outputs.frontend == 'true' }}
+        with:
+          context: .
+          file: containers/frontend.Dockerfile
+          target: frontend
+          platforms: linux/amd64
+          tags: oscope-frontend-tools:r08
+          load: true
+          cache-from: type=gha,scope=oscope-frontend
+          cache-to: type=gha,scope=oscope-frontend,mode=max,ignore-error=true
+      - if: ${{ needs.plan.outputs.frontend == 'true' }}
+        run: sudo chown -R 1000:1000 web
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          python3 scripts/gates.py "${args[@]}" --run frontend
+  integration:
+    name: integration
+    needs: [plan, backend_image]
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - if: ${{ needs.plan.outputs.integration == 'true' && needs.backend_image.result != 'success' }}
+        run: echo "Backend preparation failed" >&2; exit 1
+      - uses: actions/cache/restore@v4
+        if: ${{ needs.plan.outputs.integration == 'true' }}
+        with:
+          path: artifacts/backend-image.tar
+          key: oscope-backend-amd64-${{ needs.plan.outputs.backend_key }}
+          fail-on-cache-miss: true
+      - if: ${{ needs.plan.outputs.integration == 'true' }}
+        run: docker load -i artifacts/backend-image.tar
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ needs.plan.outputs.integration == 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ needs.plan.outputs.integration == 'true' }}
+        with:
+          context: .
+          file: containers/frontend.Dockerfile
+          target: integration
+          platforms: linux/amd64
+          tags: oscope-integration-tools:r08
+          load: true
+          cache-from: type=gha,scope=oscope-browsers
+          cache-to: type=gha,scope=oscope-browsers,mode=max,ignore-error=true
+      - if: ${{ needs.plan.outputs.integration == 'true' }}
+        run: sudo chown -R 1000:1000 web
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          sudo --preserve-env=OSCOPE_BACKEND_IMAGE python3 scripts/gates.py "${args[@]}" --run integration
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && needs.plan.outputs.integration == 'true' }}
+        with:
+          name: integration-evidence
+          path: |
+            artifacts/r08/
+            artifacts/runtime.json
+            web/test-results/
+  extensions:
+    name: extensions
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ needs.plan.outputs.extensions == 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ needs.plan.outputs.extensions == 'true' }}
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: development
+          platforms: linux/amd64
+          tags: oscope-development:r02
+          load: true
+          cache-from: type=gha,scope=oscope-development
+          cache-to: type=gha,scope=oscope-development,mode=max,ignore-error=true
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          python3 scripts/gates.py "${args[@]}" --run extensions
+  workflows:
+    name: workflows
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ needs.plan.outputs.workflows == 'true' }}
+      - uses: docker/build-push-action@v6
+        if: ${{ needs.plan.outputs.workflows == 'true' }}
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: development
+          platforms: linux/amd64
+          tags: oscope-development:r02
+          load: true
+          cache-from: type=gha,scope=oscope-development
+          cache-to: type=gha,scope=oscope-development,mode=max,ignore-error=true
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          python3 scripts/gates.py "${args[@]}" --run workflows
+      - if: ${{ needs.plan.outputs.workflows == 'true' }}
+        run: bash scripts/dev.sh workflow-extensions
+  runtime:
+    name: runtime
+    needs: [plan, backend_image]
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - if: ${{ needs.plan.outputs.runtime == 'true' && needs.backend_image.result != 'success' }}
+        run: echo "Backend preparation failed" >&2; exit 1
+      - uses: actions/cache/restore@v4
+        if: ${{ needs.plan.outputs.runtime == 'true' }}
+        with:
+          path: artifacts/backend-image.tar
+          key: oscope-backend-amd64-${{ needs.plan.outputs.backend_key }}
+          fail-on-cache-miss: true
+      - if: ${{ needs.plan.outputs.runtime == 'true' }}
+        run: docker load -i artifacts/backend-image.tar
+      - name: Run selected work or report not applicable
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+          OSCOPE_BACKEND_IMAGE: oscope-backend:ci
+        run: |
+          args=(--base "$BASE" --committed-only)
+          if [ "$FULL" = true ]; then args+=(--all); fi
+          sudo --preserve-env=OSCOPE_BACKEND_IMAGE python3 scripts/gates.py "${args[@]}" --run runtime
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && needs.plan.outputs.runtime == 'true' }}
+        with:
+          name: runtime-evidence
+          path: |
+            artifacts/r08/
+            artifacts/runtime.json
+            web/test-results/
+  quality:
+    name: Quality gates
+    if: ${{ always() }}
+    needs: [plan, backend_image, docs, environment, backend, cpu, frontend, integration, extensions, workflows, runtime]
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          results=json.loads(os.environ["RESULTS"])
+          assert all(value["result"]=="success" for value in results.values()), results
+          print("All selected gates passed; other gates reported not applicable")
+          PY

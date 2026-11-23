@@ -1,0 +1,49 @@
+name: oscope-web-development
+services:
+  frontend:
+    image: oscope-frontend-tools:r08
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: containers/frontend.Dockerfile
+      target: frontend
+    init: true
+    user: '1000:1000'
+    working_dir: /workspace/web
+    network_mode: host
+    environment:
+      NPM_CONFIG_CACHE: /home/node/.npm
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/web/node_modules
+      - npm_cache:/home/node/.npm
+  integration:
+    image: oscope-integration-tools:r08
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: containers/frontend.Dockerfile
+      target: integration
+    init: true
+    user: '1000:1000'
+    group_add: ['${OSCOPE_DOCKER_GID:-0}']
+    working_dir: ${OSCOPE_REPO_ROOT:-/workspace}/web
+    network_mode: host
+    shm_size: 1gb
+    environment:
+      OSCOPE_BACKEND_IMAGE: ${OSCOPE_BACKEND_IMAGE:-oscope-backend:r07}
+      OSCOPE_E2E_TMP: ${OSCOPE_REPO_ROOT:-/workspace}/artifacts/r08/servers
+      OSCOPE_E2E_RUN_ID: ${OSCOPE_E2E_RUN_ID:-manual}
+      OSCOPE_E2E_GPU: ${OSCOPE_E2E_GPU:-0}
+      OSCOPE_RENDER_PERF: ${OSCOPE_RENDER_PERF:-0}
+      OSCOPE_VISUAL: ${OSCOPE_VISUAL:-}
+      OSCOPE_PERF: ${OSCOPE_PERF:-}
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    volumes:
+      - .:${OSCOPE_REPO_ROOT:-/workspace}
+      - node_modules:${OSCOPE_REPO_ROOT:-/workspace}/web/node_modules
+      - npm_cache:/home/node/.npm
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  node_modules:
+  npm_cache:

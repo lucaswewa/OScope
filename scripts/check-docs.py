@@ -5,7 +5,8 @@ from pathlib import Path
 from urllib.parse import unquote
 
 root = Path(__file__).resolve().parents[1]
-files = [root / "README.md", root / "AGENTS.md", *sorted((root / "docs").rglob("*.md"))]
+files = [root / "README.md", root / "AGENTS.md", root / "web/README.md",
+         *sorted((root / "docs").rglob("*.md"))]
 failures = []
 for file in files:
     text = file.read_text(encoding="utf-8")

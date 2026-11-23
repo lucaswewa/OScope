@@ -1,49 +1,7 @@
 name: Backend
 on:
-  pull_request:
-    paths:
-      - Cargo.*
-      - .cargo/**
-      - crates/**
-      - configs/**
-      - examples/**
-      - xtask/**
-      - deny.toml
-      - rust-toolchain.toml
-      - containers/**
-      - compose*.yaml
-      - .dockerignore
-      - scripts/check-backend.sh
-      - scripts/check-cpu.sh
-      - scripts/check-gpu.sh
-      - scripts/check-pipeline-gpu.sh
-      - scripts/check-recording-perf.sh
-      - scripts/check-cuda-features.py
-      - scripts/dev.sh
-      - .github/workflows/backend.yml
-  push:
-    branches: [main, codex/linux-container-rebuild]
-    paths:
-      - Cargo.*
-      - .cargo/**
-      - crates/**
-      - configs/**
-      - examples/**
-      - xtask/**
-      - deny.toml
-      - rust-toolchain.toml
-      - containers/**
-      - compose*.yaml
-      - .dockerignore
-      - scripts/check-backend.sh
-      - scripts/check-cpu.sh
-      - scripts/check-gpu.sh
-      - scripts/check-pipeline-gpu.sh
-      - scripts/check-recording-perf.sh
-      - scripts/check-cuda-features.py
-      - scripts/dev.sh
-      - .github/workflows/backend.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:

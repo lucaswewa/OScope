@@ -1,27 +1,7 @@
 name: Development environment
 on:
-  pull_request:
-    paths:
-      - containers/**
-      - compose*.yaml
-      - .dockerignore
-      - .devcontainer/**
-      - rust-toolchain.toml
-      - scripts/dev.sh
-      - scripts/setup-wsl.sh
-      - .github/workflows/environment.yml
-  push:
-    branches: [main, codex/linux-container-rebuild]
-    paths:
-      - containers/**
-      - compose*.yaml
-      - .dockerignore
-      - .devcontainer/**
-      - rust-toolchain.toml
-      - scripts/dev.sh
-      - scripts/setup-wsl.sh
-      - .github/workflows/environment.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:

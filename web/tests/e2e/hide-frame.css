@@ -1,0 +1,5 @@
+/* The live viewer's baselines (W3.1): the camera's frame hidden, its noise
+   different each time; the black behind it, and the chrome, stay. */
+[data-said="canvas"] {
+  visibility: hidden;
+}

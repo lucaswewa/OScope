@@ -1,0 +1,321 @@
+{
+  "invalid": {
+    "status": 422,
+    "type": "application/json",
+    "body": {
+      "detail": [
+        {
+          "type": "float_parsing",
+          "loc": [
+            "body",
+            "x"
+          ],
+          "msg": "Input should be a valid number, unable to parse string as a number",
+          "input": "a"
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "y"
+          ],
+          "msg": "Field required",
+          "input": {
+            "x": "a"
+          }
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "z"
+          ],
+          "msg": "Field required",
+          "input": {
+            "x": "a"
+          }
+        }
+      ]
+    }
+  },
+  "malformed": {
+    "status": 422,
+    "type": "application/json",
+    "body": {
+      "detail": [
+        {
+          "type": "json_invalid",
+          "loc": [
+            "body",
+            1
+          ],
+          "msg": "JSON decode error",
+          "input": {},
+          "ctx": {
+            "error": "expected ident"
+          }
+        }
+      ]
+    }
+  },
+  "unreadable": {
+    "status": 422,
+    "type": "application/json",
+    "body": {
+      "detail": [
+        {
+          "type": "value_error",
+          "loc": [
+            "body"
+          ],
+          "msg": "Value error, UUID parsing failed: invalid character: found `n` at 0",
+          "input": {
+            "id": "not-a-uuid"
+          }
+        }
+      ]
+    }
+  },
+  "missing": {
+    "status": 404,
+    "type": "application/json",
+    "body": {
+      "detail": "No action invocation found with ID 00000000-0000-0000-0000-000000000000"
+    }
+  },
+  "outOfRange": {
+    "status": 400,
+    "type": "application/json",
+    "body": {
+      "detail": "the gain must be from 0 to 240, and was -5",
+      "type": null,
+      "status": 400,
+      "title": "out of range",
+      "instance": null
+    }
+  },
+  "alarm": {
+    "status": "error",
+    "id": "e8d92eb8-c4c5-46f2-8fce-d2d40590562a",
+    "action": "/api/v1/stage/move_to",
+    "href": "http://127.0.0.1:49871/api/v1/action_invocations/e8d92eb8-c4c5-46f2-8fce-d2d40590562a",
+    "timeStarted": "2026-11-18T13:53:43.980113",
+    "timeRequested": "2026-11-18T13:53:43.978390",
+    "timeCompleted": "2026-11-18T13:53:43.980404",
+    "links": [
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/e8d92eb8-c4c5-46f2-8fce-d2d40590562a",
+        "type": null,
+        "rel": "self",
+        "anchor": null
+      },
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/e8d92eb8-c4c5-46f2-8fce-d2d40590562a/output",
+        "type": null,
+        "rel": "output",
+        "anchor": null
+      }
+    ],
+    "input": {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "speed": null
+    },
+    "output": null,
+    "log": [],
+    "error": {
+      "detail": "alarm (409): the stage is in alarm: homing required",
+      "type": "https://www.tetaprecision.com/api/exceptions/index.html#teta_wot.exceptions.InvocationError",
+      "status": 500,
+      "title": "InvocationError",
+      "instance": null
+    }
+  },
+  "homed": {
+    "status": "completed",
+    "id": "8db5878d-7fa2-46b7-9002-f55260533239",
+    "action": "/api/v1/stage/home",
+    "href": "http://127.0.0.1:49871/api/v1/action_invocations/8db5878d-7fa2-46b7-9002-f55260533239",
+    "timeStarted": "2026-11-18T13:53:43.987113",
+    "timeRequested": "2026-11-18T13:53:43.986877",
+    "timeCompleted": "2026-11-18T13:53:59.660785",
+    "links": [
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/8db5878d-7fa2-46b7-9002-f55260533239",
+        "type": null,
+        "rel": "self",
+        "anchor": null
+      },
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/8db5878d-7fa2-46b7-9002-f55260533239/output",
+        "type": null,
+        "rel": "output",
+        "anchor": null
+      }
+    ],
+    "input": {},
+    "output": {
+      "time": 15920000000,
+      "position": {
+        "x": -1,
+        "y": -1,
+        "z": 20001
+      }
+    },
+    "log": [],
+    "error": null
+  },
+  "beyond": {
+    "status": "error",
+    "id": "af179d8d-d3fa-4334-b53a-8dcebedde2fe",
+    "action": "/api/v1/stage/move_to",
+    "href": "http://127.0.0.1:49871/api/v1/action_invocations/af179d8d-d3fa-4334-b53a-8dcebedde2fe",
+    "timeStarted": "2026-11-18T13:53:59.665585",
+    "timeRequested": "2026-11-18T13:53:59.665440",
+    "timeCompleted": "2026-11-18T13:53:59.665911",
+    "links": [
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/af179d8d-d3fa-4334-b53a-8dcebedde2fe",
+        "type": null,
+        "rel": "self",
+        "anchor": null
+      },
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/af179d8d-d3fa-4334-b53a-8dcebedde2fe/output",
+        "type": null,
+        "rel": "output",
+        "anchor": null
+      }
+    ],
+    "input": {
+      "x": 1000000000,
+      "y": 0,
+      "z": 0,
+      "speed": null
+    },
+    "output": null,
+    "log": [],
+    "error": {
+      "detail": "out of range (400): the x target in µm must be from 0 to 100000, and was 1000000000",
+      "type": "https://www.tetaprecision.com/api/exceptions/index.html#teta_wot.exceptions.InvocationError",
+      "status": 500,
+      "title": "InvocationError",
+      "instance": null
+    }
+  },
+  "cancelled": {
+    "status": "cancelled",
+    "id": "1a802014-a585-46b7-a524-e865de580f72",
+    "action": "/api/v1/stage/move_to",
+    "href": "http://127.0.0.1:49871/api/v1/action_invocations/1a802014-a585-46b7-a524-e865de580f72",
+    "timeStarted": "2026-11-18T13:53:59.671134",
+    "timeRequested": "2026-11-18T13:53:59.671022",
+    "timeCompleted": "2026-11-18T13:53:59.695126",
+    "links": [
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/1a802014-a585-46b7-a524-e865de580f72",
+        "type": null,
+        "rel": "self",
+        "anchor": null
+      },
+      {
+        "href": "http://127.0.0.1:49871/api/v1/action_invocations/1a802014-a585-46b7-a524-e865de580f72/output",
+        "type": null,
+        "rel": "output",
+        "anchor": null
+      }
+    ],
+    "input": {
+      "x": 90000,
+      "y": 0,
+      "z": 0,
+      "speed": 50
+    },
+    "output": null,
+    "log": [],
+    "error": {
+      "detail": "The action was cancelled.",
+      "type": "https://www.tetaprecision.com/api/exceptions/index.html#teta_wot.exceptions.InvocationCancelledError",
+      "status": 500,
+      "title": "InvocationCancelledError",
+      "instance": null
+    }
+  },
+  "busy": {
+    "status": 409,
+    "type": "application/json",
+    "body": {
+      "detail": "the device is busy: the mode, format, ROI and trigger can't change while it streams",
+      "type": null,
+      "status": 409,
+      "title": "busy",
+      "instance": null
+    }
+  },
+  "job": {
+    "id": "01a1f0a7-0471-744f-ad66-302882280fda",
+    "kind": "capture.single",
+    "title": "capture a frame",
+    "account": null,
+    "params": {
+      "project": "01a1f0a7-03ec-751e-a66d-0c6a7e1862f6",
+      "name": null,
+      "rendition": null
+    },
+    "resource": "hardware",
+    "pausable": false,
+    "gpu_mib": 0,
+    "state": "completed",
+    "progress": {
+      "fraction": 1,
+      "stage": "captured",
+      "counters": {},
+      "eta_s": 0
+    },
+    "results": [
+      "projects/01a1f0a7-03ec-751e-a66d-0c6a7e1862f6/acquisitions/01a1f0a7-0faf-70cb-bd02-b9b35f142440"
+    ],
+    "error": null,
+    "submitted": "2026-11-18T21:53:59.921073400Z",
+    "started": "2026-11-18T21:53:59.921536Z",
+    "finished": "2026-11-18T21:54:09.501094200Z",
+    "position": null
+  },
+  "failedJob": {
+    "id": "01a1f0a7-2a11-75eb-bf8a-dace4aa837e1",
+    "kind": "projects.export",
+    "title": "export acquisition 00000000-0000-0000-0000-000000000000 as ome-tiff",
+    "account": null,
+    "params": {
+      "project": "01a1f0a7-03ec-751e-a66d-0c6a7e1862f6",
+      "record": "00000000-0000-0000-0000-000000000000",
+      "format": "ome-tiff"
+    },
+    "resource": "compute",
+    "pausable": false,
+    "gpu_mib": 0,
+    "state": "failed",
+    "progress": {
+      "fraction": null,
+      "stage": "",
+      "counters": {},
+      "eta_s": null
+    },
+    "results": [],
+    "error": "no acquisition 00000000-0000-0000-0000-000000000000",
+    "submitted": "2026-11-18T21:54:09.553334800Z",
+    "started": "2026-11-18T21:54:09.554025500Z",
+    "finished": "2026-11-18T21:54:09.556537600Z",
+    "position": null
+  },
+  "noLevel": {
+    "status": 400,
+    "type": "application/problem+json",
+    "body": {
+      "title": "Bad Request",
+      "status": 400,
+      "detail": "no level 0 to slice"
+    }
+  }
+}

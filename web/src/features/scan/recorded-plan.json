@@ -1,0 +1,197 @@
+{
+  "region": {
+    "rect": {
+      "origin": {
+        "x": 38250,
+        "y": 10750
+      },
+      "size": {
+        "width": 3500,
+        "height": 2500
+      }
+    }
+  },
+  "preview": {
+    "plan": {
+      "pattern": "snake",
+      "motion": {
+        "kind": "stop_and_go"
+      },
+      "field": {
+        "corners_um": [
+          {
+            "x": -656.64,
+            "y": -437.76
+          },
+          {
+            "x": 656.64,
+            "y": -437.76
+          },
+          {
+            "x": 656.64,
+            "y": 437.76
+          },
+          {
+            "x": -656.64,
+            "y": 437.76
+          }
+        ],
+        "cell_um": {
+          "width": 1313.2799999999997,
+          "height": 875.5199999999999
+        },
+        "overlap": 0.1,
+        "step_um": {
+          "width": 1181.9519999999998,
+          "height": 787.9679999999998
+        }
+      },
+      "rows": 4,
+      "columns": 3,
+      "z": {
+        "kind": "fixed",
+        "z_um": 20001
+      },
+      "stack": null,
+      "tiles": [
+        {
+          "index": 0,
+          "row": 0,
+          "column": 0,
+          "x_um": 38818.048,
+          "y_um": 10818.048,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 1,
+          "row": 0,
+          "column": 1,
+          "x_um": 40000,
+          "y_um": 10818.048,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 2,
+          "row": 0,
+          "column": 2,
+          "x_um": 41181.952000000005,
+          "y_um": 10818.048,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 3,
+          "row": 1,
+          "column": 2,
+          "x_um": 41181.952000000005,
+          "y_um": 11606.016,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 4,
+          "row": 1,
+          "column": 1,
+          "x_um": 40000,
+          "y_um": 11606.016,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 5,
+          "row": 1,
+          "column": 0,
+          "x_um": 38818.048,
+          "y_um": 11606.016,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 6,
+          "row": 2,
+          "column": 0,
+          "x_um": 38818.048,
+          "y_um": 12393.984,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 7,
+          "row": 2,
+          "column": 1,
+          "x_um": 40000,
+          "y_um": 12393.984,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 8,
+          "row": 2,
+          "column": 2,
+          "x_um": 41181.952000000005,
+          "y_um": 12393.984,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 9,
+          "row": 3,
+          "column": 2,
+          "x_um": 41181.952000000005,
+          "y_um": 13181.952000000001,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 10,
+          "row": 3,
+          "column": 1,
+          "x_um": 40000,
+          "y_um": 13181.952000000001,
+          "z_um": 20001,
+          "name": null
+        },
+        {
+          "index": 11,
+          "row": 3,
+          "column": 0,
+          "x_um": 38818.048,
+          "y_um": 13181.952000000001,
+          "z_um": 20001,
+          "name": null
+        }
+      ]
+    },
+    "estimate": {
+      "tiles": 12,
+      "frames": 12,
+      "bytes": 479084544,
+      "travel_um": 11819.52000000001,
+      "autofocus_runs": 0,
+      "seconds": 3.4394105635359127
+    }
+  },
+  "capabilities": {
+    "model": "simulated grblHAL stage",
+    "x": {
+      "min": 0,
+      "max": 100000
+    },
+    "y": {
+      "min": 0,
+      "max": 75000
+    },
+    "z": {
+      "min": 0,
+      "max": 20000
+    },
+    "max_speed": 25000,
+    "default_speed": 10000,
+    "homing": true,
+    "encoders": true,
+    "trigger_output": true,
+    "report_interval": 10
+  }
+}

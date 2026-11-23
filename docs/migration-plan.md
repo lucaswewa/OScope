@@ -24,8 +24,8 @@ skipped. Keep the owner informed as implementation progresses.
 | R04 | HAL, simulator, frame bus and live acquisition | Approved by owner, 2026-11-22 | Default/CPU-only gates; 15 numerical GPU tests; simulated acquisition metadata, fan-out and cancellation; manual procedure |
 | R05 | Storage, recording, jobs and processing engine | Approved by owner, 2026-11-22 | Record/ingest/reopen; durable jobs; default/CPU gates; 3 pipeline GPU tests; real Python/native extensions; manual procedure |
 | R06 | API and container runtime | Approved by owner, 2026-11-22 | Default/CPU gates; real TLS/API/WebSocket runtime checks; persistent settings/data; signals/restart; required GPU kernels; manual procedure |
-| R07 | Calibration, scans and analysis workflows | Complete; awaiting owner review | Default/CPU gates; six scientific examples in three modes; required CUDA preview parity; real Python API tests; runtime workflows and restart persistence; manual procedure |
-| R08 | Vue integration and separate final gates | Planned | Existing frontend behavior over API; container-isolated contract/browser tests |
+| R07 | Calibration, scans and analysis workflows | Approved by owner, 2026-11-23 | Default/CPU gates; six scientific examples in three modes; required CUDA preview parity; real Python API tests; runtime workflows and restart persistence; manual procedure |
+| R08 | Vue integration and separate final gates | Complete; awaiting owner review; hosted CI blocked | 742 frontend tests; 285 browser passes; required CUDA delivery; separate timing/visual checks; independent router; HTTPS checkpoint; manual procedure |
 | R09 | Real device and WSL hardware feasibility | Planned | Camera SDK in WSL and container; sustained acquisition; stage/USB recovery |
 | R10 | Qualified host baseline and provisioning | Planned | Repeatable fresh PC install; unique identity; unattended cold boot |
 | R11 | Factory calibration and acceptance runner | Planned | One reference microscope completes guided installation and physical acceptance |
@@ -60,8 +60,8 @@ rather than adding empty placeholder crates or restoring the full workspace.
 
 Reuse the algorithm implementations and their references. Rebuild platform glue
 around Linux container deployment. Preserve the original lock versions where
-possible; review any necessary graph or license change. The frontend remains on
-`main` until R08 and is not rewritten or optimized.
+possible; review any necessary graph or license change. The frontend is ported
+in R08 with its existing behavior; it is not rewritten or optimized.
 
 ## Independent gates
 

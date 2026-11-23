@@ -1,9 +1,9 @@
 # R07 Microscope workflows
 
-- Status: Complete; awaiting owner review
+- Status: Approved
 - Date: 2026-11-22
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
-- Owner approval: Pending
+- Owner approval: Accepted on 2026-11-23
 - Prerequisite: R06 approved by owner on 2026-11-22
 
 ## Port specification
@@ -258,6 +258,6 @@ policy-close 1008 before media for missing/invalid credentials, valid first-mess
 authentication and hostile-origin rejection; application authentication code was
 preserved. The failed harness attempt is not counted as a pass.
 
-R08 remains pending owner approval of R07. Real camera/USB operation, physical
+The owner approved R07 on 2026-11-23 and authorized R08. Real camera/USB operation, physical
 calibration, unattended host startup, factory acceptance and release/rollback
 qualification remain R09-R12.

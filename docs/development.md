@@ -179,13 +179,34 @@ for script in scripts/*.sh containers/*.sh; do bash -n "$script"; done
 git diff --check
 ```
 
-The documentation workflow does not build the image. The environment workflow
-runs only for environment inputs and checks the image without a GPU. Run the GPU
-probe locally for environment/CUDA changes. The backend workflow is limited to
-backend/tooling paths and uses the same development image. Both container workflows
-reuse a GitHub Actions image-layer cache; they load images locally rather than
-publishing a release. Frontend and application integration gates arrive with
-their ports. The old combined full replay is not restored.
+The automatic workflow uses the [independent gate router](gates.md). Docs-only
+changes do not build an image; frontend quality does not require Rust; backend
+quality does not require Node. Integration consumes an explicitly prepared
+backend image cached by backend inputs. Individual category results and the
+aggregate remain stable when checks are not applicable. Older category workflows
+are manual diagnostics, so they do not duplicate automatic suites. Run the GPU
+probe locally for environment/CUDA changes. CI loads development/test images
+locally; it does not publish a release.
+
+## Vue and API integration
+
+```sh
+sudo bash scripts/frontend.sh build
+sudo bash scripts/frontend.sh check
+sudo bash scripts/frontend.sh browser-build
+sudo bash scripts/integration.sh
+```
+
+The Node image has no Rust or CUDA toolchain. The browser image adds Playwright,
+a virtual display for software WebGL2 and Docker CLI. Only the integration runner
+receives the Docker socket, to start isolated synthetic backend containers. The
+normal frontend image, backend development image and deployed backend do not.
+The launcher freezes the backend image ID and checks generated OpenAPI types
+against that same image. It never invokes Cargo. Follow the
+[R08 manual procedure](phases/r08-frontend-integration.md#manual-test) for image
+preparation, required CUDA delivery, isolated timing checks and the persistent
+same-origin HTTPS application in Windows. See [web/README.md](../web/README.md)
+for the frontend's layers and commands.
 
 ## Troubleshooting
 

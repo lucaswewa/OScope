@@ -14,7 +14,7 @@ case "${1:-shell}" in
   config) "${base[@]}" config --quiet; "${gpu[@]}" config --quiet ;;
   tools) "${base[@]}" run --rm --no-deps -T dev oscope-check tools ;;
   gpu) "${gpu[@]}" run --rm --no-deps -T dev oscope-check gpu ;;
-  backend) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-backend.sh ;;
+  backend) shift; "${base[@]}" run --rm --no-deps -T dev bash scripts/check-backend.sh "$@" ;;
   gpu-tests) "${gpu[@]}" run --rm --no-deps -T dev bash scripts/check-gpu.sh ;;
   pipeline-gpu) "${gpu[@]}" run --rm --no-deps -T dev bash scripts/check-pipeline-gpu.sh ;;
   workflows) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-workflows.sh default ;;
@@ -23,7 +23,7 @@ case "${1:-shell}" in
   workflow-extensions) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-workflow-extensions.sh ;;
   extensions) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-extensions.sh ;;
   recording-perf) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-recording-perf.sh ;;
-  cpu-tests) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-cpu.sh ;;
+  cpu-tests) shift; "${base[@]}" run --rm --no-deps -T dev bash scripts/check-cpu.sh "$@" ;;
   shell) "${gpu[@]}" run --rm --no-deps dev bash ;;
   shell-cpu) "${base[@]}" run --rm --no-deps dev bash ;;
   *) echo 'usage: scripts/dev.sh [build|config|tools|gpu|backend|gpu-tests|pipeline-gpu|workflows|workflows-cpu|workflows-gpu|workflow-extensions|extensions|recording-perf|cpu-tests|shell|shell-cpu]' >&2; exit 2 ;;

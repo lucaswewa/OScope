@@ -19,6 +19,9 @@
 !python/**
 !configs/
 !configs/runtime.toml
+containers/frontend.*
+**/*.md
+!python/oscope-ext/README.md
 # Keep local recordings, environments and build products out of every target.
 **/.oscope
 **/target

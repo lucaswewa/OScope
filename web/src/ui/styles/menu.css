@@ -1,0 +1,31 @@
+/*
+ * A menu (ADR-0042): a list of things to do, under a button or where the
+ * pointer was. It is a list (list.css), with its entries' icons before their
+ * words, and a line between its groups.
+ */
+.ui-menu {
+  min-inline-size: 10rem;
+  padding-block: var(--space-1);
+}
+
+.ui-menu .ui-option {
+  justify-content: start;
+}
+
+.ui-menu .ui-option.danger {
+  color: var(--danger);
+}
+
+.ui-menu .ui-option.danger[data-highlighted] {
+  background: var(--danger-tint);
+}
+
+.ui-menu .ui-option[data-disabled] {
+  color: var(--text-disabled);
+}
+
+.ui-menu-line {
+  block-size: 1px;
+  margin-block: var(--space-1);
+  background: var(--border);
+}

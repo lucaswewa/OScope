@@ -1,39 +1,7 @@
 name: Container runtime
 on:
-  pull_request:
-    paths:
-      - Cargo.*
-      - .cargo/**
-      - crates/**
-      - examples/**
-      - python/**
-      - rust-toolchain.toml
-      - containers/**
-      - configs/runtime.toml
-      - compose.runtime*.yaml
-      - .dockerignore
-      - scripts/runtime.sh
-      - scripts/check-runtime.py
-      - scripts/runtime_workflows.py
-      - .github/workflows/runtime.yml
-  push:
-    branches: [main, codex/linux-container-rebuild]
-    paths:
-      - Cargo.*
-      - .cargo/**
-      - crates/**
-      - examples/**
-      - python/**
-      - rust-toolchain.toml
-      - containers/**
-      - configs/runtime.toml
-      - compose.runtime*.yaml
-      - .dockerignore
-      - scripts/runtime.sh
-      - scripts/check-runtime.py
-      - scripts/runtime_workflows.py
-      - .github/workflows/runtime.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:

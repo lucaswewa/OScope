@@ -1,39 +1,7 @@
 name: Backend extensions
 on:
-  pull_request:
-    paths:
-      - Cargo.*
-      - .cargo/**
-      - crates/**
-      - examples/ex-rust-ext/**
-      - examples/ex-python-node/**
-      - examples/ext-*/**
-      - python/**
-      - rust-toolchain.toml
-      - containers/**
-      - compose*.yaml
-      - .dockerignore
-      - scripts/check-extensions.sh
-      - scripts/dev.sh
-      - .github/workflows/extensions.yml
-  push:
-    branches: [main, codex/linux-container-rebuild]
-    paths:
-      - Cargo.*
-      - .cargo/**
-      - crates/**
-      - examples/ex-rust-ext/**
-      - examples/ex-python-node/**
-      - examples/ext-*/**
-      - python/**
-      - rust-toolchain.toml
-      - containers/**
-      - compose*.yaml
-      - .dockerignore
-      - scripts/check-extensions.sh
-      - scripts/dev.sh
-      - .github/workflows/extensions.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:

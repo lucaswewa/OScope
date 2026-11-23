@@ -1,0 +1,6 @@
+# Same-origin development checkpoint; release packaging is R12.
+services:
+  backend:
+    command: ['--web', '/opt/oscope/web']
+    volumes:
+      - ./web/dist:/opt/oscope/web:ro
