@@ -37,7 +37,7 @@ async fn readiness_is_authenticated_and_turns_unavailable_on_restart() {
 }
 
 #[tokio::test]
-async fn deferred_workflows_and_host_power_are_not_advertised() {
+async fn microscope_workflows_are_advertised_without_host_power() {
     let folder = tempfile::tempdir().unwrap();
     let roots = Roots {
         data: folder.path().join("data"),
@@ -51,7 +51,9 @@ async fn deferred_workflows_and_host_power_are_not_advertised() {
         ..DevicesConfig::default()
     };
     let devices = Arc::new(Devices::from_config(&config, folder.path()).await.unwrap());
+    let store = oscope_store::Store::open(&roots.data, &roots.data.join("index.sqlite")).unwrap();
     let api = Api::builder(&roots)
+        .projects(store)
         .devices(devices)
         .power(false)
         .build()
@@ -67,7 +69,7 @@ async fn deferred_workflows_and_host_power_are_not_advertised() {
         "live_mosaic",
         "workspace",
     ] {
-        assert!(!descriptions.contains_key(name), "{name}");
+        assert!(descriptions.contains_key(name), "{name}");
     }
     let actions = descriptions["power"]["actions"].as_object().unwrap();
     assert!(actions.contains_key("restart"));

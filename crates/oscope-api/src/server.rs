@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use oscope_ext::Extensions;
 use oscope_jobs::JobService;
+use oscope_shm::RingWriter;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use teta_wot::http::axum::http::StatusCode;
@@ -20,19 +21,26 @@ use tokio::net::TcpListener;
 use tokio::sync::Notify;
 
 use crate::auth::{AuthThing, Guard, LeaseCheck, Security};
+use crate::calibration::{CalibrationThing, Calibrations};
+use crate::capture::CaptureThing;
 use crate::devices::{
     CameraThing, Devices, IlluminationThing, ObjectiveThing, SimulationThing, StageThing, statuses,
 };
 use crate::extensions::ExtensionsThing;
+use crate::focus::{AutofocusThing, ExposureThing};
 use crate::jobs::JobsThing;
 use crate::logs::{LogStore, Logs};
+use crate::mosaic::{LiveMosaicThing, Mosaics};
 use crate::origins::{self, Origins};
 use crate::power::{PowerConfig, PowerThing};
+use crate::preview::PreviewThing;
 use crate::projects::ProjectsThing;
+use crate::scan::ScanThing;
 use crate::settings::{ConfigFile, SettingsFile, SettingsThing};
 use crate::status::StatusThing;
 use crate::system::{Notices, System, VERSION};
-use crate::{data, media, pages, upload, volume};
+use crate::workspace::WorkspaceThing;
+use crate::{data, media, mosaic, pages, upload, volume, zoom};
 
 /// The control plane's prefix: the `system` Thing is at `/api/v1/system/`.
 /// The OpenAPI document is at the root, `/openapi.json`, with its docs pages
@@ -94,10 +102,23 @@ pub struct ApiBuilder {
     logs: LogStore,
     restart: Arc<Restart>,
     store: Option<Arc<oscope_store::Store>>,
+    mosaics: Option<Arc<Mosaics>>,
+    roots: Roots,
+    jobs: Option<Jobs>,
     origins: Origins,
     scratch: Option<Scratched>,
     /// The largest upload, and how long it waits to be used (W6.3).
     uploads: (u64, std::time::Duration),
+}
+
+/// The job service, kept for deep zoom; `Debug` names it only.
+#[derive(Clone)]
+struct Jobs(JobService);
+
+impl std::fmt::Debug for Jobs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("JobService")
+    }
 }
 
 /// The scratch space, kept for uploads; `Debug` names it only.
@@ -112,7 +133,7 @@ impl std::fmt::Debug for Scratched {
 /// A request to restart the server, which the `system` Thing's `restart`
 /// action makes, and whoever serves the [`Api`] waits for
 /// ([`Api::restart`]). The sidecar contract (ADR-0015) exits with code 75
-/// for it; Docker supervises the Linux runtime.
+/// for it.
 #[derive(Debug, Default)]
 pub struct Restart {
     asked: AtomicBool,
@@ -143,6 +164,9 @@ impl Restart {
     }
 }
 
+/// The preview ring, until the `preview` Thing starts publishing to it.
+pub(crate) struct RingSlot(pub(crate) std::sync::Mutex<Option<RingWriter>>);
+
 impl ApiBuilder {
     /// Checks every request with `authenticator`: the Things', the media
     /// plane's, `/health` and the pages. The Thing Descriptions and the
@@ -152,15 +176,14 @@ impl ApiBuilder {
         self
     }
 
-    /// Serves the `power` Thing's confirmed process restart. Host power
-    /// actions are unavailable in the Linux container.
+    /// Serves the confirmed process-restart action. Host power actions are absent.
     pub fn power(self, dry_run: bool) -> Self {
         self.power_with(dry_run, dry_run)
     }
 
     /// Serves the `power` Thing as [`power`](Self::power) does, with the
-    /// service's restart a dry run or not. `dry_run` is retained for
-    /// configuration and API compatibility with the source.
+    /// service's restart a dry run or not apart from the host's actions
+    /// (W4.3, ADR-0060).
     pub fn power_with(mut self, dry_run: bool, dry_run_restart: bool) -> Self {
         let config = PowerConfig {
             dry_run,
@@ -250,19 +273,39 @@ impl ApiBuilder {
 
     /// Serves the instrument's `devices` as the Things `camera`, `stage`,
     /// `illumination` and `objective`, and `simulation` when a device is
-    /// simulated; without the R07 workflow/preview Things.
+    /// simulated; and their frames' live `preview`, and `live_mosaic`.
     pub fn devices(mut self, devices: Arc<Devices>) -> Self {
         let simulated = devices.simulator.is_some();
+        let mosaics = Arc::new(Mosaics::default());
+        self.mosaics = Some(Arc::clone(&mosaics));
         self.things = self
             .things
             .service(devices)
+            .service(Arc::new(Calibrations::default()))
+            .service(mosaics)
             .thing("camera", CameraThing::default())
             .thing("stage", StageThing::default())
             .thing("illumination", IlluminationThing::default())
-            .thing("objective", ObjectiveThing::default());
+            .thing("objective", ObjectiveThing::default())
+            .thing("preview", PreviewThing::default())
+            .thing("capture", CaptureThing::default())
+            .thing("calibration", CalibrationThing::default())
+            .thing("autofocus", AutofocusThing::default())
+            .thing("exposure", ExposureThing::default())
+            .thing("scan", ScanThing::default())
+            .thing("live_mosaic", LiveMosaicThing::default());
         if simulated {
             self.things = self.things.thing("simulation", SimulationThing::default());
         }
+        self
+    }
+
+    /// Publishes previews of the camera's newest frames to `ring`, the
+    /// desktop app's fast path (ADR-0015), at the `preview` Thing's
+    /// defaults. Needs [`devices`](Self::devices).
+    pub fn ring(mut self, ring: RingWriter) -> Self {
+        let slot = RingSlot(std::sync::Mutex::new(Some(ring)));
+        self.things = self.things.service(Arc::new(slot));
         self
     }
 
@@ -270,6 +313,7 @@ impl ApiBuilder {
     /// lock also stops the device Things' manual moves while a hardware job
     /// runs.
     pub fn jobs(mut self, jobs: JobService) -> Self {
+        self.jobs = Some(Jobs(jobs.clone()));
         self.things = self
             .things
             .service(Arc::new(jobs))
@@ -288,15 +332,16 @@ impl ApiBuilder {
     }
 
     /// Serves the projects in `store` as the `projects` Thing (ADR-0021),
-    /// their files at `/api/v1/data/{project}/{path}` (P30). Workspace
-    /// analysis is ported separately in R07.
+    /// their files at `/api/v1/data/{project}/{path}` (P30), and analyses
+    /// on them as the `workspace` Thing (P48).
     pub fn projects(mut self, store: oscope_store::Store) -> Self {
         let store = Arc::new(store);
         self.store = Some(Arc::clone(&store));
         self.things = self
             .things
             .service(store)
-            .thing("projects", ProjectsThing::default());
+            .thing("projects", ProjectsThing::default())
+            .thing("workspace", WorkspaceThing::default());
         self
     }
 
@@ -345,7 +390,14 @@ impl ApiBuilder {
             .merge(media::router(self.logs.clone()));
         if let Some(store) = &self.store {
             routes = routes.merge(data::router(Arc::clone(store)));
+            let cache = self.roots.scratch.join("zoom");
+            let zoom =
+                zoom::Zoom::start(Arc::clone(store), cache, self.jobs.as_ref().map(|j| &j.0));
+            routes = routes.merge(zoom::router(zoom));
             routes = routes.merge(volume::router(Arc::clone(store)));
+        }
+        if let Some(mosaics) = &self.mosaics {
+            routes = routes.merge(mosaic::router(Arc::clone(mosaics)));
         }
         for (prefix, folder) in &self.pages {
             routes = routes.merge(pages::router(prefix, folder)?);
@@ -397,6 +449,9 @@ impl Api {
             logs: LogStore::default(),
             restart,
             store: None,
+            mosaics: None,
+            roots: roots.clone(),
+            jobs: None,
             origins: Origins::default(),
             scratch: None,
             uploads: (crate::upload::UPLOAD_LIMIT, crate::upload::UPLOAD_LIFETIME),

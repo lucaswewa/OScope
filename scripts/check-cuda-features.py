@@ -13,7 +13,8 @@ metadata = json.loads(subprocess.check_output(args, text=True))
 names = {p["id"]: p["name"] for p in metadata["packages"]}
 required = {"oscope-compute", "oscope-imaging", "oscope-volume", "oscope-sim",
             "oscope-store", "oscope-pipeline", "oscope-ext", "oscope-acquire",
-            "oscope-api", "oscope-server",
+            "oscope-api", "oscope-server", "oscope-workflows", "ex-common",
+            "ex-calibrate", "ex-autofocus", "ex-capture", "ex-scan", "ex-histo-scan", "ex-checkpoint-f",
             "ex-compute-info", "ex-cuda-check", "ex-sim-camera", "ex-acquisition",
             "ex-record", "ex-pipeline", "ex-python-node", "ex-rust-ext"}
 checked = set()

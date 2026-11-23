@@ -263,7 +263,7 @@ pub fn run(cli: &Cli) -> Result<Stopped, Error> {
     let config = cli.config()?;
     if config.shm.enabled == Some(true) {
         return Err(Error::Devices(
-            "preview rings are unavailable until the R07 preview port".into(),
+            "the container server uses HTTP/WebSocket previews; a managed sidecar ring is unsupported".into(),
         ));
     }
     let address = SocketAddr::new(config.network.address, config.network.port);

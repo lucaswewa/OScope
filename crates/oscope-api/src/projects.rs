@@ -1,5 +1,18 @@
-//! Project CRUD, formats, templates and import/export/ingest jobs.
-//! Workflow analysis registration follows in R07.
+//! The `projects` Thing (D16, plan §5.12, ADR-0021): the projects on disk,
+//! as the Gallery shows them: listed, searched and paged; made, renamed,
+//! tagged, described and deleted; each one's contents; and thumbnails. It
+//! registers the jobs that import files into projects and export their
+//! images, `projects.import` and `projects.export`, and lists their formats
+//! (ADR-0037); with a scratch space, the one that ingests recordings,
+//! `projects.ingest` (ADR-0022); the one that stitches a scan's
+//! acquisition into a mosaic, `stitch.run` (ADR-0027); and the one that
+//! finds a z-stack's heights and all-in-focus image,
+//! `volume.depth_from_focus` (P42); and the one that deconvolves a volume,
+//! `volume.deconvolve` (P43); and the one that separates an image's
+//! stains, `stain.separate` (P45); and the one that counts its cells,
+//! `cells.count` (P46); and the one that makes reports, `report.make`,
+//! through templates it keeps and checks (P47). Annotations, which P44
+//! put here, are the `workspace` Thing's (P48).
 
 use std::sync::{Arc, OnceLock};
 
@@ -12,6 +25,12 @@ use oscope_store::{
     Change, Contents, NewProject, Page, Project, Query as Search, RecordKind, Scratch, Store,
     StoreError,
 };
+use oscope_workflows::cells::{COUNT, count_jobs};
+use oscope_workflows::deconvolve::{DECONVOLVE, deconvolve_jobs};
+use oscope_workflows::depth::{DEPTH, depth_jobs};
+use oscope_workflows::report::{Generators, MAKE, report_jobs};
+use oscope_workflows::stain::{SEPARATE, stain_jobs};
+use oscope_workflows::stitch::{STITCH, stitch_jobs};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -73,6 +92,33 @@ fn template_error(error: ReportError) -> ActionError {
 fn template_failed(error: &ReportError) -> Response {
     let body = json!({"title": "refused", "status": 400, "detail": error.to_string()});
     (StatusCode::BAD_REQUEST, Json(body)).into_response()
+}
+
+/// The record a path names: its project, its kind by its folder's name,
+/// `acquisitions` or `results`, and its ID.
+pub(crate) fn record(params: &PathParams) -> Result<(ProjectId, RecordKind, String), StoreError> {
+    let project = project_id(params)?;
+    let folder = params.get("kind").unwrap_or_default();
+    let kind = [RecordKind::Acquisition, RecordKind::Result]
+        .into_iter()
+        .find(|k| k.folder() == folder)
+        .ok_or_else(|| StoreError::Refused(format!("{folder:?}: acquisitions or results")))?;
+    Ok((
+        project,
+        kind,
+        params.get("record").unwrap_or_default().to_owned(),
+    ))
+}
+
+/// Which measurements, and as what.
+#[derive(Debug, Deserialize)]
+pub struct MeasureQuery {
+    /// One layer's, or with none, every layer's.
+    pub(crate) layer: Option<String>,
+    /// A stack's plane: its first by default.
+    pub(crate) plane: Option<u32>,
+    /// `csv` for CSV, and JSON otherwise.
+    pub(crate) format: Option<String>,
 }
 
 /// The projects: one slide or experiment each, holding its acquisitions,
@@ -156,6 +202,19 @@ impl ProjectsThing {
                 import_jobs(Arc::clone(&store), Arc::clone(&codecs), uploads),
             );
             jobs.register(EXPORT, export_jobs(Arc::clone(&store), Arc::clone(&codecs)));
+            jobs.register(STITCH, stitch_jobs(Arc::clone(&store)));
+            jobs.register(DEPTH, depth_jobs(Arc::clone(&store)));
+            jobs.register(DECONVOLVE, deconvolve_jobs(Arc::clone(&store)));
+            jobs.register(SEPARATE, stain_jobs(Arc::clone(&store)));
+            jobs.register(COUNT, count_jobs(Arc::clone(&store)));
+            // Reports, by OScope's generator or the extensions' (P47).
+            let generators = extensions.clone().map(|e| -> Generators {
+                Arc::new(move |name, params| e.reports().generate(name, params.clone()))
+            });
+            jobs.register(
+                MAKE,
+                report_jobs(Arc::clone(&store), templates.clone(), generators),
+            );
             // Recordings from the scratch space, ingested as jobs (ADR-0022).
             if let Some(scratch) = ctx.server().service::<Scratch>() {
                 jobs.register(INGEST, ingest_jobs(Arc::clone(&store), scratch));

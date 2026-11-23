@@ -1,9 +1,9 @@
 # R06 API and Linux container runtime
 
-- Status: Complete locally; owner review pending
+- Status: Approved
 - Date: 2026-11-22
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
-- Owner approval: Pending
+- Owner approval: Accepted on 2026-11-22
 - Scope: core HTTP/WebSocket API, authentication and deployable runtime checkpoint
 
 ## Port specification
@@ -47,6 +47,12 @@ separate from routine library checks and record image identity. Production host,
 USB, factory provisioning and release promotion remain later phases.
 
 ## Manual test
+
+This historical procedure targets the R06 checkpoint at
+`6796e641b738b1c82594916214f36e4c0f0976a9`, including its scripts and Compose files.
+Run it from a separate checkout of that commit. The current branch uses the R07
+image and expanded acceptance runner; use the [R07 procedure](r07-microscope-workflows.md#manual-test)
+for the current checkpoint.
 
 Prerequisites: use the Linux checkout in Ubuntu 24.04 WSL2, with Docker, Compose,
 Python 3.12 and the R01 NVIDIA driver/container-toolkit qualification complete.
@@ -226,5 +232,5 @@ requests; it does not qualify physical microscope health or calibration. Real
 camera/USB feasibility, unattended Windows/WSL boot, factory acceptance, offline
 bundles and compatible customer updates/rollback remain R09-R12. Runtime Ubuntu
 packages are resolved during the build; bit-for-bit reproducible releases and
-third-party distribution notices remain release packaging work. R07 awaits owner
-approval of R06.
+third-party distribution notices remain release packaging work. The owner approved
+R06 on 2026-11-22 and authorized R07.

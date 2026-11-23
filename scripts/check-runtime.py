@@ -22,6 +22,8 @@ import time
 import uuid
 import zlib
 
+import runtime_workflows
+
 
 def docker(*args, input=None, check=True, binary=False):
     result = subprocess.run(
@@ -85,25 +87,26 @@ class Client:
             now = self.json(href)
             return now if now["status"] not in ("pending", "running") else None
 
-        result = until(finished, path)
-        assert result["status"] == "completed", f"{path}: {result['status']}"
+        result = until(finished, path, timeout=300)
+        assert result["status"] == "completed", f"{path}: {result['status']}: {result.get('error')}"
         return result.get("output")
 
     def login(self, name, password):
         self.token = self.json("/api/v1/auth/login", method="POST",
                                value={"name": name, "password": password})["token"]
 
-    def websocket(self, authenticated=True, origin=None):
+    def websocket(self, authenticated=True, origin=None, path="/api/v1/media/ping",
+                  first_message=False):
         stream = self.context.wrap_socket(
             socket.create_connection(("127.0.0.1", self.port), timeout=10),
             server_hostname="localhost",
         )
         key = base64.b64encode(os.urandom(16)).decode()
-        headers = [f"GET /api/v1/media/ping HTTP/1.1",
+        headers = [f"GET {path} HTTP/1.1",
                    f"Host: 127.0.0.1:{self.port}", "Upgrade: websocket",
                    "Connection: Upgrade", "Sec-WebSocket-Version: 13",
                    f"Sec-WebSocket-Key: {key}"]
-        if authenticated:
+        if authenticated and not first_message:
             headers.append(f"Authorization: Bearer {self.token}")
         if origin:
             headers.append(f"Origin: {origin}")
@@ -113,9 +116,10 @@ class Client:
         while not answer.endswith(b"\r\n\r\n"):
             answer.extend(exact(stream, 1))
             assert len(answer) < 16384, "oversized upgrade headers"
-        if not authenticated or origin:
+        if origin or (not authenticated and not first_message):
             expected = b"403" if origin else b"401"
-            assert answer.split(b"\r\n", 1)[0].split()[1] == expected
+            status = answer.split(b"\r\n", 1)[0]
+            assert status.split()[1] == expected, f"{path}: {status.decode()} (expected {expected.decode()})"
             stream.close()
             return None
         assert answer.startswith(b"HTTP/1.1 101"), "WebSocket upgrade refused"
@@ -125,6 +129,8 @@ class Client:
         fields = dict(line.split(b":", 1) for line in bytes(answer).split(b"\r\n")[1:] if b":" in line)
         fields = {key.lower(): value.strip() for key, value in fields.items()}
         assert fields.get(b"sec-websocket-accept") == accept, "invalid upgrade accept"
+        if first_message and authenticated:
+            send_text(stream, json.dumps({"authorization": f"Bearer {self.token}"}))
         return stream
 
 
@@ -149,8 +155,16 @@ def frame(stream):
     return first & 15, exact(stream, size)
 
 
+def send_text(stream, text):
+    message = text.encode()
+    assert len(message) < 65536
+    length = bytes((0x81, 0x80 | len(message))) if len(message) < 126 else bytes((0x81, 0xfe)) + struct.pack("!H", len(message))
+    mask = os.urandom(4)
+    stream.sendall(length + mask + bytes(byte ^ mask[i % 4] for i, byte in enumerate(message)))
+
+
 def echo(stream):
-    message = b"R06 authenticated TLS WebSocket"
+    message = b"R07 authenticated TLS WebSocket"
     mask = os.urandom(4)
     stream.sendall(bytes((0x81, 0x80 | len(message))) + mask
                    + bytes(byte ^ mask[i % 4] for i, byte in enumerate(message)))
@@ -175,11 +189,11 @@ def png():
 
 def run(args, report):
     assert os.name == "posix", "run this check on the Linux Docker host"
-    name = "oscope-r06-" + uuid.uuid4().hex[:12]
+    name = "oscope-r07-" + uuid.uuid4().hex[:12]
     image = json.loads(docker("image", "inspect", args.image).stdout)[0]
     report.update(image=image["Id"], revision=image["Config"]["Labels"]["org.opencontainers.image.revision"])
     checks = report["checks"]
-    with tempfile.TemporaryDirectory(prefix="oscope-r06-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="oscope-r07-") as temporary:
         root = Path(temporary)
         root.chmod(0o755)
         for path in (root / "data", root / "scratch"):
@@ -191,8 +205,10 @@ def run(args, report):
         mounts = ["--mount", f"type=bind,src={root / 'data'},dst=/var/lib/oscope/data",
                   "--mount", f"type=bind,src={root / 'scratch'},dst=/var/lib/oscope/scratch"]
         isolation = ["--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-                     "-e", "NVIDIA_VISIBLE_DEVICES=void",
+                     "-e", "NVIDIA_VISIBLE_DEVICES=all" if args.gpu else "NVIDIA_VISIBLE_DEVICES=void",
                      "--tmpfs", "/tmp:rw,nosuid,nodev,size=256m,mode=1777"]
+        if args.gpu:
+            isolation.extend(["--gpus", "all"])
         password = secrets.token_urlsafe(32)
         try:
             version = docker("run", "--rm", "--read-only", args.image, "--version")
@@ -201,7 +217,7 @@ def run(args, report):
             assert refusal.returncode != 0 and "needs an account first" in refusal.stderr
             checks.append("network startup refuses missing account")
             docker("run", "--rm", "-i", *isolation, *mounts, args.image,
-                   "account", "add", "r06-operator", input=password + "\n")
+                   "account", "add", "r07-operator", input=password + "\n")
             docker("run", "-d", "--name", name, "--init", "--restart", "unless-stopped",
                    "--stop-timeout", "30", "-p", "127.0.0.1::8210", *isolation, *mounts, args.image)
 
@@ -220,21 +236,26 @@ def run(args, report):
             assert host["IpcMode"] != "host" and not host["Privileged"]
             ports = info["NetworkSettings"]["Ports"]["8210/tcp"]
             assert len(ports) == 1 and ports[0]["HostIp"] == "127.0.0.1"
-            assert not host.get("DeviceRequests"), "CPU fallback check must have no injected GPU"
+            assert bool(host.get("DeviceRequests")) is args.gpu, "GPU injection mode differs from requested qualification"
             client = Client(int(ports[0]["HostPort"]), root / "data/tls/certificate.pem")
-            checks.append("CPU fallback; non-root read-only image; private IPC; localhost port")
-            cpu = docker("exec", name, "/usr/local/bin/oscope-cuda-check", "--smoke")
-            assert "no GPU in use, so OScope computes on the CPU" in cpu.stdout
-            required = docker("exec", name, "/usr/local/bin/oscope-cuda-check", "--require-cuda", "--smoke", check=False)
-            assert required.returncode != 0 and "CUDA required but unavailable" in required.stderr
-            checks.append("CPU backend selected; required-device diagnostic rejects missing CUDA")
+            checks.append("non-root read-only image; private IPC; localhost port")
+            diagnostic = docker("exec", name, "/usr/local/bin/oscope-cuda-check",
+                                *(["--require-cuda"] if args.gpu else []), "--smoke")
+            if args.gpu:
+                assert "Cuda  available" in diagnostic.stdout and "smoke: ok" in diagnostic.stdout
+                checks.append("required CUDA kernels executed in the runtime image")
+            else:
+                assert "no GPU in use, so OScope computes on the CPU" in diagnostic.stdout
+                required = docker("exec", name, "/usr/local/bin/oscope-cuda-check", "--require-cuda", "--smoke", check=False)
+                assert required.returncode != 0 and "CUDA required but unavailable" in required.stderr
+                checks.append("CPU backend selected; required-device diagnostic rejects missing CUDA")
             assert client.json("/health") == {"status": "ok"}
             client.request("/ready", expected=401)
             client.request("/api/v1/system/memory", expected=401)
             client.websocket(authenticated=False)
             client.request("/api/v1/auth/login", method="POST",
-                           value={"name": "r06-operator", "password": "wrong"}, expected=401)
-            client.login("r06-operator", password)
+                           value={"name": "r07-operator", "password": "wrong"}, expected=401)
+            client.login("r07-operator", password)
             assert client.json("/ready") == {"status": "ready"}
             client.request("/api/v1/projects/create", method="POST", value={"name": "refused"}, expected=403)
             client.request("/api/v1/media/ping", headers={"Origin": "https://untrusted.invalid"}, expected=403)
@@ -247,15 +268,15 @@ def run(args, report):
             assert client.json("/api/v1/system/git_commit") == revision[:12], "API/image revision mismatch"
             descriptions = client.json("/api/v1/directory/things")
             titles = {td["title"].lower() for td in descriptions}
-            for deferred in ("preview", "capture", "autofocus", "exposure", "scan", "calibration", "workspace"):
-                assert deferred not in titles
-                client.request(f"/api/v1/{deferred}/", expected=404)
+            for capability in ("preview", "capture", "autofocus", "exposure", "scan", "calibration", "workspace"):
+                assert capability in titles
+                client.request(f"/api/v1/{capability}/")
             for action in ("reboot", "shutdown"):
                 client.request(f"/api/v1/power/{action}", method="POST", value={"confirm": True}, expected=404)
-            checks.append("R07 workflows and host-power actions absent")
-            project = client.action("projects/create", {"name": "R06 container persistence"})["id"]
-            renamed = client.action("projects/rename", {"id": project, "name": "R06 renamed"})
-            assert renamed["name"] == "R06 renamed"
+            checks.append("microscope workflows advertised; host-power actions absent")
+            project = client.action("projects/create", {"name": "R07 container persistence"})["id"]
+            renamed = client.action("projects/rename", {"id": project, "name": "R07 renamed"})
+            assert renamed["name"] == "R07 renamed"
             upload = client.json("/api/v1/upload/check.png", method="POST", raw=png(),
                                  headers={"Content-Type": "image/png"}, expected=201)
             submitted = client.action("jobs/submit", {"kind": "projects.import",
@@ -278,6 +299,9 @@ def run(args, report):
             client.request(file_path, authenticated=False, expected=401)
             client.request(f"/api/v1/data/{project}/%2e%2e/accounts.json", expected=400)
             checks.append("project CRUD; upload/import job; stored media authentication and byte ranges")
+            scientific = runtime_workflows.check(client, frame, send_text, until, args.gpu)
+            report["microscope"] = scientific
+            checks.append("authenticated OSPV/JPEG preview; dark calibration; capture; positioned scan; stitched deep zoom; PDF/HTML report")
             simulator = client.json("/api/v1/settings/simulator")
             simulator["rate"] = 1.25
             client.request("/api/v1/settings/simulator", method="PUT", value=simulator, expected=201)
@@ -294,8 +318,9 @@ def run(args, report):
             until(healthy, "ready after SIGTERM and start")
             client.port = int(inspect(name)["NetworkSettings"]["Ports"]["8210/tcp"][0]["HostPort"])
             client.request("/ready", expected=401)  # Old sessions cannot be reused.
-            client.login("r06-operator", password)
+            client.login("r07-operator", password)
             assert client.json(project_path) == contents and client.json(job_path)["state"] == "completed"
+            runtime_workflows.verify(client, scientific)
             assert client.json("/api/v1/settings/simulator")["rate"] == 1.25
             assert client.json("/api/v1/settings/restart_needed") is False
             assert (root / "data/tls/certificate.pem").read_bytes() == certificate
@@ -311,10 +336,11 @@ def run(args, report):
             until(healthy, "ready after API restart")
             client.port = int(inspect(name)["NetworkSettings"]["Ports"]["8210/tcp"][0]["HostPort"])
             client.request("/ready", expected=401)
-            client.login("r06-operator", password)
+            client.login("r07-operator", password)
             assert client.json(project_path) == contents and client.json(job_path)["state"] == "completed"
+            runtime_workflows.verify(client, scientific)
             checks.append("API restart supervised by Docker; WS close 1001; durable data retained")
-            environment = "/var/lib/oscope/scratch/r06-sdk-env"
+            environment = "/var/lib/oscope/scratch/r07-sdk-env"
             sdk = docker("exec", "-e", f"UV_PROJECT_ENVIRONMENT={environment}",
                          "-e", "PYTHONDONTWRITEBYTECODE=1", name,
                          "uv", "run", "--project", "/opt/oscope/sdk", "--locked",
@@ -346,10 +372,11 @@ def run(args, report):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--image", default="oscope-backend:r06")
+    parser.add_argument("--image", default="oscope-backend:r07")
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--gpu", action="store_true", help="Require GPU injection and an actual CUDA-rendered preview")
     args = parser.parse_args()
-    report = {"phase": "R06", "status": "failed", "checks": []}
+    report = {"phase": "R07", "status": "failed", "checks": []}
     try:
         run(args, report)
     finally:

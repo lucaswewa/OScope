@@ -1073,6 +1073,71 @@ dependencies = [
 ]
 
 [[package]]
+name = "ex-autofocus"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-sim",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ex-calibrate"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-sim",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ex-capture"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ex-checkpoint-f"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ex-common"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "oscope-api",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "ex-compute-info"
 version = "0.1.1"
 dependencies = [
@@ -1114,6 +1179,21 @@ dependencies = [
  "anyhow",
  "oscope-core",
  "oscope-hal",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ex-histo-scan"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-core",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
  "serde_json",
  "tokio",
 ]
@@ -1184,6 +1264,20 @@ dependencies = [
  "oscope-sim",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "ex-scan"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "ex-common",
+ "oscope-api",
+ "oscope-jobs",
+ "oscope-sim",
+ "oscope-store",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2721,13 +2815,26 @@ name = "oscope-acquire"
 version = "0.1.1"
 dependencies = [
  "chrono",
+ "oscope-compute",
  "oscope-core",
  "oscope-hal",
+ "oscope-imaging",
  "oscope-jobs",
+ "oscope-pipeline",
+ "oscope-shm",
+ "oscope-sim",
+ "oscope-stitch",
  "oscope-store",
+ "rayon",
+ "schemars",
  "serde",
+ "serde_json",
  "tempfile",
+ "thiserror 2.0.21",
  "tokio",
+ "tracing",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2754,6 +2861,7 @@ dependencies = [
  "oscope-sim",
  "oscope-stitch",
  "oscope-store",
+ "oscope-workflows",
  "rand 0.9.5",
  "rayon",
  "rcgen",
@@ -3032,6 +3140,36 @@ dependencies = [
  "serde",
  "tempfile",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "oscope-workflows"
+version = "0.1.1"
+dependencies = [
+ "chrono",
+ "oscope-acquire",
+ "oscope-compute",
+ "oscope-core",
+ "oscope-hal",
+ "oscope-imaging",
+ "oscope-jobs",
+ "oscope-pipeline",
+ "oscope-report",
+ "oscope-sim",
+ "oscope-stitch",
+ "oscope-store",
+ "oscope-volume",
+ "png",
+ "rayon",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

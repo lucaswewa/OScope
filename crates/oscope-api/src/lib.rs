@@ -7,7 +7,7 @@
 //!
 //! - **the control plane:** the Things, under [`API_PREFIX`], such as the
 //!   [`system`] Thing at `/api/v1/system/`, the [`logs`] Thing, the
-//!   instrument's [`devices`], the [`jobs`], the
+//!   instrument's [`devices`], the live [`preview`], the [`jobs`], the
 //!   [`extensions`] and the [`projects`];
 //! - **the media plane:** OScope's own routes, under [`MEDIA_PREFIX`];
 //! - **`/health`;**
@@ -17,26 +17,35 @@
 //! and graceful shutdown as the Things.
 
 pub mod auth;
+mod batch;
+pub mod calibration;
+pub mod capture;
 mod data;
 pub mod devices;
 pub mod extensions;
 mod files;
+pub mod focus;
 pub mod jobs;
 pub mod logs;
 mod media;
+pub mod mosaic;
 pub mod origins;
 mod pages;
 pub mod power;
+pub mod preview;
 pub mod projects;
+pub mod scan;
 mod server;
 pub mod settings;
 pub mod status;
 pub mod system;
 pub mod upload;
 mod volume;
+pub mod workspace;
+mod zoom;
 
 pub use files::Formats;
 pub use server::{API_PREFIX, Api, ApiBuilder, ApiError, MEDIA_PREFIX, Restart, Roots};
 pub use system::{GIT_COMMIT, VERSION};
-/// Completes on the Linux process shutdown signals, including Ctrl-C and SIGTERM.
+/// Completes on Linux shutdown signals, including SIGTERM.
 pub use teta_wot::server::shutdown_signal;

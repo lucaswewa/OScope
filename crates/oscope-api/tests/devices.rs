@@ -430,7 +430,20 @@ async fn the_things_describe_themselves() {
         .build()
         .unwrap();
     let tds = api.thing_descriptions("http://127.0.0.1:8220/").unwrap();
-    for name in ["camera", "stage", "illumination", "objective", "simulation"] {
+    for name in [
+        "camera",
+        "stage",
+        "illumination",
+        "objective",
+        "simulation",
+        "preview",
+        "capture",
+        "calibration",
+        "autofocus",
+        "exposure",
+        "scan",
+        "live_mosaic",
+    ] {
         // The ID differs from computer to computer: its form, then the rest.
         let mut td = tds[name].clone();
         let id = td.as_object_mut().unwrap().remove("id").unwrap();
@@ -446,6 +459,9 @@ async fn the_things_describe_themselves() {
         "/api/v1/illumination/set_light",
         "/api/v1/objective/fit",
         "/api/v1/simulation/import",
+        "/api/v1/preview/defaults",
+        "/api/v1/scan/run",
+        "/api/v1/live_mosaic/begin",
     ] {
         assert!(
             paths.contains_key(path),

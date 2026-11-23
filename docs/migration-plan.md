@@ -23,8 +23,8 @@ skipped. Keep the owner informed as implementation progresses.
 | R03 | Compute and algorithm libraries | Approved by owner, 2026-11-22 | CUDA-default and CPU-only gates; 13 GPU numerical tests; required-device rejection; source/lock parity; manual procedure |
 | R04 | HAL, simulator, frame bus and live acquisition | Approved by owner, 2026-11-22 | Default/CPU-only gates; 15 numerical GPU tests; simulated acquisition metadata, fan-out and cancellation; manual procedure |
 | R05 | Storage, recording, jobs and processing engine | Approved by owner, 2026-11-22 | Record/ingest/reopen; durable jobs; default/CPU gates; 3 pipeline GPU tests; real Python/native extensions; manual procedure |
-| R06 | API and container runtime | Complete locally; owner review pending | Default/CPU gates; real TLS/API/WebSocket runtime checks; persistent settings/data; signals/restart; required GPU kernels; manual procedure |
-| R07 | Calibration, scans and analysis workflows | Planned | Runnable simulated microscope checkpoint; scientific outputs match references |
+| R06 | API and container runtime | Approved by owner, 2026-11-22 | Default/CPU gates; real TLS/API/WebSocket runtime checks; persistent settings/data; signals/restart; required GPU kernels; manual procedure |
+| R07 | Calibration, scans and analysis workflows | Complete; awaiting owner review | Default/CPU gates; six scientific examples in three modes; required CUDA preview parity; real Python API tests; runtime workflows and restart persistence; manual procedure |
 | R08 | Vue integration and separate final gates | Planned | Existing frontend behavior over API; container-isolated contract/browser tests |
 | R09 | Real device and WSL hardware feasibility | Planned | Camera SDK in WSL and container; sustained acquisition; stage/USB recovery |
 | R10 | Qualified host baseline and provisioning | Planned | Repeatable fresh PC install; unique identity; unattended cold boot |

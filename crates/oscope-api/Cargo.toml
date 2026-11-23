@@ -9,7 +9,7 @@ publish.workspace = true
 [features]
 default = ["cuda"]
 # Previews on the GPU (ADR-0011).
-cuda = ["oscope-acquire/cuda", "oscope-compute/cuda", "oscope-ext/cuda", "oscope-imaging/cuda", "oscope-pipeline/cuda", "oscope-sim/cuda", "oscope-store/cuda"]
+cuda = ["oscope-acquire/cuda", "oscope-compute/cuda", "oscope-ext/cuda", "oscope-imaging/cuda", "oscope-pipeline/cuda", "oscope-sim/cuda", "oscope-store/cuda", "oscope-workflows/cuda"]
 
 [dependencies]
 anyhow.workspace = true
@@ -31,6 +31,7 @@ oscope-stitch.workspace = true
 oscope-shm.workspace = true
 oscope-sim.workspace = true
 oscope-report.workspace = true
+oscope-workflows.workspace = true
 rand.workspace = true
 rayon.workspace = true
 schemars.workspace = true

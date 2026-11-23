@@ -10,6 +10,8 @@ members = [
     "crates/oscope-pipeline", "crates/oscope-shm", "crates/oscope-ext-sdk",
     "crates/oscope-ext", "crates/oscope-report", "examples/ex-record",
     "examples/ex-pipeline", "examples/ex-python-node", "examples/ex-rust-ext",
+    "crates/oscope-workflows", "examples/common",
+    "examples/ex-calibrate", "examples/ex-autofocus", "examples/ex-capture", "examples/ex-scan", "examples/ex-histo-scan", "examples/ex-checkpoint-f",
     "examples/ext-rust-node", "crates/oscope-api", "crates/oscope-server", "xtask",
 ]
 
@@ -90,6 +92,8 @@ oscope-ext-sdk = { path = "crates/oscope-ext-sdk" }
 oscope-ext = { path = "crates/oscope-ext", default-features = false }
 oscope-report = { path = "crates/oscope-report" }
 oscope-api = { path = "crates/oscope-api", default-features = false }
+oscope-workflows = { path = "crates/oscope-workflows", default-features = false }
+ex-common = { path = "examples/common", default-features = false }
 
 [workspace.lints.rust]
 missing_docs = "warn"
@@ -118,3 +122,8 @@ opt-level = 2
 # Preserve the source's checksum throughput for the scratch recording log.
 [profile.dev.package.crc32fast]
 opt-level = 3
+
+# Keep test backtraces without duplicating full type debug information in
+# every API/scientific test binary. Development and release retain their settings.
+[profile.test]
+debug = "line-tables-only"

@@ -1,0 +1,427 @@
+---
+source: crates/oscope-api/tests/devices.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Exposure",
+  "properties": {
+    "last": {
+      "description": "The exposure it left, whether it converged or why not, and each\nexposure it tried.",
+      "title": "The latest auto exposure's report.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "What auto exposure did.",
+          "type": "object",
+          "properties": {
+            "exposure_ms": {
+              "description": "The exposure it left, in ms: the best it tried.",
+              "type": "number"
+            },
+            "level": {
+              "description": "That exposure's percentile, as a share of full scale.",
+              "type": "number"
+            },
+            "target": {
+              "description": "The target.",
+              "type": "number"
+            },
+            "converged": {
+              "description": "Whether it came within the tolerance.",
+              "type": "boolean"
+            },
+            "steps": {
+              "description": "Each exposure tried.",
+              "type": "array",
+              "items": {
+                "description": "One exposure tried.",
+                "type": "object",
+                "properties": {
+                  "exposure_ms": {
+                    "description": "The exposure, in ms.",
+                    "type": "number"
+                  },
+                  "level": {
+                    "description": "Its frame's percentile, as a share of full scale.",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "exposure_ms",
+                  "level"
+                ]
+              }
+            },
+            "note": {
+              "description": "Why it didn't converge, if it didn't.",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "exposure_ms",
+            "level",
+            "target",
+            "converged",
+            "steps"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/exposure/last",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "last_white_balance": {
+      "description": "The gains, (G / R, 1, G / B), for a client to give the preview's\nlook, and the white they came from.",
+      "title": "The latest white balance's report.",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "What auto white balance found.",
+          "type": "object",
+          "properties": {
+            "gains": {
+              "description": "Red's, green's and blue's gains: (G / R, 1, G / B).",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            },
+            "white": {
+              "description": "The light's white, red, green and blue, as shares of full scale.",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            },
+            "level": {
+              "description": "Its grey.",
+              "type": "number"
+            },
+            "cells": {
+              "description": "How many cells it was measured over.",
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "gains",
+            "white",
+            "level",
+            "cells"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/exposure/last_white_balance",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "auto": {
+      "description": "Until the region's `percentile` (99.5 by default) sits at the\n`target` (0.75 of full scale) within `tolerance` (5 %), in at most\n`steps` (10), within the camera's limits. Each option is optional,\nas are `region` and `settle_ms`. The job fails, saying why, if it\ndoesn't converge; it leaves the best exposure it tried.",
+      "title": "Sets the exposure: a hardware job.",
+      "forms": [
+        {
+          "href": "/api/v1/exposure/auto",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "auto_input",
+        "type": "object",
+        "properties": {
+          "target": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "percentile": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tolerance": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "steps": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "region": {
+            "oneOf": [
+              {
+                "description": "A frame's region of the sensor, in its pixels.",
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "description": "Its left.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "y": {
+                    "description": "Its top.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "width": {
+                    "description": "Its width, in the frame's pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "height": {
+                    "description": "Its height.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settle_ms": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
+        "title": "auto_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "The job.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "description": "Where it is, as it is now.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "href"
+        ]
+      },
+      "synchronous": false
+    },
+    "white_balance": {
+      "description": "The gains that make the light's white grey, from the region's\nlightest part. Its result is the gains, also in\n`last_white_balance`; the preview takes them when a client sets its\nlook's `gains`.",
+      "title": "Finds the white balance: a hardware job.",
+      "forms": [
+        {
+          "href": "/api/v1/exposure/white_balance",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "white_balance_input",
+        "type": "object",
+        "properties": {
+          "region": {
+            "oneOf": [
+              {
+                "description": "A frame's region of the sensor, in its pixels.",
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "description": "Its left.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "y": {
+                    "description": "Its top.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "width": {
+                    "description": "Its width, in the frame's pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "height": {
+                    "description": "Its height.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settle_ms": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "Where to follow a job an action has started: what such an action\nanswers with at once (the `JobRef` pattern, ADR-0016).",
+        "title": "white_balance_output",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "The job.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "description": "Where it is, as it is now.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "href"
+        ]
+      },
+      "synchronous": false
+    }
+  },
+  "description": "Exposure: auto exposure, and auto white balance.",
+  "forms": [
+    {
+      "href": "/api/v1/exposure/properties",
+      "op": [
+        "readallproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/exposure/actions",
+      "op": [
+        "queryallactions"
+      ]
+    }
+  ],
+  "base": "http://127.0.0.1:8220/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Function"
+}

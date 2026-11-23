@@ -1,4 +1,4 @@
-# R06 simulated runtime checkpoint. Real devices are qualified in R09.
+# Simulated runtime checkpoint. Real devices are qualified in R09.
 version = 2
 
 [network]

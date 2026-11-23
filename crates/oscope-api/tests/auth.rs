@@ -312,9 +312,7 @@ async fn every_affordance_that_changes_state_refuses_a_caller_without_the_lease(
         }
     }
     assert!(
-        // R06's dependency-closed API has 47 state-changing affordances.
-        // Workflow affordances return with their services in R07.
-        checked.len() >= 47,
+        checked.len() >= 70,
         "{} affordances: {checked:?}",
         checked.len()
     );

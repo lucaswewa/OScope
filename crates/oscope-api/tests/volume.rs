@@ -254,13 +254,13 @@ async fn a_volume_s_slices_and_bricks_are_its_own_voxels() {
         .collect();
     assert_eq!(got, want);
 
-    // The R07 deep-zoom orchestration is not registered in R06.
+    // Deep zoom through a level that halves z: plane 12 is its plane 6.
     let zoom = format!(
         "/api/v1/zoom/{}/acquisitions/{}/image_files/9/0_0.jpg?plane=12",
         served.project, served.id
     );
     let tile = served.client.get(&zoom).await;
-    assert_eq!(tile.status, 404, "{}", String::from_utf8_lossy(&tile.body));
+    assert_eq!(tile.status, 200, "{}", String::from_utf8_lossy(&tile.body));
 
     // What is refused, and why: past the last plane, by the route itself,
     // even where level 2's 7 planes would hold the box rounded.

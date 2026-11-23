@@ -15,3 +15,5 @@ cargo test -p oscope-sim --test backend --locked -- --test-threads=1 --nocapture
 cargo test -p oscope-sim --test gpu --locked -- --test-threads=1 --nocapture
 cargo run -p ex-acquisition --locked -- --require-cuda --smoke
 bash scripts/check-pipeline-gpu.sh
+# R07: the actual GPU preview must match the CPU's JPEG byte for byte.
+cargo test -p oscope-acquire --test preview --locked the_gpu_s_previews_are_the_cpu_s -- --exact --test-threads=1 --nocapture

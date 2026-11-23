@@ -1,0 +1,1371 @@
+---
+source: crates/oscope-api/tests/devices.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Preview",
+  "properties": {
+    "cpu_only": {
+      "description": "Saved. For comparing them: both give the same pixels.",
+      "title": "Makes previews on the CPU even when there is a GPU.",
+      "writeOnly": false,
+      "readOnly": false,
+      "default": false,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/preview/cpu_only",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/preview/cpu_only",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/preview/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true
+    },
+    "defaults": {
+      "description": "Saved. Clients that didn't ask take a change at once.",
+      "title": "What a client gets unless it asks otherwise.",
+      "writeOnly": false,
+      "readOnly": false,
+      "default": {
+        "width": 1920,
+        "height": 1080,
+        "quality": 80,
+        "max_fps": 30.0
+      },
+      "type": "object",
+      "properties": {
+        "width": {
+          "description": "The viewport's width, in pixels.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "description": "Its height.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "quality": {
+          "description": "The JPEG quality, from 1 to 100.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "max_fps": {
+          "description": "The most frames a second. The camera's rate is the most it gets.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "quality",
+        "max_fps"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/preview/defaults",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/preview/defaults",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/preview/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true,
+      "additionalProperties": false
+    },
+    "gpu": {
+      "description": "Whether there is a GPU to make previews on.",
+      "title": "Whether there is a GPU to make previews on.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/preview/gpu",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "live_recipe": {
+      "description": "The live recipe, run on each preview in place of the look, or none\n(P22, ADR-0017).\n\nSaved. `set_live_recipe` sets it, once it has checked it.",
+      "title": "The live recipe, run on each preview in place of the look, or none",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "A recipe (ADR-0017): nodes with their parameters, the edges between\ntheir ports, and the recipe's own inputs and outputs.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "Its format: 1, for now.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "name": {
+              "description": "A name for people.",
+              "default": "",
+              "type": "string"
+            },
+            "inputs": {
+              "description": "What it takes, each named and typed: `input.<name>` in its edges.",
+              "default": [],
+              "type": "array",
+              "items": {
+                "description": "A node's input or output, or a recipe's: a name and a type.",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "Its name: letters, digits and `_`.",
+                    "type": "string"
+                  },
+                  "type": {
+                    "description": "Its values' type.",
+                    "oneOf": [
+                      {
+                        "description": "An image of 32-bit floats, in memory or on the GPU.",
+                        "const": "image",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Images of one shape: a z-stack, a time series or a volume.",
+                        "const": "stack",
+                        "type": "string"
+                      },
+                      {
+                        "description": "A binary mask, a byte a pixel.",
+                        "const": "mask",
+                        "type": "string"
+                      },
+                      {
+                        "description": "A table: named columns, and rows.",
+                        "const": "table",
+                        "type": "string"
+                      },
+                      {
+                        "description": "Shapes, as GeoJSON.",
+                        "const": "geometry",
+                        "type": "string"
+                      },
+                      {
+                        "description": "A number, or any JSON.",
+                        "const": "json",
+                        "type": "string"
+                      },
+                      {
+                        "description": "A fragment of a report.",
+                        "const": "report",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "optional": {
+                    "description": "For a node's input: whether it may be left without an edge.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "nodes": {
+              "description": "Its nodes.",
+              "type": "array",
+              "items": {
+                "description": "A node in a recipe.",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Its ID in the recipe: letters, digits and `_`, and not `input`.",
+                    "type": "string"
+                  },
+                  "node": {
+                    "description": "Which node it is: its descriptor's ID.",
+                    "type": "string"
+                  },
+                  "version": {
+                    "description": "The node's version the recipe was made for: the registry's must be\nthe same, when given.",
+                    "oneOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "params": {
+                    "description": "Its parameters, which the node's schema checks.",
+                    "default": {}
+                  }
+                },
+                "required": [
+                  "id",
+                  "node"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "edges": {
+              "description": "Its edges.",
+              "default": [],
+              "type": "array",
+              "items": {
+                "description": "An edge: from a node's output, or a recipe input, to a node's input, each\n`node.port`.",
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "description": "The output: `blur.image`, or `input.image` for a recipe input.",
+                    "type": "string"
+                  },
+                  "to": {
+                    "description": "The input: `threshold.image`.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "outputs": {
+              "description": "What it gives.",
+              "type": "array",
+              "items": {
+                "description": "One of a recipe's outputs.",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "Its name.",
+                    "type": "string"
+                  },
+                  "from": {
+                    "description": "The node's output, or recipe input, it gives: `node.port`.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "from"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "format",
+            "nodes",
+            "outputs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/preview/live_recipe",
+          "op": [
+            "readproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/preview/live_recipe",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/preview/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true
+    },
+    "look": {
+      "description": "Saved.",
+      "title": "How previews look: the levels, the tone curve and white balance.",
+      "writeOnly": false,
+      "readOnly": false,
+      "default": {
+        "black": 0.0,
+        "white": 1.0,
+        "gamma": null,
+        "gains": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "type": "object",
+      "properties": {
+        "black": {
+          "description": "The level shown as black, from 0 to 1, once the camera's black level\nis taken off.",
+          "type": "number"
+        },
+        "white": {
+          "description": "The level shown as white: above black.",
+          "type": "number"
+        },
+        "gamma": {
+          "description": "The display's gamma, such as 2.2; none for sRGB's curve.",
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gains": {
+          "description": "Red, green and blue's white-balance gains.",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        }
+      },
+      "required": [
+        "black",
+        "white",
+        "gains"
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/preview/look",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/preview/look",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/preview/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true,
+      "additionalProperties": false
+    },
+    "nodes": {
+      "description": "The stock nodes (P22), and the nodes of the extensions this start\nloaded (P25).",
+      "title": "The nodes live recipes may use.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "description": "What a node is (ADR-0017), as the registry lists it.",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Its ID, dotted: `test.box_blur`.",
+            "type": "string"
+          },
+          "version": {
+            "description": "Its version, raised when what it gives, or its parameters, change.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "category": {
+            "description": "Its category, for people: `filter`.",
+            "type": "string"
+          },
+          "description": {
+            "description": "What it does, in a line.",
+            "type": "string"
+          },
+          "inputs": {
+            "description": "Its inputs.",
+            "type": "array",
+            "items": {
+              "description": "A node's input or output, or a recipe's: a name and a type.",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "description": "Its name: letters, digits and `_`.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Its values' type.",
+                  "oneOf": [
+                    {
+                      "description": "An image of 32-bit floats, in memory or on the GPU.",
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Images of one shape: a z-stack, a time series or a volume.",
+                      "const": "stack",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A binary mask, a byte a pixel.",
+                      "const": "mask",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A table: named columns, and rows.",
+                      "const": "table",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Shapes, as GeoJSON.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A number, or any JSON.",
+                      "const": "json",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A fragment of a report.",
+                      "const": "report",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "optional": {
+                  "description": "For a node's input: whether it may be left without an edge.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "outputs": {
+            "description": "Its outputs.",
+            "type": "array",
+            "items": {
+              "description": "A node's input or output, or a recipe's: a name and a type.",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "description": "Its name: letters, digits and `_`.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Its values' type.",
+                  "oneOf": [
+                    {
+                      "description": "An image of 32-bit floats, in memory or on the GPU.",
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Images of one shape: a z-stack, a time series or a volume.",
+                      "const": "stack",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A binary mask, a byte a pixel.",
+                      "const": "mask",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A table: named columns, and rows.",
+                      "const": "table",
+                      "type": "string"
+                    },
+                    {
+                      "description": "Shapes, as GeoJSON.",
+                      "const": "geometry",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A number, or any JSON.",
+                      "const": "json",
+                      "type": "string"
+                    },
+                    {
+                      "description": "A fragment of a report.",
+                      "const": "report",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "optional": {
+                  "description": "For a node's input: whether it may be left without an edge.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "params": {
+            "description": "Its parameters' JSON Schema, in the part [`crate::schema`] knows."
+          },
+          "capabilities": {
+            "description": "What it can do.",
+            "type": "object",
+            "properties": {
+              "cpu": {
+                "description": "It runs on the CPU.",
+                "type": "boolean"
+              },
+              "cuda": {
+                "description": "It runs on the GPU, with CUDA.",
+                "type": "boolean"
+              },
+              "live": {
+                "description": "It is quick enough to run on every frame of the live view.",
+                "type": "boolean"
+              },
+              "tileable": {
+                "description": "It can run tile by tile: each output pixel depends only on the input\npixels within its halo, and its outputs are rasters of its raster\ninputs' size.",
+                "type": "boolean"
+              },
+              "halo": {
+                "description": "The pixels around a tile it reads, unless its step says\n([`Step::halo`]).",
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "cpu",
+              "cuda",
+              "live",
+              "tileable",
+              "halo"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "category",
+          "description",
+          "inputs",
+          "outputs",
+          "params",
+          "capabilities"
+        ]
+      },
+      "forms": [
+        {
+          "href": "/api/v1/preview/nodes",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "recipe_budget_ms": {
+      "description": "The most a live recipe may take, in ms, on an image the default\nviewport's size.\n\nSaved.",
+      "title": "The most a live recipe may take, in ms, on an image the default",
+      "writeOnly": false,
+      "readOnly": false,
+      "unit": "ms",
+      "default": 20.0,
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "forms": [
+        {
+          "href": "/api/v1/preview/recipe_budget_ms",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ]
+        },
+        {
+          "href": "/api/v1/preview/recipe_budget_ms",
+          "op": [
+            "observeproperty",
+            "unobserveproperty"
+          ],
+          "subprotocol": "sse"
+        },
+        {
+          "href": "ws://127.0.0.1:8220/api/v1/preview/ws",
+          "op": [
+            "observeproperty"
+          ]
+        }
+      ],
+      "observable": true
+    },
+    "references": {
+      "description": "The references recipes may read with `io.reference`, by name.",
+      "title": "The references recipes may read with `io.reference`, by name.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "forms": [
+        {
+          "href": "/api/v1/preview/references",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "sessions": {
+      "description": "The sessions open now, and how each is doing.",
+      "title": "The sessions open now, and how each is doing.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "description": "How a client's session is doing.",
+        "type": "object",
+        "properties": {
+          "session": {
+            "description": "The session's number, from 1 since the server started.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "fps": {
+            "description": "Messages sent in the last second.",
+            "type": "number"
+          },
+          "latency_ms": {
+            "description": "The last second's mean time from the end of a frame's exposure to its\nmessage being ready, in ms.",
+            "type": "number"
+          },
+          "bytes_per_s": {
+            "description": "Bytes sent in the last second.",
+            "type": "number"
+          },
+          "sent": {
+            "description": "Messages sent.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "dropped": {
+            "description": "Frames it missed: messages replaced before the client took them, and\nframes skipped while it was behind on acknowledging.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "quality": {
+            "description": "The quality it gets now, after adapting to its link.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "width": {
+            "description": "The width of its latest preview.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "height": {
+            "description": "Its height.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "gpu": {
+            "description": "Whether the GPU made it.",
+            "type": "boolean"
+          },
+          "recipe_ms": {
+            "description": "How long the live recipe took on it, in ms, if one is set.",
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "session",
+          "fps",
+          "latency_ms",
+          "bytes_per_s",
+          "sent",
+          "dropped",
+          "quality",
+          "width",
+          "height",
+          "gpu"
+        ]
+      },
+      "forms": [
+        {
+          "href": "/api/v1/preview/sessions",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "capture_reference": {
+      "description": "Captures a reference, such as a flat field or a dark frame: the\nmean of the camera's next `frames` frames (4 unless given, 64 at\nmost), whole, in linear light, at most 1024 pixels wide.\n\nIt is kept as `{data}/references/{name}.tiff`, for `io.reference`.\nThe live recipe, if one is set, is made again, to read it.",
+      "title": "Captures a reference, such as a flat field or a dark frame: the",
+      "forms": [
+        {
+          "href": "/api/v1/preview/capture_reference",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "capture_reference_input",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "frames": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "description": "A reference, captured.",
+        "title": "capture_reference_output",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Its name, which `io.reference` takes.",
+            "type": "string"
+          },
+          "width": {
+            "description": "Its width, in pixels.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "height": {
+            "description": "Its height.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "frames": {
+            "description": "The frames it is the mean of.",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "width",
+          "height",
+          "frames"
+        ]
+      },
+      "synchronous": false
+    },
+    "set_live_recipe": {
+      "description": "Sets the live recipe, run on each preview after demosaicing, binning\nand the black level, in place of the look; or none.\n\nIt is checked first: every step runs live; it takes `image`, and\nperhaps `region`, and gives `image`, the same size, in display\nvalues; and it takes at most `recipe_budget_ms` on an image the\ndefault viewport's size. Refused (400), saying why, otherwise.",
+      "title": "Sets the live recipe, run on each preview after demosaicing, binning",
+      "forms": [
+        {
+          "href": "/api/v1/preview/set_live_recipe",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "set_live_recipe_input",
+        "type": "object",
+        "properties": {
+          "recipe": {
+            "oneOf": [
+              {
+                "description": "A recipe (ADR-0017): nodes with their parameters, the edges between\ntheir ports, and the recipe's own inputs and outputs.",
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "description": "Its format: 1, for now.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "description": "A name for people.",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "inputs": {
+                    "description": "What it takes, each named and typed: `input.<name>` in its edges.",
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "description": "A node's input or output, or a recipe's: a name and a type.",
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "description": "Its name: letters, digits and `_`.",
+                          "type": "string"
+                        },
+                        "type": {
+                          "description": "Its values' type.",
+                          "oneOf": [
+                            {
+                              "description": "An image of 32-bit floats, in memory or on the GPU.",
+                              "const": "image",
+                              "type": "string"
+                            },
+                            {
+                              "description": "Images of one shape: a z-stack, a time series or a volume.",
+                              "const": "stack",
+                              "type": "string"
+                            },
+                            {
+                              "description": "A binary mask, a byte a pixel.",
+                              "const": "mask",
+                              "type": "string"
+                            },
+                            {
+                              "description": "A table: named columns, and rows.",
+                              "const": "table",
+                              "type": "string"
+                            },
+                            {
+                              "description": "Shapes, as GeoJSON.",
+                              "const": "geometry",
+                              "type": "string"
+                            },
+                            {
+                              "description": "A number, or any JSON.",
+                              "const": "json",
+                              "type": "string"
+                            },
+                            {
+                              "description": "A fragment of a report.",
+                              "const": "report",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "optional": {
+                          "description": "For a node's input: whether it may be left without an edge.",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "nodes": {
+                    "description": "Its nodes.",
+                    "type": "array",
+                    "items": {
+                      "description": "A node in a recipe.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "description": "Its ID in the recipe: letters, digits and `_`, and not `input`.",
+                          "type": "string"
+                        },
+                        "node": {
+                          "description": "Which node it is: its descriptor's ID.",
+                          "type": "string"
+                        },
+                        "version": {
+                          "description": "The node's version the recipe was made for: the registry's must be\nthe same, when given.",
+                          "oneOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "params": {
+                          "description": "Its parameters, which the node's schema checks.",
+                          "default": {}
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "node"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "edges": {
+                    "description": "Its edges.",
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "description": "An edge: from a node's output, or a recipe input, to a node's input, each\n`node.port`.",
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "description": "The output: `blur.image`, or `input.image` for a recipe input.",
+                          "type": "string"
+                        },
+                        "to": {
+                          "description": "The input: `threshold.image`.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "outputs": {
+                    "description": "What it gives.",
+                    "type": "array",
+                    "items": {
+                      "description": "One of a recipe's outputs.",
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "description": "Its name.",
+                          "type": "string"
+                        },
+                        "from": {
+                          "description": "The node's output, or recipe input, it gives: `node.port`.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "from"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "format",
+                  "nodes",
+                  "outputs"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "set_live_recipe_output",
+        "oneOf": [
+          {
+            "description": "What a live recipe was checked to take.",
+            "type": "object",
+            "properties": {
+              "steps": {
+                "description": "Its steps, in order.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "time_ms": {
+                "description": "Its time on an RGB image the default viewport's size, in ms.",
+                "type": "number"
+              },
+              "width": {
+                "description": "That image's width.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "height": {
+                "description": "Its height.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "budget_ms": {
+                "description": "The budget it was checked against, in ms.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "steps",
+              "time_ms",
+              "width",
+              "height",
+              "budget_ms"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "synchronous": false
+    }
+  },
+  "description": "Live previews: the camera's frames as JPEGs, each client's the size of\nits viewport, through a binary WebSocket (ADR-0014).",
+  "links": [
+    {
+      "href": "/api/v1/preview/stream",
+      "type": "application/octet-stream",
+      "rel": "alternate",
+      "subprotocol": "websocket",
+      "parameters": {
+        "description": "What a client asks for, as a JSON text message. Each message replaces\nthe last, and what it leaves out takes the `defaults` setting's value.",
+        "type": "object",
+        "properties": {
+          "width": {
+            "description": "The viewport's width, in pixels.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "height": {
+            "description": "Its height.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "roi": {
+            "description": "The sensor's pixels to show, in full-sensor coordinates: the whole\nframe when not given, or when it misses the frame.",
+            "oneOf": [
+              {
+                "description": "A rectangle of whole pixels: the column and row of its top-left pixel, and\nits size.",
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "description": "The column of its left edge.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "y": {
+                    "description": "The row of its top edge.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "width": {
+                    "description": "Its width in pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "height": {
+                    "description": "Its height in pixels.",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quality": {
+            "description": "The JPEG quality, from 1 to 100.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_fps": {
+            "description": "The most frames a second.",
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ack": {
+            "description": "The number of the next message the client is ready for: one more\nthan the last it has shown, and 0 before the first. Once a client\nsends it, it has at most 2 messages it hasn't shown, so that no socket\nbuffer holds stale frames for it (ADR-0014).",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stats": {
+            "description": "Live statistics to send with the previews, at most 10 times a\nsecond (ADR-0035): none when not given.",
+            "oneOf": [
+              {
+                "description": "What a client asks to be measured.",
+                "type": "object",
+                "properties": {
+                  "roi": {
+                    "description": "The sensor's pixels to give statistics for, in full-sensor\ncoordinates, which the focus value is also measured over: the\npreview's region when not given.",
+                    "oneOf": [
+                      {
+                        "description": "A rectangle of whole pixels: the column and row of its top-left pixel, and\nits size.",
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "description": "The column of its left edge.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "y": {
+                            "description": "The row of its top edge.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "width": {
+                            "description": "Its width in pixels.",
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "height": {
+                            "description": "Its height in pixels.",
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y",
+                          "width",
+                          "height"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "profile": {
+                    "description": "A line to profile, in full-sensor coordinates.",
+                    "oneOf": [
+                      {
+                        "description": "A line across the sensor, in full-sensor coordinates.",
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "description": "Where it starts: x and y.",
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "maxItems": 2,
+                            "minItems": 2
+                          },
+                          "to": {
+                            "description": "Where it ends.",
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "maxItems": 2,
+                            "minItems": 2
+                          }
+                        },
+                        "required": [
+                          "from",
+                          "to"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "bins": {
+                    "description": "The histograms' bins, from 1 to 4096.",
+                    "default": 256,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                  },
+                  "mask": {
+                    "description": "Whether to send the saturation mask.",
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mosaic": {
+            "description": "Whether to send the live mosaic's tiles changed since the last\nmessage, as a block with each message that has some (ADR-0026).",
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  ],
+  "forms": [
+    {
+      "href": "/api/v1/preview/properties",
+      "op": [
+        "readallproperties",
+        "writemultipleproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/preview/properties",
+      "op": [
+        "observeallproperties",
+        "unobserveallproperties"
+      ],
+      "subprotocol": "sse"
+    },
+    {
+      "href": "/api/v1/preview/actions",
+      "op": [
+        "queryallactions"
+      ]
+    }
+  ],
+  "base": "http://127.0.0.1:8220/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Function"
+}

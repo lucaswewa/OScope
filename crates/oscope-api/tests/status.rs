@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::{Api, Roots};
-use oscope_jobs::{Job, JobService, JobSpec, JobsConfig, Resource, Stop};
+use oscope_jobs::{JobService, JobsConfig};
 use oscope_store::{Scratch, ScratchPolicy};
 use serde_json::{Value, json};
 use teta_wot::testing::TestClient;
@@ -31,24 +31,6 @@ async fn server_with(folder: &Path, policy: ScratchPolicy) -> TestClient {
     std::fs::create_dir_all(&roots.scratch).unwrap();
     let devices = Devices::from_config(&DevicesConfig::default(), folder).await;
     let jobs = JobService::open(&folder.join("jobs.sqlite"), JobsConfig::default()).unwrap();
-    // A real failed job without the exposure workflow, which is ported in R07.
-    jobs.register(
-        "test.fail",
-        Arc::new(|params: &Value| {
-            Ok(Job {
-                spec: JobSpec {
-                    kind: "test.fail".into(),
-                    title: "injected failure".into(),
-                    account: None,
-                    params: params.clone(),
-                    resource: Resource::Compute,
-                    pausable: false,
-                    gpu_mib: 0,
-                },
-                run: Box::new(|_| Box::pin(async { Err(Stop::Failed("injected failure".into())) })),
-            })
-        }),
-    );
     let api = Api::builder(&roots)
         .devices(Arc::new(devices.unwrap()))
         .scratch(Scratch::open(&roots.scratch, policy).unwrap())
@@ -216,21 +198,19 @@ async fn each_fault_is_reported_by_its_subsystem_and_rolled_up() {
     );
     inject(&client, "scratch_full", false).await;
     until(&client, "the disk back", |s| s["state"] == "ok").await;
-    // A failed job degrades the jobs subsystem and the instrument roll-up.
-    let submitted = invoke(
-        &client,
-        "jobs/submit",
-        json!({"kind":"test.fail", "params":{}}),
-    )
-    .await;
+    // A job that failed degrades the jobs: auto exposure, the camera
+    // unplugged.
+    inject(&client, "camera_unplugged", true).await;
+    let submitted = invoke(&client, "exposure/auto", json!({})).await;
     assert_eq!(submitted["status"], "completed", "{submitted}");
+    inject(&client, "camera_unplugged", false).await;
     let failed = until(&client, "the job failed", |s| {
         of(s, "jobs")["state"] == "degraded"
     })
     .await;
     let said = of(&failed, "jobs")["message"].as_str().unwrap().to_owned();
     assert!(
-        said.starts_with("1 failed in the last ten minutes, test.fail"),
+        said.starts_with("1 failed in the last ten minutes, exposure.auto"),
         "{said}"
     );
     assert_eq!(failed["state"], "degraded");

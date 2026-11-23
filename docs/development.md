@@ -3,10 +3,11 @@
 The Linux x86_64 development container contains the pinned Rust toolchain, CUDA
 compilation tools, Python, uv and cargo-deny. Tool checks and a required-device
 CUDA probe validate the environment. The current application checkpoint uses
-simulated devices, recording/ingest, durable jobs, recipe processing and the core
-API/runtime container. Physical drivers and production readiness remain later
-phases. See the [R06 manual procedure](phases/r06-api-runtime.md#manual-test) for
-the separate runtime image, account setup and deployment acceptance check.
+simulated devices, recording/ingest, durable jobs, processing, calibration, focus,
+capture, scans and scientific reports through the API/runtime container. Physical
+drivers and production readiness remain later phases. See the
+[R07 manual procedure](phases/r07-microscope-workflows.md#manual-test) for
+workflow checkpoints and the separate runtime image's deployment acceptance.
 
 ## WSL prerequisites
 
@@ -55,6 +56,12 @@ identity explicitly; do not make the source world-writable.
 Compose defaults to two concurrent Cargo jobs to fit cold Typst/storage builds
 in the current 8 GB WSL instance. Set `OSCOPE_DEV_BUILD_JOBS` for a larger host.
 Python extensions use the image's Python 3.12; uv does not download interpreters.
+Tests retain line-number backtraces with `line-tables-only` debug information;
+inside the development shell, set `CARGO_PROFILE_TEST_DEBUG=2` for a focused
+session needing variable inspection.
+Before cold builds, check both Windows physical disk space (`Get-PSDrive C` in
+PowerShell) and WSL filesystem space (`df -h /`). A large guest free-space value
+does not guarantee room on the physical host.
 
 `tools` launches without a GPU reservation and verifies Linux x86_64, the pinned
 Rust compiler, Cargo, rustfmt, Clippy, Python, uv, NVCC, NVRTC/cuFFT library loading,
@@ -78,7 +85,7 @@ sudo bash scripts/dev.sh shell-cpu   # no GPU reservation
 
 The same image is used in both modes. It contains CUDA tools in either mode;
 `shell-cpu` launches without GPU injection. The CUDA-enabled acquisition checkpoint
-exercises runtime CPU fallback there; there is no microscope server until R06.
+exercises runtime CPU fallback there. The runtime server is built separately.
 
 ## Backend gate and simulated acquisition checkpoint
 
@@ -95,8 +102,8 @@ standalone example smoke checks, and dependency licenses/advisories. It runs
 without a GPU reservation, Node or browser installation. The current Rust ports
 include core, compute, imaging, stitching, volume, architecture tooling,
 HAL, simulator, acquisition/recording, storage, jobs, pipelines, reports and
-extensions, plus runnable examples. Physical
-device drivers and API services remain later phases.
+extensions, microscope workflows and API services, plus runnable examples.
+Physical device drivers remain later phases.
 
 R03 adds `sudo bash scripts/dev.sh gpu-tests` for required-device numerical
 equivalence and `sudo bash scripts/dev.sh cpu-tests` for an explicit CPU-only
@@ -136,6 +143,23 @@ Acquisition prefers CUDA, with CPU fallback, and checks metadata and slab cleanu
 for six frames. Add `--require-cuda` inside the GPU shell to reject fallback.
 The core tour also remains available for units and a seeded affine fit; see
 [R02 evidence](phases/r02-core-workspace.md).
+
+R07 keeps longer scientific and Python API checks independently runnable:
+
+```sh
+sudo bash scripts/dev.sh workflows
+sudo bash scripts/dev.sh workflows-cpu
+sudo bash scripts/dev.sh workflows-gpu
+sudo bash scripts/dev.sh workflow-extensions
+```
+
+The workflow commands run six calibration/focus/capture/scan/analysis examples.
+The GPU command requires kernel execution and exact CPU/GPU preview parity.
+The extension command requires the real Python scan planner and report generator
+through the API. The separate workflow CI job runs the default examples and
+Python integrations without frontend tooling. Full runtime CPU/GPU acceptance
+uses `scripts/check-runtime.py`; follow the R07 manual procedure for exact
+commands, expected scientific outputs and persistent-deployment cleanup.
 
 The Compose service mounts source at `/workspace` and keeps Cargo registry/Git,
 build output and uv caches in named volumes. No service port, USB device, Docker

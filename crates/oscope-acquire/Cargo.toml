@@ -8,20 +8,34 @@ publish.workspace = true
 
 [features]
 default = ["cuda"]
-cuda = ["oscope-store/cuda"]
+# The preview on the GPU, through the colour steps' CUDA twins (ADR-0011).
+cuda = ["oscope-compute/cuda", "oscope-imaging/cuda", "oscope-pipeline/cuda", "oscope-store/cuda"]
 
 [dependencies]
+oscope-compute.workspace = true
 oscope-core.workspace = true
 oscope-hal.workspace = true
+oscope-imaging.workspace = true
 oscope-jobs.workspace = true
+oscope-pipeline.workspace = true
+oscope-shm.workspace = true
+oscope-stitch.workspace = true
 oscope-store.workspace = true
+rayon.workspace = true
+schemars.workspace = true
 serde.workspace = true
-tokio = { workspace = true, features = ["macros", "rt", "sync"] }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+tracing.workspace = true
 
 [dev-dependencies]
 chrono.workspace = true
+oscope-sim.workspace = true
 tempfile.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
+zune-core.workspace = true
+zune-jpeg.workspace = true
 
 [lints]
 workspace = true

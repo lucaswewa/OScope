@@ -1,7 +1,7 @@
 name: oscope-runtime
 services:
   backend:
-    image: oscope-backend:r06
+    image: oscope-backend:r07
     platform: linux/amd64
     build:
       context: .
