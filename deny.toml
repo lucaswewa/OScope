@@ -8,6 +8,15 @@ yanked = "deny"
 # Retained source exception: chrono timestamps are ported without a dependency
 # migration. Review replacement separately with upstream teta-wot before R06.
 ignore = [
+    # Preserve the source's reviewed Typst 0.15.1 exceptions (ADR-0030).
+    { id = "RUSTSEC-2025-0141", reason = "bincode, unmaintained: through syntect, Typst's syntax highlighting" },
+    { id = "RUSTSEC-2024-0436", reason = "paste, unmaintained: a build-time macro crate, through hayagriva" },
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz, unmaintained: Typst's text shaping" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser, unmaintained: Typst's font reading" },
+    { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml, unmaintained: through serde_yaml, Typst's yaml()" },
+    { id = "RUSTSEC-2024-0320", reason = "yaml-rust, unmaintained: through syntect" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.38: only through citationberg, Typst's unused CSL bibliography styles; citationberg pins 0.38" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.38: as RUSTSEC-2026-0194" },
     { id = "RUSTSEC-2026-0543", reason = "chrono, unmaintained: retain source timestamps during the parity port; migrate with upstream teta-wot separately" },
 ]
 
@@ -27,3 +36,8 @@ allow-wildcard-paths = true
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+
+# Preserve the source's license exception for Typst's build-time archive writer.
+[[licenses.exceptions]]
+allow = ["Apache-2.0 WITH LLVM-exception"]
+crate = "ar_archive_writer"

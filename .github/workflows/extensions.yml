@@ -1,0 +1,61 @@
+name: Backend extensions
+on:
+  pull_request:
+    paths:
+      - Cargo.*
+      - .cargo/**
+      - crates/**
+      - examples/ex-rust-ext/**
+      - examples/ex-python-node/**
+      - examples/ext-*/**
+      - python/**
+      - rust-toolchain.toml
+      - containers/**
+      - compose*.yaml
+      - .dockerignore
+      - scripts/check-extensions.sh
+      - scripts/dev.sh
+      - .github/workflows/extensions.yml
+  push:
+    branches: [main, codex/linux-container-rebuild]
+    paths:
+      - Cargo.*
+      - .cargo/**
+      - crates/**
+      - examples/ex-rust-ext/**
+      - examples/ex-python-node/**
+      - examples/ext-*/**
+      - python/**
+      - rust-toolchain.toml
+      - containers/**
+      - compose*.yaml
+      - .dockerignore
+      - scripts/check-extensions.sh
+      - scripts/dev.sh
+      - .github/workflows/extensions.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: extensions-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  extensions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - name: Load the cached development image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/development.Dockerfile
+          target: development
+          platforms: linux/amd64
+          tags: oscope-development:r02
+          load: true
+          cache-from: type=gha,scope=oscope-development
+          cache-to: type=gha,scope=oscope-development,mode=min,ignore-error=true
+      - name: Required SDK, IPC and native-library execution
+        run: bash scripts/dev.sh extensions

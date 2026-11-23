@@ -9,7 +9,7 @@ publish.workspace = true
 
 [features]
 default = ["cuda"]
-cuda = ["oscope-sim/cuda"]
+cuda = ["oscope-sim/cuda", "oscope-acquire/cuda"]
 
 [dependencies]
 anyhow.workspace = true

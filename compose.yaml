@@ -13,6 +13,8 @@ services:
     init: true
     shm_size: ${OSCOPE_DEV_SHM_SIZE:-1gb}
     environment:
+      # Typst and its dependencies need substantial memory during cold builds.
+      CARGO_BUILD_JOBS: ${OSCOPE_DEV_BUILD_JOBS:-2}
       CARGO_TARGET_DIR: /workspace/target
       UV_CACHE_DIR: /home/oscope/.cache/uv
     volumes:

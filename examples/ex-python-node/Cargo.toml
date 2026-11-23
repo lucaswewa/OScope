@@ -1,0 +1,26 @@
+[package]
+name = "ex-python-node"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["cuda"]
+cuda = ["oscope-ext/cuda", "oscope-sim/cuda"]
+
+[dependencies]
+anyhow.workspace = true
+oscope-compute.workspace = true
+oscope-core.workspace = true
+oscope-ext.workspace = true
+oscope-hal.workspace = true
+oscope-imaging.workspace = true
+oscope-pipeline.workspace = true
+oscope-sim.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

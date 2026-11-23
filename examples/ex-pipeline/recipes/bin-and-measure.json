@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "name": "Bin and measure",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [
+    { "id": "half", "node": "test.bin2x2", "version": 1 },
+    { "id": "quarter", "node": "test.bin2x2", "version": 1 },
+    { "id": "stats", "node": "test.statistics", "version": 1 }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "half.image" },
+    { "from": "half.image", "to": "quarter.image" },
+    { "from": "quarter.image", "to": "stats.image" }
+  ],
+  "outputs": [
+    { "name": "quarter", "from": "quarter.image" },
+    { "name": "table", "from": "stats.table" },
+    { "name": "mean", "from": "stats.mean" }
+  ]
+}

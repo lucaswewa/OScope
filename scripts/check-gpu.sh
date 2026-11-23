@@ -14,3 +14,4 @@ cargo test -p oscope-volume --test cuda --locked -- --test-threads=1 --nocapture
 cargo test -p oscope-sim --test backend --locked -- --test-threads=1 --nocapture
 cargo test -p oscope-sim --test gpu --locked -- --test-threads=1 --nocapture
 cargo run -p ex-acquisition --locked -- --require-cuda --smoke
+bash scripts/check-pipeline-gpu.sh

@@ -1,0 +1,39 @@
+[package]
+name = "oscope-store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["cuda"]
+cuda = ["oscope-compute/cuda", "oscope-imaging/cuda"]
+
+[dependencies]
+chrono.workspace = true
+crc32fast.workspace = true
+fs4.workspace = true
+oscope-compute.workspace = true
+oscope-core.workspace = true
+oscope-imaging.workspace = true
+png.workspace = true
+rayon.workspace = true
+rusqlite.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tiff = { workspace = true, features = ["deflate", "jpeg", "lzw"] }
+tracing.workspace = true
+uuid.workspace = true
+zarrs.workspace = true
+zune-core.workspace = true
+zune-jpeg.workspace = true
+
+[dev-dependencies]
+jsonschema.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

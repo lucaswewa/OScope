@@ -52,12 +52,17 @@ sudo bash scripts/dev.sh backend
 sudo bash scripts/dev.sh shell-cpu
 ```
 
-Inside the container, run `cargo run -p ex-acquisition --locked -- --smoke` for
-simulated tissue through the camera, exposure metadata and frame bus. Use
-`scripts/dev.sh shell` and add `--require-cuda` to require actual GPU capture.
-See the [R04 manual procedure](docs/phases/r04-devices-acquisition.md#manual-test)
-and [development instructions](docs/development.md). The backend gate is
-independent of frontend tooling.
+Inside the container, run `cargo run -p ex-record --locked -- --smoke` to record,
+ingest and reopen synthetic frames, or run the recipe checkpoint:
+
+```sh
+cargo run -p ex-pipeline --locked -- --smoke
+```
+
+See the [R05 manual procedure](docs/phases/r05-storage-processing.md#manual-test)
+for CUDA, CPU fallback, durable jobs and real extension execution, and the
+[development instructions](docs/development.md). The backend gate is independent
+of frontend tooling.
 
 ## License
 

@@ -1,0 +1,30 @@
+[package]
+name = "ex-rust-ext"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["cuda"]
+cuda = ["oscope-ext/cuda", "oscope-sim/cuda"]
+
+[dependencies]
+anyhow.workspace = true
+# The sample: a dependency, so that Cargo builds its library beside this
+# example, and so that the example can run its code directly to compare.
+ext-rust-node = { path = "../ext-rust-node" }
+oscope-compute.workspace = true
+oscope-core.workspace = true
+oscope-ext.workspace = true
+oscope-ext-sdk.workspace = true
+oscope-hal.workspace = true
+oscope-imaging.workspace = true
+oscope-pipeline.workspace = true
+oscope-sim.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

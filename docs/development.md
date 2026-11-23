@@ -3,8 +3,8 @@
 The Linux x86_64 development container contains the pinned Rust toolchain, CUDA
 compilation tools, Python, uv and cargo-deny. Tool checks and a required-device
 CUDA probe validate the environment. The current application checkpoint uses
-simulated devices through live acquisition. Physical drivers, the server and
-production readiness remain later phases.
+simulated devices, recording/ingest, durable jobs and recipe processing. Physical
+drivers, the server and production readiness remain later phases.
 
 ## WSL prerequisites
 
@@ -50,6 +50,10 @@ access. Containers run as `oscope`, UID 1000, matching the usual WSL account. Fo
 another source-owner UID use Dev Containers' UID adjustment or adapt the developer
 identity explicitly; do not make the source world-writable.
 
+Compose defaults to two concurrent Cargo jobs to fit cold Typst/storage builds
+in the current 8 GB WSL instance. Set `OSCOPE_DEV_BUILD_JOBS` for a larger host.
+Python extensions use the image's Python 3.12; uv does not download interpreters.
+
 `tools` launches without a GPU reservation and verifies Linux x86_64, the pinned
 Rust compiler, Cargo, rustfmt, Clippy, Python, uv, NVCC, NVRTC/cuFFT library loading,
 and compilation/execution of a small Rust program. `gpu` additionally requires
@@ -88,7 +92,8 @@ workspace tests and doc tests, Rust documentation, the architecture checker,
 standalone example smoke checks, and dependency licenses/advisories. It runs
 without a GPU reservation, Node or browser installation. The current Rust ports
 include core, compute, imaging, stitching, volume, architecture tooling,
-HAL, simulator and acquisition bus/metadata, plus runnable examples. Physical
+HAL, simulator, acquisition/recording, storage, jobs, pipelines, reports and
+extensions, plus runnable examples. Physical
 device drivers and API services remain later phases.
 
 R03 adds `sudo bash scripts/dev.sh gpu-tests` for required-device numerical
@@ -96,7 +101,27 @@ equivalence and `sudo bash scripts/dev.sh cpu-tests` for an explicit CPU-only
 build. Normal builds contain CUDA and permit runtime CPU fallback. See the
 [R03 manual procedure](phases/r03-compute-algorithms.md#manual-test) for algorithms
 and the [R04 manual procedure](phases/r04-devices-acquisition.md#manual-test) for
-devices, backpressure and live acquisition. Each phase includes its own procedure.
+devices, backpressure and live acquisition. See the
+[R05 manual procedure](phases/r05-storage-processing.md#manual-test) for recording,
+job recovery, processing and extensions. Each phase includes its own procedure.
+
+R05 adds independent commands for changed backend subsystems:
+
+```sh
+sudo bash scripts/dev.sh pipeline-gpu
+sudo bash scripts/dev.sh extensions
+sudo bash scripts/dev.sh recording-perf
+```
+
+The first requires real CUDA recipe steps and runs pipeline equivalence tests.
+The second runs locked Python SDK units, real worker IPC/recovery and native/Python
+extension smokes. It fails when uv or required execution is unavailable. Extension
+checks have their own path-triggered workflow; they are separate from the routine
+Rust gate. A cold extension run downloads package wheels into the retained uv cache.
+The third command isolates the original full-sensor recorder timing budget on an
+idle host. Routine backend/CPU checks filter that single timing test while retaining
+correctness/recovery/error tests. No original tolerance is relaxed; synthetic
+throughput is separate from production hardware qualification.
 
 Inside `scripts/dev.sh shell` or `shell-cpu`, try the checkpoint directly:
 

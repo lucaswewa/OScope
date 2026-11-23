@@ -16,8 +16,11 @@ case "${1:-shell}" in
   gpu) "${gpu[@]}" run --rm --no-deps -T dev oscope-check gpu ;;
   backend) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-backend.sh ;;
   gpu-tests) "${gpu[@]}" run --rm --no-deps -T dev bash scripts/check-gpu.sh ;;
+  pipeline-gpu) "${gpu[@]}" run --rm --no-deps -T dev bash scripts/check-pipeline-gpu.sh ;;
+  extensions) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-extensions.sh ;;
+  recording-perf) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-recording-perf.sh ;;
   cpu-tests) "${base[@]}" run --rm --no-deps -T dev bash scripts/check-cpu.sh ;;
   shell) "${gpu[@]}" run --rm --no-deps dev bash ;;
   shell-cpu) "${base[@]}" run --rm --no-deps dev bash ;;
-  *) echo 'usage: scripts/dev.sh [build|config|tools|gpu|backend|gpu-tests|cpu-tests|shell|shell-cpu]' >&2; exit 2 ;;
+  *) echo 'usage: scripts/dev.sh [build|config|tools|gpu|backend|gpu-tests|pipeline-gpu|extensions|recording-perf|cpu-tests|shell|shell-cpu]' >&2; exit 2 ;;
 esac

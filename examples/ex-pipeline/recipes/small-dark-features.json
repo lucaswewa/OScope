@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "name": "Small dark features",
+  "inputs": [{ "name": "image", "type": "image" }],
+  "nodes": [
+    { "id": "fine", "node": "test.box_blur", "version": 1, "params": { "radius": 1 } },
+    { "id": "finer", "node": "test.box_blur", "version": 1, "params": { "radius": 1 } },
+    { "id": "coarse", "node": "test.box_blur", "version": 1, "params": { "radius": 12 } },
+    { "id": "contrast", "node": "test.add", "version": 1, "params": { "a": 1, "b": -1 } },
+    { "id": "mask", "node": "test.threshold", "version": 1, "params": { "level": 0.04 } }
+  ],
+  "edges": [
+    { "from": "input.image", "to": "fine.image" },
+    { "from": "fine.image", "to": "finer.image" },
+    { "from": "input.image", "to": "coarse.image" },
+    { "from": "coarse.image", "to": "contrast.first" },
+    { "from": "finer.image", "to": "contrast.second" },
+    { "from": "contrast.image", "to": "mask.image" }
+  ],
+  "outputs": [
+    { "name": "contrast", "from": "contrast.image" },
+    { "name": "mask", "from": "mask.mask" }
+  ]
+}

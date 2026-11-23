@@ -6,7 +6,11 @@ members = [
     "examples/ex-compute-info", "examples/ex-cuda-check",
     "crates/oscope-hal", "crates/oscope-sim", "crates/oscope-acquire",
     "examples/ex-hal-fakes", "examples/ex-sim-camera", "examples/ex-frame-bus",
-    "examples/ex-acquisition", "xtask",
+    "examples/ex-acquisition", "crates/oscope-store", "crates/oscope-jobs",
+    "crates/oscope-pipeline", "crates/oscope-shm", "crates/oscope-ext-sdk",
+    "crates/oscope-ext", "crates/oscope-report", "examples/ex-record",
+    "examples/ex-pipeline", "examples/ex-python-node", "examples/ex-rust-ext",
+    "examples/ext-rust-node", "xtask",
 ]
 
 [workspace.package]
@@ -30,6 +34,22 @@ tokio = "1.53.3"
 toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
 uuid = { version = "1.26.1", features = ["serde", "v7"] }
 anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+crc32fast = "1.5.3"
+fs4 = "1.1.0"
+insta = { version = "1.49.0", default-features = false }
+jsonschema = { version = "0.33.0", default-features = false }
+libc = "0.2.189"
+libloading = "0.9.0"
+minijinja = { version = "=3.0.5", features = ["serde"] }
+rusqlite = { version = "0.41.1", features = ["bundled"] }
+semver = { version = "1.0.28", features = ["serde"] }
+sha2 = "0.10.9"
+typst = "=0.15.1"
+typst-layout = "=0.15.1"
+typst-pdf = "=0.15.1"
+zarrs = { version = "0.22.10", default-features = false, features = ["filesystem", "zstd"] }
+zip = { version = "=9.1.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 cudarc = { version = "0.19.10", default-features = false, features = ["std", "driver", "nvrtc", "cufft", "dynamic-loading", "cuda-13040"] }
 png = "0.18.1"
@@ -50,7 +70,14 @@ oscope-stitch = { path = "crates/oscope-stitch" }
 oscope-volume = { path = "crates/oscope-volume", default-features = false }
 oscope-hal = { path = "crates/oscope-hal" }
 oscope-sim = { path = "crates/oscope-sim", default-features = false }
-oscope-acquire = { path = "crates/oscope-acquire" }
+oscope-acquire = { path = "crates/oscope-acquire", default-features = false }
+oscope-store = { path = "crates/oscope-store", default-features = false }
+oscope-jobs = { path = "crates/oscope-jobs" }
+oscope-pipeline = { path = "crates/oscope-pipeline", default-features = false }
+oscope-shm = { path = "crates/oscope-shm" }
+oscope-ext-sdk = { path = "crates/oscope-ext-sdk" }
+oscope-ext = { path = "crates/oscope-ext", default-features = false }
+oscope-report = { path = "crates/oscope-report" }
 
 [workspace.lints.rust]
 missing_docs = "warn"
@@ -75,3 +102,7 @@ opt-level = 2
 
 [profile.dev.package.oscope-sim]
 opt-level = 2
+
+# Preserve the source's checksum throughput for the scratch recording log.
+[profile.dev.package.crc32fast]
+opt-level = 3

@@ -1,9 +1,9 @@
 # R04 Simulated devices and acquisition
 
-- Status: Complete locally; owner review pending
+- Status: Approved
 - Date: 2026-11-22
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
-- Owner approval: Pending
+- Owner approval: Accepted on 2026-11-22
 - Scope: HAL, simulator, frame bus and live frame metadata
 
 ## Port specification
@@ -162,8 +162,8 @@ echo $?
 
 All exit codes must be `0`. The backend gate runs default CUDA-enabled builds
 without device injection, all workspace software tests and the runnable examples.
-The CPU gate verifies CUDA is absent from all eight current feature-bearing
-members, then runs Clippy, workspace tests and CPU-only acquisition. The GPU gate
+The CPU gate verifies CUDA is absent from all feature-bearing workspace members,
+then runs Clippy, workspace tests and CPU-only acquisition. The GPU gate
 requires real CUDA and runs numerical algorithm/simulator checks plus acquisition.
 The legacy ignored simulator performance benchmarks remain excluded. They are
 not evidence for production frame-rate qualification.

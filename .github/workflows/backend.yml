@@ -16,6 +16,8 @@ on:
       - scripts/check-backend.sh
       - scripts/check-cpu.sh
       - scripts/check-gpu.sh
+      - scripts/check-pipeline-gpu.sh
+      - scripts/check-recording-perf.sh
       - scripts/check-cuda-features.py
       - scripts/dev.sh
       - .github/workflows/backend.yml
@@ -36,6 +38,8 @@ on:
       - scripts/check-backend.sh
       - scripts/check-cpu.sh
       - scripts/check-gpu.sh
+      - scripts/check-pipeline-gpu.sh
+      - scripts/check-recording-perf.sh
       - scripts/check-cuda-features.py
       - scripts/dev.sh
       - .github/workflows/backend.yml
