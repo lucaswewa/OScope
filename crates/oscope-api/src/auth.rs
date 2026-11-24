@@ -90,6 +90,9 @@ struct AccountsFile {
     accounts: Vec<Account>,
 }
 
+/// The accounts' file, in the data root.
+pub const ACCOUNTS: &str = "accounts.json";
+
 /// The accounts, in their file.
 pub struct Accounts {
     path: PathBuf,
@@ -292,6 +295,49 @@ impl Sessions {
     fn end(&self, key: &str) -> bool {
         lock(&self.open).remove(key).is_some()
     }
+
+    /// The sessions open, each its account and how long it has been idle,
+    /// those idle too long gone; the longest idle first.
+    fn listed(&self) -> Vec<OpenSession> {
+        let mut open = lock(&self.open);
+        let now = Instant::now();
+        open.retain(|_, s| now.duration_since(s.last) <= self.idle);
+        let mut listed: Vec<OpenSession> = (open.values())
+            .map(|s| OpenSession {
+                account: s.account.clone(),
+                idle_s: now.duration_since(s.last).as_secs_f64(),
+            })
+            .collect();
+        listed.sort_by(|a, b| b.idle_s.total_cmp(&a.idle_s));
+        listed
+    }
+
+    /// Ends `account`'s sessions.
+    fn end_all(&self, account: &str) {
+        lock(&self.open).retain(|_, s| s.account != account);
+    }
+}
+
+/// A session open, as the accounts' page shows it: whose, and how long it
+/// has been idle. Its token isn't said.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct OpenSession {
+    /// Its account.
+    pub account: String,
+    /// How long since it was last used, in seconds.
+    pub idle_s: f64,
+}
+
+/// How long sessions and the lease may be idle, and how long the lease's
+/// holder has been.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct IdleTimes {
+    /// How long a session may be idle before it ends, in seconds.
+    pub session_s: f64,
+    /// How long the lease's holder may be idle before it goes.
+    pub lease_s: f64,
+    /// How long its holder has been idle; none while it is free.
+    pub lease_idle_s: Option<f64>,
 }
 
 /// Who holds control, and who asked for it.
@@ -461,6 +507,35 @@ impl Security {
         }
     }
 
+    /// The accounts it checks logins against (W8.6).
+    pub(crate) fn accounts(&self) -> &Arc<Accounts> {
+        &self.accounts
+    }
+
+    /// The sessions open (W8.6).
+    pub(crate) fn sessions_open(&self) -> Vec<OpenSession> {
+        self.sessions.listed()
+    }
+
+    /// Ends `account`'s sessions, as it is removed (W8.6).
+    pub(crate) fn end_sessions_of(&self, account: &str) {
+        self.sessions.end_all(account);
+    }
+
+    /// How long sessions and the lease may be idle, and the lease's holder
+    /// has been (W8.6).
+    pub(crate) fn idle_times(&self) -> IdleTimes {
+        let held = self.lease.current();
+        IdleTimes {
+            session_s: self.sessions.idle.as_secs_f64(),
+            lease_s: self.lease.idle.as_secs_f64(),
+            lease_idle_s: held
+                .holder
+                .as_ref()
+                .map(|_| held.last.elapsed().as_secs_f64()),
+        }
+    }
+
     /// The principal a request's `Authorization` header names, if it names
     /// one: the desktop app, or a session's account.
     fn principal(&self, header: Option<&str>) -> Option<Principal> {
@@ -511,7 +586,10 @@ impl Authorizer for LeaseCheck {
         // and checking a recipe changes nothing (W7.1, ADR-0052).
         let own = (access.thing, access.affordance) == (Some("settings"), Some("display"));
         let checks = (access.thing, access.affordance) == (Some("pipeline"), Some("check"));
-        if !access.changes_state || access.thing == Some("auth") || own || checks {
+        // Nor is one's own password (W8.6), which the old one changes.
+        let password =
+            (access.thing, access.affordance) == (Some("accounts"), Some("change_password"));
+        if !access.changes_state || access.thing == Some("auth") || own || checks || password {
             return true;
         }
         principal.id().is_some_and(|who| self.0.lease.holds(who))

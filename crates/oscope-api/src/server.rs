@@ -19,6 +19,7 @@ use teta_wot::server::{Authenticator, HttpOptions, ThingServer, ThingServerBuild
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
 
+use crate::accounts::AccountsThing;
 use crate::auth::{AuthThing, Guard, LeaseCheck, Security};
 use crate::calibration::{CalibrationThing, Calibrations};
 use crate::capture::CaptureThing;
@@ -422,6 +423,7 @@ impl Api {
             .thing("system", System::from_config(roots.clone()))
             .thing("status", StatusThing::default())
             .thing("settings", SettingsThing::default())
+            .thing("accounts", AccountsThing::default())
             .thing("pipeline", PipelineThing::default());
         ApiBuilder {
             things,
