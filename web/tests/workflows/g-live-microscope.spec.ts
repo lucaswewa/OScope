@@ -9,7 +9,7 @@ import type { Page } from "@playwright/test";
 import { act } from "../../src/api/actions.ts";
 import { Server as Api, call } from "../../src/api/client.ts";
 import { expect, test } from "../e2e/fixtures.ts";
-import { clockAt, FAST, inFocus, SMALL, TISSUE } from "../e2e/sim.ts";
+import { clockAt, FAST, inFocus, SMALL, TINY, TISSUE } from "../e2e/sim.ts";
 import {
   arrives,
   at,
@@ -82,6 +82,11 @@ test("Checkpoint G: a live microscope, from homing to a mosaic built by jogging 
   await page.keyboard.press("1");
   await expect(readout(page, "zoom")).toHaveText("100 %");
   await page.keyboard.press("0");
+  // The rest through the sensor's tiny region: a debug server renders each frame on the CPU,
+  // and a large one, on two cores, starves its answers.
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(readout(page, "state")).toHaveText("Not streaming");
+  await stream(page, server.url, TINY);
 
   // The saturation and the histogram, as the exposure changes. The marks are read first:
   // Playwright's WebKit on Windows draws the canvas black once the histogram resizes it.

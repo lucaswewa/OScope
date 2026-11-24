@@ -15,7 +15,7 @@ import { typeRegion } from "../e2e/scanning.ts";
 import { TINY } from "../e2e/sim.ts";
 import { surfaced } from "../e2e/surfaces.ts";
 import { cellsScanned } from "../e2e/volumes.ts";
-import { homeAndMove, makeProject, said, stream } from "./steps.ts";
+import { homeAndMove, makeProject, readout, said, stream } from "./steps.ts";
 
 /** Over the H-DAB tissue, as over the H&E: a snake of four frames there, in mm. */
 const AT = { x: 40_000, y: 12_000 };
@@ -47,18 +47,26 @@ test("Checkpoint K: the H-DAB slide scanned and stitched, counted, its DAB measu
   const z = (await act("/api/v1/simulation/in_focus", AT, { on })) as number;
   await homeAndMove(page, server.url, { ...AT, z: Math.round(z * 10) / 10 });
   await choose(page, "Fitted", "20x, NA 0.42");
-  await stream(page, server.url);
 
-  // The snake, into a new project, stitched when it ends.
+  // The snake, into a new project, planned; then the camera started, the snake run, and
+  // stitched when it ends. The camera is stopped then: a debug server renders each frame on
+  // the CPU, which, on two cores, starves its answers.
   await page.getByRole("link", { name: "Scan", exact: true }).click();
   await typeRegion(page, "plan-region", SNAKE);
   await makeProject(page, "Checkpoint K", "run");
+  await page.getByRole("link", { name: "Control", exact: true }).click();
+  await stream(page, server.url);
+  await page.getByRole("link", { name: "Scan", exact: true }).click();
+  await choose(page, "Project", "Checkpoint K");
   await said(page, "run").getByRole("button", { name: "Run the scan" }).click();
   await expect(said(page, "scan-tiles")).toHaveText(/^Completed: (\d+) of \1 tiles$/, {
     timeout: 300_000,
   });
   await said(page, "made").getByRole("button", { name: "Stitch it" }).click();
   await expect(said(page, "stitch")).toContainText("Completed", { timeout: 300_000 });
+  await page.getByRole("link", { name: "Control", exact: true }).click();
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(readout(page, "state")).toHaveText("Not streaming");
 
   // The nuclei counted on the mosaic by the library's count-nuclei; shown, a row leading
   // to its cell.
