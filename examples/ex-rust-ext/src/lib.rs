@@ -43,8 +43,8 @@ pub fn library() -> anyhow::Result<PathBuf> {
     library_of("ext_rust_node")
 }
 
-/// Packs the sample into `out`, for this platform: its manifest, and its
-/// `library`, in a folder made in `work`. The manifest names a library for
+/// Packs the sample into `out`, for this platform: its manifest, its
+/// panels, and its `library`, in a folder made in `work`. The manifest names a library for
 /// each platform, so the lines of the platforms not built here are left out.
 pub fn pack(library: &Path, work: &Path, out: &Path) -> anyhow::Result<Manifest> {
     pack_sample(&sample(), library, work, out)
@@ -74,5 +74,15 @@ pub fn pack_sample(
     fs::write(folder.join("manifest.toml"), text)?;
     let file = library.file_name().context("a library's name")?;
     fs::copy(library, folder.join("lib").join(file))?;
+    // Its panels, assets of the package (W8.5).
+    let panels = sample.join("panels");
+    if panels.is_dir() {
+        fs::create_dir_all(folder.join("panels"))?;
+        for entry in fs::read_dir(&panels)? {
+            let path = entry?.path();
+            let name = path.file_name().context("a panel's name")?;
+            fs::copy(&path, folder.join("panels").join(name))?;
+        }
+    }
     Ok(oscope_ext::pack(&folder, out)?)
 }

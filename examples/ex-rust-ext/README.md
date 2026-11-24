@@ -31,4 +31,6 @@ Running it again says *installed already*: installing the same package again cha
 
 **`--smoke`** does the same on a 256 × 192 field in 64 px tiles, in a temporary folder.
 
+**`--pack OUT`** packs the sample, with its panel, into `OUT`, and stops: the app's end-to-end tests install the package it makes (W8.5).
+
 The example's test, `tests/server.rs`, installs the package, starts a server with the fake devices, and checks that `example.emboss` is loaded, offered to live recipes, and accepted in one.

@@ -43,7 +43,15 @@ fn run() -> anyhow::Result<()> {
     let smoke = match std::env::args().nth(1).as_deref() {
         None => false,
         Some("--smoke") => true,
-        Some(other) => bail!("`{other}`: the only option is --smoke"),
+        // The package alone, for the app's end-to-end tests (W8.5).
+        Some("--pack") => {
+            let out = PathBuf::from(std::env::args().nth(2).context("--pack OUT: where to")?);
+            let work = tempfile::tempdir()?;
+            ex_rust_ext::pack(&ex_rust_ext::library()?, work.path(), &out)?;
+            println!("packed {}", out.display());
+            return Ok(());
+        }
+        Some(other) => bail!("`{other}`: the options are --smoke and --pack OUT"),
     };
     let temporary = smoke.then(tempfile::tempdir).transpose()?;
     let data = match &temporary {
