@@ -89,10 +89,11 @@ test("Checkpoint G: a live microscope, from homing to a mosaic built by jogging 
   const exposure = said(page, "camera").getByRole("spinbutton", { name: "Exposure" });
   await exposure.fill("30");
   await exposure.press("Enter");
-  await expect.poll(() => marked(page), { timeout: 30_000 }).toBeGreaterThan(0);
+  // Each sample a screenshot, which takes WebKit 12 to 18 s on two cores (W3.6).
+  await expect.poll(() => marked(page), { timeout: 90_000 }).toBeGreaterThan(0);
   await exposure.fill("10");
   await exposure.press("Enter");
-  await expect.poll(() => marked(page), { timeout: 30_000 }).toBe(0);
+  await expect.poll(() => marked(page), { timeout: 90_000 }).toBe(0);
   await tool(page, "Saturated").click();
   await tool(page, "Histogram").click();
   await expect(said(page, "values")).toBeVisible();
