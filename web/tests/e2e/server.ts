@@ -20,7 +20,7 @@ export const web = fileURLToPath(new URL("../..", import.meta.url));
  * are its folder's `notices`, empty unless the test puts some there: not a
  * package's, if this computer has one installed.
  */
-const config = (restarts: boolean) => `[storage]
+const config = (restarts: boolean, simulator: string) => `[storage]
 data_root = "data"
 scratch_root = "scratch"
 
@@ -29,7 +29,7 @@ dry_run = true
 ${restarts ? "dry_run_restart = false\n" : ""}
 [web]
 notices = "notices"
-`;
+${simulator ? `\n[simulator]\n${simulator}\n` : ""}`;
 
 /** The server's program: `OSCOPE_SERVER_BIN`, or the workspace's debug build. */
 function program(): string {
@@ -55,9 +55,13 @@ export class Server {
   /** Its start after a restart of its own, while that is under way. */
   private again: Promise<void> | undefined;
 
-  /** With `restarts`, its restart is done, as its supervisor would: rebooting and shutting down never are. */
-  constructor(options: { restarts?: boolean } = {}) {
-    writeFileSync(join(this.folder, "oscope.toml"), config(options.restarts ?? false));
+  /**
+   * With `restarts`, its restart is done, as its supervisor would: rebooting and shutting down
+   * never are. With `simulator`, its simulator has those lines of TOML.
+   */
+  constructor(options: { restarts?: boolean; simulator?: string } = {}) {
+    const { restarts = false, simulator = "" } = options;
+    writeFileSync(join(this.folder, "oscope.toml"), config(restarts, simulator));
   }
 
   /**

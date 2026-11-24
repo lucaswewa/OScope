@@ -121,6 +121,15 @@ export function moveFor(
 }
 
 /**
+ * A sensor pixel's side at the sample, in µm, as the geometry measured it
+ * (W8.2): √|det M| is the image's pixel, `binning` of the sensor's wide.
+ */
+export function sideOf(geometry: Geometry): number {
+  const [[a, b], [c, d]] = geometry.matrix;
+  return Math.sqrt(Math.abs(a * d - b * c)) / geometry.binning;
+}
+
+/**
  * Whether an alarm's reason is the controller waiting to be homed, as after
  * a start: the simulator's words, and grblHAL's. Homing that failed is an
  * alarm like any other, its reason said.

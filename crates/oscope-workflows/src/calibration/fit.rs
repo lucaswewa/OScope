@@ -59,6 +59,22 @@ pub fn fit_matrix(moves: &[(f64, f64)], shifts: &[(f64, f64)]) -> Option<(Matrix
     Some((inverse(n)?, (squares / moves.len() as f64).sqrt()))
 }
 
+/// Each move's residual under `matrix`, M (W8.2): `d + M⁻¹ · s`, the shift
+/// the fit leaves unexplained, in pixels, for each move `s` and its shift
+/// `d`. `None` if M can't be inverted.
+pub fn residuals(
+    matrix: Matrix,
+    moves: &[(f64, f64)],
+    shifts: &[(f64, f64)],
+) -> Option<Vec<[f64; 2]>> {
+    let n = inverse(matrix)?;
+    let each = |(s, d): (&(f64, f64), &(f64, f64))| {
+        let ns = apply(n, *s);
+        [d.0 + ns.0, d.1 + ns.1]
+    };
+    Some(moves.iter().zip(shifts).map(each).collect())
+}
+
 /// What M decomposes into: M = R(θ) · [[s_x, k], [0, s_y]] · diag(m, 1).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Decomposition {
@@ -170,6 +186,24 @@ mod tests {
             }
         }
         assert!(residual < 1e-9);
+        // Each move's residual: none, exactly; one shift nudged, theirs
+        // the fit's RMS over the moves, the nudged one's the largest.
+        let exact = residuals(found, &moves, &shifts).unwrap();
+        assert_eq!(exact.len(), moves.len());
+        assert!(exact.iter().flatten().all(|r| r.abs() < 1e-9));
+        let mut nudged = shifts.clone();
+        nudged[2] = (nudged[2].0 + 0.6, nudged[2].1 - 0.3);
+        let (fitted, rms) = fit_matrix(&moves, &nudged).unwrap();
+        let each = residuals(fitted, &moves, &nudged).unwrap();
+        let mean_square =
+            each.iter().map(|r| r[0] * r[0] + r[1] * r[1]).sum::<f64>() / each.len() as f64;
+        assert!(
+            (mean_square.sqrt() - rms).abs() < 1e-12,
+            "{each:?} against {rms}"
+        );
+        let size = |r: &[f64; 2]| r[0].hypot(r[1]);
+        let largest = (0..each.len()).max_by(|&a, &b| size(&each[a]).total_cmp(&size(&each[b])));
+        assert_eq!(largest, Some(2));
         // One move, or moves along one line, don't span the plane.
         assert_eq!(fit_matrix(&moves[..1], &shifts[..1]), None);
         let line = [(1.0, 0.0), (2.0, 0.0)];

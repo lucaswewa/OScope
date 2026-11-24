@@ -355,7 +355,10 @@ expression: td
           1.0,
           1.0,
           1.0
-        ]
+        ],
+        "dark": false,
+        "flat": false,
+        "colour": false
       },
       "type": "object",
       "properties": {
@@ -386,6 +389,21 @@ expression: td
           },
           "maxItems": 3,
           "minItems": 3
+        },
+        "dark": {
+          "description": "The active dark frame taken off the raw frame, in place of the\nblack level, where one is for its mode, gain and exposure (W8.2).",
+          "default": false,
+          "type": "boolean"
+        },
+        "flat": {
+          "description": "The raw frame divided by the active flat field, where one is for its\nobjective, lights and binning.",
+          "default": false,
+          "type": "boolean"
+        },
+        "colour": {
+          "description": "The active colour calibration's white balance and matrix, in place of\nthese gains, where one is for its lights.",
+          "default": false,
+          "type": "boolean"
         }
       },
       "required": [

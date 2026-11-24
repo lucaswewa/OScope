@@ -55,6 +55,10 @@ pub struct Geometry {
     pub skew: f64,
     /// The fit's root-mean-square error, in pixels.
     pub residual_px: f64,
+    /// Each move's residual, x and y, in pixels: what the fit leaves
+    /// unexplained (W8.2). Empty in a set made before them.
+    #[serde(default)]
+    pub residuals: Vec<[f64; 2]>,
     /// The moves' step, in µm.
     pub step_um: f64,
     /// How many moves were fitted.
@@ -270,6 +274,8 @@ impl Values {
                 let [[a, b], [c, d]] = g.matrix;
                 finite("the geometry", &[a, b, c, d, g.nominal_pixel_um])?;
                 finite("the geometry", &[g.residual_px, g.step_um])?;
+                let each: Vec<f64> = g.residuals.iter().flatten().copied().collect();
+                finite("the geometry's residuals", &each)?;
                 if g.nominal_pixel_um <= 0.0 {
                     return Err("a nominal pixel size that isn't positive".to_owned());
                 }
@@ -381,7 +387,7 @@ pub struct CalibrationSet {
 pub struct SetSummary {
     /// Its ID.
     pub id: Uuid,
-    /// Its kind: `geometry` or `stage`.
+    /// Its kind: `geometry`, `stage`, `dark`, `flat` or `colour`.
     pub kind: String,
     /// Its key.
     pub key: String,

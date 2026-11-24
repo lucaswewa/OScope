@@ -13,7 +13,7 @@ use oscope_imaging::registration::{self, RegisterOptions};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::fit::{Decomposition, apply, decompose, fit_matrix};
+use super::fit::{Decomposition, apply, decompose, fit_matrix, residuals};
 use super::set::{Geometry, Instrument, PerAxis, SoftLimits, StageValues, geometry_key};
 use super::store::CalibrationStore;
 
@@ -356,6 +356,7 @@ pub async fn measure_geometry(
     let parts = decompose(matrix).ok_or_else(|| failed("the fitted matrix can't be inverted"))?;
     let name = &objective.name;
     verdict(&parts, residual, nominal, name).map_err(failed)?;
+    let residuals = residuals(matrix, &moves, &shifts).unwrap_or_default();
     let geometry = Geometry {
         objective: name.clone(),
         binning: middle.binning,
@@ -367,6 +368,7 @@ pub async fn measure_geometry(
         aspect: parts.aspect,
         skew: parts.skew,
         residual_px: residual,
+        residuals,
         step_um: step,
         moves: moves.len() as u32,
     };

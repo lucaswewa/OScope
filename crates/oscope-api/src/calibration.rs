@@ -1,18 +1,28 @@
 //! The `calibration` Thing (plan §5.13; P32; ADR-0023): the calibration
 //! sets, and the jobs that measure the geometry, the stage and the objective.
 
+use std::collections::HashMap;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use oscope_acquire::preview::{Calibrated, Calibrating, Calibration as Found, Wanted};
+use oscope_compute::Image;
+use oscope_core::FrameMeta;
+use oscope_imaging::color::ColourCorrection;
 use oscope_jobs::{JobService, JobState};
 use oscope_workflows::calibration::{
     CHECK, COLOUR, CalibrationSet, CalibrationStore, CheckReport, DARK, FLAT, GEOMETRY, LastCheck,
-    Rig, STAGE, STAGE_KEY, SetSummary, StepKind, Wizard, calibration_jobs, colour_key, dark_key,
-    flat_key, geometry_key,
+    Rig, STAGE, STAGE_KEY, SetSummary, StepKind, StoreError, Values, Wizard, calibration_jobs,
+    colour_key, dark_key, flat_key, geometry_key,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
+use teta_wot::http::PathParams;
+use teta_wot::http::axum::Json;
+use teta_wot::http::axum::http::StatusCode;
+use teta_wot::http::axum::response::{IntoResponse, Response};
 use teta_wot::prelude::*;
 use uuid::Uuid;
 
@@ -103,10 +113,7 @@ pub(crate) struct Calibrations(Mutex<Option<Arc<CalibrationStore>>>);
 
 impl Calibrations {
     /// The store in the data root's `calibration` folder.
-    pub(crate) fn open(
-        &self,
-        roots: &Roots,
-    ) -> Result<Arc<CalibrationStore>, oscope_workflows::calibration::StoreError> {
+    pub(crate) fn open(&self, roots: &Roots) -> Result<Arc<CalibrationStore>, StoreError> {
         let mut store = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(store) = store.as_ref() {
             return Ok(Arc::clone(store));
@@ -115,6 +122,121 @@ impl Calibrations {
         *store = Some(Arc::clone(&opened));
         Ok(opened)
     }
+}
+
+/// The lights on, as a flat field's and a colour calibration's key names
+/// them: their channels, joined by `+`; none if none is.
+fn lit(meta: &FrameMeta) -> Option<String> {
+    let on: Vec<&str> = meta
+        .lights
+        .iter()
+        .filter(|l| l.on && l.intensity > 0.0)
+        .map(|l| l.channel.as_str())
+        .collect();
+    (!on.is_empty()).then(|| on.join("+"))
+}
+
+/// The longest side of a set's image as it is sent to be seen.
+const SEEN: u32 = 256;
+
+/// `image` in blocks of `block` × `block` pixels, each channel's mean, so
+/// that neither side is longer than `most`: the blocks across and down, and
+/// their values by rows, each block's channels together. A block at an edge
+/// is the mean of the pixels it has.
+pub(crate) fn blocks(image: &Image, most: u32) -> (u32, u32, u32, Vec<f32>) {
+    let (width, height, channels) = (image.width(), image.height(), image.channels());
+    let block = width.max(height).div_ceil(most.max(1)).max(1);
+    let (across, down) = (width.div_ceil(block), height.div_ceil(block));
+    let mut values = Vec::with_capacity((across * down) as usize * channels);
+    for by in 0..down {
+        for bx in 0..across {
+            let (xs, ys) = (
+                bx * block..((bx + 1) * block).min(width),
+                by * block..((by + 1) * block).min(height),
+            );
+            let n = (xs.len() * ys.len()) as f64;
+            for c in 0..channels {
+                let mut sum = 0.0;
+                for y in ys.clone() {
+                    for x in xs.clone() {
+                        sum += f64::from(image.data()[(y * width + x) as usize * channels + c]);
+                    }
+                }
+                values.push((sum / n) as f32);
+            }
+        }
+    }
+    (across, down, block, values)
+}
+
+/// A problem's answer: its status, and why.
+fn problem(status: StatusCode, detail: String) -> Response {
+    let body =
+        json!({"title": status.canonical_reason(), "status": status.as_u16(), "detail": detail});
+    (status, Json(body)).into_response()
+}
+
+/// How the preview finds a frame's calibration (W8.2): the active sets for
+/// its mode, gain and exposure, its objective, lights and binning, and its
+/// lights, keyed as the calibration keyed them. A set never changes, so
+/// each image is read once, by its set's ID.
+pub(crate) fn calibrating(store: Arc<CalibrationStore>) -> Calibrating {
+    let images: Mutex<HashMap<Uuid, Option<Arc<Calibrated>>>> = Mutex::default();
+    Calibrating(Arc::new(move |meta: &FrameMeta, wanted: Wanted| {
+        let image = |key: Option<String>| {
+            let set = store.active(&key?)?;
+            let region = match &set.values {
+                Values::Dark(dark) => dark.region,
+                Values::Flat(flat) => flat.region,
+                _ => return None,
+            };
+            let mut images = images.lock().unwrap_or_else(PoisonError::into_inner);
+            let read = || store.image(set.id).ok();
+            let made = |image| {
+                // Its place in the frame's pixels, as the preview counts it: the
+                // set's frames were binned as this one is, its key says.
+                let binning = meta.binning.max(1);
+                Arc::new(Calibrated {
+                    image,
+                    x: region.x / binning,
+                    y: region.y / binning,
+                })
+            };
+            images
+                .entry(set.id)
+                .or_insert_with(|| read().map(made))
+                .clone()
+        };
+        let light = lit(meta);
+        let dark = wanted
+            .dark
+            .then(|| image(Some(dark_key(&meta.mode, meta.gain, meta.exposure.0))));
+        let flat_of =
+            |objective: &String, light: &String| flat_key(objective, light, meta.binning.max(1));
+        let flat = wanted.flat.then(|| {
+            image(
+                meta.objective
+                    .as_ref()
+                    .zip(light.as_ref())
+                    .map(|(o, l)| flat_of(o, l)),
+            )
+        });
+        let colour = wanted.colour.then(|| {
+            let set = store.active(&colour_key(light.as_ref()?))?;
+            match set.values {
+                Values::Colour(colour) => Some(ColourCorrection {
+                    gains: colour.gains.map(|g| g as f32),
+                    matrix: colour.matrix.map(|row| row.map(|v| v as f32)),
+                }),
+                _ => None,
+            }
+        });
+        Found {
+            dark: dark.flatten(),
+            flat: flat.flatten(),
+            colour: colour.flatten(),
+        }
+    }))
 }
 
 /// The calibration sets, kept and versioned (ADR-0023), and the jobs that
@@ -129,7 +251,7 @@ pub struct CalibrationThing {
     state: OnceLock<Calibration>,
 }
 
-fn store_error(error: oscope_workflows::calibration::StoreError) -> ActionError {
+fn store_error(error: StoreError) -> ActionError {
     ActionError::handled(error.to_string())
 }
 
@@ -237,6 +359,47 @@ impl CalibrationThing {
         };
         let _ = self.state.set(state);
         Ok(())
+    }
+
+    /// A dark frame's or a flat field's image, to see (W8.2).
+    ///
+    /// The mean of each block of pixels, so that neither side is longer
+    /// than 256: `width` and `height`, the blocks across and down;
+    /// `channels`; `block`, the pixels a block spans; and `values`, by rows,
+    /// each block's channels together, in linear units.
+    #[endpoint(get, "image/{id}")]
+    async fn image(&self, params: PathParams) -> Response {
+        let Some(state) = self.state.get() else {
+            return problem(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "the Thing hasn't started".into(),
+            );
+        };
+        let text = params.get("id").unwrap_or_default();
+        let Ok(id) = text.parse::<Uuid>() else {
+            return problem(
+                StatusCode::BAD_REQUEST,
+                format!("{text:?} isn't a set's ID"),
+            );
+        };
+        let store = Arc::clone(&state.store);
+        let read = tokio::task::spawn_blocking(move || store.image(id)).await;
+        match read {
+            Ok(Ok(image)) => {
+                let (width, height, block, values) = blocks(&image, SEEN);
+                let body = json!({
+                    "width": width, "height": height, "channels": image.channels(),
+                    "block": block, "values": values,
+                });
+                Json(body).into_response()
+            }
+            // A set that isn't there, or isn't a dark frame or a flat field.
+            Ok(Err(StoreError::Io { source, .. })) if source.kind() == ErrorKind::NotFound => {
+                problem(StatusCode::NOT_FOUND, format!("no set {id} has an image"))
+            }
+            Ok(Err(error)) => problem(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+            Err(error) => problem(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+        }
     }
 
     /// Every calibration set, in brief.
@@ -560,5 +723,173 @@ impl CalibrationThing {
             ("settle_ms", settle_ms.map(|v| json!(v))),
         ]);
         self.submit(&ctx, CHECK, params)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! The preview's calibration found as the routines keyed it (W8.2), and
+    //! a set's image in blocks.
+
+    use oscope_compute::Shape;
+    use oscope_core::{FrameId, LightState, Ms, PixelFormat, PixelRect, Timestamp};
+    use oscope_workflows::calibration::{Colour, Dark, Flat, Instrument, Region, exposure_octave};
+
+    use super::*;
+
+    fn instrument() -> Instrument {
+        Instrument {
+            camera: "a camera".to_owned(),
+            sensor_pixel_um: 2.4,
+            binning: 1,
+            stage: "a stage".to_owned(),
+            objective: None,
+            tube_lens_um: 200_000.0,
+        }
+    }
+
+    const REGION: Region = Region {
+        x: 12,
+        y: 24,
+        width: 4,
+        height: 2,
+    };
+
+    fn image(value: f32) -> Image {
+        Image::from_vec(Shape::new(4, 2, 1), vec![value; 8]).unwrap()
+    }
+
+    /// A store with a dark frame for `full` at gain 1 and 10 ms, a flat field
+    /// for 10x under `blue 488` at binning 1, and a colour calibration for
+    /// that light, each active.
+    fn stored(folder: &std::path::Path) -> Arc<CalibrationStore> {
+        let store = Arc::new(CalibrationStore::open(folder).unwrap());
+        let dark = Values::Dark(Dark {
+            mode: "full".to_owned(),
+            gain: 1.0,
+            exposure_ms: exposure_octave(10.0),
+            taken_ms: 10.0,
+            region: REGION,
+            frames: 4,
+            mean: 0.05,
+            spread: 0.001,
+        });
+        store
+            .save_with_image(dark, instrument(), None, true, &image(0.05))
+            .unwrap();
+        let flat = Values::Flat(Flat {
+            objective: "10x".to_owned(),
+            light: "blue 488".to_owned(),
+            mode: "full".to_owned(),
+            binning: 1,
+            region: REGION,
+            frames: 4,
+            dark: true,
+            gains: [1.2, 1.0, 1.4],
+            uneven: 0.1,
+        });
+        store
+            .save_with_image(flat, instrument(), None, true, &image(0.9))
+            .unwrap();
+        let colour = Values::Colour(Colour {
+            light: "blue 488".to_owned(),
+            gains: [1.5, 1.0, 2.0],
+            matrix: [[1.2, -0.1, -0.1], [0.0, 1.0, 0.0], [0.0, -0.2, 1.2]],
+            patches: 24,
+            delta_e_before: 6.0,
+            delta_e_mean: 2.0,
+            delta_e_max: 4.0,
+        });
+        store.save(colour, instrument(), None, true).unwrap();
+        store
+    }
+
+    /// A frame's metadata: `full`, gain 1, `exposure` ms, 10x, `lights` on.
+    fn meta(gain: f64, exposure: f64, lights: &[&str]) -> FrameMeta {
+        let mut meta = FrameMeta::new(FrameId(1), PixelFormat::Mono8, 4, 2, Timestamp(0));
+        meta.mode = "full".to_owned();
+        meta.gain = gain;
+        meta.exposure = Ms(exposure);
+        meta.objective = Some("10x".to_owned());
+        meta.binning = 1;
+        meta.roi = PixelRect {
+            x: 12,
+            y: 24,
+            width: 4,
+            height: 2,
+        };
+        meta.lights = ["transmitted", "blue 488"]
+            .into_iter()
+            .map(|channel| LightState {
+                channel: channel.to_owned(),
+                on: lights.contains(&channel),
+                intensity: 1.0,
+            })
+            .collect();
+        meta
+    }
+
+    const ALL: Wanted = Wanted {
+        dark: true,
+        flat: true,
+        colour: true,
+    };
+
+    #[test]
+    fn a_frame_finds_the_sets_its_mode_gain_exposure_objective_and_light_name() {
+        let folder = tempfile::tempdir().unwrap();
+        let store = stored(folder.path());
+        let find = calibrating(Arc::clone(&store));
+        // 12 ms is in the dark frame's octave, 8 to 16 ms.
+        let found = (find.0)(&meta(1.0, 12.0, &["blue 488"]), ALL);
+        let dark = found.dark.expect("the dark frame");
+        assert_eq!((dark.x, dark.y, dark.image.data()[0]), (12, 24, 0.05));
+        assert_eq!(found.flat.expect("the flat field").image.data()[0], 0.9);
+        let colour = found.colour.expect("the colour calibration");
+        assert_eq!(colour.gains, [1.5, 1.0, 2.0]);
+        assert_eq!(colour.matrix[2], [0.0, -0.2, 1.2]);
+        // Only what is asked for.
+        let dark_only = (find.0)(
+            &meta(1.0, 12.0, &["blue 488"]),
+            Wanted {
+                dark: true,
+                ..Wanted::default()
+            },
+        );
+        assert!(dark_only.dark.is_some() && dark_only.flat.is_none() && dark_only.colour.is_none());
+        // Another gain, exposure or light: none of its sets.
+        let other_gain = (find.0)(&meta(2.0, 12.0, &["blue 488"]), ALL);
+        assert!(other_gain.dark.is_none() && other_gain.flat.is_some());
+        assert!(
+            (find.0)(&meta(1.0, 40.0, &["blue 488"]), ALL)
+                .dark
+                .is_none()
+        );
+        let other_light = (find.0)(&meta(1.0, 12.0, &["transmitted"]), ALL);
+        assert!(other_light.flat.is_none() && other_light.colour.is_none());
+        let unlit = (find.0)(&meta(1.0, 12.0, &[]), ALL);
+        assert!(unlit.flat.is_none() && unlit.colour.is_none() && unlit.dark.is_some());
+        // Binned, a frame counts its place in its own pixels: its region's
+        // corner over the binning.
+        let mut binned = meta(1.0, 12.0, &["blue 488"]);
+        binned.binning = 2;
+        let dark = (calibrating(store).0)(&binned, ALL)
+            .dark
+            .expect("the dark frame");
+        assert_eq!((dark.x, dark.y), (6, 12));
+    }
+
+    #[test]
+    fn a_set_s_image_is_sent_in_blocks_each_its_pixels_mean() {
+        // 5 × 3, one channel, each pixel its x + 10 y: in blocks of 2 at most 3 across.
+        let data = (0..15).map(|i| (i % 5 + 10 * (i / 5)) as f32).collect();
+        let image = Image::from_vec(Shape::new(5, 3, 1), data).unwrap();
+        let (across, down, block, values) = blocks(&image, 3);
+        assert_eq!((across, down, block), (3, 2, 2));
+        // The first block: 0, 1, 10, 11; the last, at the corner, 24 alone.
+        assert_eq!(values, vec![5.5, 7.5, 9.0, 20.5, 22.5, 24.0]);
+        // Small enough already: a block of one.
+        let (across, down, block, same) = blocks(&image, 256);
+        assert_eq!((across, down, block, same.len()), (5, 3, 1, 15));
     }
 }

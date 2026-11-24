@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { usePreview } from "@/api/preview/use";
 import { sensorAt } from "@/api/preview/view";
 import { useProperty } from "@/api/things/use";
-import { keyStep, written } from "@/features/control/stage/stage";
+import { keyStep, sideOf, written } from "@/features/control/stage/stage";
 import { useChoices } from "@/features/control/stage/choices";
 import { usePointing } from "@/features/control/stage/usePointing";
 import { tableOf } from "@/features/live/colourMaps";
@@ -42,7 +42,8 @@ import ToolbarButton from "@/ui/ToolbarButton.vue";
  * x and y, and Page Up and Page Down along z, by the pane's step. With the
  * active calibration, a double click brings the place to the centre, a
  * drag pans the stage when the stage's pane says so, and the place under
- * the pointer is read out in the stage's coordinates.
+ * the pointer is read out in the stage's coordinates. Its pixel's size is
+ * the scale bar's, in place of the catalogue's (W8.2).
  */
 const { t } = useI18n();
 const root = ref<HTMLElement>();
@@ -213,11 +214,19 @@ const pixel = computed(() => {
   if (!view || !extent || !pointer.value) return undefined;
   return pixelAt(view, pointer.value, preview.size(), extent);
 });
+/** A sensor pixel's side at the sample: the active geometry's, or else the catalogue's (W8.2). */
+const um = computed(() => {
+  const geometry = pointing.geometry.value;
+  return geometry ? sideOf(geometry) : side.value.value;
+});
 const atSample = computed(() => {
   const caps = capabilities.value.value;
-  const um = side.value.value;
-  if (!pixel.value || !caps || !um) return undefined;
-  return fromCentre(pixel.value, { width: caps.sensor_width, height: caps.sensor_height }, um);
+  if (!pixel.value || !caps || !um.value) return undefined;
+  return fromCentre(
+    pixel.value,
+    { width: caps.sensor_width, height: caps.sensor_height },
+    um.value,
+  );
 });
 /** With a calibration, the place under the pointer on the stage: the stage is where the sensor's centre is. */
 const onStage = computed(() => {
@@ -228,7 +237,7 @@ const onStage = computed(() => {
 });
 const bar = computed(() => {
   const view = preview.view.value;
-  return view ? scaleBar(side.value.value, view, ratio(), ROOM) : undefined;
+  return view ? scaleBar(um.value, view, ratio(), ROOM) : undefined;
 });
 const one = (value: number) => value.toFixed(1);
 const stageXy = (x: number, y: number) => {
