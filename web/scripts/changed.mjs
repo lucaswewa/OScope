@@ -1,14 +1,15 @@
 // What a change reaches (ADR-0061): from the files changed since a base,
-// the Rust packages whose tests run, the examples whose smoke runs run, and
-// the app's unit tests and end-to-end specs. scripts/ci-local.sh --changed
-// runs only those; everything else it checks runs in full.
+// the Rust packages whose tests run, the examples whose smoke runs run, the
+// app's unit tests and end-to-end specs, and whether the checkpoints'
+// workflows run. scripts/ci-local.sh --changed runs only those; everything
+// else it checks runs in full.
 //
 //   node web/scripts/changed.mjs BASE [HEAD]
 //
 // HEAD is what changed: HEAD itself by default. It prints a line for each of
 // `rust:`, `doc:` (the reached packages with a library), `examples:`,
-// `python:`, `unit:` and `e2e:`, each `all`, `none`, or a list; then `why:`
-// lines, saying what made one of them `all`.
+// `python:`, `unit:`, `e2e:` and `workflows:`, each `all`, `none`, or a list,
+// or `yes` or `no`; then `why:` lines, saying what made one of them `all`.
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -23,7 +24,7 @@ import { fileURLToPath } from "node:url";
  * An end-to-end spec: its path from the root, the folders its `Covers:`
  * line names, if it has one, and its text.
  * @typedef {"all" | "none" | string[]} Reach
- * @typedef {{ rust: Reach, doc: Reach, examples: Reach, python: boolean, unit: Reach, e2e: Reach, why: string[] }} Plan
+ * @typedef {{ rust: Reach, doc: Reach, examples: Reach, python: boolean, unit: Reach, e2e: Reach, workflows: boolean, why: string[] }} Plan
  */
 
 /** Files whose change reaches every check: the build's, and the checks' own. */
@@ -48,6 +49,8 @@ const ALL_E2E = [
   /^web\/index\.html$/,
   /^web\/tests\/e2e\/(?![^/]*\.spec\.ts$)(?!baselines\/)[^/]+$/,
 ];
+/** The checkpoints' workflows and their configuration. */
+const WORKFLOWS = /^web\/(tests\/workflows\/|playwright\.workflows\.config\.ts$)/;
 /** The app's strings: each feature's own specs see a change to theirs. */
 const STRINGS = /^web\/src\/app\/locales\//;
 /** A baseline's file: its screenshot's name, before its scheme, browser and system. */
@@ -67,7 +70,17 @@ export function reach(changed, packages, specs, exists = () => true) {
   const everything = changed.filter((file) => EVERYTHING.some((rule) => rule.test(file)));
   if (everything.length > 0) {
     why.push(`everything: ${everything.join(", ")}`);
-    return { rust: "all", doc: "all", examples: "all", python: true, unit: "all", e2e: "all", why };
+    const workflows = true;
+    return {
+      rust: "all",
+      doc: "all",
+      examples: "all",
+      python: true,
+      unit: "all",
+      e2e: "all",
+      workflows,
+      why,
+    };
   }
 
   // The packages holding a changed file, and every package that depends on
@@ -141,6 +154,12 @@ export function reach(changed, packages, specs, exists = () => true) {
     const existing = [...chosen].filter((file) => specs.some((s) => s.file === file)).sort();
     e2e = existing.length > 0 ? existing : "none";
   }
+  // The checkpoints' workflows (W10.1), whole: for the app, the server, the
+  // harness they share with the specs, or themselves.
+  const workflows =
+    web.some((file) => file.startsWith("web/src/") || WORKFLOWS.test(file)) ||
+    harness.length > 0 ||
+    server.length > 0;
   return {
     rust: rust.length > 0 ? rust : "none",
     doc: doc.length > 0 ? doc : "none",
@@ -148,6 +167,7 @@ export function reach(changed, packages, specs, exists = () => true) {
     python: changed.some((file) => file.startsWith("python/")),
     unit,
     e2e,
+    workflows,
     why,
   };
 }
@@ -204,6 +224,7 @@ export function lines(plan) {
     `python: ${plan.python ? "yes" : "no"}`,
     `unit: ${said(plan.unit)}`,
     `e2e: ${said(plan.e2e)}`,
+    `workflows: ${plan.workflows ? "yes" : "no"}`,
     ...plan.why.map((reason) => `why: ${reason}`),
   ].join("\n");
 }

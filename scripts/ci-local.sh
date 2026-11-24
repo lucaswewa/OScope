@@ -15,8 +15,9 @@
 #   --changed BASE
 #               only the tests that the changes since BASE reach (ADR-0061):
 #               web/scripts/changed.mjs picks the Rust suites, the doc tests,
-#               the examples, the unit tests and the end-to-end specs; the
-#               other checks run in full, and a step not reached says skip
+#               the examples, the unit tests and the end-to-end specs, and
+#               whether the workflows run; the other checks run in full, and
+#               a step not reached says skip
 #
 # A failing step shows the end of its log. It exits with 0 if every step
 # run passed, and 1 otherwise. See scripts/README.md.
@@ -32,7 +33,7 @@ while [ $# -gt 0 ]; do
     --jobs) jobs=${2:?--jobs needs a number}; shift ;;
     --logs) logs=${2:?--logs needs a folder}; shift ;;
     --changed) base=${2:?--changed needs a commit}; shift ;;
-    -h | --help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift
@@ -56,6 +57,7 @@ echo "suites and smoke runs: $slots at once, each on two CPUs"
 
 # What the change reaches (ADR-0061), or, without --changed, everything.
 reach_rust=all reach_doc=all reach_examples=all reach_python=yes reach_unit=all reach_e2e=all
+reach_workflows=yes
 if [ -n "$base" ]; then
   if ! plan=$(node web/scripts/changed.mjs "$base" 2> "$logs/changed.log"); then
     echo "FAIL  can't tell what the changes since $base reach: $logs/changed.log" >&2
@@ -65,8 +67,9 @@ if [ -n "$base" ]; then
   reached() { sed -n "s/^$1: //p" <<< "$plan"; }
   reach_rust=$(reached rust) reach_doc=$(reached doc) reach_examples=$(reached examples)
   reach_python=$(reached python) reach_unit=$(reached unit) reach_e2e=$(reached e2e)
+  reach_workflows=$(reached workflows)
   echo "only what the changes since $(git rev-parse --short "$base") reach; the plan: $logs/changed.txt"
-  for kind in rust doc examples python unit e2e; do
+  for kind in rust doc examples python unit e2e workflows; do
     value=$(reached $kind)
     words=$(wc -w <<< "$value")
     case "$value" in
@@ -239,6 +242,12 @@ if command -v npm > /dev/null; then
     none) skip "web end to end" ;;
     all) step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e -- ${workers[@]+"${workers[@]}"} ;;
     *) step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e -- ${workers[@]+"${workers[@]}"} $(in_web "$reach_e2e") ;;
+  esac
+  # The checkpoints' workflows (W10.1), whole, whenever the change reaches
+  # the app or the server.
+  case "$reach_workflows" in
+    no) skip "web workflows" ;;
+    *) step "web workflows" web npm run -s test:workflows -- ${workers[@]+"${workers[@]}"} ;;
   esac
 else
   failed=$((failed + 1))

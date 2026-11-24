@@ -77,12 +77,16 @@ onBeforeUnmount(() => {
 const tissueSaid = computed(() => {
   const view = overview.value.value;
   if (!view) return "";
-  return t("scan.histo.tissue", {
-    kept: view.kept,
-    area: view.area_mm2.toFixed(1),
-    dropped: view.dropped,
-    threshold: view.threshold.toFixed(2),
-  });
+  return t(
+    "scan.histo.tissue",
+    {
+      kept: view.kept,
+      area: view.area_mm2.toFixed(1),
+      dropped: view.dropped,
+      threshold: view.threshold.toFixed(2),
+    },
+    view.kept,
+  );
 });
 
 function edit(index: number, rect: Rect | undefined): void {

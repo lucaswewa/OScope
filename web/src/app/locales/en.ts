@@ -945,7 +945,7 @@ export default {
         run: "The run",
       },
       tissue:
-        "{kept} islands of tissue, {area} mm² in all, found at a saturation of {threshold}; {dropped} too small, dropped.",
+        "No island of tissue found at a saturation of {threshold}; {dropped} too small, dropped. | One island of tissue, {area} mm², found at a saturation of {threshold}; {dropped} too small, dropped. | {kept} islands of tissue, {area} mm² in all, found at a saturation of {threshold}; {dropped} too small, dropped.",
       proposeAgain: "Propose the regions again",
       regionsSaid:
         "One region proposed, about its island: keep, drop, edit or draw it again. | {n} regions proposed, one about each island: keep, drop, edit or draw each again.",
