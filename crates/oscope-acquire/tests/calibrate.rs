@@ -24,6 +24,8 @@ const RGGB: PixelFormat = PixelFormat::Bayer16 {
 /// The frame's size, and where it is on the sensor.
 const SIZE: (u32, u32) = (64, 48);
 const AT: (u32, u32) = (100, 40);
+/// The camera's black level, which the dark frame holds too.
+const BLACK: f64 = 0.05;
 
 /// The sample's own colour, an RGGB mosaic of one colour.
 fn signal(x: u32, y: u32) -> f64 {
@@ -42,11 +44,18 @@ fn vignette(x: u32, y: u32) -> f64 {
 
 /// The dark frame: the black level, and a fixed pattern on it.
 fn dark(x: u32, y: u32) -> f64 {
-    0.05 + 0.01 * f64::from((x * 7 + y * 13) % 5)
+    BLACK + 0.01 * f64::from((x * 7 + y * 13) % 5)
 }
 
-/// A frame of `value(x, y)` at `AT` on the sensor.
+/// A frame of `value(x, y)` at `AT` on the sensor, its black level `BLACK`.
 fn frame(value: impl Fn(u32, u32) -> f64) -> Frame {
+    framed(value, 1)
+}
+
+/// `frame`, its sensor's pixels `binning` × `binning` to each of its own:
+/// `AT` and `SIZE` in its own pixels, its region on the sensor `binning`
+/// times them.
+fn framed(value: impl Fn(u32, u32) -> f64, binning: u32) -> Frame {
     let (width, height) = SIZE;
     let pool = FramePool::new(RGGB.frame_bytes(width, height), 1, &HeapAllocator);
     let mut buffer = pool.take().unwrap();
@@ -55,11 +64,13 @@ fn frame(value: impl Fn(u32, u32) -> f64) -> Frame {
         sample.copy_from_slice(&((v * 65_535.0).round() as u16).to_le_bytes());
     }
     let mut meta = FrameMeta::new(FrameId(1), RGGB, width, height, Timestamp(0));
+    meta.binning = binning;
+    meta.black_level = BLACK * 65_535.0;
     meta.roi = PixelRect {
-        x: AT.0,
-        y: AT.1,
-        width,
-        height,
+        x: AT.0 * binning,
+        y: AT.1 * binning,
+        width: width * binning,
+        height: height * binning,
     };
     Frame::new(buffer, meta).unwrap()
 }
@@ -113,25 +124,39 @@ fn the_dark_frame_and_the_flat_field_come_off_as_the_calibration_measured_them()
             );
         }
     };
+    // On the black level's scale: full scale less it stretched to 1.
+    let full = |v: f64| v / (1.0 - BLACK);
     // Both: the sample's own colour.
     let mut both = image();
     assert!(correct(
         &mut both,
         AT,
-        0.05,
+        BLACK as f32,
         Some(&darkness()),
         Some(&flatness())
     ));
-    close(&both, &signal);
+    close(&both, &|x, y| full(signal(x, y)));
     // The dark frame alone: the vignetting stays.
     let mut dark_only = image();
-    assert!(correct(&mut dark_only, AT, 0.05, Some(&darkness()), None));
-    close(&dark_only, &|x, y| signal(x, y) * vignette(x, y));
+    assert!(correct(
+        &mut dark_only,
+        AT,
+        BLACK as f32,
+        Some(&darkness()),
+        None
+    ));
+    close(&dark_only, &|x, y| full(signal(x, y) * vignette(x, y)));
     // The flat field alone: the black level comes off in the dark frame's place.
     let mut flat_only = image();
-    assert!(correct(&mut flat_only, AT, 0.05, None, Some(&flatness())));
+    assert!(correct(
+        &mut flat_only,
+        AT,
+        BLACK as f32,
+        None,
+        Some(&flatness())
+    ));
     close(&flat_only, &|x, y| {
-        (dark(x, y) - 0.05) / vignette(x, y) + signal(x, y)
+        full((dark(x, y) - BLACK) / vignette(x, y) + signal(x, y))
     });
     // A part of a larger image is taken where the frame is on the sensor.
     let wider = calibrated((AT.0 - 8, AT.1 - 4), (SIZE.0 + 16, SIZE.1 + 8), dark);
@@ -139,11 +164,11 @@ fn the_dark_frame_and_the_flat_field_come_off_as_the_calibration_measured_them()
     assert!(correct(
         &mut from_wider,
         AT,
-        0.05,
+        BLACK as f32,
         Some(&wider),
         Some(&flatness())
     ));
-    close(&from_wider, &signal);
+    close(&from_wider, &|x, y| full(signal(x, y)));
 }
 
 #[test]
@@ -169,7 +194,13 @@ fn an_image_that_doesnt_cover_the_frame_isnt_used() {
     };
     for wrong in [short, elsewhere, colours] {
         let mut kept = image();
-        assert!(!correct(&mut kept, AT, 0.05, Some(&wrong), Some(&wrong)));
+        assert!(!correct(
+            &mut kept,
+            AT,
+            BLACK as f32,
+            Some(&wrong),
+            Some(&wrong)
+        ));
         assert!(kept.data().iter().all(|&v| v == 0.5));
     }
 }
@@ -224,7 +255,11 @@ fn the_look_takes_each_correction_only_when_it_asks_for_it() {
     // The sample as the camera sees it: its dark frame on it, vignetted.
     let seen = frame(|x, y| dark(x, y) + signal(x, y) * vignette(x, y));
     // What it should show: the sample alone, as a frame without either.
-    let truth = shown(&preview, &frame(signal), &Look::default());
+    let truth = shown(
+        &preview,
+        &frame(|x, y| BLACK + signal(x, y)),
+        &Look::default(),
+    );
     let both = Look {
         wanted: Wanted {
             dark: true,
@@ -263,4 +298,33 @@ fn the_look_takes_each_correction_only_when_it_asks_for_it() {
     // Without a way to find it, a look that asks gets the plain picture.
     preview.set_calibrating(None);
     assert_eq!(shown(&preview, &seen, &both), plain);
+}
+
+#[test]
+fn a_binned_frame_is_matched_to_its_calibration_in_its_own_pixels() {
+    let preview = preview();
+    preview.set_calibrating(Some(Calibrating(Arc::new(
+        |_: &FrameMeta, wanted: Wanted| Calibration {
+            dark: wanted.dark.then(|| Arc::new(darkness())),
+            flat: wanted.flat.then(|| Arc::new(flatness())),
+            colour: None,
+        },
+    ))));
+    let both = Look {
+        wanted: Wanted {
+            dark: true,
+            flat: true,
+            colour: false,
+        },
+        ..Look::default()
+    };
+    // Binned 2 × 2: its region's corner on the sensor is twice where the
+    // images are, which count in the frame's pixels.
+    let seen = framed(|x, y| dark(x, y) + signal(x, y) * vignette(x, y), 2);
+    let truth = shown(
+        &preview,
+        &frame(|x, y| BLACK + signal(x, y)),
+        &Look::default(),
+    );
+    assert!(largest(&shown(&preview, &seen, &both), &truth) <= 1);
 }

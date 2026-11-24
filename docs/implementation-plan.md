@@ -995,7 +995,7 @@ The instrument's settings, its calibration, the simulator's samples, extensions 
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
 | [W8.1](milestone-2/phases.md#w8-1) | System, display and devices | W2.2 | 1,800 | — | Done |
-| [W8.2](milestone-2/phases.md#w8-2) | Calibration sets | W8.1, W4.1 | 1,600 | — | Planned |
+| [W8.2](milestone-2/phases.md#w8-2) | Calibration sets | W8.1, W4.1 | 1,600 | — | In review |
 | [W8.3](milestone-2/phases.md#w8-3) | The calibration wizard | W8.2, W3.3 | 1,500 | — | Planned |
 | [W8.4](milestone-2/phases.md#w8-4) | Simulated samples | W8.1, W6.3 | 1,400 | — | Planned |
 | [W8.5](milestone-2/phases.md#w8-5) | Extensions and their panels | W8.1, W0.6 | 1,700 | — | Planned |

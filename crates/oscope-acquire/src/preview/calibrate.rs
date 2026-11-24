@@ -32,7 +32,8 @@ impl Wanted {
 
 /// A dark frame's or a flat field's image: the sensor's pixels from `(x,
 /// y)`, in the frame's own pixels, as the frame it was made from had them,
-/// in linear units.
+/// in linear units. Its place is counted in those pixels too: a binned
+/// frame's region's corner, over the binning.
 #[derive(Clone, Debug)]
 pub struct Calibrated {
     /// The image.
@@ -78,9 +79,12 @@ impl fmt::Debug for Calibrating {
 
 /// `raw`, the sensor's pixels from `at` in linear units, a mosaic or not,
 /// corrected as the calibration measured its sets (P33): its dark frame
-/// taken off, or else `black`, and then divided by its flat field. An
-/// image that doesn't cover all of `raw` isn't used. Whether either was:
-/// otherwise `raw` is as it was, its black level still on it.
+/// taken off, or else `black`, and then divided by its flat field. On the
+/// scale the black level's own subtraction leaves, full scale less `black`
+/// stretched to 1, and none below 0, so that the picture is as bright
+/// either way. An image that doesn't cover all of `raw` isn't used.
+/// Whether either was: otherwise `raw` is as it was, its black level still
+/// on it.
 pub fn correct(
     raw: &mut Image,
     at: (u32, u32),
@@ -96,6 +100,7 @@ pub fn correct(
     }
     let (width, channels) = (size.0 as usize, size.2);
     let row = width * channels;
+    let scale = 1.0 / (1.0 - black.clamp(0.0, 0.99));
     // Where pixel `(u, v)`'s channel `c` is in a calibration image.
     let index = |image: &Calibrated, u: usize, v: usize, c: usize| {
         let (x, y) = ((at.0 - image.x) as usize + u, (at.1 - image.y) as usize + v);
@@ -108,7 +113,7 @@ pub fn correct(
             for (k, sample) in samples.iter_mut().enumerate() {
                 let (u, c) = (k / channels, k % channels);
                 let base = dark.map_or(black, |d| d.image.data()[index(d, u, v, c)]);
-                let mut value = *sample - base;
+                let mut value = (*sample - base) * scale;
                 if let Some(f) = flat {
                     let gain = f.image.data()[index(f, u, v, c)];
                     // A site the flat field saw dark is left alone, not blown up.
@@ -116,7 +121,7 @@ pub fn correct(
                         value /= gain;
                     }
                 }
-                *sample = value;
+                *sample = value.max(0.0);
             }
         });
     true

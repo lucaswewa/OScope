@@ -4,7 +4,12 @@ import { useI18n } from "vue-i18n";
 
 import { thingStore } from "@/api/things/store";
 import { useAction, useProperty } from "@/api/things/use";
-import { byObjective, fileOf, type Summary } from "@/features/settings/calibration/calibration";
+import {
+  byObjective,
+  exportable,
+  fileOf,
+  type Summary,
+} from "@/features/settings/calibration/calibration";
 import { host } from "@/host/host";
 import Badge from "@/ui/Badge.vue";
 import Button from "@/ui/Button.vue";
@@ -13,7 +18,8 @@ import Button from "@/ui/Button.vue";
  * Every calibration set (W8.2, ADR-0023), by the objective it is for, then
  * the instrument's: each key's newest first, the one in use marked. Another
  * is chosen to be in use; one exported to a file, and imported back as its
- * key's next version, which is used once chosen.
+ * key's next version, which is used once chosen. A dark frame or a flat
+ * field stays on its instrument, its image with it.
  */
 const { t } = useI18n();
 const sets = useProperty("/api/v1/calibration/sets", { every: 5_000 });
@@ -99,7 +105,9 @@ async function importIt(): Promise<void> {
           </span>
           <Badge v-if="set.active" tone="accent">{{ t("settings.calibration.active") }}</Badge>
           <Button v-else compact @click="use(set)">{{ t("settings.calibration.use") }}</Button>
-          <Button compact @click="exportIt(set)">{{ t("settings.calibration.export") }}</Button>
+          <Button v-if="exportable(set)" compact @click="exportIt(set)">{{
+            t("settings.calibration.export")
+          }}</Button>
         </li>
       </ul>
     </section>

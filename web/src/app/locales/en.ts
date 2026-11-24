@@ -1225,7 +1225,7 @@ export default {
       backlash: "Backlash: {x} µm in x, {y} µm in y.",
       setsTitle: "Every set",
       setsNote:
-        "By objective, then the instrument's: each one's newest first. An imported set is its key's next version, in use once chosen.",
+        "By objective, then the instrument's: each one's newest first. An imported set is its key's next version, in use once chosen. Dark frames and flat fields stay on this instrument.",
       noSets: "No calibration yet.",
       forObjective: "The {objective}",
       forInstrument: "The instrument's",

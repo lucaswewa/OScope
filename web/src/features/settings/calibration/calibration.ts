@@ -87,6 +87,14 @@ export function residualsOf(residuals: readonly (readonly number[])[], name: str
   return { series: [{ name, kind: "points", x, y }], reach, rms };
 }
 
+/**
+ * Whether a set can be exported: not a dark frame or a flat field, whose
+ * images stay on the instrument they were taken on (P33).
+ */
+export function exportable(set: Pick<Summary, "kind">): boolean {
+  return set.kind !== "dark" && set.kind !== "flat";
+}
+
 /** The file a set is exported to, by its key and version. */
 export function fileOf(set: Pick<Summary, "key" | "version">): string {
   const key = set.key.replace(/[^A-Za-z0-9.+]+/g, "-");

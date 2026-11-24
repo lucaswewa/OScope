@@ -151,7 +151,7 @@ struct Steps {
     black: f32,
     look: Look,
     /// The calibration's dark frame and flat field, and where on the sensor
-    /// the view's first pixel is.
+    /// the view's first pixel is, in the frame's pixels.
     dark: Option<Arc<Calibrated>>,
     flat: Option<Arc<Calibrated>>,
     at: (u32, u32),
@@ -332,7 +332,11 @@ impl Preview {
             look,
             dark: calibration.dark,
             flat: calibration.flat,
-            at: (meta.roi.x + rect.x, meta.roi.y + rect.y),
+            // In the frame's pixels: its region's corner is the sensor's, at full resolution.
+            at: (
+                meta.roi.x / meta.binning.max(1) + rect.x,
+                meta.roi.y / meta.binning.max(1) + rect.y,
+            ),
         };
         self.compute.pools().install(Lane::Live, || {
             let coloured = self.colour(&view, &steps, gpu, recipe.as_ref(), region)?;

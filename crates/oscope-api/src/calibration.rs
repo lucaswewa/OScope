@@ -193,10 +193,13 @@ pub(crate) fn calibrating(store: Arc<CalibrationStore>) -> Calibrating {
             let mut images = images.lock().unwrap_or_else(PoisonError::into_inner);
             let read = || store.image(set.id).ok();
             let made = |image| {
+                // Its place in the frame's pixels, as the preview counts it: the
+                // set's frames were binned as this one is, its key says.
+                let binning = meta.binning.max(1);
                 Arc::new(Calibrated {
                     image,
-                    x: region.x,
-                    y: region.y,
+                    x: region.x / binning,
+                    y: region.y / binning,
                 })
             };
             images
@@ -835,7 +838,8 @@ mod tests {
     #[test]
     fn a_frame_finds_the_sets_its_mode_gain_exposure_objective_and_light_name() {
         let folder = tempfile::tempdir().unwrap();
-        let find = calibrating(stored(folder.path()));
+        let store = stored(folder.path());
+        let find = calibrating(Arc::clone(&store));
         // 12 ms is in the dark frame's octave, 8 to 16 ms.
         let found = (find.0)(&meta(1.0, 12.0, &["blue 488"]), ALL);
         let dark = found.dark.expect("the dark frame");
@@ -865,6 +869,14 @@ mod tests {
         assert!(other_light.flat.is_none() && other_light.colour.is_none());
         let unlit = (find.0)(&meta(1.0, 12.0, &[]), ALL);
         assert!(unlit.flat.is_none() && unlit.colour.is_none() && unlit.dark.is_some());
+        // Binned, a frame counts its place in its own pixels: its region's
+        // corner over the binning.
+        let mut binned = meta(1.0, 12.0, &["blue 488"]);
+        binned.binning = 2;
+        let dark = (calibrating(store).0)(&binned, ALL)
+            .dark
+            .expect("the dark frame");
+        assert_eq!((dark.x, dark.y), (6, 12));
     }
 
     #[test]

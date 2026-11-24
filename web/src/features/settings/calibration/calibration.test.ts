@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   byObjective,
+  exportable,
   fileOf,
   mapOf,
   objectiveOf,
@@ -46,6 +47,11 @@ describe("the sets by objective", () => {
       [undefined, ["stage", "dark/full/1/8"]],
     ]);
     expect(byObjective([])).toEqual([]);
+  });
+
+  it("are exported, all but the dark frames and flat fields, whose images stay", () => {
+    const kinds = ["geometry", "stage", "colour", "dark", "flat"];
+    expect(kinds.filter((kind) => exportable({ kind }))).toEqual(["geometry", "stage", "colour"]);
   });
 
   it("are exported to files named by their keys and versions", () => {
