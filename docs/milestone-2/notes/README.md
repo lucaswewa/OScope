@@ -53,7 +53,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W7.9 | Reports | Done | [W7.9-reports.md](W7.9-reports.md) |
 | W8.1 | System, display and devices | Done | [W8.1-settings.md](W8.1-settings.md) |
 | W8.2 | Calibration sets | Done | [W8.2-calibration.md](W8.2-calibration.md) |
-| W8.3 | The calibration wizard | In review | [W8.3-wizard.md](W8.3-wizard.md) |
+| W8.3 | The calibration wizard | Done | [W8.3-wizard.md](W8.3-wizard.md) |
 | W8.4 | Simulated samples | Planned | — |
 | W8.5 | Extensions and their panels | Planned | — |
 | W8.6 | Accounts | Planned | — |
