@@ -8,14 +8,16 @@ import { useProperty } from "@/api/things/use";
 import { useJobAction } from "@/features/control/jobAction";
 import ResultsPane from "@/features/settings/calibration/ResultsPane.vue";
 import SetsPane from "@/features/settings/calibration/SetsPane.vue";
+import WizardPane from "@/features/settings/calibration/wizard/WizardPane.vue";
 import Banner from "@/ui/Banner.vue";
 import Button from "@/ui/Button.vue";
 import Progress from "@/ui/Progress.vue";
 
 /**
- * The calibration (W8.2, P32, P33, ADR-0023): its five routines, run one
- * at a time, each a job whose set is in use once measured; the objective's
- * check; what the sets in use measured; and every set, by objective.
+ * The calibration (W8.2, P32, P33, ADR-0023): the wizard, step by step
+ * (W8.3); its five routines, run one at a time, each a job whose set is in
+ * use once measured; the objective's check; what the sets in use
+ * measured; and every set, by objective.
  */
 const { t } = useI18n();
 const streaming = useProperty("/api/v1/camera/streaming", { every: 1_000 });
@@ -67,6 +69,7 @@ const checked = computed(() => {
 
 <template>
   <div class="calibration">
+    <WizardPane />
     <section class="pane" aria-labelledby="routines-title" data-said="routines">
       <h2 id="routines-title">{{ t("settings.calibration.routinesTitle") }}</h2>
       <p class="note">{{ t("settings.calibration.routinesNote") }}</p>

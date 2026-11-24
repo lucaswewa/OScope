@@ -1,4 +1,4 @@
-// Covers: web/src/features/settings web/src/features/live
+// Covers: web/src/features/settings, web/src/features/live
 // The calibration (W8.2): the flat field run from the Settings tab over
 // clear glass, its map showing the simulator's vignetting, and the live
 // image evened out by the look's switch; the geometry run over the tissue,

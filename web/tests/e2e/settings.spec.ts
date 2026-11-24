@@ -1,4 +1,4 @@
-// Covers: web/src/features/settings web/src/features/display
+// Covers: web/src/features/settings, web/src/features/display
 // Settings (W8.1, P52): a display preference following the account to a
 // second browser, the stage's readout and the theme with it; a system change
 // saved for the next start, the restart said, a wrong one refused; the whole
