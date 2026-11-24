@@ -1,6 +1,11 @@
 //! The `simulation` Thing: the simulator's samples, loaded and unloaded,
 //! and how it is seen (plan §5.4; P16). Served only with the simulator.
 
+// `import`'s parameters are its action's inputs, each its own field, as
+// the Thing Description gives them: the wrapper the Thing's macro makes
+// for it takes as many.
+#![allow(clippy::too_many_arguments)]
+
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
@@ -233,7 +238,6 @@ impl SimulationThing {
     /// `dye`. An upload is kept in the data's `simulation` folder, which
     /// the simulator reads at each load, and taken off the staged ones.
     #[action]
-    #[allow(clippy::too_many_arguments)]
     async fn import(
         &self,
         ctx: ActionCtx,
