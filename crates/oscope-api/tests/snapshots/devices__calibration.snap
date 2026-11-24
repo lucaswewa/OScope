@@ -1198,7 +1198,7 @@ expression: td
             "type": "string"
           },
           "kind": {
-            "description": "Its kind: `geometry` or `stage`.",
+            "description": "Its kind: `geometry`, `stage`, `dark`, `flat` or `colour`.",
             "type": "string"
           },
           "key": {
