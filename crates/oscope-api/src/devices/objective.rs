@@ -94,4 +94,16 @@ impl ObjectiveThing {
             .map_err(|e| ActionError::handled(e.to_string()))?;
         Ok(objective)
     }
+
+    /// Forgets the objective saved.
+    ///
+    /// The one fitted stays fitted; the next start leaves the mount as it
+    /// starts, fitting none of its own.
+    #[action]
+    async fn forget_saved(&self) -> Result<(), ActionError> {
+        self.link.action()?;
+        self.saved
+            .set(None)
+            .map_err(|e| ActionError::handled(e.to_string()))
+    }
 }

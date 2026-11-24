@@ -374,6 +374,54 @@ async fn settings_are_kept_across_a_restart() {
     );
 }
 
+#[tokio::test]
+async fn settings_forgotten_are_not_set_again_at_the_next_start() {
+    // Set, then forgotten (W8.1): what the devices have now stays, and the
+    // next server leaves them as they start.
+    let folder = tempfile::tempdir().unwrap();
+    let light = json!({"channel": "transmitted", "on": true, "intensity": 0.25});
+    {
+        let (client, _) = fake_server(folder.path()).await;
+        let exposure = client
+            .put_json("/api/v1/camera/exposure", &json!(7.5))
+            .await;
+        assert_eq!(exposure.status, 201);
+        invoke(&client, "objective/fit", json!({"name": "50x"})).await;
+        invoke(&client, "illumination/set_light", light.clone()).await;
+        assert_eq!(client.get("/api/v1/objective/saved").await.json(), "50x");
+        for thing in ["camera", "illumination", "objective"] {
+            let forgot = invoke(&client, &format!("{thing}/forget_saved"), json!({})).await;
+            assert_eq!(forgot["status"], "completed", "{thing}: {forgot}");
+        }
+        assert_eq!(client.get("/api/v1/camera/saved").await.json(), json!(null));
+        assert_eq!(
+            client.get("/api/v1/illumination/saved").await.json(),
+            json!([])
+        );
+        assert_eq!(
+            client.get("/api/v1/objective/saved").await.json(),
+            json!(null)
+        );
+        // Those it has now stay.
+        assert_eq!(
+            client.get("/api/v1/camera/exposure").await.json(),
+            json!(7.5)
+        );
+        client.stop().await;
+    }
+    let (client, _) = fake_server(folder.path()).await;
+    assert_ne!(
+        client.get("/api/v1/camera/exposure").await.json(),
+        json!(7.5)
+    );
+    assert_ne!(
+        client.get("/api/v1/objective/fitted").await.json()["name"],
+        "50x"
+    );
+    let lights = client.get("/api/v1/illumination/lights").await.json();
+    assert!(!lights.as_array().unwrap().contains(&light), "{lights}");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn the_things_answer_on_a_test_port() {
     // Served on a port the system picks, so that copies of the suite run

@@ -308,6 +308,52 @@ expression: td
         "additionalProperties": false
       },
       "synchronous": false
+    },
+    "forget_saved": {
+      "description": "The one fitted stays fitted; the next start leaves the mount as it\nstarts, fitting none of its own.",
+      "title": "Forgets the objective saved.",
+      "forms": [
+        {
+          "href": "/api/v1/objective/forget_saved",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "forget_saved_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "title": "forget_saved_output",
+        "type": "null"
+      },
+      "synchronous": false
     }
   },
   "description": "The objective mount. On the instrument, objectives are swapped by hand\n(D18): fitting one records which, for every frame's metadata and, on\nthe simulator, for what the camera sees.",

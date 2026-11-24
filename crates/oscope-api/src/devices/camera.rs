@@ -246,4 +246,16 @@ impl CameraThing {
         let devices = self.link.action()?;
         devices.camera.trigger().await.map_err(action_error)
     }
+
+    /// Forgets the settings saved.
+    ///
+    /// The camera keeps the ones it has; the next start leaves it with its
+    /// own.
+    #[action]
+    async fn forget_saved(&self) -> Result<(), ActionError> {
+        self.link.action()?;
+        self.saved
+            .set(None)
+            .map_err(|e| ActionError::handled(e.to_string()))
+    }
 }

@@ -1334,6 +1334,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/camera/forget_saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of forget_saved.
+         * @description List all the invocations of forget_saved that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_camera_forget_saved_get"];
+        put?: never;
+        /**
+         * Forgets the settings saved.
+         * @description ## Forgets the settings saved.
+         *
+         *     The camera keeps the ones it has; the next start leaves it with its
+         *     own.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_camera_forget_saved_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/camera/format": {
         parameters: {
             query?: never;
@@ -2274,6 +2305,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/illumination/forget_saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of forget_saved.
+         * @description List all the invocations of forget_saved that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_illumination_forget_saved_get"];
+        put?: never;
+        /**
+         * Forgets the lights saved.
+         * @description ## Forgets the lights saved.
+         *
+         *     They stay as they are; the next start leaves them as they start.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_illumination_forget_saved_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/illumination/lights": {
         parameters: {
             query?: never;
@@ -2500,6 +2561,37 @@ export interface paths {
         get: operations["get_property_api_v1_objective_fitted_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/objective/forget_saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All invocations of forget_saved.
+         * @description List all the invocations of forget_saved that the server is keeping, with their times and links.
+         */
+        get: operations["list_invocations_api_v1_objective_forget_saved_get"];
+        put?: never;
+        /**
+         * Forgets the objective saved.
+         * @description ## Forgets the objective saved.
+         *
+         *     The one fitted stays fitted; the next start leaves the mount as it
+         *     starts, fitting none of its own.
+         *
+         *     ## Important note
+         *
+         *     This `POST` request starts an action: the server may carry on after answering. The answer is always a 201 with the invocation, whose `href` can be polled to follow it, and whose `output` link gives the result when it has completed.
+         */
+        post: operations["start_action_api_v1_objective_forget_saved_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8091,6 +8183,29 @@ export interface components {
         };
         camera_exposure_value: number;
         /**
+         * @description Represent the input of an action that never takes parameters.
+         *
+         *     This may be either an empty dictionary or ``None``.
+         */
+        camera_forget_saved_input: Record<string, never> | null;
+        camera_forget_saved_output: null;
+        camera_forget_saved_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["camera_forget_saved_input"];
+            output?: components["schemas"]["camera_forget_saved_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
+        /**
          * @description How a frame stores its pixels: interleaved samples, row by row, or planes
          *     one after another. Samples of more than one byte are little-endian.
          */
@@ -8827,6 +8942,29 @@ export interface components {
                 dimmable: boolean;
             }[];
         };
+        /**
+         * @description Represent the input of an action that never takes parameters.
+         *
+         *     This may be either an empty dictionary or ``None``.
+         */
+        illumination_forget_saved_input: Record<string, never> | null;
+        illumination_forget_saved_output: null;
+        illumination_forget_saved_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["illumination_forget_saved_input"];
+            output?: components["schemas"]["illumination_forget_saved_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
         illumination_lights_value: {
             /** @description The channel, such as `transmitted`. */
             channel: string;
@@ -8973,6 +9111,29 @@ export interface components {
              */
             design_tube_lens: number;
         } | null;
+        /**
+         * @description Represent the input of an action that never takes parameters.
+         *
+         *     This may be either an empty dictionary or ``None``.
+         */
+        objective_forget_saved_input: Record<string, never> | null;
+        objective_forget_saved_output: null;
+        objective_forget_saved_invocation: {
+            status: components["schemas"]["InvocationStatus"];
+            /** Format: uuid */
+            id: string;
+            action: string;
+            /** Format: uri */
+            href: string;
+            timeStarted: string | null;
+            timeRequested: string | null;
+            timeCompleted: string | null;
+            links?: components["schemas"]["LinkElement"][];
+            input: components["schemas"]["objective_forget_saved_input"];
+            output?: components["schemas"]["objective_forget_saved_output"] | null;
+            log: components["schemas"]["LogRecordModel"][];
+            error?: components["schemas"]["ProblemDetails"] | null;
+        };
         objective_pixel_at_sample_value: number | null;
         objective_saved_value: string | null;
         preview_capture_reference_input: {
@@ -16077,6 +16238,68 @@ export interface operations {
             };
         };
     };
+    list_invocations_api_v1_camera_forget_saved_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of forget_saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_camera_forget_saved_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["camera_forget_saved_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["camera_forget_saved_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["camera_forget_saved_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_property_api_v1_camera_format_get: {
         parameters: {
             query?: never;
@@ -17439,6 +17662,68 @@ export interface operations {
             };
         };
     };
+    list_invocations_api_v1_illumination_forget_saved_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of forget_saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_illumination_forget_saved_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["illumination_forget_saved_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["illumination_forget_saved_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["illumination_forget_saved_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_property_api_v1_illumination_lights_get: {
         parameters: {
             query?: never;
@@ -17723,6 +18008,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["objective_fitted_value"];
+                };
+            };
+        };
+    };
+    list_invocations_api_v1_objective_forget_saved_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of every invocation of forget_saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvocationSummary"][];
+                };
+            };
+        };
+    };
+    start_action_api_v1_objective_forget_saved_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["objective_forget_saved_input"];
+            };
+        };
+        responses: {
+            /** @description Action completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["objective_forget_saved_output"];
+                };
+            };
+            /** @description Action has been invoked (and may still be running). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["objective_forget_saved_invocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
