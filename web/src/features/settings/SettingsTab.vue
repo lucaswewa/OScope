@@ -3,6 +3,7 @@ import { shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 
+import AccountsPane from "@/features/settings/accounts/AccountsPane.vue";
 import CalibrationPane from "@/features/settings/calibration/CalibrationPane.vue";
 import DevicesPane from "@/features/settings/DevicesPane.vue";
 import DisplayPane from "@/features/settings/DisplayPane.vue";
@@ -17,7 +18,8 @@ import Tabs from "@/ui/Tabs.vue";
  * Settings (W8.1, P52): how things are shown, the account's own, which
  * need no control lease; the system's, for the next start; the devices'
  * saved settings; the calibration (W8.2); the simulator (W8.4); the
- * extensions (W8.5); and all of them as one document. `?view=` opens one.
+ * extensions (W8.5); the accounts (W8.6); and all of them as one
+ * document. `?view=` opens one.
  */
 const { t } = useI18n();
 const query = useRoute().query.view;
@@ -38,6 +40,7 @@ const tab = shallowRef(typeof query === "string" ? query : "display");
         { value: 'calibration', label: t('settings.calibration.title') },
         { value: 'simulation', label: t('settings.simulation.title') },
         { value: 'extensions', label: t('settings.extensions.title') },
+        { value: 'accounts', label: t('settings.accounts.title') },
         { value: 'document', label: t('settings.documentPane.title') },
       ]"
     >
@@ -60,6 +63,9 @@ const tab = shallowRef(typeof query === "string" ? query : "display");
       </template>
       <template #extensions>
         <ExtensionsPane />
+      </template>
+      <template #accounts>
+        <AccountsPane />
       </template>
       <template #document>
         <DocumentPane />
