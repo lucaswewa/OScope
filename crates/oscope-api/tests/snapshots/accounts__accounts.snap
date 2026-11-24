@@ -1,0 +1,327 @@
+---
+source: crates/oscope-api/tests/accounts.rs
+expression: td
+---
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "saref": "https://saref.etsi.org/core/"
+    }
+  ],
+  "title": "Accounts",
+  "properties": {
+    "idle": {
+      "description": "How long sessions and the lease may be idle, and how long the lease's\nholder has been: none without security.",
+      "title": "How long sessions and the lease may be idle, and how long the lease's",
+      "writeOnly": false,
+      "readOnly": true,
+      "oneOf": [
+        {
+          "description": "How long sessions and the lease may be idle, and how long the lease's\nholder has been.",
+          "type": "object",
+          "properties": {
+            "session_s": {
+              "description": "How long a session may be idle before it ends, in seconds.",
+              "type": "number"
+            },
+            "lease_s": {
+              "description": "How long the lease's holder may be idle before it goes.",
+              "type": "number"
+            },
+            "lease_idle_s": {
+              "description": "How long its holder has been idle; none while it is free.",
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "session_s",
+            "lease_s"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "forms": [
+        {
+          "href": "/api/v1/accounts/idle",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "names": {
+      "description": "The accounts, by name.",
+      "title": "The accounts, by name.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "forms": [
+        {
+          "href": "/api/v1/accounts/names",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "restart_needed": {
+      "description": "Whether the next start has security otherwise than this one: the\nfirst account added, or the last removed.",
+      "title": "Whether the next start has security otherwise than this one: the",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/accounts/restart_needed",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "secure": {
+      "description": "Whether this start has security on: logins, sessions and the lease.",
+      "title": "Whether this start has security on: logins, sessions and the lease.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "boolean",
+      "forms": [
+        {
+          "href": "/api/v1/accounts/secure",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    },
+    "sessions": {
+      "description": "The sessions open, the longest idle first: none without security.",
+      "title": "The sessions open, the longest idle first: none without security.",
+      "writeOnly": false,
+      "readOnly": true,
+      "type": "array",
+      "items": {
+        "description": "A session open, as the accounts' page shows it: whose, and how long it\nhas been idle. Its token isn't said.",
+        "type": "object",
+        "properties": {
+          "account": {
+            "description": "Its account.",
+            "type": "string"
+          },
+          "idle_s": {
+            "description": "How long since it was last used, in seconds.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "account",
+          "idle_s"
+        ]
+      },
+      "forms": [
+        {
+          "href": "/api/v1/accounts/sessions",
+          "op": [
+            "readproperty"
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "add": {
+      "description": "The first, on a server without, turns security on at the next\nstart. Answers the accounts' names.",
+      "title": "Adds an account.",
+      "forms": [
+        {
+          "href": "/api/v1/accounts/add",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "add_input",
+        "type": "object",
+        "properties": {
+          "account": {
+            "description": "An account's name and password, to add it.",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Its name: 1 to 64 of `a`–`z`, `0`–`9`, `.`, `_` and `-`, starting\nwith a letter, and not `local`.",
+                "type": "string"
+              },
+              "password": {
+                "description": "Its password: 8 characters at least.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "password"
+            ]
+          }
+        },
+        "required": [
+          "account"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "add_output",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "synchronous": false
+    },
+    "change_password": {
+      "description": "Needs a login, and not the lease. Refused if `old` isn't the\npassword, or `password` is shorter than 8 characters.",
+      "title": "Changes one's own password, with the old one.",
+      "forms": [
+        {
+          "href": "/api/v1/accounts/change_password",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "change_password_input",
+        "type": "object",
+        "properties": {
+          "old": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "old",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "change_password_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
+    "remove": {
+      "description": "The last is refused while the next start listens on the network,\nwhich needs accounts; removed, it turns security off at the next\nstart. Answers the accounts' names.",
+      "title": "Removes an account, and ends its sessions.",
+      "forms": [
+        {
+          "href": "/api/v1/accounts/remove",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "title": "remove_input",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "title": "remove_output",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "synchronous": false
+    }
+  },
+  "description": "The accounts, kept from the app (W8.6).",
+  "forms": [
+    {
+      "href": "/api/v1/accounts/properties",
+      "op": [
+        "readallproperties"
+      ]
+    },
+    {
+      "href": "/api/v1/accounts/actions",
+      "op": [
+        "queryallactions"
+      ]
+    }
+  ],
+  "base": "http://testserver/",
+  "securityDefinitions": {
+    "no_security": {
+      "description": "No security",
+      "scheme": "nosec"
+    }
+  },
+  "security": "no_security",
+  "@type": "saref:Function"
+}

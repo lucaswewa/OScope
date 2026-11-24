@@ -547,7 +547,7 @@ fn projects(data: &Path, index: &Path) -> Result<oscope_store::Store, Error> {
 }
 
 /// The accounts' file, in the data root (P49).
-pub const ACCOUNTS: &str = "accounts.json";
+pub use oscope_api::auth::ACCOUNTS;
 
 /// Does `command` to `accounts`, saying what it did on `out`. `password`
 /// gives the password for an account by its name.
