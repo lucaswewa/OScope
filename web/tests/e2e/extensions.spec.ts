@@ -80,37 +80,48 @@ test.describe("a server that restarts", () => {
     await expect(said(page, "panel-unknown")).toHaveCount(0);
     const strength = said(page, "panel").getByRole("spinbutton", { name: "Strength" });
     await expect(strength).toHaveValue("1");
-    await strength.fill("3");
-    await strength.press("Tab");
-    await page.getByRole("button", { name: "Run it" }).click();
     const answer = said(page, "panel-answer").getByRole("img", {
       name: "What the node gave, image",
     });
-    await expect(answer).toBeVisible({ timeout: 60_000 });
-    const size = await answer.evaluate((img: HTMLImageElement) => [
-      img.naturalWidth,
-      img.naturalHeight,
-    ]);
-    expect(size[0]! * size[1]!).toBeGreaterThan(0);
-    // The node's, not the frame's: the stained tissue in relief, grey about 0.5.
-    const [grey, colour] = await answer.evaluate((img: HTMLImageElement) => {
-      const canvas = document.createElement("canvas");
-      [canvas.width, canvas.height] = [img.naturalWidth, img.naturalHeight];
-      const drawn = canvas.getContext("2d")!;
-      drawn.drawImage(img, 0, 0);
-      const { data } = drawn.getImageData(0, 0, canvas.width, canvas.height);
-      let [sum, chroma] = [0, 0];
-      for (let i = 0; i < data.length; i += 4) {
-        const [r, g, b] = [data[i]!, data[i + 1]!, data[i + 2]!];
-        sum += (r + g + b) / 3;
-        chroma += Math.max(r, g, b) - Math.min(r, g, b);
-      }
-      const n = data.length / 4;
-      return [sum / n, chroma / n];
-    });
-    expect(grey).toBeGreaterThan(110);
-    expect(grey).toBeLessThan(150);
-    expect(colour).toBeLessThan(20);
+    /** The answer's mean grey, how coloured it is, and how much its grey varies. */
+    const measured = () =>
+      answer.evaluate((img: HTMLImageElement) => {
+        const canvas = document.createElement("canvas");
+        [canvas.width, canvas.height] = [img.naturalWidth, img.naturalHeight];
+        const drawn = canvas.getContext("2d")!;
+        drawn.drawImage(img, 0, 0);
+        const { data } = drawn.getImageData(0, 0, canvas.width, canvas.height);
+        const greys: number[] = [];
+        let chroma = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const [r, g, b] = [data[i]!, data[i + 1]!, data[i + 2]!];
+          greys.push((r + g + b) / 3);
+          chroma += Math.max(r, g, b) - Math.min(r, g, b);
+        }
+        const mean = greys.reduce((sum, v) => sum + v, 0) / greys.length;
+        const spread = Math.sqrt(greys.reduce((sum, v) => sum + (v - mean) ** 2, 0) / greys.length);
+        return { mean, colour: chroma / greys.length, spread, src: img.src };
+      });
+    /** Runs it at `value`: what it gave, once a new answer is drawn. */
+    const runAt = async (value: string, before?: string) => {
+      await strength.fill(value);
+      await strength.press("Tab");
+      await page.getByRole("button", { name: "Run it" }).click();
+      await expect(answer).toBeVisible({ timeout: 60_000 });
+      await expect
+        .poll(async () => (await measured()).src !== before, { timeout: 60_000 })
+        .toBe(true);
+      return measured();
+    };
+    // Strength 0: no relief, a flat grey of 0.5. Strength 3: the stained tissue in relief, still grey.
+    const flat = await runAt("0");
+    expect(flat.mean).toBeGreaterThan(120);
+    expect(flat.mean).toBeLessThan(136);
+    expect(flat.spread).toBeLessThan(2);
+    const relief = await runAt("3", flat.src);
+    expect(relief.spread).toBeGreaterThan(flat.spread + 5);
+    expect(relief.colour).toBeLessThan(20);
+    await expect(said(page, "panel-answer")).toContainText(/\d+ × \d+/);
 
     // Back, and uninstalled: its files go at the next start, which the page says.
     await page.getByRole("link", { name: "Back to the extensions" }).click();
