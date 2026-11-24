@@ -1,0 +1,493 @@
+{
+  "prompting": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "prompting"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 0,
+    "finished": false,
+    "cancelled": false
+  },
+  "running": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "running",
+          "job": "01a20cc9-8de1-73d9-9ae1-6c7cc9400143"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 0,
+    "finished": false,
+    "cancelled": false
+  },
+  "objectiveDone": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "done",
+          "result": "plausible: the 10x"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "prompting"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 1,
+    "finished": false,
+    "cancelled": false
+  },
+  "geometryDone": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "done",
+          "result": "plausible: the 10x"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-9c49-77fb-870d-cf5eda3282d9"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "prompting"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 2,
+    "finished": false,
+    "cancelled": false
+  },
+  "flatFailed": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "done",
+          "result": "plausible: the 10x"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-9c49-77fb-870d-cf5eda3282d9"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-a564-7334-9482-b4ce6051623e"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "failed",
+          "error": "the field isn't blank: it varies by 20.2 % about its shape, more than 3 %. Move to an empty part of the slide"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 3,
+    "finished": false,
+    "cancelled": false
+  },
+  "retried": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "done",
+          "result": "plausible: the 10x"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-9c49-77fb-870d-cf5eda3282d9"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-a564-7334-9482-b4ce6051623e"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "prompting"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "waiting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 3,
+    "finished": false,
+    "cancelled": false
+  },
+  "skipped": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "done",
+          "result": "plausible: the 10x"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-9c49-77fb-870d-cf5eda3282d9"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-a564-7334-9482-b4ce6051623e"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "skipped"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "prompting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 4,
+    "finished": false,
+    "cancelled": false
+  },
+  "cancelled": {
+    "id": "01a20cc9-8daa-7634-b999-9de9ad1b9980",
+    "started": "2026-11-24T09:01:05.322185300Z",
+    "steps": [
+      {
+        "kind": "objective",
+        "title": "Check the objective",
+        "prompt": "Fit the objective that is in the light path, and focus on a textured part of the sample. Two small moves check that the image moves as that objective's should.",
+        "state": {
+          "state": "done",
+          "result": "plausible: the 10x"
+        }
+      },
+      {
+        "kind": "geometry",
+        "title": "Calibrate the geometry",
+        "prompt": "Keep a textured part of the sample in focus, with room around it for moves of a quarter of the field each way.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-9c49-77fb-870d-cf5eda3282d9"
+        }
+      },
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-a564-7334-9482-b4ce6051623e"
+        }
+      },
+      {
+        "kind": "flat",
+        "title": "Take a flat field",
+        "prompt": "Move to a blank part of the slide, clear glass with nothing on it, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "skipped"
+        }
+      },
+      {
+        "kind": "colour",
+        "title": "Calibrate colour",
+        "prompt": "Load the colour target, and centre it in the field of the 5× or the 10×, in focus, with the light on as it will be used.",
+        "state": {
+          "state": "prompting"
+        }
+      },
+      {
+        "kind": "stage",
+        "title": "Calibrate the stage",
+        "prompt": "Bring a textured part of the sample back into view, in focus: the stage measures its backlash there, then homes, and comes back.",
+        "state": {
+          "state": "waiting"
+        }
+      }
+    ],
+    "current": 4,
+    "finished": true,
+    "cancelled": true
+  },
+  "finished": {
+    "id": "01a20cc9-b025-721b-af5d-dfba8b25d60a",
+    "started": "2026-11-24T09:01:14.149976300Z",
+    "steps": [
+      {
+        "kind": "dark",
+        "title": "Take a dark frame",
+        "prompt": "Lights that can be switched are turned off for the dark frame, and back on. Block any other light from reaching the camera.",
+        "state": {
+          "state": "done",
+          "result": "calibration/01a20cc9-b95c-7449-8ae4-414d83b68e09"
+        }
+      }
+    ],
+    "current": 1,
+    "finished": true,
+    "cancelled": false
+  }
+}
