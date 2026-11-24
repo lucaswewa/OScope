@@ -45,7 +45,7 @@ async function act(path, input = {}) {
   let invocation = await request("POST", path, input);
   while (["pending", "running"].includes(invocation.status)) {
     await new Promise((done) => setTimeout(done, 50));
-    invocation = await request("GET", invocation.href);
+    invocation = await request("GET", `action_invocations/${invocation.id}`);
   }
   if (invocation.status !== "completed") {
     throw new Error(`${path}: ${JSON.stringify(invocation.error)}`);
