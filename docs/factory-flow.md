@@ -49,11 +49,14 @@ qualified release and record who approved promotion.
 6. Run acceptance and review measured results.
 7. Attach the report to the manufacturing record. Ship only after acceptance.
 
-The provisioner is planned software, not an existing tool. It identifies host
-versions and hardware, applies a qualified host baseline, imports the clean WSL
-template, configures Docker/GPU/USB access, generates unique credentials, installs
-the verified release and starts readiness checks. It reports actionable faults
-such as a missing camera, failed GPU operation or calibration outside its limits.
+The [R10 engineering provisioner](host-provisioning.md) now plans pinned host
+versions/artifacts, imports an owned clean WSL template, initializes unique
+application identity/credentials and defines owner-bound unattended startup.
+Its clean-PC/cold-boot qualification is deferred, and R09 physical device access
+is unqualified. The final factory flow still needs the approved Windows baseline,
+hardware/USB feasibility, physical acceptance and authenticated release bundle.
+It must report faults such as missing hardware, GPU failure or out-of-limit
+calibration before shipment.
 
 Never copy a configured instrument's credentials or calibration into the next
 unit. Match USB devices by stable identity and verified topology; do not assume a

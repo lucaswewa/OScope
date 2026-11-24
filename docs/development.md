@@ -38,6 +38,10 @@ The bootstrap resolves host packages from configured repositories. A production
 baseline will lock and qualify their versions in R10; this script is not a factory
 installer. Inspect `docker version`, `docker compose version` and `nvidia-ctk
 --version` when recording environment evidence.
+The [R10 engineering tools](host-provisioning.md) now provide separate pinned
+candidate planning/provisioning and a simulated bootstrap lab. Clean-PC and
+before-login boot qualification remain deferred; do not substitute this live
+developer bootstrap for a qualified factory baseline.
 
 ## Build and verify
 

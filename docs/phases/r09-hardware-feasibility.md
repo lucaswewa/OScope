@@ -1,10 +1,11 @@
 # R09 Real devices and WSL feasibility
 
-- Status: Preparation complete; physical testing deferred; hardware qualification pending
+- Status: Preparation approved; physical testing deferred; hardware qualification pending
 - Date: 2026-11-23
 - Source: `44bc08a53f98dc29db1fa6b488a4f6269732a71a`
 - Prerequisite: R08 approved by owner on 2026-11-23
 - Owner direction: Prepare tools/runbook here; test physical hardware later
+- Owner approval: Preparation accepted on 2026-11-23; R10 authorized
 - Hardware qualification: Not run
 
 ## Implementation specification
@@ -57,7 +58,7 @@ equipment, Linux kit, operator and fixture are available.
    python3 scripts/gates.py --all --run hardware
    ```
 
-   Expect nine hardware-tool tests and seven router tests to pass. The explicit
+   Expect all hardware-tool and router tests to pass. The explicit
    last command runs only the hardware-tool category. Fixtures cover stable
    identity after bus changes, missing/ambiguous/inaccessible devices, wrong
    platform/root permissions, malformed profiles, wrong SDK architecture and

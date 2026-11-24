@@ -39,6 +39,14 @@ class Router(unittest.TestCase):
                 self.assertEqual([n for n, on in gates.route(ROOT, [name])["gates"].items() if on], ["hardware"])
                 self.assertFalse(gates.backend_input(name))
 
+    def test_provisioning_tooling_is_separate_from_application_gates(self):
+        for name in ["scripts/provision-host.ps1", "scripts/provision-host.psm1", "scripts/provision-runtime.py",
+                     "scripts/provision-template.py", "tests/provisioning/lab.py", "scripts/check-provisioning.sh",
+                     "configs/host-baseline.example.json"]:
+            with self.subTest(name=name):
+                self.assertEqual([n for n, on in gates.route(ROOT, [name])["gates"].items() if on], ["provisioning"])
+                self.assertFalse(gates.backend_input(name))
+
     def test_shared_inputs_and_deleted_unknown_feature(self):
         for name in ["Cargo.lock", "scripts/gates.py", "web/package-lock.json", "python/oscope-ext/README.md"]:
             self.assertTrue(gates.route(ROOT, [name])["gates"]["integration"])

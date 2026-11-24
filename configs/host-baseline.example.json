@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "baseline_id": "r10-engineering-candidate",
+  "qualification": "pending",
+  "minimum_free_gib": 64,
+  "windows": {
+    "build": "",
+    "wsl_version": "",
+    "usbipd_version": "",
+    "gpu_driver": ""
+  },
+  "linux": {
+    "ubuntu_release": "24.04",
+    "kernel_release": "",
+    "docker_version": "",
+    "compose_version": "",
+    "nvidia_ctk_version": ""
+  },
+  "artifacts": {
+    "rootfs": { "file": "host-rootfs.tar", "sha256": "", "audit_file": "rootfs.audit.json", "audit_sha256": "" },
+    "backend": { "file": "backend-image.tar", "sha256": "", "image_id": "" }
+  }
+}

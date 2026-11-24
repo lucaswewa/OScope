@@ -8,8 +8,9 @@ The owner approved this direction on 2026-11-22. This is a clean migration branc
 the existing microscope implementation is available in Git and will be ported in
 small, independently verified phases. R02-R08 are approved. The existing Vue app
 uses the Linux backend with separate frontend, backend and integration gates.
-R09 prepares hardware inventory tools and the physical bring-up runbook; the
-owner deferred physical testing. CUDA remains preferred with CPU fallback.
+R09 hardware preparation is approved, with physical testing deferred. R10 adds
+engineering host-provisioning tools; clean-PC/cold-boot qualification is deferred.
+CUDA remains preferred with CPU fallback.
 Every phase includes a manual test procedure in its notes.
 
 ## Start here
@@ -19,6 +20,7 @@ Every phase includes a manual test procedure in its notes.
 - [Development environment](docs/development.md): container tools and validation.
 - [Independent gates](docs/gates.md): select checks for the code you changed.
 - [Hardware bring-up](docs/hardware-bringup.md): R09 inventory and deferred physical feasibility.
+- [Host provisioning](docs/host-provisioning.md): R10 candidate installer and separate PC qualification.
 - [Factory and field workflow](docs/factory-flow.md): installation, calibration, acceptance, updates and recovery.
 - [Architecture decision](docs/adr/0062-linux-container-backend.md): the accepted platform decision.
 - [Working rules](AGENTS.md): how work on this branch proceeds.

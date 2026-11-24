@@ -26,8 +26,8 @@ skipped. Keep the owner informed as implementation progresses.
 | R06 | API and container runtime | Approved by owner, 2026-11-22 | Default/CPU gates; real TLS/API/WebSocket runtime checks; persistent settings/data; signals/restart; required GPU kernels; manual procedure |
 | R07 | Calibration, scans and analysis workflows | Approved by owner, 2026-11-23 | Default/CPU gates; six scientific examples in three modes; required CUDA preview parity; real Python API tests; runtime workflows and restart persistence; manual procedure |
 | R08 | Vue integration and separate final gates | Approved by owner, 2026-11-23; hosted CI blocked | 742 frontend tests; 285 browser passes; required CUDA delivery; separate timing/visual checks; independent router; HTTPS checkpoint; manual procedure |
-| R09 | Real device and WSL hardware feasibility | Preparation complete; physical testing deferred; qualification pending | Inventory tools/runbook; 9 fixture and 7 router tests on Linux/Windows; expected missing-hardware failures; physical SDK/acquisition/stage evidence pending |
-| R10 | Qualified host baseline and provisioning | Planned | Repeatable fresh PC install; unique identity; unattended cold boot |
+| R09 | Real device and WSL hardware feasibility | Preparation approved by owner, 2026-11-23; physical qualification pending | Inventory tools/runbook; 9 fixture and 7 router tests on Linux/Windows; expected missing-hardware failures; physical SDK/acquisition/stage evidence pending |
+| R10 | Qualified host baseline and provisioning | Tooling complete; clean-PC/cold-boot qualification deferred | Pinned candidate planner, resumable receipts, owner boot task and simulated CUDA/TLS lab; physical PC qualification pending |
 | R11 | Factory calibration and acceptance runner | Planned | One reference microscope completes guided installation and physical acceptance |
 | R12 | Release bundles, updates, rollback and inventory | Planned | Offline installation; verified image identity; compatible rollback; traceable reports |
 | R13 | Production pilot and measured optimization | Planned | Representative pilot; performance budgets; accepted runtime optimizations |

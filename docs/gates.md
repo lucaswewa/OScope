@@ -31,12 +31,16 @@ explicit complete checkpoint. CI uses the PR base or the previous pushed commit.
 | workflows | Longer scientific examples and Python API planning/reporting | Backend tools container |
 | runtime | Packaged TLS, authentication, lifecycle and persistence | Prepared backend image/Python |
 | hardware | Inventory/profile/SDK-metadata fixture tests and Windows inventory smoke | Python 3.11+; PowerShell 7.4+ on Windows; no device/Rust/Node |
+| provisioning | Baseline/template/runtime fixtures and Windows host-planner/task contracts | Python/PowerShell; no application builds or PC changes |
 
 Frontend implementation changes select frontend and relevant integration specs.
 Unit-test-only edits select frontend. Browser-harness/spec edits select integration.
 Hardware inventory scripts, their example profile and tests select only the
 hardware-tools category. Its passing CI result qualifies tooling, not physical
 hardware; inventory reports always label functional qualification `not_run`.
+Provisioning tools have their own category too. Its simulated required-CUDA lab
+and clean-PC/cold-boot qualification are separate explicit checks, not hosted
+fixture evidence. See the [R10 procedure](phases/r10-host-provisioning.md#manual-test).
 Backend changes select backend/CPU checks and relevant boundary checks; they do not
 select frontend units. Root routing/shared harness changes receive broader checks.
 The package graph comes from Cargo manifests without invoking Cargo. Backend test
