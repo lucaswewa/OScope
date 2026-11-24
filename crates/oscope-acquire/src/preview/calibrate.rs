@@ -66,10 +66,14 @@ pub struct Calibration {
     pub colour: Option<ColourCorrection>,
 }
 
+/// How a frame's calibration is found: from its metadata and what the look
+/// asks for.
+pub type Find = dyn Fn(&FrameMeta, Wanted) -> Calibration + Send + Sync;
+
 /// Finds a frame's calibration: what the look asks for, as far as the
 /// active sets have it.
 #[derive(Clone)]
-pub struct Calibrating(pub Arc<dyn Fn(&FrameMeta, Wanted) -> Calibration + Send + Sync>);
+pub struct Calibrating(pub Arc<Find>);
 
 impl fmt::Debug for Calibrating {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

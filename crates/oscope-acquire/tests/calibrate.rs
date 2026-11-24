@@ -59,7 +59,13 @@ fn framed(value: impl Fn(u32, u32) -> f64, binning: u32) -> Frame {
     let (width, height) = SIZE;
     let pool = FramePool::new(RGGB.frame_bytes(width, height), 1, &HeapAllocator);
     let mut buffer = pool.take().unwrap();
-    for (i, sample) in buffer.bytes_mut().chunks_exact_mut(2).enumerate() {
+    for (i, sample) in buffer
+        .bytes_mut()
+        .as_chunks_mut::<2>()
+        .0
+        .iter_mut()
+        .enumerate()
+    {
         let v = value(i as u32 % width, i as u32 / width).clamp(0.0, 1.0);
         sample.copy_from_slice(&((v * 65_535.0).round() as u16).to_le_bytes());
     }
