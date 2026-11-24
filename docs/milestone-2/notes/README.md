@@ -56,7 +56,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W8.3 | The calibration wizard | Done | [W8.3-wizard.md](W8.3-wizard.md) |
 | W8.4 | Simulated samples | Done | [W8.4-samples.md](W8.4-samples.md) |
 | W8.5 | Extensions and their panels | Done | [W8.5-extensions.md](W8.5-extensions.md) |
-| W8.6 | Accounts | In review | [W8.6-accounts.md](W8.6-accounts.md) |
+| W8.6 | Accounts | Done | [W8.6-accounts.md](W8.6-accounts.md) |
 | W10.1 | Workflows end to end | Planned | — |
 | W10.2 | Visual baselines and accessibility | Planned | — |
 | W10.3 | Front-end budgets | Planned | — |
