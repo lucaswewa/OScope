@@ -1,6 +1,6 @@
 # Milestone 2 phase specifications
 
-Companion to the [implementation plan](../implementation-plan.md), whose [§8](../implementation-plan.md#8-milestone-2-phase-overview) lists these phases with their status. Milestone 2 is the app: one Vue 3 codebase in `web/`, built for the browser and, in `desktop/`, for Tauri 2. It runs on the simulated instrument throughout.
+Companion to the [implementation plan](../implementation-plan.md), whose [§8](../implementation-plan.md#8-milestone-2-phase-overview) lists these phases with their status. Milestone 2 is the app: one Vue 3 codebase in `web/`, built for the browser. It runs on the simulated instrument throughout. Stage W9, a desktop app, was dropped after W7 (ADR-0063).
 
 Each phase lists:
 
@@ -39,7 +39,7 @@ What [§6 of the plan](../implementation-plan.md#6-how-phases-work) says holds, 
 - **Server work** that the app needs is in the phase that needs it, marked **Server**, with its Rust tests. The generated types follow it in the same pull request.
 - **Every string** goes through vue-i18n (D29). **Every control** works from the keyboard, and passes axe.
 - **Clean room:** nothing is copied from `microscope`. Its look is described in our own words in `look.md` (W0.2), and built from that.
-- **Checkpoints** G to M end the stages W3 to W9. Each has a demo script in its phase's notes, and a checklist for the owner's own run.
+- **Checkpoints** G to L end the stages W3 to W8. Each has a demo script in its phase's notes, and a checklist for the owner's own run.
 
 ## Contents
 
@@ -52,7 +52,7 @@ What [§6 of the plan](../implementation-plan.md#6-how-phases-work) says holds, 
 - [Stage W6: Gallery](#stage-w6-gallery): [W6.1](#w6-1) [W6.2](#w6-2) [W6.3](#w6-3) [W6.4](#w6-4)
 - [Stage W7: Workspace](#stage-w7-workspace): [W7.1](#w7-1) [W7.2](#w7-2) [W7.3](#w7-3) [W7.4](#w7-4) [W7.5](#w7-5) [W7.6](#w7-6) [W7.7](#w7-7) [W7.8](#w7-8) [W7.9](#w7-9)
 - [Stage W8: Settings](#stage-w8-settings): [W8.1](#w8-1) [W8.2](#w8-2) [W8.3](#w8-3) [W8.4](#w8-4) [W8.5](#w8-5) [W8.6](#w8-6)
-- [Stage W9: Desktop](#stage-w9-desktop): [W9.1](#w9-1) [W9.2](#w9-2) [W9.3](#w9-3) [W9.4](#w9-4) [W9.5](#w9-5)
+- [Stage W9: Desktop (dropped)](#stage-w9-desktop-dropped)
 - [Stage W10: Quality](#stage-w10-quality): [W10.1](#w10-1) [W10.2](#w10-2) [W10.3](#w10-3) [W10.4](#w10-4)
 
 ---
@@ -1112,108 +1112,9 @@ The instrument's settings, its calibration, the simulator's samples, extensions 
 
 ---
 
-## Stage W9: Desktop
+## Stage W9: Desktop (dropped)
 
-The same app in Tauri 2, with the server as its sidecar and the fast path for frames and tiles (D21). It ends with Checkpoint M.
-
-<a id="w9-1"></a>
-### W9.1: The Tauri shell
-
-**Goal.** The app as a desktop program, on Windows and on Ubuntu.
-**Depends on** W2.2 · **Estimate** 1,300 · **ADRs** 0056
-
-**Scope** (`desktop/`)
-- **Tauri 2,** loading `web/`'s build: the window, its title and icon.
-- **The Tauri `HostAdapter`:** storage, the file dialogs, the clipboard, notifications, links opened in the browser.
-- **Its permissions** (ADR-0056): only the commands the adapter uses; a content security policy; nothing loaded from the network but the server it is connected to.
-- **It builds** on Windows, with WebView2, and on Ubuntu, with WebKitGTK 4.1. The replays build both, and WSL gains the libraries, with the owner's word.
-- **The main-path end-to-end tests** run in the desktop shell too.
-
-**Try it** — `npm --prefix desktop run tauri dev`, with a server running: the app opens in its own window, and connects. Save a file: the system's dialog opens.
-
-**Tests**
-- End to end: the main path in the desktop shell, on both systems.
-- Rust: each command the adapter calls.
-- A command the adapter doesn't declare is refused: checked by trying one.
-
-<a id="w9-2"></a>
-### W9.2: The sidecar
-
-**Goal.** The desktop app starts, watches and stops its own server (ADR-0015).
-**Depends on** W9.1 · **Estimate** 1,400 · **ADRs** —
-
-**Scope** (`desktop/src-tauri/`)
-- **It starts `oscope-server --managed`,** reads its ready line, and connects with the local token, as `local`.
-- **It restarts it** on exit code 75, and stops it by closing its stdin.
-- **After a crash,** it starts it again, waiting longer each time, and shows the server's last lines.
-- **Or it connects** to a service already running, on this computer or another (W1.3's connection).
-- **The local app may always take control** (`take_control`).
-
-**Try it** — Start the desktop app alone: the server comes up with it. Restart the service from the Power tab: the app brings it back. Kill the server's process: the app starts it again, and says so.
-
-**Tests**
-- Rust: the contract against the real server: ready, stop, exit code 75, a crash, and a server that never becomes ready.
-- End to end: the app with its sidecar, through a restart.
-- Broken on purpose: without the restart on 75, its test fails.
-
-<a id="w9-3"></a>
-### W9.3: The shared-memory preview
-
-**Goal.** Live frames reach the desktop app's window without HTTP.
-**Depends on** W9.2, W1.5 · **Estimate** 1,600 · **ADRs** 0057
-
-**Scope** (`desktop/src-tauri/`, `web/src/api/preview/`)
-- **Rust reads the ring** (`oscope-shm`, P19), and hands frames to the webview.
-- **Measured, then chosen** (ADR-0057): JPEG through a custom protocol, against raw RGBA. ADR-0015 left that to M2. The faster is kept, with the numbers for both systems' webviews.
-- **The preview client** takes it as one more transport. The WebSocket stays, for a remote server and as the fallback.
-
-**Try it** — In the desktop app, the live view's readout names its transport, and its latency is lower than the browser's beside it.
-
-**Done when**
-- The desktop app's latency, from the exposure's end to the draw, is below the browser's on the same computer, with both recorded in the notes.
-
-**Tests**
-- Rust: the ring read while it is written, with no torn frame.
-- End to end: frames are drawn through the ring; with the ring taken away, the WebSocket takes over.
-
-<a id="w9-4"></a>
-### W9.4: Tiles from disk
-
-**Goal.** Deep-zoom tiles read from the server's cache on disk, when the server is on the same computer.
-**Depends on** W9.2, W6.4 · **Estimate** 1,100 · **ADRs** —
-
-**Scope** (`desktop/src-tauri/`, `web/src/ui/tile-viewer/`)
-- **A custom protocol** serves a tile from the tile cache's folder. A tile that isn't there yet is asked of the server, which makes and caches it.
-- **The TileViewer's source** follows the host's capability.
-- **Only the cache's folder** can be read through it.
-
-**Try it** — Open a stitched slide in the desktop app: a second pass over the same region makes no HTTP requests for tiles.
-
-**Tests**
-- Rust: a tile served; a path that tries to leave the cache refused.
-- End to end: a cached region is drawn with no tile requests to the server.
-
-<a id="w9-5"></a>
-### W9.5: Installers
-
-**Goal.** One installer a platform, with the app and the service (ADR-0033's successor).
-**Depends on** W9.4 · **Estimate** 1,400 · **ADRs** 0058
-
-**Scope** (`desktop/`, `packaging/`, `.github/workflows/`)
-- **Windows:** an installer for the app and the service, in place of M1's zip.
-- **Ubuntu:** a .deb with both. M1's .deb, the service alone, stays for computers without a screen.
-- **CUDA:** P54 left it open. A CUDA build beside the CPU one, or not, is decided here, by NVIDIA's EULA and the installers' size (ADR-0058).
-- **The app's third-party notices,** beside the server's.
-- **The release workflow** builds them, and installs each on a clean system, as `test-deb.sh` does.
-- Signing waits for Milestone 3 (H7).
-
-**Try it** — Install on a clean Windows and a clean Ubuntu: the app starts from the menu, with its server.
-
-**Tests**
-- Each installer on a clean system: installed, started, and removed, leaving the data.
-- The notices list every package in the bundle.
-
-**Checkpoint M** — a demo script and a checklist in W9.5's notes: install the desktop app, see it start its server, compare its live view's latency with the browser's, and view a slide with its tiles from disk.
+Dropped after W7, at the owner's choice: OScope has no desktop app ([ADR-0063](../adr/0063-no-desktop-app.md)). The stage's five phases, W9.1 to W9.5, and Checkpoint M were specified here until then, and are in this file's history.
 
 ---
 
@@ -1263,7 +1164,7 @@ The app tested as a whole, measured, packaged, and looked back on.
 **Depends on** W10.1 · **Estimate** 1,100 · **ADRs** 0059
 
 **Scope** (`web/tests/perf/`, `xtask`)
-- **Budgets** (ADR-0059), set from what W1.5, W6.4 and W9.3 measured:
+- **Budgets** (ADR-0059), set from what W1.5 and W6.4 measured:
   - the live view's rate and latency in the browser;
   - the time to the first frame after opening the app;
   - a cold deep-zoom view;
@@ -1281,7 +1182,7 @@ The app tested as a whole, measured, packaged, and looked back on.
 ### W10.4: The app in the packages, and the look back
 
 **Goal.** The service serves the app, and Milestone 2 is released.
-**Depends on** W10.3, W9.5 · **Estimate** 1,000 · **ADRs** —
+**Depends on** W10.3 · **Estimate** 1,000 · **ADRs** —
 
 **Scope** (`packaging/`, `docs/`)
 - **M1's packages carry the app,** which the service serves at `/` (W0.1's `[web] root`). The deployment guide and its smoke test follow.

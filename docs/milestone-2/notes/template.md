@@ -14,7 +14,7 @@
 
 ## What was built
 
-<!-- The folders, components, stores and routes added or changed in web/ and desktop/, and any server work, with the Things and routes it touches. -->
+<!-- The folders, components, stores and routes added or changed in web/, and any server work, with the Things and routes it touches. -->
 
 ## How to try it
 
