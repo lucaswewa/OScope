@@ -2,6 +2,7 @@
 import { shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 
+import CalibrationPane from "@/features/settings/calibration/CalibrationPane.vue";
 import DevicesPane from "@/features/settings/DevicesPane.vue";
 import DisplayPane from "@/features/settings/DisplayPane.vue";
 import DocumentPane from "@/features/settings/DocumentPane.vue";
@@ -12,7 +13,7 @@ import Tabs from "@/ui/Tabs.vue";
 /**
  * Settings (W8.1, P52): how things are shown, the account's own, which
  * need no control lease; the system's, for the next start; the devices'
- * saved settings; and all of them as one document.
+ * saved settings; the calibration (W8.2); and all of them as one document.
  */
 const { t } = useI18n();
 const tab = shallowRef("display");
@@ -29,6 +30,7 @@ const tab = shallowRef("display");
         { value: 'display', label: t('settings.displayPane.title') },
         { value: 'system', label: t('settings.systemPane.title') },
         { value: 'devices', label: t('settings.devicesPane.title') },
+        { value: 'calibration', label: t('settings.calibration.title') },
         { value: 'document', label: t('settings.documentPane.title') },
       ]"
     >
@@ -42,6 +44,9 @@ const tab = shallowRef("display");
       </template>
       <template #devices>
         <DevicesPane />
+      </template>
+      <template #calibration>
+        <CalibrationPane />
       </template>
       <template #document>
         <DocumentPane />

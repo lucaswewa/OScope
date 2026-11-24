@@ -387,7 +387,7 @@ pub struct CalibrationSet {
 pub struct SetSummary {
     /// Its ID.
     pub id: Uuid,
-    /// Its kind: `geometry` or `stage`.
+    /// Its kind: `geometry`, `stage`, `dark`, `flat` or `colour`.
     pub kind: String,
     /// Its key.
     pub key: String,

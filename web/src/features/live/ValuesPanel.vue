@@ -21,8 +21,9 @@ import Switch from "@/ui/Switch.vue";
  * The frame's values and how the preview shows them (W3.6): the histogram,
  * a channel each, linear or logarithmic, its percentiles said; the look's
  * black and white points on it, its gamma and its white balance, with auto
- * white balance's found gains offered, and reset; the colour map; and the
- * focus value with its trace, to focus by hand.
+ * white balance's found gains offered, the calibration's dark frame, flat
+ * field and colour (W8.2), and reset; the colour map; and the focus value
+ * with its trace, to focus by hand.
  */
 const props = defineProps<{ stats: LiveStats | undefined }>();
 const { t } = useI18n();
@@ -72,6 +73,12 @@ function gain(index: number, value: number | null): void {
   const gains = [...now.gains];
   gains[index] = value;
   void write({ ...now, gains });
+}
+/** The calibration's corrections in use (W8.2): the active sets', where there are some. */
+const CORRECTIONS = ["dark", "flat", "colour"] as const;
+function correct(which: (typeof CORRECTIONS)[number], on: boolean): void {
+  const now = look.value.value;
+  if (now && now[which] !== on) void write({ ...now, [which]: on });
 }
 /** Auto white balance's gains, when they differ from the look's. */
 const found = computed(() => {
@@ -197,6 +204,17 @@ const trace = computed(() => [
       >
         {{ t("live.values.useBalance", { gains: found.map((g) => g.toFixed(2)).join(", ") }) }}
       </Button>
+      <div class="corrections" data-said="corrections">
+        <Switch
+          v-for="which in CORRECTIONS"
+          :key="which"
+          :model-value="look.value.value?.[which] ?? false"
+          :disabled="!look.value.value"
+          @update:model-value="(on: boolean) => correct(which, on)"
+        >
+          {{ t(`live.values.corrections.${which}`) }}
+        </Switch>
+      </div>
       <Button compact variant="bare" @click="reset">{{ t("live.values.reset") }}</Button>
       <p class="said" data-said="focus">
         {{ t("live.values.focusIs", { focus: stats ? stats.focus.toFixed(1) : "—" }) }}
@@ -242,6 +260,11 @@ const trace = computed(() => [
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
+}
+
+.corrections {
+  display: grid;
+  gap: var(--space-1);
 }
 
 .said {

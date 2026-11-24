@@ -7,6 +7,7 @@ import {
   geometryOf,
   keyStep,
   moveFor,
+  sideOf,
   movedBy,
   plus,
   stepBy,
@@ -107,6 +108,17 @@ describe("pointing at the image", () => {
     expect(move.y).toBeCloseTo(100 * c, 9);
     // As long as the pixels are apart, whatever the turn.
     expect(Math.hypot(move.x!, move.y!)).toBeCloseTo(98, 9);
+  });
+
+  it("gives a sensor pixel's side at the sample, turned, mirrored or binned", () => {
+    expect(sideOf(turned())).toBeCloseTo(0.98, 12);
+    expect(sideOf(turned(2))).toBeCloseTo(0.98, 12);
+    const mirrored = turned();
+    mirrored.matrix = [
+      [-mirrored.matrix[0][0], mirrored.matrix[0][1]],
+      [-mirrored.matrix[1][0], mirrored.matrix[1][1]],
+    ];
+    expect(sideOf(mirrored)).toBeCloseTo(0.98, 12);
   });
 
   it("counts the image's pixels, binning of the sensor's each", () => {

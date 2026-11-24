@@ -5,12 +5,19 @@ import { Server, web } from "./server.ts";
 
 /**
  * Each test's own server, started before it and gone after it. With
- * `restarts`, its restart is done, and it starts again (ADR-0060).
+ * `restarts`, its restart is done, and it starts again (ADR-0060); with
+ * `simulator`, its simulator has those lines of TOML.
  */
-export const test = base.extend<{ server: Server; restarts: boolean; thrown: void }>({
+export const test = base.extend<{
+  server: Server;
+  restarts: boolean;
+  simulator: string;
+  thrown: void;
+}>({
   restarts: [false, { option: true }],
-  server: async ({ restarts }, use) => {
-    const server = new Server({ restarts });
+  simulator: ["", { option: true }],
+  server: async ({ restarts, simulator }, use) => {
+    const server = new Server({ restarts, simulator });
     await server.start();
     await use(server);
     await server.dispose();
