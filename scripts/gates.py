@@ -10,7 +10,7 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-NAMES = ("docs", "environment", "backend", "cpu", "frontend", "integration", "extensions", "workflows", "runtime", "hardware", "provisioning", "acceptance", "release_tools")
+NAMES = ("docs", "environment", "backend", "cpu", "frontend", "integration", "extensions", "workflows", "runtime", "hardware", "provisioning", "acceptance", "release_tools", "pilot_tools")
 BACKEND_INPUTS = ("Cargo.toml", "Cargo.lock", "LICENSE", "rust-toolchain.toml", ".cargo/", "crates/", "python/",
                   "examples/", "xtask/", "configs/runtime.toml", "containers/", ".dockerignore")
 
@@ -119,6 +119,8 @@ def route(root, changed):
             select(("acceptance",), path)
         elif path.startswith(("scripts/release", "tests/release/")) or path == "scripts/check-release.sh":
             select(("release_tools",), path)
+        elif path.startswith(("scripts/pilot", "tests/pilot/")) or path in ("scripts/check-pilot.sh", "configs/pilot.example.json"):
+            select(("pilot_tools",), path)
         elif path.startswith("web/"):
             if path.startswith("web/tests/e2e/") or path == "web/playwright.config.ts":
                 select(("integration",), path)
@@ -224,6 +226,7 @@ def main():
         "provisioning": [sys.executable, "-m", "unittest", "discover", "-s", "tests/provisioning", "-v"],
         "acceptance": [sys.executable, "-m", "unittest", "discover", "-s", "tests/acceptance", "-v"],
         "release_tools": [sys.executable, "-m", "unittest", "discover", "-s", "tests/release", "-v"],
+        "pilot_tools": [sys.executable, "-m", "unittest", "discover", "-s", "tests/pilot", "-v"],
     }
     subprocess.run(commands[args.run], cwd=ROOT, check=True)
 

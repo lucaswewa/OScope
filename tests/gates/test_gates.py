@@ -60,6 +60,13 @@ class Router(unittest.TestCase):
                 self.assertEqual([n for n, on in gates.route(ROOT, [name])["gates"].items() if on], ["release_tools"])
                 self.assertFalse(gates.backend_input(name))
 
+    def test_pilot_tools_do_not_select_application_or_image_gates(self):
+        for name in ["scripts/pilot.py", "scripts/pilot_metrics.py", "scripts/pilot_runtime.py", "tests/pilot/test_pilot.py",
+                     "scripts/check-pilot.sh", "configs/pilot.example.json"]:
+            with self.subTest(name=name):
+                self.assertEqual([n for n, on in gates.route(ROOT, [name])["gates"].items() if on], ["pilot_tools"])
+                self.assertFalse(gates.backend_input(name))
+
     def test_acceptance_tools_are_independent(self):
         for name in ["scripts/acceptance.py", "scripts/acceptance_workflows.py", "tests/acceptance/test_acceptance.py",
                      "scripts/check-acceptance.sh", "configs/acceptance.example.json"]:

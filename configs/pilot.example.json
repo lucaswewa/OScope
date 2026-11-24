@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "pilot_id": "unqualified-production-pilot",
+  "revision": 1,
+  "qualifications": {"hardware": null, "host": null, "factory_acceptance": null, "product_release": null},
+  "cohort": [],
+  "required_units_per_variant": null,
+  "required_endurance_seconds": null,
+  "minimum_comparison_runs": 3,
+  "allowed_regression_percent": null,
+  "workload_id": "r07-quarter-preview-bursts-v1",
+  "workflow_bursts": 3,
+  "budgets": {
+    "preview_window_mean_p95_ms": null,
+    "workflow_median_seconds": null,
+    "rss_peak_bytes": null,
+    "fds_peak": null,
+    "preview_drop_per_sent": null
+  }
+}

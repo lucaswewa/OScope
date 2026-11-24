@@ -29,8 +29,8 @@ skipped. Keep the owner informed as implementation progresses.
 | R09 | Real device and WSL hardware feasibility | Preparation approved by owner, 2026-11-23; physical qualification pending | Inventory tools/runbook; 9 fixture and 7 router tests on Linux/Windows; expected missing-hardware failures; physical SDK/acquisition/stage evidence pending |
 | R10 | Qualified host baseline and provisioning | Tooling complete; clean-PC/cold-boot qualification deferred | Pinned candidate planner, resumable receipts, owner boot task and simulated CUDA/TLS lab; physical PC qualification pending |
 | R11 | Factory calibration and acceptance runner | Tooling implemented; physical acceptance pending | Versioned profile/checklist, retained attempt reports, isolated required-CUDA science/restart runner; reference microscope acceptance still required |
-| R12 | Release bundles, updates, rollback and inventory | Engineering tooling validated; full release qualification pending | Signed offline backend bundles, required-CUDA install/update/recovery/rollback, retained newer acquisitions and local inventory; product/physical qualification open |
-| R13 | Production pilot and measured optimization | Planned | Representative pilot; performance budgets; accepted runtime optimizations |
+| R12 | Release bundles, updates, rollback and inventory | Engineering checkpoint approved by owner, 2026-11-23; full release qualification pending | Signed offline backend bundles, required-CUDA install/update/recovery/rollback, retained newer acquisitions and local inventory; product/physical qualification open |
+| R13 | Production pilot and measured optimization | Preparation tooling validated; physical pilot and optimization approval pending | Required-CUDA observations, source-preserving leak references, guarded comparisons and operator/optimization runbooks; representative pilot and approved budgets still required |
 
 R09 begins with a feasibility spike after R01 if the real camera and operator are
 available. A sustained USB/SDK failure blocks commitment to the WSL production

@@ -32,6 +32,9 @@ explicit complete checkpoint. CI uses the PR base or the previous pushed commit.
 | runtime | Packaged TLS, authentication, lifecycle and persistence | Prepared backend image/Python |
 | hardware | Inventory/profile/SDK-metadata fixture tests and Windows inventory smoke | Python 3.11+; PowerShell 7.4+ on Windows; no device/Rust/Node |
 | provisioning | Baseline/template/runtime fixtures and Windows host-planner/task contracts | Python/PowerShell; no application builds or PC changes |
+| acceptance | Acceptance profile/report/rework fixtures | Python only; CUDA/physical labs separate |
+| release_tools | Real signature and release-state fixtures | Python/OpenSSL 3; no image builds |
+| pilot_tools | Leak detector, observation/report and comparison fixtures | Python only; no automatic soak |
 
 Frontend implementation changes select frontend and relevant integration specs.
 Unit-test-only edits select frontend. Browser-harness/spec edits select integration.
@@ -177,3 +180,14 @@ Release scripts and tests select only this category. Missing OpenSSL fails; no
 signature or required-GPU check is counted as passing after a skip. The separate
 [offline/CUDA update lab](phases/r12-release-lifecycle.md#manual-test) runs only
 when explicitly requested, without a native Windows backend gate.
+
+R13 pilot scripts, profile and tests select only pilot_tools:
+
+```sh
+bash scripts/check-pilot.sh
+python3 scripts/gates.py --base HEAD --run pilot_tools
+```
+
+The portable tests need no Docker, Rust, Node or GPU. Observation runs, legacy
+full-resolution budgets, long soak and physical pilot qualification remain
+separate explicit checks. See [the pilot procedure](phases/r13-production-pilot.md#manual-test).

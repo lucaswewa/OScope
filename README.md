@@ -95,6 +95,13 @@ with a [manual procedure](docs/phases/r12-release-lifecycle.md#manual-test).
 Signed backend bundles and isolated CUDA update/rollback are engineering tools;
 full product promotion and physical qualification remain pending.
 
+## Pilot preparation
+
+Pilot preparation includes [measurement and operator procedures](docs/production-pilot.md),
+a [backend optimization review](docs/backend-optimization-review.md) and
+[R13 manual tests](docs/phases/r13-production-pilot.md#manual-test).
+Simulator observations do not qualify the physical pilot or approve an optimization.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

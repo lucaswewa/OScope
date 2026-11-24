@@ -27,6 +27,11 @@ separate. Application updates preserve calibration, identities and customer data
 
 ## Release qualification
 
+The [R13 pilot procedure](production-pilot.md) separates cohort/qualification and
+operator evidence from engineering measurements. Its current tools collect
+simulated backend observations and refuse unsupported comparisons; they do not
+accept a physical pilot or promote runtime optimizations.
+
 Engineering maintains reference instruments for the supported camera/controller,
 GPU and optics combinations. Qualify the exact runtime image for actual CUDA
 execution, scientific outputs, acquisition/recording, preview under batch load,

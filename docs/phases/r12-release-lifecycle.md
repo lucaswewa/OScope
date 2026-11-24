@@ -4,6 +4,9 @@ Status: engineering tooling validated; full release qualification pending. The o
 2026-11-23. Hardware, clean-PC and physical acceptance evidence remain pending.
 Do not tag, publish a product release or deploy to a customer instrument.
 
+The owner approved this engineering checkpoint on 2026-11-23 and authorized R13.
+The production qualification gaps below remain open.
+
 ## Scope and provenance before implementation
 
 Pinned source: 44bc08a53f98dc29db1fa6b488a4f6269732a71a. Inspect its ADR 0033,
