@@ -51,7 +51,7 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W7.7 | 3D: surfaces | Done | [W7.7-surfaces.md](W7.7-surfaces.md) |
 | W7.8 | 3D: volumes and slices | Done | [W7.8-volumes.md](W7.8-volumes.md) |
 | W7.9 | Reports | Done | [W7.9-reports.md](W7.9-reports.md) |
-| W8.1 | System, display and devices | In review | [W8.1-settings.md](W8.1-settings.md) |
+| W8.1 | System, display and devices | Done | [W8.1-settings.md](W8.1-settings.md) |
 | W8.2 | Calibration sets | Planned | — |
 | W8.3 | The calibration wizard | Planned | — |
 | W8.4 | Simulated samples | Planned | — |
