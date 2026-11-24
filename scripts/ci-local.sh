@@ -244,10 +244,12 @@ if command -v npm > /dev/null; then
     *) step "web end to end" web env OSCOPE_VISUAL="${OSCOPE_VISUAL-1}" npm run -s test:e2e -- ${workers[@]+"${workers[@]}"} $(in_web "$reach_e2e") ;;
   esac
   # The checkpoints' workflows (W10.1), whole, whenever the change reaches
-  # the app or the server.
+  # the app or the server: four at a time. Each is a session at the
+  # instrument, on a debug server rendering its frames on the CPU; twelve
+  # at once answered the app past its limits.
   case "$reach_workflows" in
     no) skip "web workflows" ;;
-    *) step "web workflows" web npm run -s test:workflows -- ${workers[@]+"${workers[@]}"} ;;
+    *) step "web workflows" web npm run -s test:workflows -- --workers=4 ;;
   esac
 else
   failed=$((failed + 1))
