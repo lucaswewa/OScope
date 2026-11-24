@@ -12,6 +12,7 @@
 | [Manual tests of W2–W4](milestone-2/manual-tests-W2-W4.md) | A checklist for trying each phase of the app's stages W2 to W4 by hand, in the app itself, with Checkpoints G and H |
 | [Manual tests of W5–W6](milestone-2/manual-tests-W5-W6.md) | A checklist for trying each phase of the app's stages W5 and W6 by hand, in the app itself, with Checkpoints I and J |
 | [Manual tests of W7](milestone-2/manual-tests-W7.md) | A checklist for trying each phase of the app's stage W7 by hand, in the app itself, with Checkpoint K |
+| [Manual tests of W8](milestone-2/manual-tests-W8.md) | A checklist for trying each phase of the app's stage W8 by hand, in the app itself, with Checkpoint L |
 | [Manual tests of P16–P23](milestone-1/manual-tests-P16-P23.md) | A checklist for trying each phase from P16 to P23 by hand, from its example |
 | [Manual tests of P24–P34](milestone-1/manual-tests-P24-P34.md) | A checklist for trying each phase from P24 to P34 by hand, from its example, and Checkpoints B and C |
 | [Manual tests of P35–P43](milestone-1/manual-tests-P35-P43.md) | A checklist for trying each phase from P35 to P43 by hand, from its example, and Checkpoints D and E |
