@@ -21,9 +21,9 @@ const tab = shallowRef("display");
 <template>
   <section class="settings">
     <h1>{{ t("tabs.settings.title") }}</h1>
+    <!-- Only the view shown is mounted: the devices' settings, read live, open their Things' sockets only while seen. -->
     <Tabs
       v-model="tab"
-      keep
       :label="t('settings.tabs')"
       :tabs="[
         { value: 'display', label: t('settings.displayPane.title') },
