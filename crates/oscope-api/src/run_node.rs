@@ -170,3 +170,27 @@ fn smaller(image: &Image, most: u32) -> Image {
     }
     Image::from_vec(Shape::new(across, down, channels), data).expect("the blocks fill the image")
 }
+
+#[cfg(test)]
+mod tests {
+    //! An answer's image made smaller, and kept as it is when small enough.
+
+    use super::*;
+
+    #[test]
+    fn an_image_longer_than_shown_is_made_smaller_by_its_blocks_means() {
+        // 2,050 × 3, one channel, each pixel its column: in blocks of 3, at most 1,024 across.
+        let data = (0..2_050 * 3).map(|i| (i % 2_050) as f32).collect();
+        let image = Image::from_vec(Shape::new(2_050, 3, 1), data).unwrap();
+        let small = smaller(&image, SHOWN);
+        assert_eq!((small.width(), small.height()), (684, 1));
+        // The first block: columns 0, 1 and 2; the last, at the edge, 2,049 alone.
+        assert_eq!(small.data()[0], 1.0);
+        assert_eq!(small.data()[683], 2_049.0);
+        // Small enough already: as it is.
+        let kept = smaller(&small, SHOWN);
+        assert_eq!((kept.width(), kept.height()), (684, 1));
+        let png = png(&small).unwrap();
+        assert!(png.starts_with("iVBORw0KGgo"), "a PNG, in base64");
+    }
+}
