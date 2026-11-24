@@ -268,6 +268,7 @@ fn true_geometry(bench: &Bench) {
         aspect: 0.0,
         skew: 0.0,
         residual_px: 0.0,
+        residuals: Vec::new(),
         step_um: 0.0,
         moves: 0,
     };

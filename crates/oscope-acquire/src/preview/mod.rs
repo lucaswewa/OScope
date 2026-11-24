@@ -27,12 +27,14 @@
 //! (ADR-0015).
 
 mod adapt;
+pub mod calibrate;
 mod recipe;
 mod resize;
 mod ring;
 pub mod wire;
 
 pub use adapt::Adaptation;
+pub use calibrate::{Calibrated, Calibrating, Calibration, Wanted};
 pub use recipe::{LiveRecipe, Timing};
 pub use ring::{RingSettings, publish};
 
@@ -69,6 +71,10 @@ pub struct Look {
     pub display: Display,
     /// White balance and the colour matrix, for colour frames.
     pub correction: ColourCorrection,
+    /// What it takes from the calibration (W8.2): the dark frame, the flat
+    /// field and the colour calibration, in place of the black level and
+    /// the correction.
+    pub wanted: Wanted,
 }
 
 /// A preview.
@@ -144,6 +150,11 @@ struct Steps {
     bin: u32,
     black: f32,
     look: Look,
+    /// The calibration's dark frame and flat field, and where on the sensor
+    /// the view's first pixel is.
+    dark: Option<Arc<Calibrated>>,
+    flat: Option<Arc<Calibrated>>,
+    at: (u32, u32),
 }
 
 /// Makes previews in the live pool, on the GPU when there is one. Its
@@ -152,6 +163,7 @@ struct Steps {
 pub struct Preview {
     compute: Arc<Compute>,
     recipe: Arc<RwLock<Option<LiveRecipe>>>,
+    calibrating: Arc<RwLock<Option<Calibrating>>>,
 }
 
 /// What steps 2–4 made: the 8-bit samples, their shape, whether the GPU
@@ -161,8 +173,34 @@ type Coloured = (Vec<u8>, Shape, bool, Option<Duration>);
 impl Preview {
     /// Previews made with `compute`.
     pub fn new(compute: Arc<Compute>) -> Self {
-        let recipe = Arc::default();
-        Self { compute, recipe }
+        let (recipe, calibrating) = (Arc::default(), Arc::default());
+        Self {
+            compute,
+            recipe,
+            calibrating,
+        }
+    }
+
+    /// Sets how a frame's calibration is found, for every preview from now
+    /// on, or none: a look that asks for it then gets nothing.
+    pub fn set_calibrating(&self, calibrating: Option<Calibrating>) {
+        *self
+            .calibrating
+            .write()
+            .unwrap_or_else(PoisonError::into_inner) = calibrating;
+    }
+
+    /// `meta`'s frame's calibration, as far as `wanted` asks and it is found.
+    fn calibration(&self, meta: &FrameMeta, wanted: Wanted) -> Calibration {
+        let calibrating = self
+            .calibrating
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        match calibrating {
+            Some(find) if wanted.any() => (find.0)(meta, wanted),
+            _ => Calibration::default(),
+        }
     }
 
     /// The compute layer it uses.
@@ -278,6 +316,11 @@ impl Preview {
             frame_height: f64::from(meta.height),
         };
         let recipe = self.recipe();
+        let calibration = self.calibration(meta, look.wanted);
+        let mut look = *look;
+        if let Some(colour) = calibration.colour {
+            look.correction = colour;
+        }
         let steps = Steps {
             pattern,
             method: match superpixel {
@@ -286,7 +329,10 @@ impl Preview {
             },
             bin: (wide / width).min(high / height).max(1),
             black: black(meta),
-            look: *look,
+            look,
+            dark: calibration.dark,
+            flat: calibration.flat,
+            at: (meta.roi.x + rect.x, meta.roi.y + rect.y),
         };
         self.compute.pools().install(Lane::Live, || {
             let coloured = self.colour(&view, &steps, gpu, recipe.as_ref(), region)?;
@@ -328,13 +374,30 @@ impl Preview {
         recipe: Option<&LiveRecipe>,
         region: Region,
     ) -> Result<Coloured, PreviewError> {
+        // A dark frame or a flat field is applied to the raw mosaic on the
+        // CPU: the GPU's chain takes the frame as the camera gave it.
+        let raw = steps.dark.is_some() || steps.flat.is_some();
         #[cfg(feature = "cuda")]
-        if gpu && let Some(cuda) = self.compute.cuda() {
+        if gpu
+            && !raw
+            && let Some(cuda) = self.compute.cuda()
+        {
             let (pixels, shape, took) = on_gpu(cuda, view, steps, recipe, region)?;
             return Ok((pixels, shape, true, took));
         }
         let _ = gpu;
         let mut image = timing::time("preview.to_f32", || self.compute.to_f32(Lane::Live, view))?;
+        let mut black = steps.black;
+        if raw {
+            let (dark, flat) = (steps.dark.as_deref(), steps.flat.as_deref());
+            let done = timing::time("preview.calibrate", || {
+                calibrate::correct(&mut image, steps.at, black, dark, flat)
+            });
+            // The black level went with the dark frame or the flat field.
+            if done {
+                black = 0.0;
+            }
+        }
         if let Some(pattern) = steps.pattern {
             image = timing::time("preview.demosaic", || {
                 color::demosaic(&image, pattern, steps.method)
@@ -343,10 +406,8 @@ impl Preview {
         if steps.bin > 1 {
             image = timing::time("preview.bin", || cpu::downsample(&image, steps.bin))?;
         }
-        if steps.black > 0.0 {
-            timing::time("preview.black", || {
-                color::subtract_black(&mut image, steps.black)
-            })?;
+        if black > 0.0 {
+            timing::time("preview.black", || color::subtract_black(&mut image, black))?;
         }
         if let Some(recipe) = recipe {
             let (shown, took) = recipe.run(Value::image(image), region)?;

@@ -3553,6 +3553,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/calibration/image/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Image
+         * @description A dark frame's or a flat field's image, to see (W8.2).
+         *
+         *     The mean of each block of pixels, so that neither side is longer
+         *     than 256: `width` and `height`, the blocks across and down;
+         *     `channels`; `block`, the pixels a block spans; and `values`, by rows,
+         *     each block's channels together, in linear units.
+         */
+        get: operations["image_api_v1_calibration_image__id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/calibration/import": {
         parameters: {
             query?: never;
@@ -9255,6 +9280,24 @@ export interface components {
             gamma?: number | null;
             /** @description Red, green and blue's white-balance gains. */
             gains: number[];
+            /**
+             * @description The active dark frame taken off the raw frame, in place of the
+             *     black level, where one is for its mode, gain and exposure (W8.2).
+             * @default false
+             */
+            dark: boolean;
+            /**
+             * @description The raw frame divided by the active flat field, where one is for its
+             *     objective, lights and binning.
+             * @default false
+             */
+            flat: boolean;
+            /**
+             * @description The active colour calibration's white balance and matrix, in place of
+             *     these gains, where one is for its lights.
+             * @default false
+             */
+            colour: boolean;
         };
         preview_nodes_value: {
             /** @description Its ID, dotted: `test.box_blur`. */
@@ -19430,6 +19473,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    image_api_v1_calibration_image__id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

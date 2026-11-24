@@ -37,6 +37,7 @@ fn geometry(objective: &str, binning: u32, pixel: f64) -> Values {
         aspect: 0.0,
         skew: 0.0,
         residual_px: 0.05,
+        residuals: vec![[0.04, -0.03], [-0.06, 0.05]],
         step_um: 123.0,
         moves: 8,
     })

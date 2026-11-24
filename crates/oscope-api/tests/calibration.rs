@@ -147,6 +147,13 @@ async fn the_jobs_measure_and_the_sets_are_kept_listed_and_moved() {
         "{values}"
     );
     assert_eq!(values["mirrored"], false);
+    // Each move's residual, as the fit left it (W8.2): a fraction of a pixel.
+    let residuals = values["residuals"].as_array().unwrap();
+    assert!(residuals.len() >= 4, "{values}");
+    for residual in residuals {
+        let (x, y) = (residual[0].as_f64().unwrap(), residual[1].as_f64().unwrap());
+        assert!(x.hypot(y) < 0.5, "{residual}");
+    }
 
     let check = job(&client, "calibration/check_objective", json!({})).await;
     assert_eq!(check["state"], "completed", "{check}");
@@ -384,6 +391,42 @@ async fn the_wizard_walks_every_step_and_a_failed_one_is_retried() {
     assert!(
         flat["dark"] == true && flat["uneven"].as_f64().unwrap() > 0.05,
         "{flat}"
+    );
+    // Its image, to see (W8.2): in blocks, its middle brighter than its corner.
+    let id = active["flat"]["id"].as_str().unwrap();
+    let seen = client.get(&format!("/api/v1/calibration/image/{id}")).await;
+    assert_eq!(seen.status, 200, "{}", seen.text());
+    let seen = seen.json();
+    let (width, height) = (
+        seen["width"].as_u64().unwrap(),
+        seen["height"].as_u64().unwrap(),
+    );
+    let values = seen["values"].as_array().unwrap();
+    assert!(
+        width.max(height) <= 256 && seen["block"].as_u64() > Some(1),
+        "{width} × {height}"
+    );
+    assert_eq!(
+        values.len() as u64,
+        width * height * seen["channels"].as_u64().unwrap()
+    );
+    let middle = values[((height / 2) * width + width / 2) as usize]
+        .as_f64()
+        .unwrap();
+    assert!(
+        middle > values[0].as_f64().unwrap() * 1.05,
+        "{middle} against {}",
+        values[0]
+    );
+    // Refused: a set without an image, and what isn't a set's ID.
+    let geometry = active["geometry"]["id"].as_str().unwrap();
+    let none = client
+        .get(&format!("/api/v1/calibration/image/{geometry}"))
+        .await;
+    assert_eq!(none.status, 404, "{}", none.text());
+    assert_eq!(
+        client.get("/api/v1/calibration/image/a-flat").await.status,
+        400
     );
     // The crosstalk showed, and the matrix took it away.
     let colour = &active["colour"]["values"];

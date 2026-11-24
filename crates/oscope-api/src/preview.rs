@@ -14,7 +14,7 @@ use oscope_acquire::mosaic::LookSource;
 use oscope_acquire::preview::wire::{Header, MASK, STATISTICS, TILES};
 use oscope_acquire::preview::{
     Adaptation, LiveRecipe, Look, Preview, PreviewError, PreviewRequest, Rendered, RingSettings,
-    Timing, publish,
+    Timing, Wanted, publish,
 };
 use oscope_acquire::stats::StatsRequest;
 use oscope_compute::{Compute, ComputeConfig, Image, Shape, cpu};
@@ -29,6 +29,7 @@ use teta_wot::http::Subscriber;
 use teta_wot::prelude::*;
 
 use crate::batch;
+use crate::calibration::{Calibrations, calibrating};
 use crate::devices::Devices;
 use crate::mosaic::Mosaics;
 use crate::server::{RingSlot, Roots};
@@ -78,6 +79,18 @@ pub struct PreviewLook {
     pub gamma: Option<f32>,
     /// Red, green and blue's white-balance gains.
     pub gains: [f32; 3],
+    /// The active dark frame taken off the raw frame, in place of the
+    /// black level, where one is for its mode, gain and exposure (W8.2).
+    #[serde(default)]
+    pub dark: bool,
+    /// The raw frame divided by the active flat field, where one is for its
+    /// objective, lights and binning.
+    #[serde(default)]
+    pub flat: bool,
+    /// The active colour calibration's white balance and matrix, in place of
+    /// these gains, where one is for its lights.
+    #[serde(default)]
+    pub colour: bool,
 }
 
 impl Default for PreviewLook {
@@ -88,6 +101,9 @@ impl Default for PreviewLook {
             white: 1.0,
             gamma: None,
             gains: [1.0; 3],
+            dark: false,
+            flat: false,
+            colour: false,
         }
     }
 }
@@ -106,6 +122,11 @@ impl From<&PreviewLook> for Look {
             correction: ColourCorrection {
                 gains: look.gains,
                 ..ColourCorrection::default()
+            },
+            wanted: Wanted {
+                dark: look.dark,
+                flat: look.flat,
+                colour: look.colour,
             },
         }
     }
@@ -430,6 +451,14 @@ impl PreviewThing {
             tokio::task::spawn_blocking(|| Compute::new(&ComputeConfig::default())).await??;
         let preview = Preview::new(Arc::new(compute));
         let roots = ctx.server().service::<Roots>();
+        // The calibration's sets, as the look asks for them (W8.2).
+        if let (Some(calibrations), Some(roots)) = (ctx.server().service::<Calibrations>(), &roots)
+        {
+            match calibrations.open(roots) {
+                Ok(store) => preview.set_calibrating(Some(calibrating(store))),
+                Err(error) => tracing::warn!("the preview can't read the calibration: {error}"),
+            }
+        }
         let references = roots.as_ref().map_or_else(
             || PathBuf::from("references"),
             |r| r.data.join("references"),
