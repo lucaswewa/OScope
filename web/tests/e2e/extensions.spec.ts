@@ -37,6 +37,20 @@ async function installed(page: Page, file: string): Promise<void> {
   );
 }
 
+/**
+ * The server restarted, and answering again: its count of restarts rises as
+ * the old one exits, before the new one listens.
+ */
+async function restarted(page: Page, server: { url: string; restarts: number }): Promise<void> {
+  await expect.poll(() => server.restarts, { timeout: 60_000 }).toBe(1);
+  const answers = () =>
+    page.request.get(`${server.url}/health`).then(
+      (reply) => reply.ok(),
+      () => false,
+    );
+  await expect.poll(answers, { timeout: 60_000 }).toBe(true);
+}
+
 test.describe("a server that restarts", () => {
   test.use({ restarts: true });
 
@@ -57,7 +71,7 @@ test.describe("a server that restarts", () => {
     await act("/api/v1/power/restart", { confirm: true, force: false }, { on }).catch(
       () => undefined,
     );
-    await expect.poll(() => server.restarts, { timeout: 60_000 }).toBe(1);
+    await restarted(page, server);
     await extensions(page, server.url);
     await expect(card(page).locator('[data-said="standing"]')).toHaveText("Loaded: 0.1.0", {
       timeout: 30_000,
@@ -187,7 +201,7 @@ test.describe("for the notes' screenshots", () => {
     await act("/api/v1/power/restart", { confirm: true, force: false }, { on }).catch(
       () => undefined,
     );
-    await expect.poll(() => server.restarts, { timeout: 60_000 }).toBe(1);
+    await restarted(page, server);
     await extensions(page, server.url);
     await expect(card(page).locator('[data-said="standing"]')).toHaveText("Loaded: 0.1.0", {
       timeout: 30_000,
