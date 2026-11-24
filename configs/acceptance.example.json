@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "profile_id": "unqualified-reference-microscope",
+  "revision": 1,
+  "qualifications": {
+    "hardware_report": null,
+    "host_baseline": null,
+    "release_manifest": null,
+    "fixture": null
+  },
+  "devices": {
+    "camera": {"model": "Tucsen MIChrome 20", "serial": null, "firmware": null},
+    "stage": {"model": "grblHAL", "serial": null, "firmware": null}
+  },
+  "objectives": ["10x"],
+  "physical_limits": {
+    "camera_min_fps": null,
+    "camera_test_frames": null,
+    "stage_repeatability_max_um": null,
+    "stop_distance_max_um": null,
+    "pixel_error_max_fraction": null,
+    "focus_error_max_um": null,
+    "reference_image_error_max": null,
+    "endurance_min_seconds": null
+  }
+}

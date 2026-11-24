@@ -149,3 +149,18 @@ release qualification remain explicit gates. See the [R08 manual procedure](phas
 for the complete checkpoint and a browser-accessible simulated application.
 The [R09 hardware runbook](hardware-bringup.md) separates read-only preparation
 from the deferred physical camera/controller/WSL/container feasibility work.
+
+R11 acceptance tooling has its own portable acceptance gate:
+
+```sh
+bash scripts/check-acceptance.sh
+python3 scripts/gates.py --base HEAD --run acceptance
+```
+
+Only acceptance scripts, fixtures and its profile select this category. Routine
+checks run Python fixtures on Linux and Windows without Docker, Node, Rust or a
+GPU. They are tool tests, not a native Windows backend gate. The required-CUDA
+engineering exercise is a separate explicit lab in the
+[R11 manual procedure](phases/r11-factory-acceptance.md#manual-test). Factory
+preflight remains blocked until physical, host and release qualification; neither
+fixtures nor simulator results constitute instrument acceptance.

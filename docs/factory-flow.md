@@ -146,6 +146,11 @@ created after an update; never blindly restore an older data snapshot over them.
 
 ## Service and inventory
 
+The [R11 acceptance runbook](factory-acceptance.md) describes the implemented
+profile/checklist, blocked factory preflight, isolated CUDA engineering runner and
+per-attempt evidence/rework. Physical acceptance remains pending qualification;
+engineering reports never authorize shipment.
+
 Maintain installed/approved versions, acceptance reports, calibration and service
 history for each instrument. A service export includes relevant logs, versions,
 device state and diagnostics; customer image data is included only when requested.

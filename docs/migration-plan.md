@@ -28,7 +28,7 @@ skipped. Keep the owner informed as implementation progresses.
 | R08 | Vue integration and separate final gates | Approved by owner, 2026-11-23; hosted CI blocked | 742 frontend tests; 285 browser passes; required CUDA delivery; separate timing/visual checks; independent router; HTTPS checkpoint; manual procedure |
 | R09 | Real device and WSL hardware feasibility | Preparation approved by owner, 2026-11-23; physical qualification pending | Inventory tools/runbook; 9 fixture and 7 router tests on Linux/Windows; expected missing-hardware failures; physical SDK/acquisition/stage evidence pending |
 | R10 | Qualified host baseline and provisioning | Tooling complete; clean-PC/cold-boot qualification deferred | Pinned candidate planner, resumable receipts, owner boot task and simulated CUDA/TLS lab; physical PC qualification pending |
-| R11 | Factory calibration and acceptance runner | Planned | One reference microscope completes guided installation and physical acceptance |
+| R11 | Factory calibration and acceptance runner | Tooling implemented; physical acceptance pending | Versioned profile/checklist, retained attempt reports, isolated required-CUDA science/restart runner; reference microscope acceptance still required |
 | R12 | Release bundles, updates, rollback and inventory | Planned | Offline installation; verified image identity; compatible rollback; traceable reports |
 | R13 | Production pilot and measured optimization | Planned | Representative pilot; performance budgets; accepted runtime optimizations |
 

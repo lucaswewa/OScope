@@ -53,6 +53,13 @@ class Router(unittest.TestCase):
         self.assertTrue(gates.route(ROOT, ["scripts/gates.py"])["gates"]["frontend"])
         self.assertTrue(gates.route(ROOT, ["web/src/features/gone/Old.vue"])["specs"])
 
+    def test_acceptance_tools_are_independent(self):
+        for name in ["scripts/acceptance.py", "scripts/acceptance_workflows.py", "tests/acceptance/test_acceptance.py",
+                     "scripts/check-acceptance.sh", "configs/acceptance.example.json"]:
+            with self.subTest(name=name):
+                self.assertEqual([n for n, on in gates.route(ROOT, [name])["gates"].items() if on], ["acceptance"])
+                self.assertFalse(gates.backend_input(name))
+
     def test_backend_cache_ignores_frontend_but_tracks_sdk_and_local_backend(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

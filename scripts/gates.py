@@ -10,7 +10,7 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-NAMES = ("docs", "environment", "backend", "cpu", "frontend", "integration", "extensions", "workflows", "runtime", "hardware", "provisioning")
+NAMES = ("docs", "environment", "backend", "cpu", "frontend", "integration", "extensions", "workflows", "runtime", "hardware", "provisioning", "acceptance")
 BACKEND_INPUTS = ("Cargo.toml", "Cargo.lock", "LICENSE", "rust-toolchain.toml", ".cargo/", "crates/", "python/",
                   "examples/", "xtask/", "configs/runtime.toml", "containers/", ".dockerignore")
 
@@ -115,6 +115,8 @@ def route(root, changed):
             select(("hardware",), path)
         elif path.startswith(("scripts/provision-", "tests/provisioning/")) or path in ("scripts/check-provisioning.sh", "configs/host-baseline.example.json"):
             select(("provisioning",), path)
+        elif path.startswith(("scripts/acceptance", "tests/acceptance/")) or path in ("scripts/check-acceptance.sh", "configs/acceptance.example.json"):
+            select(("acceptance",), path)
         elif path.startswith("web/"):
             if path.startswith("web/tests/e2e/") or path == "web/playwright.config.ts":
                 select(("integration",), path)
@@ -218,6 +220,7 @@ def main():
                     "--report", "artifacts/runtime.json"],
         "hardware": [sys.executable, "-m", "unittest", "discover", "-s", "tests/hardware", "-v"],
         "provisioning": [sys.executable, "-m", "unittest", "discover", "-s", "tests/provisioning", "-v"],
+        "acceptance": [sys.executable, "-m", "unittest", "discover", "-s", "tests/acceptance", "-v"],
     }
     subprocess.run(commands[args.run], cwd=ROOT, check=True)
 

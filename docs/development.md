@@ -212,6 +212,13 @@ preparation, required CUDA delivery, isolated timing checks and the persistent
 same-origin HTTPS application in Windows. See [web/README.md](../web/README.md)
 for the frontend's layers and commands.
 
+## Acceptance tooling
+
+Acceptance-tool changes use bash scripts/check-acceptance.sh (portable Python
+fixtures only). Run the separate [R11 CUDA lab](phases/r11-factory-acceptance.md#manual-test)
+when changing its workflow adapter. Operator preparation and rework procedures
+live in the [factory acceptance runbook](factory-acceptance.md).
+
 ## Troubleshooting
 
 - `docker` missing: run the WSL bootstrap in the dedicated Ubuntu distribution.

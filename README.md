@@ -81,6 +81,13 @@ covers the processing libraries and real extension execution. See also the
 gates run independently of frontend tooling. Use `scripts/dev.sh shell-cpu` for
 interactive Rust examples and `scripts/dev.sh backend` for the full Rust gate.
 
+## Factory acceptance preparation
+
+Factory preparation now includes an [acceptance and rework runbook](docs/factory-acceptance.md)
+and [R11 manual tests](docs/phases/r11-factory-acceptance.md#manual-test).
+The runner exercises an isolated simulated CUDA backend; physical factory
+acceptance remains pending hardware, host and release qualification.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
