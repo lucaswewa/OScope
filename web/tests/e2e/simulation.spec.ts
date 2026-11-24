@@ -149,13 +149,17 @@ test("the next start's settings are saved, a wrong one refused there and then, a
     timeout: 15_000,
   });
   // The camera unplugged, from here: the shell's indicator says so; then plugged in again.
+  // Homed first, the instrument is ready: an unhomed stage is a fault of its own.
+  await homed(server.url);
   const indicator = said(page, "indicator");
-  const faults = said(page, "faults");
-  await faults.getByRole("switch", { name: "The camera unplugged" }).click();
+  const unplugged = said(page, "faults").getByRole("switch", { name: "The camera unplugged" });
+  await expect(indicator).toHaveAccessibleName("The instrument: OK", { timeout: 15_000 });
+  await unplugged.click();
   await expect(indicator).toHaveAccessibleName("The instrument: Fault");
-  await expect(faults.getByRole("switch", { name: "The camera unplugged" })).toBeChecked();
-  await faults.getByRole("switch", { name: "The camera unplugged" }).click();
-  await expect(faults.getByRole("switch", { name: "The camera unplugged" })).not.toBeChecked();
+  await expect(unplugged).toBeChecked();
+  await unplugged.click();
+  await expect(unplugged).not.toBeChecked();
+  await expect(indicator).toHaveAccessibleName("The instrument: OK", { timeout: 15_000 });
 });
 
 test("the simulation view has no violation axe can find, in either theme", async ({
