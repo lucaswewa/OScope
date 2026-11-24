@@ -111,6 +111,9 @@ jobs:
       - name: "The web app: end to end"
         working-directory: web
         run: npm run test:e2e
+      - name: "The web app: the checkpoints' workflows"
+        working-directory: web
+        run: npm run test:workflows
       # Every example with a binary, headless (examples/README.md).
       - name: The examples' --smoke runs
         if: env.RUN_EXAMPLES == 'true'

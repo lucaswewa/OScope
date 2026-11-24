@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { projectContents, projectPage, type ProjectSummary } from "@/api/projects";
 import { templateNames } from "@/api/reports";
 import type { Contents } from "@/features/gallery/project/project";
+import { relistProjects } from "@/features/workspace/projects";
 import ReportsPane from "@/features/workspace/reports/ReportsPane.vue";
 import TemplatesPane from "@/features/workspace/reports/TemplatesPane.vue";
 import Field from "@/ui/Field.vue";
@@ -19,6 +20,8 @@ const { t } = useI18n();
 const why = (thrown: unknown) => (thrown instanceof Error ? thrown.message : String(thrown));
 const said = shallowRef("");
 const projects = shallowRef<ProjectSummary[]>([]);
+/** The projects read again as their list opens: one made since is offered. */
+const relisted = () => relistProjects(projects);
 const project = shallowRef<string>();
 const contents = shallowRef<Contents>();
 /** The templates' names, OScope's own first: listed again when one is saved or deleted. */
@@ -55,6 +58,7 @@ const tab = shallowRef("reports");
         v-model="project"
         :options="projects.map((one) => ({ value: one.id, label: one.name }))"
         :placeholder="t('workspace.run.chooseProject')"
+        @opened="relisted"
       />
     </Field>
     <Tabs

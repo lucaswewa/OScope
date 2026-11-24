@@ -36,6 +36,7 @@ Each is an npm script, run from `web/`. The replays and CI run them all ([ADR-00
 | `npm run licences` | Every package's licence, after a build. `-- --list` prints them by count |
 | `npm run advisories` | npm's advisories, after a build |
 | `npm run test:e2e` | Playwright, on the built app: Chromium for every test, Firefox and WebKit for those tagged `@main` |
+| `npm run test:workflows` | The checkpoints G to L, in `tests/workflows/`: the app driven through each checkpoint's demo, run as the end-to-end tests are |
 
 **The end-to-end tests** start a server of their own for each test: its configuration, data and scratch space in a folder of the test's, on a port the system picks, with power actions that only say what they would do. Before them:
 

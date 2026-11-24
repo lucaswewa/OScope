@@ -1,7 +1,7 @@
 // The scan tab's planning (W5.1), which its panes and its view share: the
 // pattern and what it needs, the region drawn, and the server's plan of it,
 // asked for again a moment after each change. Nothing moves.
-import { computed, ref, shallowRef, watch } from "vue";
+import { computed, effectScope, ref, shallowRef, watch } from "vue";
 
 import { act } from "@/api/actions";
 import { ApiError } from "@/api/errors";
@@ -73,14 +73,15 @@ function planning() {
       if (current === mine) asking.value = false;
     }
   }
-  watch(
-    request,
-    () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => void ask(), SETTLE_MS);
-    },
-    { deep: true },
-  );
+  /**
+   * The request as text, which changes only when what it asks does: the
+   * overview, read again every few seconds, makes an equal request anew.
+   */
+  const requestText = computed(() => JSON.stringify(request.value ?? null));
+  watch(requestText, () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => void ask(), SETTLE_MS);
+  });
 
   return {
     pattern,
@@ -94,6 +95,7 @@ function planning() {
     mask,
     drawing,
     request,
+    requestText,
     preview,
     refused,
     asking,
@@ -104,7 +106,10 @@ function planning() {
 export type Planning = ReturnType<typeof planning>;
 
 let shared: Planning | undefined;
-/** The page's planning, made once. */
+/**
+ * The page's planning, made once, in a scope of its own: the tab that first
+ * asks for it is unmounted when another tab is opened, and its watches with it.
+ */
 export function usePlanning(): Planning {
-  return (shared ??= planning());
+  return (shared ??= effectScope(true).run(planning)!);
 }

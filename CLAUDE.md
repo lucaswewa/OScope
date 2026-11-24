@@ -117,6 +117,7 @@ npm ci
 npm run typecheck && npm run lint && npm run test:unit && npm run build
 npm run licences && npm run advisories
 npm run test:e2e    # after `cargo build -p oscope-server`: each test starts its own server
+npm run test:workflows    # the checkpoints G to L, as the end-to-end tests
 ```
 
 `scripts/ci-local.sh` runs all of CI's checks, every example's `--smoke` among them, and `--cuda` adds the CUDA tests. It runs the suites and smoke runs eight at a time, each on two CPUs of its own. `scripts/ci-clone.sh` runs them on a fresh clone of a commit; on Windows, run it under WSL ([`scripts/README.md`](scripts/README.md)).
@@ -125,7 +126,7 @@ npm run test:e2e    # after `cargo build -p oscope-server`: each test starts its
   - **A phase's replays run what its change reaches** ([ADR-0061](docs/adr/0061-gates-test-what-a-change-reaches.md)): `scripts/ci-local.sh --changed main`, and `scripts/ci-clone.sh COMMIT --changed main` under WSL. `web/scripts/changed.mjs` picks the Rust suites, the examples, the unit tests and the end-to-end specs; every other check runs in full.
   - **Both run in full** for a stage's checkpoint phase, and for a change to the build's files or to the gate's own scripts, which reaches everything.
   - **Each end-to-end spec says what it covers,** in a `// Covers:` line naming the feature folders whose changes it runs for.
-- **Two cores, five times:** the suites, smoke runs and specs a change reaches, and only those, run five times each, side by side, on two CPUs each: `scripts/two-core.sh PACKAGE:TEST… EXAMPLE…`, with `web:unit`, `web:e2e`, `web:unit:FILE,…` and `web:e2e:SPEC,…` for the app's.
+- **Two cores, five times:** the suites, smoke runs and specs a change reaches, and only those, run five times each, side by side, on two CPUs each: `scripts/two-core.sh PACKAGE:TEST… EXAMPLE…`, with `web:unit`, `web:e2e`, `web:workflows`, `web:unit:FILE,…`, `web:e2e:SPEC,…` and `web:workflows:SPEC,…` for the app's.
 - **Disk:** check `df -h` first. The replays need some 20 GB free, and build output grows by the phase: `cargo clean --profile dev` clears it, with the owner's word.
 
 Docs-only phases check that their relative links and anchors resolve.

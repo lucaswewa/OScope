@@ -7,6 +7,7 @@ import { recipeList, recipeNamed, type ListedRecipe, type Recipe } from "@/api/p
 import { projectContents, projectPage, type ProjectSummary } from "@/api/projects";
 import { analyse, type Analysis, type Region } from "@/api/workspace";
 import type { Contents } from "@/features/gallery/project/project";
+import { relistProjects } from "@/features/workspace/projects";
 import Button from "@/ui/Button.vue";
 import Field from "@/ui/Field.vue";
 import NumberField from "@/ui/NumberField.vue";
@@ -26,6 +27,8 @@ const { t } = useI18n();
 const why = (thrown: unknown) => (thrown instanceof Error ? thrown.message : String(thrown));
 
 const projects = shallowRef<ProjectSummary[]>([]);
+/** The projects read again as their list opens: one made since is offered. */
+const relisted = () => relistProjects(projects);
 const listed = shallowRef<ListedRecipe[]>([]);
 const said = shallowRef("");
 onMounted(async () => {
@@ -117,6 +120,7 @@ async function run(): Promise<void> {
         v-model="project"
         :options="projects.map((one) => ({ value: one.id, label: one.name }))"
         :placeholder="t('workspace.run.chooseProject')"
+        @opened="relisted"
       />
     </Field>
     <Field :label="t('workspace.run.input')">

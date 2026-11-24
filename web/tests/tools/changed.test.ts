@@ -1,8 +1,9 @@
 // What a change reaches (scripts/changed.mjs, ADR-0061): the Rust packages
 // and the packages that depend on them, the examples and doc tests among
 // them, the unit tests related to the app's files, and the end-to-end specs
-// covering what changed; everything when the build, the checks, shared code,
-// the harness or the server changed.
+// covering what changed, and the checkpoints' workflows for the app or the
+// server; everything when the build, the checks, shared code, the harness or
+// the server changed.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -67,6 +68,7 @@ describe("what a change reaches", () => {
         "all",
       ]);
       expect(plan.python).toBe(true);
+      expect(plan.workflows).toBe(true);
       expect(plan.why[0]).toContain(file);
     }
   });
@@ -81,6 +83,7 @@ describe("what a change reaches", () => {
       "none",
     ]);
     expect(plan.python).toBe(false);
+    expect(plan.workflows).toBe(false);
   });
 
   it("is a crate's own tests and those of every package that depends on it", () => {
@@ -168,6 +171,20 @@ describe("what a change reaches", () => {
     expect(plan.unit).toEqual(["web/src/features/jobs/kept.ts"]);
   });
 
+  it("runs the workflows for the app, the server, the harness or themselves; not for another crate", () => {
+    for (const file of [
+      "web/src/features/jobs/JobsTab.vue",
+      "crates/core/src/lib.rs",
+      "web/tests/e2e/sim.ts",
+      "web/tests/workflows/steps.ts",
+      "web/playwright.workflows.config.ts",
+    ]) {
+      expect(planOf(file).workflows, file).toBe(true);
+    }
+    expect(planOf("crates/sim/src/camera.rs").workflows).toBe(false);
+    expect(planOf("web/tests/e2e/jobs.spec.ts").workflows).toBe(false);
+  });
+
   it("runs the Python SDK's tests when its folder changes", () => {
     expect(planOf("python/oscope-ext/oscope_ext/node.py").python).toBe(true);
   });
@@ -181,6 +198,7 @@ describe("what a change reaches", () => {
       "python: no",
       "unit: web/src/features/power/PowerTab.vue",
       "e2e: web/tests/e2e/old.spec.ts web/tests/e2e/power.spec.ts web/tests/e2e/shell.spec.ts",
+      "workflows: yes",
     ]);
   });
 });

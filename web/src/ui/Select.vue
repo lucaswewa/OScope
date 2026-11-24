@@ -37,6 +37,8 @@ const props = defineProps<
   }
 >();
 const chosen = defineModel<string>();
+/** `opened` as the list opens: a page may read its options again then. */
+const emit = defineEmits<{ opened: [] }>();
 const { t } = useI18n();
 const control = useControl(props);
 const open = ref(false);
@@ -53,6 +55,7 @@ const chosenLabel = computed(
 /** A read-only list keeps its focus and its value, and doesn't open. */
 function show(now: boolean): void {
   open.value = now && !props.readonly;
+  if (open.value) emit("opened");
 }
 </script>
 

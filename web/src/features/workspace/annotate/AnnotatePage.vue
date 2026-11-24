@@ -29,6 +29,7 @@ import {
   type Kind,
   type Shape,
 } from "@/features/workspace/annotate/shapes";
+import { relistProjects } from "@/features/workspace/projects";
 import Button from "@/ui/Button.vue";
 import Field from "@/ui/Field.vue";
 import Select from "@/ui/Select.vue";
@@ -51,6 +52,8 @@ const said = shallowRef("");
 
 // The record.
 const projects = shallowRef<ProjectSummary[]>([]);
+/** The projects read again as their list opens: one made since is offered. */
+const relisted = () => relistProjects(projects);
 const project = shallowRef<string>();
 const contents = shallowRef<Contents>();
 const chosen = shallowRef<string>();
@@ -247,6 +250,7 @@ const csv = computed(() => ref_.value && measurementsAddress(ref_.value, LAYER, 
           v-model="project"
           :options="projects.map((each) => ({ value: each.id, label: each.name }))"
           :placeholder="t('workspace.run.chooseProject')"
+          @opened="relisted"
         />
       </Field>
       <Field :label="t('workspace.run.input')">

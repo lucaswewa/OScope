@@ -21,6 +21,7 @@ Two scripts run the checks that CI runs on every pull request ([`.github/workflo
 | web licences, advisories | `npm run licences` and `advisories`: every package, by its tier ([ADR-0040](../docs/adr/0040-testing-the-app.md)). The advisories need the network |
 | web browsers | `npx --no-install playwright install chromium firefox webkit`, the lock file's Playwright and never another: quick once they are there. On Linux their system libraries are installed once, as root: `npx playwright install-deps chromium firefox webkit` |
 | web end to end | `npm run test:e2e`: the built app in three browsers, each test with the server just built, on a port of its own. On Linux, with six workers: Playwright's own choice, half the CPUs, failed some load-sensitive tests in each WSL run |
+| web workflows | `npm run test:workflows`: the checkpoints G to L, each the app driven through its demo, four at a time: each is a session at the instrument, on a debug server rendering its frames on the CPU |
 | examples build | `cargo build --locked`, every example with a binary |
 | *each example* --smoke | the example's binary, with `--smoke`, from the repository's root: always here, though GitHub CI skips them while its `RUN_EXAMPLES` is `"false"` |
 | CUDA tests, with `--cuda` | `OSCOPE_CUDA=1 cargo test --workspace --locked --features cuda` |
@@ -40,7 +41,8 @@ scripts/ci-clone.sh HEAD --changed main    # under WSL
   - the Rust packages changed, and every workspace package that depends on them;
   - the doc tests and examples among them;
   - the unit tests Vitest finds related to the changed files;
-  - and the end-to-end specs: those changed, those whose baselines changed, and those covering a changed feature by their `// Covers:` line.
+  - the end-to-end specs: those changed, those whose baselines changed, and those covering a changed feature by their `// Covers:` line;
+  - and whether the checkpoints' workflows run: all of them, for a change to the app, the server, the end-to-end harness or the workflows themselves.
 - **Some changes reach everything of a kind.** The build's files, the toolchain or these scripts reach every check. The app's shared code, the end-to-end harness, or anything that reaches `oscope-server` reach every spec. The plan's `why:` lines say which. It is kept as `changed.txt` beside the logs.
 - **A step nothing reaches** prints `skip`, and doesn't fail the run.
 - **Both run in full** for a stage's checkpoint, as CLAUDE.md asks.
@@ -116,8 +118,8 @@ scripts/two-core.sh --repeat 10 oscope-api:preview
 ```
 
 - **A target** is a test suite, `PACKAGE:TEST` for its `tests/TEST.rs` or `PACKAGE:lib` for its unit tests, or an example by its name, for its `--smoke`.
-- **The app's tests** are `web:unit` and `web:e2e`. The end-to-end tests run with one worker, as Playwright chooses on a two-core runner: it counts the computer's CPUs, not the pair it is held to. The visual tests run among them.
-- **Some of the app's tests:** `web:e2e:SPEC,…`, those specs by their names in `web/tests/e2e`, and `web:unit:FILE,…`, the unit tests related to those files, from `web/`. A phase repeats only its own: `scripts/two-core.sh web:e2e:scan.spec.ts,scan-plan.spec.ts`.
+- **The app's tests** are `web:unit`, `web:e2e` and `web:workflows`. The end-to-end tests run with one worker, as Playwright chooses on a two-core runner: it counts the computer's CPUs, not the pair it is held to. The visual tests run among them.
+- **Some of the app's tests:** `web:e2e:SPEC,…`, those specs by their names in `web/tests/e2e`, `web:workflows:SPEC,…`, those in `web/tests/workflows`, and `web:unit:FILE,…`, the unit tests related to those files, from `web/`. A phase repeats only its own: `scripts/two-core.sh web:e2e:scan.spec.ts,scan-plan.spec.ts`.
 - **Its runs go side by side,** eight at a time on their own pairs of CPUs, as `ci-local.sh`'s do: a target's five copies run together.
 - **`--repeat N`** runs each N times, and `--jobs N` N at a time. Logs go to `target/two-core/<date-time>/`, or to `--logs DIR`.
 

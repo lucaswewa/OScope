@@ -9,10 +9,11 @@
 #   TARGET      a test suite, as PACKAGE:TEST (oscope-workflows:stitch, for
 #               its tests/stitch.rs), or PACKAGE:lib for its unit tests; or
 #               an example, by its name (ex-stitch), for its --smoke; or the
-#               app's tests, as web:unit or web:e2e; or some of them, as
-#               web:unit:FILE,... (the unit tests related to those files,
-#               from web/) or web:e2e:SPEC,... (those specs, by their names
-#               in web/tests/e2e)
+#               app's tests, as web:unit, web:e2e or web:workflows; or some
+#               of them, as web:unit:FILE,... (the unit tests related to
+#               those files, from web/), web:e2e:SPEC,... (those specs, by
+#               their names in web/tests/e2e) or web:workflows:SPEC,...
+#               (those in web/tests/workflows)
 #   --repeat N  how many times each runs [default: 5]
 #   --jobs N    how many runs at once, each on a pair of CPUs
 #               [default: 8, or as many pairs as there are]
@@ -32,7 +33,7 @@ while [ $# -gt 0 ]; do
     --repeat) repeat=${2:?--repeat needs a number}; shift ;;
     --jobs) jobs=${2:?--jobs needs a number}; shift ;;
     --logs) logs=${2:?--logs needs a folder}; shift ;;
-    -h | --help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) targets+=("$1") ;;
   esac
@@ -106,8 +107,17 @@ for name in "${targets[@]}"; do
         command="$command ${specs//,/ }"
       fi
       ;;
+    web:workflows | web:workflows:*)
+      build_web
+      folder=$root/web
+      command="npm run -s test:workflows -- --workers=1"
+      if [ "$name" != web:workflows ]; then
+        specs=${name#web:workflows:}
+        command="$command ${specs//,/ }"
+      fi
+      ;;
     web:*)
-      echo "unknown web suite: $name (web:unit, web:e2e, web:unit:FILE,... or web:e2e:SPEC,...)" >&2
+      echo "unknown web suite: $name (web:unit, web:e2e, web:workflows, or one of them :FILE,...)" >&2
       exit 2
       ;;
     *:*)

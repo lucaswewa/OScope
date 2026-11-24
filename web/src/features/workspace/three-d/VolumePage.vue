@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { brick, slice, volumeMeta, type StoredImage, type Voxels } from "@/api/media";
 import { projectContents, projectPage, type ProjectSummary } from "@/api/projects";
 import type { Contents } from "@/features/gallery/project/project";
+import { relistProjects } from "@/features/workspace/projects";
 import { Bricks } from "@/features/workspace/three-d/bricks";
 import { moved, rangeOf, START, type Point } from "@/features/workspace/three-d/transfer";
 import Button from "@/ui/Button.vue";
@@ -35,6 +36,8 @@ const kept = shallowRef(bricks.size);
 
 // The stacks: a project's acquisitions and results of several planes.
 const projects = shallowRef<ProjectSummary[]>([]);
+/** The projects read again as their list opens: one made since is offered. */
+const relisted = () => relistProjects(projects);
 const project = shallowRef<string>();
 const contents = shallowRef<Contents>();
 onMounted(async () => {
@@ -254,6 +257,7 @@ watch(
           v-model="project"
           :options="projects.map((one) => ({ value: one.id, label: one.name }))"
           :placeholder="t('workspace.run.chooseProject')"
+          @opened="relisted"
         />
       </Field>
       <Field :label="t('workspace.volume.stack')">

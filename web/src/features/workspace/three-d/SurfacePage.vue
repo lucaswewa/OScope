@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { brick, type Voxels } from "@/api/media";
 import { projectContents, projectPage, type ProjectSummary } from "@/api/projects";
 import type { Contents } from "@/features/gallery/project/project";
+import { relistProjects } from "@/features/workspace/projects";
 import {
   endsOf,
   meshOf,
@@ -34,6 +35,8 @@ const said = shallowRef("");
 
 // The result: a depth from focus's heights, and its all-in-focus image.
 const projects = shallowRef<ProjectSummary[]>([]);
+/** The projects read again as their list opens: one made since is offered. */
+const relisted = () => relistProjects(projects);
 const project = shallowRef<string>();
 const contents = shallowRef<Contents>();
 const chosen = shallowRef<string>();
@@ -193,6 +196,7 @@ const lineIn = computed(() => {
           v-model="project"
           :options="projects.map((one) => ({ value: one.id, label: one.name }))"
           :placeholder="t('workspace.run.chooseProject')"
+          @opened="relisted"
         />
       </Field>
       <Field :label="t('workspace.surface.result')">

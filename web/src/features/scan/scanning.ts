@@ -52,13 +52,9 @@ export function useScan() {
   const goes = computed(() => (progress.value ? going(progress.value, job.value) : false));
   /** Whether the run asked here is still to be shown, though it has ended. */
   const ran = shallowRef(false);
-  watch(
-    planning.request,
-    () => {
-      if (!goes.value) ran.value = false;
-    },
-    { deep: true },
-  );
+  watch(planning.requestText, () => {
+    if (!goes.value) ran.value = false;
+  });
   const shown = computed(() => progress.value !== undefined && (goes.value || ran.value));
 
   return {
