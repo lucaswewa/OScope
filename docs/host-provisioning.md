@@ -3,6 +3,9 @@
 The owner authorized building/testing these tools here and deferred clean-PC
 qualification. They are engineering candidate tools, not a qualified factory
 installer. R09 physical camera/controller qualification is still pending.
+R12 now has a separate [signed engineering bundle/update adapter](release-lifecycle.md).
+It refuses R10 roots; transition of the fixed-image Windows startup receipts to
+versioned release state remains pending qualification.
 The R01 `setup-wsl.sh` remains a developer bootstrap; it is not used on units.
 
 ## Baseline, application and instrument identity

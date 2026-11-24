@@ -128,6 +128,11 @@ or an interrupted acquisition after a restart.
 
 ## Field update and rollback
 
+The [R12 engineering release runbook](release-lifecycle.md) implements signed
+backend-only bundles, isolated simulated updates, compatible rollback and local
+inventory. Full product assets, production trust and Windows/physical lifecycle
+qualification remain pending; these tools do not promote a shipping release.
+
 1. Verify the signed release, target hardware and host/application compatibility.
 2. Download or import the complete release while the microscope remains available.
 3. Wait for idle, take a maintenance lock and stop acquisition cleanly.

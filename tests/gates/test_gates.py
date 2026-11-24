@@ -53,6 +53,13 @@ class Router(unittest.TestCase):
         self.assertTrue(gates.route(ROOT, ["scripts/gates.py"])["gates"]["frontend"])
         self.assertTrue(gates.route(ROOT, ["web/src/features/gone/Old.vue"])["specs"])
 
+    def test_release_tools_have_their_own_gate(self):
+        for name in ["scripts/release.py", "scripts/release_bundle.py", "scripts/release_runtime.py", "scripts/release_state.py",
+                     "tests/release/lab.py", "scripts/check-release.sh"]:
+            with self.subTest(name=name):
+                self.assertEqual([n for n, on in gates.route(ROOT, [name])["gates"].items() if on], ["release_tools"])
+                self.assertFalse(gates.backend_input(name))
+
     def test_acceptance_tools_are_independent(self):
         for name in ["scripts/acceptance.py", "scripts/acceptance_workflows.py", "tests/acceptance/test_acceptance.py",
                      "scripts/check-acceptance.sh", "configs/acceptance.example.json"]:

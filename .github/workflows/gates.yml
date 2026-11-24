@@ -34,6 +34,7 @@ jobs:
       hardware: ${{ steps.plan.outputs.hardware }}
       provisioning: ${{ steps.plan.outputs.provisioning }}
       acceptance: ${{ steps.plan.outputs.acceptance }}
+      release_tools: ${{ steps.plan.outputs.release_tools }}
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
@@ -483,10 +484,33 @@ jobs:
           args = [sys.executable, "scripts/gates.py", "--base", os.environ["BASE"], "--committed-only"]
           if os.environ["FULL"] == "true": args.append("--all")
           subprocess.run([*args, "--run", "acceptance"], check=True)
+  release_tools:
+    name: release tools (${{ matrix.os }})
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Run selected signature and transaction fixtures or report not applicable
+        shell: python
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          FULL: ${{ needs.plan.outputs.full }}
+        run: |
+          import os, subprocess, sys
+          args = [sys.executable, "scripts/gates.py", "--base", os.environ["BASE"], "--committed-only"]
+          if os.environ["FULL"] == "true": args.append("--all")
+          subprocess.run([*args, "--run", "release_tools"], check=True)
   quality:
     name: Quality gates
     if: ${{ always() }}
-    needs: [plan, backend_image, docs, environment, backend, cpu, frontend, integration, extensions, workflows, runtime, hardware, provisioning, acceptance]
+    needs: [plan, backend_image, docs, environment, backend, cpu, frontend, integration, extensions, workflows, runtime, hardware, provisioning, acceptance, release_tools]
     runs-on: ubuntu-24.04
     steps:
       - env:

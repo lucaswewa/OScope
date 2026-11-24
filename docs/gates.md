@@ -164,3 +164,16 @@ engineering exercise is a separate explicit lab in the
 [R11 manual procedure](phases/r11-factory-acceptance.md#manual-test). Factory
 preflight remains blocked until physical, host and release qualification; neither
 fixtures nor simulator results constitute instrument acceptance.
+
+R12's release_tools gate runs real OpenSSL signature and portable transaction
+fixtures independently of application builds:
+
+```sh
+bash scripts/check-release.sh
+python3 scripts/gates.py --base HEAD --run release_tools
+```
+
+Release scripts and tests select only this category. Missing OpenSSL fails; no
+signature or required-GPU check is counted as passing after a skip. The separate
+[offline/CUDA update lab](phases/r12-release-lifecycle.md#manual-test) runs only
+when explicitly requested, without a native Windows backend gate.

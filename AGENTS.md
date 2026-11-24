@@ -53,7 +53,7 @@
 ## Documentation
 
 - Architecture decisions go in numbered ADRs; existing decisions remain readable
-  at the legacy source commit. The next number after this branch's ADR is 0063.
+  at the legacy source commit. The next available ADR number is 0064.
 - Keep development commands separate from factory/operator procedures.
 - Distinguish designed capability, implemented behavior and verified evidence.
 - Update the migration status and phase notes with each implementation commit.

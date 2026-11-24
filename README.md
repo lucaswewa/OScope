@@ -88,6 +88,13 @@ and [R11 manual tests](docs/phases/r11-factory-acceptance.md#manual-test).
 The runner exercises an isolated simulated CUDA backend; physical factory
 acceptance remains pending hardware, host and release qualification.
 
+## Release lifecycle preparation
+
+R12 adds [engineering release bundles and updates](docs/release-lifecycle.md)
+with a [manual procedure](docs/phases/r12-release-lifecycle.md#manual-test).
+Signed backend bundles and isolated CUDA update/rollback are engineering tools;
+full product promotion and physical qualification remain pending.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
