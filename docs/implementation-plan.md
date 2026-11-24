@@ -999,7 +999,7 @@ The instrument's settings, its calibration, the simulator's samples, extensions 
 | [W8.3](milestone-2/phases.md#w8-3) | The calibration wizard | W8.2, W3.3 | 1,500 | — | Done |
 | [W8.4](milestone-2/phases.md#w8-4) | Simulated samples | W8.1, W6.3 | 1,400 | — | Done |
 | [W8.5](milestone-2/phases.md#w8-5) | Extensions and their panels | W8.1, W0.6 | 1,700 | — | Done |
-| [W8.6](milestone-2/phases.md#w8-6) | Accounts | W8.1, W1.3 | 1,400 | 0055 | Planned |
+| [W8.6](milestone-2/phases.md#w8-6) | Accounts | W8.1, W1.3 | 1,400 | 0055 | In review |
 
 **Checkpoint L:** an objective calibrated by the wizard, one's own sample, an extension's panel, and an account.
 
