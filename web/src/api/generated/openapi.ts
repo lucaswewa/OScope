@@ -10423,7 +10423,7 @@ export interface components {
              * @description Its ID.
              */
             id: string;
-            /** @description Its kind: `geometry` or `stage`. */
+            /** @description Its kind: `geometry`, `stage`, `dark`, `flat` or `colour`. */
             kind: string;
             /** @description Its key. */
             key: string;
