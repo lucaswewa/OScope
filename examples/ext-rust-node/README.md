@@ -12,6 +12,10 @@ Each sample becomes 0.5 plus `strength` times a weighted sum of its 3 × 3 neigh
 - **Parameter** `strength`, from 0 to 10, 1 by default.
 - **It runs live** (quick enough for every frame), and **tile by tile** with a halo of 1 px.
 
+## Its panel
+
+[`panels/example.emboss.json`](panels/example.emboss.json) describes a panel for the app to draw (W8.5, [ADR-0036](../../docs/adr/0036-extension-drivers-and-panels.md)): a form of `strength`, submitted to `example.emboss` on the live view's newest frame, its answer shown as an image. It is data, an asset of the package, which the manifest lists. In the app: Settings, *Extensions*, then the panel.
+
 ## How it is made
 
 [`src/lib.rs`](src/lib.rs):

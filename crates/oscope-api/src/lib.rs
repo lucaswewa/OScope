@@ -35,6 +35,7 @@ pub mod pipeline;
 pub mod power;
 pub mod preview;
 pub mod projects;
+mod run_node;
 pub mod scan;
 mod server;
 pub mod settings;

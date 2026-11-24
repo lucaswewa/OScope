@@ -26,12 +26,17 @@ use oscope_pipeline::{Descriptor, Engine, Recipe, stock};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use teta_wot::http::Subscriber;
+use teta_wot::http::axum::Json;
+use teta_wot::http::axum::body::{Body, to_bytes};
+use teta_wot::http::axum::http::StatusCode;
+use teta_wot::http::axum::response::{IntoResponse, Response};
 use teta_wot::prelude::*;
 
 use crate::batch;
 use crate::calibration::{Calibrations, calibrating};
 use crate::devices::Devices;
 use crate::mosaic::Mosaics;
+use crate::run_node::{self, Failed, RunNode};
 use crate::server::{RingSlot, Roots};
 
 /// How many messages a client that acknowledges may have unshown.
@@ -651,6 +656,49 @@ impl PreviewThing {
     #[property]
     async fn sessions(&self) -> Result<Vec<SessionStats>, PropertyError> {
         Ok(lock(&self.sessions).values().cloned().collect())
+    }
+
+    /// Runs a node once on the live view's newest frame (W8.5), as an
+    /// extension's panel submits it (ADR-0036).
+    ///
+    /// `{"node", "params"}`: its image inputs take the frame, in linear
+    /// light as live recipes see it. Answers each output by its port: an
+    /// image as `{"image": {"width", "height", "png"}}`, the PNG in base64
+    /// and no longer than 1024; a table as `{"table": {"columns", "rows"}}`;
+    /// JSON as it is. 400 for a node it doesn't know or parameters it
+    /// refuses, 503 with no frame in 10 s, 500 if the run fails.
+    #[endpoint(post, "run_node")]
+    async fn run_node(&self, body: Body) -> Response {
+        let failed = |status: StatusCode, detail: String| {
+            let body = serde_json::json!({"title": status.canonical_reason(), "status": status.as_u16(), "detail": detail});
+            (status, Json(body)).into_response()
+        };
+        let Some(service) = self.service.get() else {
+            return failed(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "the Thing hasn't started".into(),
+            );
+        };
+        let bytes = to_bytes(body, 1024 * 1024).await.unwrap_or_default();
+        let asked = match serde_json::from_slice::<RunNode>(&bytes) {
+            Ok(asked) => asked,
+            Err(error) => {
+                return failed(
+                    StatusCode::BAD_REQUEST,
+                    format!("{{\"node\", \"params\"}}: {error}"),
+                );
+            }
+        };
+        let (engine, preview) = (Arc::clone(&service.engine), service.preview.clone());
+        match run_node::run(engine, preview, Arc::clone(&service.devices), asked).await {
+            Ok(answer) => Json(answer).into_response(),
+            Err(Failed::Refused(why)) => failed(StatusCode::BAD_REQUEST, why),
+            Err(Failed::NoFrame) => failed(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "no frame came in 10 s: is the camera streaming?".into(),
+            ),
+            Err(Failed::Run(why)) => failed(StatusCode::INTERNAL_SERVER_ERROR, why),
+        }
     }
 
     /// Whether there is a GPU to make previews on.

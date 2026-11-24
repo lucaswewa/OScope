@@ -81,6 +81,7 @@ async fn a_start_loads_the_sample_and_live_recipes_can_use_its_node() {
     let id = "org.oscope.examples.emboss";
     let expected = json!({
         "nodes": { "example.emboss": id },
+        "panels": { "example.emboss": id },
         "importers": { "example.pgm.read": id },
         "exporters": { "example.pgm.write": id },
     });
@@ -202,7 +203,21 @@ fn a_library_whose_nodes_are_not_its_manifest_s_does_not_load() {
     // The same library, its manifest providing another node.
     let source = folder.path().join("ext-rust-node");
     let manifest = std::fs::read_to_string(source.join("manifest.toml")).unwrap();
-    let other = manifest.replace("\"example.emboss\"", "\"example.relief\"");
+    // Its panel, which submits to the node the library has, left out too.
+    let other = (manifest.replace(
+        "nodes = [\"example.emboss\"]",
+        "nodes = [\"example.relief\"]",
+    ))
+    .replace(
+        "panels = [\"example.emboss\"]
+",
+        "",
+    )
+    .replace(
+        "assets = [\"panels/example.emboss.json\"]
+",
+        "",
+    );
     std::fs::write(source.join("manifest.toml"), other).unwrap();
     oscope_ext::pack(&source, &package).unwrap();
     let root = folder.path().join("extensions");

@@ -3037,6 +3037,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/preview/run_node": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Node
+         * @description Runs a node once on the live view's newest frame (W8.5), as an
+         *     extension's panel submits it (ADR-0036).
+         *
+         *     `{"node", "params"}`: its image inputs take the frame, in linear
+         *     light as live recipes see it. Answers each output by its port: an
+         *     image as `{"image": {"width", "height", "png"}}`, the PNG in base64
+         *     and no longer than 1024; a table as `{"table": {"columns", "rows"}}`;
+         *     JSON as it is. 400 for a node it doesn't know or parameters it
+         *     refuses, 503 with no frame in 10 s, 500 if the run fails.
+         */
+        post: operations["run_node_api_v1_preview_run_node_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/preview/sessions": {
         parameters: {
             query?: never;
@@ -18660,6 +18688,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["preview_references_value"];
                 };
+            };
+        };
+    };
+    run_node_api_v1_preview_run_node_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

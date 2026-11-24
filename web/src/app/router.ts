@@ -22,6 +22,13 @@ export const router = createRouter({
           component: tab.page,
           props: { tab: tab.name, comes: tab.comes },
         })),
+        // An extension's panel (W8.5), at a route of its own under its extension.
+        {
+          path: "settings/extensions/:extension/:panel",
+          name: "panel",
+          component: () => import("@/features/settings/extensions/PanelPage.vue"),
+          props: true,
+        },
         // The status in full (W4.3), from the rail's indicator.
         {
           path: "status",

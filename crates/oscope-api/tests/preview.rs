@@ -743,3 +743,75 @@ async fn a_live_recipe_runs_on_each_preview_once_checked() {
     )
     .await;
 }
+
+/// A PNG's width and height, from its header.
+fn png_size(png: &[u8]) -> (u32, u32) {
+    assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n", "a PNG");
+    let word = |at: usize| u32::from_be_bytes(png[at..at + 4].try_into().unwrap());
+    (word(16), word(20))
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_node_runs_once_on_the_newest_frame_as_a_panel_submits_it() {
+    let folder = tempfile::tempdir().unwrap();
+    let (address, _stop) = serve(folder.path(), devices(folder.path(), fakes()).await).await;
+    let run = |body: Value| async move {
+        http(
+            address,
+            "POST",
+            "/api/v1/preview/run_node",
+            &body.to_string(),
+        )
+        .await
+    };
+    // Without a frame: 503, once the run has waited for one.
+    let (status, answer) = run(json!({"node": "filter.gaussian", "params": {"sigma": 1.0}})).await;
+    assert_eq!(status, 503, "{answer}");
+    let streaming = http(address, "POST", "/api/v1/camera/start_streaming", "{}").await;
+    assert_eq!(streaming.0, 201);
+    // The whole sensor: the fake camera's region is none.
+    let sensor = http(address, "GET", "/api/v1/camera/capabilities", "")
+        .await
+        .1;
+    // An image answered as a PNG of the frame's size, which is no longer than 1024.
+    let (status, answer) = run(json!({"node": "filter.gaussian", "params": {"sigma": 1.0}})).await;
+    assert_eq!(status, 200, "{answer}");
+    let image = &answer["image"]["image"];
+    let png = oscope_report::from_base64(image["png"].as_str().unwrap()).unwrap();
+    let (width, height) = png_size(&png);
+    assert_eq!(
+        (json!(width), json!(height)),
+        (image["width"].clone(), image["height"].clone())
+    );
+    let (fw, fh) = (
+        sensor["sensor_width"].as_u64().unwrap(),
+        sensor["sensor_height"].as_u64().unwrap(),
+    );
+    let block = fw.max(fh).div_ceil(1024);
+    assert_eq!(
+        (u64::from(width), u64::from(height)),
+        (fw.div_ceil(block), fh.div_ceil(block))
+    );
+    // Tables answered as their columns and rows.
+    let (status, answer) = run(json!({"node": "measure.histogram", "params": {}})).await;
+    assert_eq!(status, 200, "{answer}");
+    let statistics = &answer["statistics"]["table"];
+    assert!(
+        !statistics["columns"].as_array().unwrap().is_empty(),
+        "{answer}"
+    );
+    assert!(
+        !statistics["rows"].as_array().unwrap().is_empty(),
+        "{answer}"
+    );
+    // Refused: a node that isn't, parameters its schema refuses, one with no image to take.
+    for wrong in [
+        json!({"node": "no.such"}),
+        json!({"node": "filter.gaussian", "params": {"sigma": 100.0}}),
+        json!({"node": "volume.psf", "params": {}}),
+        json!({"params": {}}),
+    ] {
+        let (status, answer) = run(wrong.clone()).await;
+        assert_eq!(status, 400, "{wrong}: {answer}");
+    }
+}
