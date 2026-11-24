@@ -1014,7 +1014,7 @@ The app tested as a whole, measured, packaged, and looked back on.
 | ID | Phase | Depends on | Estimate | ADRs | Status |
 |---|---|---|---|---|---|
 | [W10.1](milestone-2/phases.md#w10-1) | Workflows end to end | W8.6 | 1,500 | — | Done |
-| [W10.2](milestone-2/phases.md#w10-2) | Visual baselines and accessibility | W10.1 | 1,200 | — | Planned |
+| [W10.2](milestone-2/phases.md#w10-2) | Visual baselines and accessibility | W10.1 | 1,200 | — | In review |
 | [W10.3](milestone-2/phases.md#w10-3) | Front-end budgets | W10.1 | 1,100 | 0059 | Planned |
 | [W10.4](milestone-2/phases.md#w10-4) | The app in the packages, and the look back | W10.3 | 1,000 | — | Planned |
 

@@ -1,0 +1,6 @@
+/* The dialogs' baselines (W10.2): a tooltip hidden. A dialog focuses its first
+   control as it opens, and that control's tooltip comes a moment later, over
+   the dialog's edge or not, as the screenshot happens to fall. */
+.ui-tooltip {
+  visibility: hidden;
+}
