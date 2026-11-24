@@ -148,7 +148,7 @@ expression: td
   },
   "actions": {
     "import": {
-      "description": "As `name`: a PNG, JPEG or TIFF on the server's disk, at\n`um_per_pixel`. A stack (a multi-page TIFF) gives its `z_step`. Its\nvalues are `transmitted` light, `reflected` light, or `fluorescent`\namounts of `dye`.",
+      "description": "As `name`: a PNG, JPEG or TIFF on the server's disk, its `path`, or\none the upload route staged, its `upload` (W8.4), at `um_per_pixel`.\nA stack (a multi-page TIFF) gives its `z_step`. Its values are\n`transmitted` light, `reflected` light, or `fluorescent` amounts of\n`dye`. An upload is kept in the data's `simulation` folder, which\nthe simulator reads at each load, and taken off the staged ones.",
       "title": "Adds your own image or stack to the catalogue.",
       "forms": [
         {
@@ -180,7 +180,25 @@ expression: td
             "type": "string"
           },
           "path": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upload": {
+            "oneOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "um_per_pixel": {
             "type": "number"
@@ -206,7 +224,6 @@ expression: td
         },
         "required": [
           "name",
-          "path",
           "um_per_pixel"
         ],
         "additionalProperties": false

@@ -9,8 +9,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use teta_wot::prelude::*;
+use uuid::Uuid;
 
 use super::{Link, property_refused};
+use crate::server::Roots;
+use crate::upload::{Uploads, staged};
 
 /// A sample in the catalogue.
 /// A fault to inject into the simulator (P50).
@@ -223,29 +226,71 @@ impl SimulationThing {
 
     /// Adds your own image or stack to the catalogue.
     ///
-    /// As `name`: a PNG, JPEG or TIFF on the server's disk, at
-    /// `um_per_pixel`. A stack (a multi-page TIFF) gives its `z_step`. Its
-    /// values are `transmitted` light, `reflected` light, or `fluorescent`
-    /// amounts of `dye`.
+    /// As `name`: a PNG, JPEG or TIFF on the server's disk, its `path`, or
+    /// one the upload route staged, its `upload` (W8.4), at `um_per_pixel`.
+    /// A stack (a multi-page TIFF) gives its `z_step`. Its values are
+    /// `transmitted` light, `reflected` light, or `fluorescent` amounts of
+    /// `dye`. An upload is kept in the data's `simulation` folder, which
+    /// the simulator reads at each load, and taken off the staged ones.
     #[action]
+    #[allow(clippy::too_many_arguments)]
     async fn import(
         &self,
+        ctx: ActionCtx,
         name: String,
-        path: String,
+        #[param(default)] path: Option<String>,
+        #[param(default)] upload: Option<Uuid>,
         um_per_pixel: f64,
         #[param(default)] z_step: Option<f64>,
         #[param(default = "transmitted".to_owned())] light: String,
         #[param(default = "green".to_owned())] dye: String,
     ) -> Result<(), ActionError> {
+        let simulator = self.simulator()?;
+        let (path, kept) = match (path, upload) {
+            (Some(path), None) => (path, None),
+            (None, Some(id)) => {
+                let kept = keep(&ctx, id).map_err(ActionError::handled)?;
+                (kept.display().to_string(), Some((id, kept)))
+            }
+            _ => {
+                let both = "an import reads a `path` or an `upload`, one of them";
+                return Err(ActionError::handled(format!("refused (400): {both}")));
+            }
+        };
         let kind = if z_step.is_some() { "stack" } else { "image" };
-        let entry: SampleEntry = serde_json::from_value(json!({
+        let entry = serde_json::from_value::<SampleEntry>(json!({
             "name": name, "kind": kind, "path": path, "um_per_pixel": um_per_pixel,
             "z_step": z_step, "light": light, "dye": dye,
         }))
-        .map_err(|e| ActionError::handled(format!("the import: {e}")))?;
-        self.simulator()?
-            .loader
-            .add(entry)
-            .map_err(ActionError::handled)
+        .map_err(|e| format!("the import: {e}"))
+        .and_then(|entry| simulator.loader.add(entry));
+        // Kept only once it is a sample: the staged file goes; else the copy does.
+        match (&entry, kept) {
+            (Ok(()), Some((id, _))) => {
+                if let Some(uploads) = ctx.server().service::<Uploads>() {
+                    uploads.remove(id);
+                }
+            }
+            (Err(_), Some((_, copy))) => {
+                let _ = std::fs::remove_file(copy);
+            }
+            _ => {}
+        }
+        entry.map_err(ActionError::handled)
     }
+}
+
+/// The staged file `id`, copied into the data's `simulation` folder, as
+/// `<id>-<its name>`: where the simulator reads it at each load.
+fn keep(ctx: &ActionCtx, id: Uuid) -> Result<std::path::PathBuf, String> {
+    let staged = staged(ctx.server().service::<Uploads>().as_deref(), id)
+        .map_err(|e| format!("refused (400): {e}"))?;
+    let roots = ctx.server().service::<Roots>();
+    let roots = roots.ok_or_else(|| "the server keeps no data".to_owned())?;
+    let folder = roots.data.join("simulation");
+    std::fs::create_dir_all(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
+    let name = staged.file_name().map(|n| n.to_string_lossy().into_owned());
+    let kept = folder.join(format!("{id}-{}", name.unwrap_or_default()));
+    std::fs::copy(&staged, &kept).map_err(|e| format!("{}: {e}", kept.display()))?;
+    Ok(kept)
 }

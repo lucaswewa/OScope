@@ -1,6 +1,7 @@
 //! Uploads (W6.3, ADR-0051): a client's file staged in the scratch space at
 //! `POST /api/v1/upload/{name}`, imported into a project by the
-//! `projects.import` job, then removed; the route's limits, and the
+//! `projects.import` job, then removed, or kept as the simulator's own
+//! sample (W8.4); the route's limits, and the
 //! scratch space's reserve; a name that tries to leave the staging folder;
 //! the lease; a staged file removed once its lifetime is over; and the
 //! contract, that an upload cut short leaves nothing staged.
@@ -10,6 +11,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use oscope_api::auth::{Accounts, Idle, Security};
+use oscope_api::devices::{Devices, DevicesConfig};
 use oscope_api::upload::{UPLOAD_LIFETIME, UPLOAD_LIMIT};
 use oscope_api::{Api, ApiBuilder, Roots};
 use oscope_compute::{Image, Shape};
@@ -186,6 +188,47 @@ async fn an_upload_is_staged_imported_into_a_project_then_removed() {
         let submit = json!({"kind": "projects.import", "params": params});
         let refused = invoke(&client, "jobs/submit", submit).await;
         assert_eq!(refused["status"], "error", "{params}: {refused}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_upload_becomes_the_simulator_s_sample_kept_with_the_data() {
+    let folder = tempfile::tempdir().unwrap();
+    let scratch = folder.path().join("scratch");
+    let config = DevicesConfig::default();
+    let devices = Devices::from_config(&config, folder.path()).await.unwrap();
+    let api = builder(folder.path(), POLICY, UPLOAD_LIMIT, UPLOAD_LIFETIME);
+    let client = start(api.devices(Arc::new(devices))).await;
+    let answer = upload(&client, "my%20cells.tif", &[], tiff()).await;
+    assert_eq!(answer.status, 201, "{}", answer.text());
+    let id = answer.json()["id"].as_str().unwrap().to_owned();
+    let input = json!({"name": "my cells", "upload": id, "um_per_pixel": 0.5});
+    let import = invoke(&client, "simulation/import", input).await;
+    assert_eq!(import["status"], "completed", "{import}");
+    let samples = client.get("/api/v1/simulation/samples").await.json();
+    let mine = json!({"name": "my cells", "kind": "image", "ground_truth": false});
+    assert!(samples.as_array().unwrap().contains(&mine), "{samples}");
+    // Kept beside the data, where each load reads it; no longer staged.
+    let kept = folder
+        .path()
+        .join("data/simulation")
+        .join(format!("{id}-my cells.tif"));
+    assert_eq!(std::fs::read(&kept).unwrap(), tiff());
+    assert!(staged(&scratch).is_empty(), "{:?}", staged(&scratch));
+    let load = invoke(&client, "simulation/load", json!({"name": "my cells"})).await;
+    assert_eq!(load["status"], "completed", "{load}");
+    // Refused: the upload, used; and a path besides an upload.
+    let path = kept.display().to_string();
+    for input in [
+        json!({"name": "again", "upload": id, "um_per_pixel": 0.5}),
+        json!({"name": "both", "upload": id, "path": path, "um_per_pixel": 0.5}),
+        json!({"name": "neither", "um_per_pixel": 0.5}),
+    ] {
+        let refused = invoke(&client, "simulation/import", input.clone()).await;
+        assert!(
+            refused["error"].to_string().contains("refused (400)"),
+            "{input}: {refused}"
+        );
     }
 }
 

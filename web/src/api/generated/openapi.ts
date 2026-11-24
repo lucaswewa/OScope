@@ -4709,10 +4709,12 @@ export interface paths {
          * Adds your own image or stack to the catalogue.
          * @description ## Adds your own image or stack to the catalogue.
          *
-         *     As `name`: a PNG, JPEG or TIFF on the server's disk, at
-         *     `um_per_pixel`. A stack (a multi-page TIFF) gives its `z_step`. Its
-         *     values are `transmitted` light, `reflected` light, or `fluorescent`
-         *     amounts of `dye`.
+         *     As `name`: a PNG, JPEG or TIFF on the server's disk, its `path`, or
+         *     one the upload route staged, its `upload` (W8.4), at `um_per_pixel`.
+         *     A stack (a multi-page TIFF) gives its `z_step`. Its values are
+         *     `transmitted` light, `reflected` light, or `fluorescent` amounts of
+         *     `dye`. An upload is kept in the data's `simulation` folder, which
+         *     the simulator reads at each load, and taken off the staged ones.
          *
          *     ## Important note
          *
@@ -12652,7 +12654,8 @@ export interface components {
         simulation_confocal_value: boolean;
         simulation_import_input: {
             name: string;
-            path: string;
+            path?: string | null;
+            upload?: string | null;
             um_per_pixel: number;
             z_step?: number | null;
             /** @default transmitted */
