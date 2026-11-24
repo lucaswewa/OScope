@@ -83,4 +83,15 @@ impl IlluminationThing {
             .map_err(|e| ActionError::handled(e.to_string()))?;
         Ok(applied)
     }
+
+    /// Forgets the lights saved.
+    ///
+    /// They stay as they are; the next start leaves them as they start.
+    #[action]
+    async fn forget_saved(&self) -> Result<(), ActionError> {
+        self.link.action()?;
+        self.saved
+            .set(Vec::new())
+            .map_err(|e| ActionError::handled(e.to_string()))
+    }
 }

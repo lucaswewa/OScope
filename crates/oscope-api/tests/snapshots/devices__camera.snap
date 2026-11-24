@@ -1439,6 +1439,52 @@ expression: td
     }
   },
   "actions": {
+    "forget_saved": {
+      "description": "The camera keeps the ones it has; the next start leaves it with its\nown.",
+      "title": "Forgets the settings saved.",
+      "forms": [
+        {
+          "href": "/api/v1/camera/forget_saved",
+          "op": [
+            "invokeaction"
+          ]
+        },
+        {
+          "href": "/api/v1/action_invocations/{id}",
+          "op": [
+            "queryaction",
+            "cancelaction"
+          ]
+        }
+      ],
+      "uriVariables": {
+        "id": {
+          "title": "Invocation ID",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "input": {
+        "description": "Represent the input of an action that never takes parameters.\n\nThis may be either an empty dictionary or ``None``.",
+        "title": "forget_saved_input",
+        "oneOf": [
+          {
+            "description": "A model representing an object that must have no keys.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "output": {
+        "title": "forget_saved_output",
+        "type": "null"
+      },
+      "synchronous": false
+    },
     "set_mode": {
       "description": "Refused while streaming.",
       "title": "Sets the mode and the pixel format together.",

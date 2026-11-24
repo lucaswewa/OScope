@@ -255,6 +255,8 @@ test("without WebGL2, the slices are shown alone @main", async ({ page, server }
   await expect(said(page, "volumes").locator('[data-said="no-webgl"]')).toBeVisible();
   await expect(said(page, "slice-z")).toHaveAttribute("data-index", "12");
   await expect(said(page, "volume")).toHaveCount(0);
+  // The y slice drawn too: the three come each in its own time.
+  await expect(said(page, "slice-y")).toHaveAttribute("data-index", "20");
   const { index: at, ...shown } = await sliceShown(page, "y");
   expect(shown).toEqual(sliceOf("y", at));
 });

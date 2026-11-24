@@ -5,6 +5,7 @@ import { useRoute, useRouter } from "vue-router";
 
 import { ApiError } from "@/api/errors";
 import { projectContents } from "@/api/projects";
+import { useAccountDisplay } from "@/features/display/account";
 import type { Contents } from "@/features/gallery/project/project";
 import RecordViewer from "@/features/gallery/viewer/RecordViewer.vue";
 import { imageOf, PLAIN, viewable, type ViewLook } from "@/features/gallery/viewer/viewer";
@@ -68,6 +69,18 @@ const look = shallowRef<ViewLook>({ ...PLAIN });
 const planesOf = (one: typeof first.value) => (one ? (imageOf(one)?.planes ?? 1) : 1);
 const planes = computed(() => Math.max(planesOf(first.value), planesOf(second.value)));
 const oneChannel = computed(() => first.value && imageOf(first.value)?.channels === 1);
+// A one-channel image opens in the account's colour map, until one is chosen here (W8.1).
+// Grey is its own colours already.
+const account = useAccountDisplay();
+watch(
+  [() => first.value?.record.id, () => account.display?.colormap],
+  ([, colormap]) => {
+    if (oneChannel.value && colormap && colormap !== "grey" && look.value.map === "none") {
+      set({ map: colormap });
+    }
+  },
+  { immediate: true },
+);
 const maps = computed(() =>
   MAPS.map((name) => ({ value: name, label: t(`live.values.maps.${name}`) })),
 );

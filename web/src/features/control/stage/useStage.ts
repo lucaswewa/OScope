@@ -20,6 +20,7 @@ import {
   type Xyz,
 } from "@/features/control/stage/stage";
 import { notify } from "@/ui/toasts";
+import { useAccountDisplay } from "@/features/display/account";
 
 export function useStage() {
   const { t } = useI18n();
@@ -27,13 +28,14 @@ export function useStage() {
   // Read often while it moves, and again at each of its events: `moved` at rest.
   const position = useProperty("/api/v1/stage/position", { every: 500 });
   const status = useProperty("/api/v1/stage/status", { every: 1_000 });
-  const display = useProperty("/api/v1/settings/display", { every: 30_000 });
+  // The account's units, as the Settings tab changes them, here or in another browser (W8.1).
+  const account = useAccountDisplay();
   const moveTo = useAction("/api/v1/stage/move_to");
   const moveBy = useAction("/api/v1/stage/move_by");
   const jogging = useAction("/api/v1/stage/jog");
   const halting = useAction("/api/v1/stage/halt");
 
-  const unit = computed<Unit>(() => display.value.value?.units ?? "um");
+  const unit = computed<Unit>(() => account.display?.units ?? "um");
   const here = computed(() => position.value.value?.position);
 
   /** Whether `target` is past the limits along `axes`, said if it is: nothing is then sent. */

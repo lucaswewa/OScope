@@ -33,23 +33,28 @@ import { sourceOf, type TiledImage } from "./source";
  * may follow it by its `fit` (W6.4); and it marks whether its tiles in view
  * have all come, `data-sharp`.
  */
-const props = defineProps<{
-  label: string;
-  image: TiledImage | undefined;
-  placement: Placement | undefined;
-  /** A rectangle of the stage marked over the image: the field of view. */
-  marker?: Rect | undefined;
-  /** Where to look when an image first opens, on the stage: all of it, without. */
-  start?: Rect | undefined;
-  /** Where to look, on the stage, each time it changes. */
-  fit?: Rect | undefined;
-  /** Shapes of the stage, drawn over the image. */
-  shapes?: readonly Shape[] | undefined;
-  /** Whether a drag draws a rectangle, which `draw` then says, instead of panning. */
-  drawing?: boolean;
-  /** Whether `view` says every view, the page's own fits too, not only its user's moves (W7.6). */
-  tell?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    label: string;
+    image: TiledImage | undefined;
+    placement: Placement | undefined;
+    /** A rectangle of the stage marked over the image: the field of view. */
+    marker?: Rect | undefined;
+    /** Where to look when an image first opens, on the stage: all of it, without. */
+    start?: Rect | undefined;
+    /** Where to look, on the stage, each time it changes. */
+    fit?: Rect | undefined;
+    /** Shapes of the stage, drawn over the image. */
+    shapes?: readonly Shape[] | undefined;
+    /** Whether a drag draws a rectangle, which `draw` then says, instead of panning. */
+    drawing?: boolean;
+    /** Whether `view` says every view, the page's own fits too, not only its user's moves (W7.6). */
+    tell?: boolean;
+    /** Whether it has its scale bar (W8.1): yes, unless told otherwise. */
+    scaleBar?: boolean;
+  }>(),
+  { scaleBar: true },
+);
 const emit = defineEmits<{
   pick: [at: Point];
   draw: [rect: Rect];
@@ -389,7 +394,7 @@ watch(
           <slot name="over" :placement="placement" />
         </template>
       </svg>
-      <figure v-if="scale" class="scale" data-said="tile-scale">
+      <figure v-if="scale && scaleBar" class="scale" data-said="tile-scale">
         <span class="line" :style="{ inlineSize: `${scale.width}px` }" />
         <figcaption>{{ scaleSaid }}</figcaption>
       </figure>
