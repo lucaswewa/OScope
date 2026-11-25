@@ -7,7 +7,7 @@ use std::time::Duration;
 use clap::Parser;
 use oscope_api::settings::ConfigFile;
 use oscope_server::{
-    CONFIG_VERSION, Cli, Config, ConfigError, DEFAULT_PORT, Logging, TomlFile, migrate_file,
+    CONFIG_VERSION, Cli, Config, ConfigError, DEFAULT_PORT, Logging, TomlFile, app_in, migrate_file,
 };
 
 /// Writes `text` to `oscope.toml` in `folder`, and returns its path.
@@ -159,7 +159,7 @@ fn the_command_line_overrides_the_file() {
 
 #[test]
 fn the_web_app_s_folder_is_the_file_s_or_the_command_line_s() {
-    // None by default: a server without the app.
+    // None by default: the server then serves the app installed with it, if any.
     assert_eq!(Config::default().web.root, None);
     // In the file, relative to the file's folder, as its other folders are.
     let folder = tempfile::tempdir().unwrap();
@@ -189,6 +189,27 @@ folder = \"x\"
         Config::load(&wrong).unwrap_err(),
         ConfigError::Invalid { .. }
     ));
+}
+
+#[test]
+fn an_app_not_named_is_the_one_installed_with_the_server() {
+    let folder = tempfile::tempdir().unwrap();
+    let [beside, packaged, named] =
+        ["web", "share/oscope/web", "named"].map(|f| folder.path().join(f));
+    let installed = [beside.clone(), packaged.clone()];
+    // Nothing installed, nothing named: no app, as a build from source.
+    assert_eq!(app_in(None, &installed), None);
+    // A folder without a built app isn't one.
+    std::fs::create_dir_all(&beside).unwrap();
+    assert_eq!(app_in(None, &installed), None);
+    // The packaged one, then the one beside the server, which comes first.
+    std::fs::create_dir_all(&packaged).unwrap();
+    std::fs::write(packaged.join("index.html"), "<!doctype html>").unwrap();
+    assert_eq!(app_in(None, &installed), Some(packaged.clone()));
+    std::fs::write(beside.join("index.html"), "<!doctype html>").unwrap();
+    assert_eq!(app_in(None, &installed), Some(beside));
+    // One named, by the file or the command line, wins, built or not.
+    assert_eq!(app_in(Some(&named), &installed), Some(named));
 }
 
 #[test]

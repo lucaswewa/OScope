@@ -466,8 +466,9 @@ async fn serve(
     if let Some(ring) = ring {
         api = api.ring(ring);
     }
-    // The web app, at the API's own origin (W0.1).
-    if let Some(folder) = &config.web.root {
+    // The web app, at the API's own origin (W0.1): the configuration's, or
+    // the one installed with the server (W10.4).
+    if let Some(folder) = app(&config) {
         api = api.pages(folder);
     }
     // The server's third-party notices, for About (W4.3).
@@ -706,6 +707,31 @@ fn write_token(roots: &Roots) -> Result<(PathBuf, String), Error> {
     let hex: String = token.iter().map(|b| format!("{b:02x}")).collect();
     oscope_shm::write_private(&path, hex.as_bytes()).map_err(failed)?;
     Ok((std::path::absolute(&path).map_err(failed)?, hex))
+}
+
+/// The web app's folder: the configuration's, or where the packages put it
+/// (W10.4), `web` beside the server on Windows and `/usr/share/oscope/web`
+/// on Ubuntu; none for a build from source, which names its own. An
+/// operator's configuration from 0.1, which names none, serves it so after
+/// an upgrade.
+fn app(config: &Config) -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok();
+    let beside = exe.as_deref().and_then(Path::parent).map(|f| f.join("web"));
+    let candidates: Vec<PathBuf> = beside
+        .into_iter()
+        .chain([PathBuf::from("/usr/share/oscope/web")])
+        .collect();
+    app_in(config.web.root.as_ref(), &candidates)
+}
+
+/// The app's folder: `named`, or the first of `installed` that holds a built
+/// app, its `index.html`.
+pub fn app_in(named: Option<&PathBuf>, installed: &[PathBuf]) -> Option<PathBuf> {
+    if let Some(folder) = named {
+        return Some(folder.clone());
+    }
+    let built = |folder: &&PathBuf| folder.join("index.html").is_file();
+    installed.iter().find(built).cloned()
 }
 
 /// The folder of the server's third-party notices: the configuration's, or

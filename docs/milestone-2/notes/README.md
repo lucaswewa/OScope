@@ -60,4 +60,4 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W10.1 | Workflows end to end | Done | [W10.1-workflows.md](W10.1-workflows.md) |
 | W10.2 | Visual baselines and accessibility | Done | [W10.2-baselines-a11y.md](W10.2-baselines-a11y.md) |
 | W10.3 | Front-end budgets | Done | [W10.3-front-end-budgets.md](W10.3-front-end-budgets.md) |
-| W10.4 | The app in the packages, and the look back | Planned | — |
+| W10.4 | The app in the packages, and the look back | In review | [W10.4-packages-look-back.md](W10.4-packages-look-back.md) |

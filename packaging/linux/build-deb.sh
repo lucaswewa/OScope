@@ -7,6 +7,9 @@
 #   NOTICES  the third-party notices' folder, as packaging/notices/make.sh makes it
 #   FOLDER   where the .deb goes [default: target/deb]
 #
+# The web app goes with it, from web/dist, as `npm --prefix web run build`
+# makes it, or from OSCOPE_APP: the server serves it at / (W10.4).
+#
 # It needs dpkg-deb and fakeroot, which Ubuntu has, and prints the .deb's path.
 # Built on Ubuntu 22.04, as the release workflow builds it, it installs on
 # 22.04 and 24.04.
@@ -16,6 +19,11 @@ server=${1:?which server? packaging/linux/build-deb.sh SERVER [NOTICES] [FOLDER]
 notices=${2:-}
 folder=${3:-target/deb}
 here=$(cd "$(dirname "$0")" && pwd)
+app=${OSCOPE_APP:-$here/../../web/dist}
+if [ ! -f "$app/index.html" ]; then
+    echo "build-deb: no web app in $app: build it first, npm --prefix web ci && npm --prefix web run build" >&2
+    exit 1
+fi
 version=$("$server" --version | awk '{print $2}')
 arch=$(dpkg --print-architecture)
 
@@ -29,6 +37,11 @@ install -D -m 644 "$here/oscope.rules" "$root/usr/share/polkit-1/rules.d/50-osco
 install -D -m 644 "$here/oscope.pkla" \
     "$root/var/lib/polkit-1/localauthority/10-vendor.d/50-oscope.pkla"
 install -D -m 644 "$here/../../LICENSE" "$root/usr/share/doc/oscope/copyright"
+# The web app, which the server serves at / when its configuration names none.
+mkdir -p "$root/usr/share/oscope/web"
+cp -R "$app"/. "$root/usr/share/oscope/web/"
+find "$root/usr/share/oscope" -type d -exec chmod 755 {} +
+find "$root/usr/share/oscope" -type f -exec chmod 644 {} +
 if [ -n "$notices" ]; then
     install -m 644 "$notices"/* "$root/usr/share/doc/oscope/"
 fi
@@ -50,7 +63,7 @@ Section: science
 Priority: optional
 Homepage: https://github.com/lucaswewa/OScope
 Description: OScope, the server of a motorised brightfield microscope
- Serves the instrument's Things, its media and its pages, as the account
+ Serves the instrument's Things, its media and its web app, as the account
  oscoped, under systemd. Its configuration is /etc/oscope/oscope.toml, and its
  data /var/lib/oscope. The members of the group oscoped, its operators, may
  start, stop and restart it, change its configuration and read its data.

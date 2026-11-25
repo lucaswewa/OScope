@@ -3,6 +3,7 @@
 #
 # - it is enabled, runs as oscoped, may use the serial ports, and answers as
 #   the version installed;
+# - it serves the web app at / (W10.4);
 # - the simulated instrument is well;
 # - a frame captured into a new project is kept, then the project is deleted;
 # - asked to restart, it is started again by systemd.
@@ -118,6 +119,9 @@ wait_for "$base/health answers" healthy
 served=$(request "$base/api/v1/system/version" | jq -r .)
 [ "$served" = "$version" ] || fail "it serves $served, not $version"
 ok "it answers on $base, as $served"
+page() { curl -fsS --max-time 30 "$base/" | grep -q "<title>OScope</title>"; }
+page || fail "$base/ doesn't serve the web app"
+ok "it serves the web app at $base/"
 
 # The simulated instrument. After each start, the stage waits to be homed, as
 # a real controller does: well, though in alarm. The smoke test moves nothing.

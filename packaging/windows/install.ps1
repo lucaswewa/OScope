@@ -15,6 +15,10 @@ foreach ($file in $files) {
     $from = Join-Path $PSScriptRoot $file
     if (Test-Path $from) { Copy-Item $from $program -Force }
 }
+# The web app, beside the server: the one before goes, its files named afresh.
+$web = Join-Path $program "web"
+if (Test-Path $web) { Remove-Item -Recurse -Force $web }
+Copy-Item -Recurse (Join-Path $PSScriptRoot "web") $web
 $config = Join-Path $data "oscope.toml"
 if (-not (Test-Path $config)) {
     Copy-Item (Join-Path $PSScriptRoot "oscope.toml") $config

@@ -2,7 +2,7 @@
 # Builds OScope's .deb from this source tree, on Ubuntu, as its operator does
 # in docs/deploying-on-ubuntu.md:
 #
-# - the server's release build;
+# - the server's release build, and the web app's (W10.4);
 # - the tests, `cargo test --workspace`;
 # - the third-party notices, installing cargo-about 0.9.3 if it isn't;
 # - the .deb, copied to /var/tmp for the administrator to install.
@@ -31,6 +31,12 @@ if [ ${#missing[@]} -gt 0 ]; then
     echo "  sudo apt install build-essential pkg-config fakeroot git" >&2
     exit 1
 fi
+if ! command -v npm >/dev/null; then
+    echo "build-from-source: no npm, for the web app. Install Node.js 24 with nvm, for this account:" >&2
+    echo "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash" >&2
+    echo "  . \"\$HOME/.nvm/nvm.sh\" && nvm install 24" >&2
+    exit 1
+fi
 if ! command -v cargo >/dev/null; then
     echo "build-from-source: no cargo. Install Rust for this account with:" >&2
     echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal" >&2
@@ -42,6 +48,9 @@ step() { echo "== build-from-source: $*"; }
 step "$(git log -1 --format='%h %s')"
 step "the server's release build"
 cargo build --release --locked -p oscope-server
+step "the web app's build"
+npm --prefix web ci --no-fund --no-audit
+npm --prefix web run build
 if [ "$tests" = yes ]; then
     step "the tests"
     # Without debug information and incremental caches, which took nine

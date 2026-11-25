@@ -74,7 +74,7 @@ pub const CONFIG_VERSION: i64 = 2;
 /// dry_run_restart = false         # the service's restart apart: dry_run's when not given (W4.3)
 ///
 /// [web]                           # the web app (W0.1)
-/// root = "web/dist"               # its built files, served at /; none when not given
+/// root = "web/dist"               # its built files, served at /: the packages' when not given (W10.4)
 /// notices = "notices"             # the third-party notices: where the package put them when not given
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
@@ -114,7 +114,8 @@ pub struct Config {
 #[serde(default, deny_unknown_fields)]
 pub struct Web {
     /// The folder of its built files, `web/dist`, served at `/` beside the
-    /// API, so that both share an origin. Without it, no app is served.
+    /// API, so that both share an origin. Without it, the app the packages
+    /// installed with the server, if there is one (W10.4).
     pub root: Option<PathBuf>,
     /// The folder of the server's third-party notices, for About (W4.3).
     /// Without it, where the packages put them: beside the server, or in
