@@ -1,6 +1,6 @@
 # Packaging
 
-OScope's server, packaged (P54, [ADR-0033](../docs/adr/0033-packaging-and-release.md)):
+OScope's server and its web app, packaged (P54, W10.4, [ADR-0033](../docs/adr/0033-packaging-and-release.md)):
 
 - **for Ubuntu 22.04 and 24.04:** a .deb;
 - **for Windows:** a zip, with its service's scripts.
@@ -10,11 +10,12 @@ A release builds and publishes both ([`docs/releasing.md`](../docs/releasing.md)
 ## Ubuntu: the .deb
 
 ```sh
-sudo apt install ./oscope_0.1.1_amd64.deb
+sudo apt install ./oscope_0.2.0_amd64.deb
 ```
 
 - **Its account** is `oscoped` (`oscope` in 0.1.0), its configuration `/etc/oscope/oscope.toml`, and its data `/var/lib/oscope`.
-- **The service `oscope`** is enabled and started, on http://127.0.0.1:8210/.
+- **The service `oscope`** is enabled and started, on http://127.0.0.1:8210/, where it serves the web app.
+- **The web app** is in `/usr/share/oscope/web`: the server serves it at `/` when its configuration names none (W10.4), so a configuration changed before an upgrade serves it too.
 - **Its polkit rule** lets the service reboot and power off the host: P51's power actions, and nothing else.
 - **Its serial ports:** the service has the group `dialout`, for the stage's controller from M3.
 - **Its operators,** the members of the group `oscoped`, may start, stop and restart the service on Ubuntu 24.04, change its configuration, and read its data.
@@ -29,6 +30,7 @@ sudo apt install ./oscope_0.1.1_amd64.deb
 ```sh
 cargo install cargo-about --version 0.9.3 --locked --features cli  # once
 cargo build --release --locked -p oscope-server
+npm --prefix web ci && npm --prefix web run build   # the web app, which the .deb carries
 bash packaging/notices/make.sh
 bash packaging/linux/build-deb.sh target/release/oscope-server target/notices
 ```
@@ -42,13 +44,13 @@ bash packaging/linux/build-deb.sh target/release/oscope-server target/notices
 [`linux/test-deb.sh`](linux/test-deb.sh) needs Docker:
 
 ```sh
-bash packaging/linux/test-deb.sh target/deb/oscope_0.1.1_amd64.deb ubuntu:24.04
+bash packaging/linux/test-deb.sh target/deb/oscope_0.2.0_amd64.deb ubuntu:24.04
 ```
 
 For each image, it installs the .deb in a clean container, and checks:
 
 - its account, its folders, whose they are and their modes, the unit, and the polkit rule in both its forms, the operators' among them;
-- that its server, run as `oscoped` with its configuration, answers on `/health`;
+- that its server, run as `oscoped` with its configuration, answers on `/health`, and serves the web app at `/`;
 - that purging it removes the program and the configuration, and keeps the data.
 
 It ends with `test-deb: ok`.
@@ -96,7 +98,7 @@ Unzipped, from an administrator's PowerShell, in its folder:
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-- The program goes in `C:\Program Files\OScope`.
+- The program goes in `C:\Program Files\OScope`, and the web app beside it, in `web`, which the server serves at `/` (W10.4).
 - The configuration and the data go in `C:\ProgramData\OScope`. A configuration already there is kept.
 - The service `oscope` is installed and started, on http://127.0.0.1:8210/.
 
@@ -107,9 +109,10 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 ```powershell
 cargo install cargo-about --version 0.9.3 --locked --features cli  # once
 cargo build --release --locked -p oscope-server
+npm --prefix web ci && npm --prefix web run build   # the web app, which the zip carries
 bash packaging/notices/make.sh
 powershell -File packaging\windows\package.ps1 -Server target\release\oscope-server.exe -Notices target\notices
-powershell -ExecutionPolicy Bypass -File packaging\windows\test-zip.ps1 target\zip\oscope-0.1.1-windows-x86_64.zip
+powershell -ExecutionPolicy Bypass -File packaging\windows\test-zip.ps1 target\zip\oscope-0.2.0-windows-x86_64.zip
 ```
 
 - **`bash` in PowerShell is often WSL's,** unless Git's comes first in `PATH`. Then `make.sh` runs under Linux, whose cargo needs cargo-about as well: install it there too, or run `make.sh` from Git Bash. The notices are the same either way, since they cover both platforms.
@@ -118,7 +121,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\test-zip.ps1 target\z
 
 - unpacked in a folder of its own, it has its files;
 - its server says its version;
-- with the zip's configuration, on a port the system picks, the server answers on `/health`, and keeps its data beside the configuration.
+- with the zip's configuration, on a port the system picks, the server answers on `/health`, serves the web app at `/`, and keeps its data beside the configuration.
 
 It ends with `test-zip: ok`.
 

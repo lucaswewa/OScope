@@ -2,7 +2,7 @@
 
 How to build, test and run OScope's server as a service on an Ubuntu 24.04 computer, line by line. When you're done:
 
-- **The service `oscope`** runs OScope's server as the system account `oscoped`. It serves this computer alone, on `http://127.0.0.1:8210/`.
+- **The service `oscope`** runs OScope's server as the system account `oscoped`. It serves this computer alone, on `http://127.0.0.1:8210/`: open it in a browser for the app ([the user's guide](user-guide/README.md)).
 - **The operator `labuser`** builds and tests new versions, starts, stops and restarts the service, reads its log and its data, changes its configuration, and uses the serial ports, all without sudo.
 - **The administrator,** you, with sudo, installs each version that `labuser` builds: installing a package runs as root.
 
@@ -10,7 +10,7 @@ The service is the .deb's ([`packaging/README.md`](../packaging/README.md)): the
 
 ## What you need
 
-- **Ubuntu 24.04 LTS on x86_64,** with access to the internet: Ubuntu's packages, Rust, crates.io and GitHub.
+- **Ubuntu 24.04 LTS on x86_64,** with access to the internet: Ubuntu's packages, Rust, crates.io, Node.js, npm's registry and GitHub.
 - **An administrator's account,** with sudo.
 - **Room and time** for the first build with its tests: some 10 GB of disk in `labuser`'s home, and 12 minutes on a 24-thread computer. Fewer cores take longer.
 - **Your GitHub account,** to give the computer a deploy key: OScope's repository is private.
@@ -66,11 +66,11 @@ chmod 600 ~/.ssh/config
 ssh -T github-oscope
 git clone github-oscope:lucaswewa/OScope.git ~/OScope
 cd ~/OScope
-git switch --detach v0.1.1
+git switch --detach v0.2.0
 ```
 
 - **`ssh -T`** asks, the first time, whether to trust GitHub's host key. Compare its fingerprint with [those GitHub publishes](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints), then answer `yes`. It then says *You've successfully authenticated*: the key works.
-- **`git switch --detach v0.1.1`** takes the release, by its tag. `main` has what is newest, released or not.
+- **`git switch --detach v0.2.0`** takes the release, by its tag. `main` has what is newest, released or not.
 
 ## 3. Rust
 
@@ -83,6 +83,18 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profil
 
 This installs rustup in `labuser`'s home, and later logins find `cargo` on their own. The first build installs the Rust version that the repository names, in `rust-toolchain.toml`.
 
+## 3b. Node.js, for the app
+
+As `labuser`, Node.js 24 through nvm, in `labuser`'s home:
+
+```sh
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+. "$HOME/.nvm/nvm.sh"
+nvm install 24
+```
+
+Later logins find `node` and `npm` on their own. The build installs the app's packages from its lock file.
+
 ## 4. Build, test and package
 
 As `labuser`:
@@ -94,7 +106,7 @@ bash packaging/linux/build-from-source.sh
 
 [`build-from-source.sh`](../packaging/linux/build-from-source.sh):
 
-1. builds the server for release;
+1. builds the server for release, and the web app, which the package carries;
 2. runs the tests, `cargo test --workspace`: 235 suites, some three quarters of the time. `--no-tests` skips them;
 3. makes the third-party notices, installing cargo-about the first time;
 4. packages the .deb, and copies it to `/var/tmp`, which a restart keeps.
@@ -103,7 +115,7 @@ It ends with the line that installs the package:
 
 ```text
 build-from-source: ok. The administrator installs it with:
-  sudo apt install /var/tmp/oscope_0.1.1_amd64.deb
+  sudo apt install /var/tmp/oscope_0.2.0_amd64.deb
 ```
 
 ## 5. Install
@@ -111,11 +123,13 @@ build-from-source: ok. The administrator installs it with:
 As the administrator:
 
 ```sh
-sudo apt install /var/tmp/oscope_0.1.1_amd64.deb
+sudo apt install /var/tmp/oscope_0.2.0_amd64.deb
 systemctl status oscope --no-pager
 ```
 
-The package installs the server, its configuration, its service and its polkit rules, then enables and starts the service: `systemctl status` says *active (running)*.
+The package installs the server, the web app, its configuration, its service and its polkit rules, then enables and starts the service: `systemctl status` says *active (running)*. Open `http://127.0.0.1:8210/` in a browser on this computer: the app.
+
+**Over OScope 0.1's package,** the app comes with the upgrade: a configuration that names no app serves the one installed with the server, in `/usr/share/oscope/web`, so a configuration you changed is kept as it is.
 
 **Over OScope 0.1.0's package,** whose account was `oscope`, it upgrades it, and what that account wrote becomes `oscoped`'s. The old account can then go: `sudo deluser --system oscope`.
 
@@ -131,9 +145,10 @@ bash packaging/linux/smoke-test.sh
 [`smoke-test.sh`](../packaging/linux/smoke-test.sh) checks the service as installed, in some 5 s:
 
 ```text
-ok   oscope 0.1.1: enabled, active, as oscoped
+ok   oscope 0.2.0: enabled, active, as oscoped
 ok   it may use the serial ports, where the stage comes: group dialout
-ok   it answers on http://127.0.0.1:8210, as 0.1.1
+ok   it answers on http://127.0.0.1:8210, as 0.2.0
+ok   it serves the web app at http://127.0.0.1:8210/
 ok   the instrument: camera ok, stage to be homed, lights ok, gpu ok, disks ok, jobs ok, extensions ok
 note the stage waits to be homed, as after each start: this test moves nothing
 ok   a frame of 5472 × 3648 captured into a new project
@@ -147,7 +162,7 @@ ok   the serial ports can be used: group dialout
 smoke-test: ok
 ```
 
-- **The service:** enabled, running as `oscoped` with the group `dialout`, and answering as the version installed.
+- **The service:** enabled, running as `oscoped` with the group `dialout`, answering as the version installed, and serving the web app at `/`.
 - **The instrument:** each simulated device, the disks and the jobs say `ok`, but the stage may wait to be homed, as after each start: the test moves nothing. The GPU's state is shown, not checked: the package is built without CUDA.
 - **A capture:** a frame from the simulated camera, into a new project, which is then deleted.
 - **Restarts:** asked to through its API, the server exits with code 75 and systemd starts it again. Then `labuser` restarts it with `systemctl`, without sudo.
@@ -163,7 +178,7 @@ The service serves this computer alone. From another, tunnel its port over SSH:
 ssh -N -L 8210:127.0.0.1:8210 labuser@<this computer>
 ```
 
-While that runs, `http://127.0.0.1:8210/docs` on the other computer shows the service's API. If that computer serves OScope itself, use another local port, such as `-L 8310:127.0.0.1:8210`.
+While that runs, `http://127.0.0.1:8210/` on the other computer opens the app, and `/docs` shows the service's API. If that computer serves OScope itself, use another local port, such as `-L 8310:127.0.0.1:8210`.
 
 ## OScope's accounts
 
@@ -226,7 +241,7 @@ bash packaging/linux/build-from-source.sh
 Then, as the administrator, the line it ends with, such as `sudo apt install /var/tmp/oscope_0.1.2_amd64.deb`. Then, as `labuser`, the smoke test.
 
 - **If you changed the configuration** and the new version's differs, apt asks which to keep. Keep yours: `N`, the default.
-- **A build of the version installed,** such as `main` between two releases, needs `--reinstall`: `sudo apt install --reinstall /var/tmp/oscope_0.1.1_amd64.deb`. Without it, apt says the package is already the newest version, and changes nothing.
+- **A build of the version installed,** such as `main` between two releases, needs `--reinstall`: `sudo apt install --reinstall /var/tmp/oscope_0.2.0_amd64.deb`. Without it, apt says the package is already the newest version, and changes nothing.
 
 ## Removing it
 
@@ -243,7 +258,7 @@ sudo apt purge oscope
 
 ## If something goes wrong
 
-- **`build-from-source: no cc`,** or another tool: step 1's packages are missing. **No `cargo`:** step 3, or a new login.
+- **`build-from-source: no cc`,** or another tool: step 1's packages are missing. **No `cargo`:** step 3, or a new login. **No `npm`:** step 3b, or a new login.
 - **`git clone` says *Permission denied (publickey)*:** the deploy key isn't on GitHub yet, or `~/.ssh/config` names another file.
 - **The smoke test says an operator can't restart the service or read its log:** `labuser`'s groups take effect at its next login. `id -nG` lists `oscoped` and `systemd-journal` once they have.
 - **The service doesn't start:** `journalctl -u oscope -n 50` says why. If another program has its port, change `port` in `/etc/oscope/oscope.toml`, then `systemctl restart oscope`.

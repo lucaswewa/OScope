@@ -26,6 +26,11 @@ const row = (page: Page, title: RegExp) =>
 async function captureElsewhere(browser: Browser, url: string, project: string): Promise<void> {
   const other = await (await browser.newContext()).newPage();
   await other.goto(`${url}/#/control`);
+  // Its projects listed, once the page has its server: on two cores, a while.
+  await expect(other.getByText("Online")).toBeVisible({ timeout: 60_000 });
+  await expect(other.getByRole("combobox", { name: "Project", exact: true })).toBeEnabled({
+    timeout: 60_000,
+  });
   await choose(other, "Project", project);
   await said(other, "capture-run").click();
   await expect.poll(async () => (await queue(url)).length).toBe(2);
@@ -42,6 +47,12 @@ test("Checkpoint H: jobs, the log, a fault and a restart, from the app @main", a
   await expect(said(page, "connection")).toHaveText(/Online/);
   await homeAndMove(page, server.url);
   await stream(page, server.url, TINY);
+  // An exposure of 100 ms: ten frames a second. Through the tiny region at the default
+  // 10 ms, the burst below takes a hundred a second, and on two cores the server then
+  // answers a second page too late, which takes it for gone.
+  const exposure = said(page, "camera").getByRole("spinbutton", { name: "Exposure" });
+  await exposure.fill("100");
+  await exposure.press("Enter");
   await makeProject(page, "Checkpoint H");
 
   // A long burst, then a frame from a second page and an autofocus: the burst runs, and the

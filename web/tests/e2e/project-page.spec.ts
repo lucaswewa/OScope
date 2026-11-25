@@ -156,6 +156,8 @@ test("a project's page looks as its baseline does @visual", async ({ page, serve
         page.locator(".records .said"),
         said(page, "details").locator("dd"),
         said(page, "provenance").locator("code"),
+        // Its steps, by name and version, which each release changes.
+        said(page, "provenance").locator(".said"),
         page.locator("img"),
       ],
     });

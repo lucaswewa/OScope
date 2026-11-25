@@ -144,7 +144,12 @@ test("the results look as their baseline does @visual", async ({ page, server })
     await expect(toasts.getByRole("listitem")).toHaveCount(left - 1);
   }
   await page.mouse.move(5, 5);
-  const mask = [said(page, "made"), said(page, "compared").getByRole("heading")];
+  // The times, and the version that made each, which each release changes.
+  const mask = [
+    said(page, "made"),
+    said(page, "compared").getByRole("heading"),
+    said(page, "provenance"),
+  ];
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);
     await expect(page).toHaveScreenshot(`analyses-${scheme}.png`, { mask });

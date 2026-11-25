@@ -27,6 +27,7 @@ for image in "${images[@]}"; do
         grep -q "manage-units" /usr/share/polkit-1/rules.d/50-oscope.rules
         test -f /var/lib/polkit-1/localauthority/10-vendor.d/50-oscope.pkla
         test -f /usr/share/doc/oscope/copyright
+        test -f /usr/share/oscope/web/index.html
         oscope-server --version
         # Its server, as its account, with its configuration, answers.
         runuser -u oscoped -- oscope-server --config /etc/oscope/oscope.toml \
@@ -41,6 +42,10 @@ for image in "${images[@]}"; do
         printf "GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3
         read -r status <&3
         case "$status" in *" 200 "*) ;; *) echo "$status"; cat /tmp/server.log; exit 1 ;; esac
+        # The web app, at /, the one installed with it (W10.4).
+        exec 3<>/dev/tcp/127.0.0.1/8210
+        printf "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3
+        grep -q "<title>OScope</title>" <&3 || { echo "/ is not the app"; exit 1; }
         test -d /var/lib/oscope/data
         kill "$server"
         wait "$server" || true

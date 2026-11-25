@@ -1,6 +1,6 @@
 {
   "name": "oscope-web",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "OScope's app: one Vue 3 codebase for the browser and the desktop.",
   "private": true,
   "type": "module",

@@ -139,7 +139,15 @@ test("the connection and login pages look as their baselines do @visual", async 
   await page.mouse.move(5, 5);
   for (const scheme of ["light", "dark"] as const) {
     await inScheme(page, scheme);
-    await expect(page).toHaveScreenshot(`connection-${scheme}.png`, { fullPage: true });
+    // The server's version, which each release changes.
+    await expect(page).toHaveScreenshot(`connection-${scheme}.png`, {
+      fullPage: true,
+      mask: [
+        said(page, "connection")
+          .locator("dd")
+          .filter({ hasText: /^\d+\.\d+\.\d+/ }),
+      ],
+    });
     await shot(page, `W1.3-connection-${scheme}`);
   }
   const secured = await withAccounts();

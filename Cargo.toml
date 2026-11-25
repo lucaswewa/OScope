@@ -12,7 +12,7 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 # teta-wot v0.2.0's minimum.
 rust-version = "1.98"

@@ -11,7 +11,8 @@ $folder = Join-Path ([IO.Path]::GetTempPath()) ("oscope-zip-" + [Guid]::NewGuid(
 Expand-Archive $Zip $folder
 try {
     $root = (Get-ChildItem $folder -Directory)[0].FullName
-    $wanted = "oscope-server.exe", "oscope.toml", "install.ps1", "uninstall.ps1", "README.txt", "LICENSE"
+    $wanted = "oscope-server.exe", "oscope.toml", "install.ps1", "uninstall.ps1", "README.txt", "LICENSE",
+        "web\index.html"
     foreach ($file in $wanted) {
         if (-not (Test-Path (Join-Path $root $file))) { throw "the zip has no $file" }
     }
@@ -33,6 +34,9 @@ try {
         }
         $status = (Invoke-WebRequest "$($base)health" -UseBasicParsing).StatusCode
         if ($status -ne 200) { throw "/health: $status" }
+        # The web app, at /, the one beside the server (W10.4).
+        $page = (Invoke-WebRequest $base -UseBasicParsing).Content
+        if ($page -notmatch "<title>OScope</title>") { throw "/ is not the app" }
         if (-not (Test-Path (Join-Path $root "data"))) { throw "no data folder beside the configuration" }
     } finally {
         Stop-Process -Id $process.Id -Force
