@@ -18,11 +18,21 @@ export function useProjectChoice(key: string) {
   /** Why the projects couldn't be listed, if they couldn't. */
   const unlisted = shallowRef<string>();
 
+  /**
+   * Lists the projects, the last asked for winning: the list asked for as
+   * the pane opens can answer after the one asked for once a project is
+   * made, and would hide it (W10.3).
+   */
+  let asked = 0;
   async function list(): Promise<void> {
+    const mine = ++asked;
     try {
-      projects.value = (await projectPage({ limit: 500 })).projects;
+      const page = await projectPage({ limit: 500 });
+      if (mine !== asked) return;
+      projects.value = page.projects;
       unlisted.value = undefined;
     } catch (thrown) {
+      if (mine !== asked) return;
       unlisted.value = thrown instanceof ApiError ? thrown.message : String(thrown);
     }
   }

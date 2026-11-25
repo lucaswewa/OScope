@@ -61,6 +61,7 @@ One record per significant decision, so that later phases, and later readers, ca
 | [0053](0053-the-graph-editor-on-vue-flow.md) | The graph editor on Vue Flow | Accepted | W7.2 |
 | [0054](0054-3d-in-the-app-on-vtk-js.md) | 3D in the app, on VTK.js | Accepted | W7.7 |
 | [0055](0055-accounts-over-the-api.md) | Accounts over the API | Accepted | W8.6 |
+| [0059](0059-front-end-budgets.md) | Front-end budgets | Accepted | W10.3 |
 | [0060](0060-restarts-in-a-dry-run.md) | Restarts in a dry run | Accepted | W4.3 |
 | [0061](0061-gates-test-what-a-change-reaches.md) | Gates test what a change reaches | Accepted | — |
 | [0062](0062-the-simulated-camera-s-image-on-the-gpu.md) | The simulated camera's image on the GPU | Accepted | The GPU simulator |

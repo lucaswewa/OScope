@@ -188,6 +188,63 @@ pub const BUDGETS: &[Budget] = &[
         "ms",
         "P40",
     ),
+    // The app's (W10.3, ADR-0059), measured in Chromium by `--web`.
+    budget(
+        "web.live.fps",
+        "The app: the live view's rate, 1920 × 1272 in mode design",
+        Bound::AtLeast(12.0),
+        "fps",
+        "W1.5",
+    ),
+    budget(
+        "web.live.latency_ms",
+        "The app: a frame on the page after its exposure",
+        Bound::AtMost(100.0),
+        "ms",
+        "W1.5",
+    ),
+    budget(
+        "web.first_frame_ms",
+        "The app: the first frame after opening it",
+        Bound::AtMost(2000.0),
+        "ms",
+        "W10.3",
+    ),
+    budget(
+        "web.deep_zoom.median_ms",
+        "The app: a full-screen view never seen, deep-zoomed, median",
+        Bound::AtMost(150.0),
+        "ms",
+        "W6.4",
+    ),
+    budget(
+        "web.bundle.entry_kb",
+        "The app's bundle: its entry, gzipped",
+        Bound::AtMost(100.0),
+        "kB",
+        "W10.3",
+    ),
+    budget(
+        "web.bundle.largest_kb",
+        "The app's bundle: its largest chunk, gzipped",
+        Bound::AtMost(300.0),
+        "kB",
+        "W10.3",
+    ),
+    budget(
+        "web.bundle.total_kb",
+        "The app's bundle: all of it, gzipped",
+        Bound::AtMost(1200.0),
+        "kB",
+        "W10.3",
+    ),
+    budget(
+        "web.memory.mb_per_hour",
+        "The app: its memory's growth over a long live view",
+        Bound::AtMost(10.0),
+        "MB/h",
+        "W10.3",
+    ),
 ];
 
 /// A benchmark: its name, and the `cargo` arguments that run it, quick or
@@ -339,7 +396,7 @@ pub struct About {
 }
 
 /// The budgets a quick run doesn't measure: its lengths aren't theirs.
-const WHOLE: &[&str] = &["record.seconds"];
+const WHOLE: &[&str] = &["record.seconds", "web.memory.mb_per_hour"];
 
 /// Each budget, what measured it, and its verdict, after a `quick` run or
 /// not.
@@ -526,8 +583,52 @@ mod tests {
         let whole = (record.args)(false, "C:/scratch here").join(" ");
         assert!(whole.contains("--seconds 600") && whole.ends_with("--scratch C:/scratch here"));
         // Every budget's key is one a benchmark prints.
-        assert_eq!(BUDGETS.len(), 20);
+        assert_eq!(BUDGETS.len(), 28);
         assert!(BUDGETS.iter().all(|b| b.key.contains('.')));
+    }
+
+    #[test]
+    fn the_apps_budgets_are_held_to_and_one_broken_fails_the_run() {
+        let output = "perf: web.live.fps 14.5
+perf: web.live.latency_ms 40.0
+                      perf: web.bundle.largest_kb 259.7
+perf: web.memory.mb_per_hour 5
+";
+        let ok = Ran {
+            name: "the app (W10.3)".into(),
+            ok: true,
+            seconds: 60.0,
+        };
+        let rows = rows(&measures(output), false);
+        let find = |rows: &[(Budget, Option<f64>, Verdict)], key: &str| {
+            rows.iter().find(|r| r.0.key == key).unwrap().2
+        };
+        assert_eq!(find(&rows, "web.live.fps"), Verdict::Met);
+        assert_eq!(find(&rows, "web.first_frame_ms"), Verdict::Unmeasured);
+        assert!(passed(&rows, std::slice::from_ref(&ok)));
+        // A budget broken: the run fails.
+        let slow = rows_of(
+            "perf: web.live.fps 9.5
+",
+            false,
+        );
+        assert_eq!(find(&slow, "web.live.fps"), Verdict::Missed);
+        assert!(!passed(&slow, std::slice::from_ref(&ok)));
+        let heavy = rows_of(
+            "perf: web.bundle.entry_kb 120
+",
+            false,
+        );
+        assert!(!passed(&heavy, std::slice::from_ref(&ok)));
+        // The memory's growth needs a whole run: a quick one's is noise.
+        let leak = "perf: web.memory.mb_per_hour 80
+";
+        assert!(!passed(&rows_of(leak, false), std::slice::from_ref(&ok)));
+        assert!(passed(&rows_of(leak, true), std::slice::from_ref(&ok)));
+    }
+
+    fn rows_of(output: &str, quick: bool) -> Vec<(Budget, Option<f64>, Verdict)> {
+        rows(&measures(output), quick)
     }
 
     #[test]

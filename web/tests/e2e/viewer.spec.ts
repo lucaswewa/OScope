@@ -2,8 +2,9 @@
 // The deep-zoom viewer (W6.4): an imported slide's tiles arrive for each
 // level as it is zoomed into; a stack's slider changes the plane its tiles
 // are of; two records side by side move together; a colour map colours a
-// one-channel image, and the view is saved as a PNG; axe; the viewer's baseline; and, with OSCOPE_PERF=1,
-// the time a full-screen view of a region never seen takes to be sharp.
+// one-channel image, and the view is saved as a PNG; axe; and the viewer's
+// baseline. The time a full-screen view never seen takes to be sharp is a
+// budget of `tests/perf/` (W10.3).
 import { readFile } from "node:fs/promises";
 
 import type { Locator, Page } from "@playwright/test";
@@ -191,72 +192,4 @@ test("the viewer on a fixed slide looks as its baseline does @visual", async ({ 
     });
     await shot(page, `W6.4-viewer-${scheme}`);
   }
-});
-
-test("a full-screen view of a region never seen is sharp within 150 ms @perf", async ({
-  page,
-  server,
-}) => {
-  test.skip(!process.env.OSCOPE_PERF, "measured on the owner's computer: OSCOPE_PERF=1 there");
-  test.setTimeout(600_000);
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const project = await made(server.url, "Measured");
-  const record = await imported(server.url, project, "large.tif", tiffOf(8192, 6144));
-  await viewing(page, server.url, project, record);
-  await page.getByRole("button", { name: "Full screen" }).click();
-  // Near one pixel of the image to one of the screen.
-  for (let step = 0; step < 5; step++) {
-    await viewer(page, record).getByRole("button", { name: "Zoom in" }).click();
-    await expect(tiles(page, record)).toHaveAttribute("data-sharp", "true", { timeout: 60_000 });
-  }
-  // Jumps by the navigator, the image's whole there: a grid of places a fifth
-  // of the image apart, more than a screen, each never seen.
-  const navigator = (await viewer(page, record).locator(".navigator").boundingBox())!;
-  const shown = Math.min(navigator.width / 8192, navigator.height / 6144);
-  const [across, down] = [8192 * shown, 6144 * shown];
-  const [left, top] = [
-    navigator.x + (navigator.width - across) / 2,
-    navigator.y + (navigator.height - down) / 2,
-  ];
-  const times: number[] = [];
-  for (let trial = 0; trial < 20; trial++) {
-    // Timed in the page: from the click to all the view's tiles come; 10 s at most.
-    // Ready before the click.
-    await tiles(page, record).evaluate((element) => {
-      (globalThis as unknown as { measured: Promise<number> }).measured = new Promise<number>(
-        (done) => {
-          let start: number | undefined;
-          let blurred = false;
-          const clicked = () => (start ??= performance.now());
-          addEventListener("pointerup", clicked, { capture: true });
-          const observer = new MutationObserver(() => {
-            const sharp = element.getAttribute("data-sharp") === "true";
-            if (!sharp) blurred = true;
-            else if (blurred && start !== undefined) end(performance.now() - start);
-          });
-          const end = (ms: number) => {
-            observer.disconnect();
-            removeEventListener("pointerup", clicked, { capture: true });
-            done(ms);
-          };
-          observer.observe(element, { attributes: true, attributeFilter: ["data-sharp"] });
-          setTimeout(() => end(Number.NaN), 10_000);
-        },
-      );
-    });
-    const [column, row] = [trial % 5, Math.floor(trial / 5)];
-    await page.mouse.click(left + across * (0.1 + 0.2 * column), top + down * (0.125 + 0.25 * row));
-    times.push(
-      await page.evaluate(() => (globalThis as unknown as { measured: Promise<number> }).measured),
-    );
-  }
-  console.log(`full-screen views never seen, ms: ${times.map((t) => t.toFixed(0)).join(", ")}`);
-  // A view that never blurred, or never sharpened within 10 s, is a NaN: none may be.
-  expect(times.filter((ms) => !Number.isFinite(ms))).toEqual([]);
-  const sorted = [...times].sort((p, q) => p - q);
-  const median = sorted[sorted.length >> 1]!;
-  const slowest = sorted.at(-1)!;
-  console.log(`median ${median.toFixed(0)} ms, slowest ${slowest.toFixed(0)} ms`);
-  expect(median).toBeLessThanOrEqual(150);
 });
