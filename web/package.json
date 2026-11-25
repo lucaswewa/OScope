@@ -22,7 +22,8 @@
     "test:e2e": "playwright test",
     "test:workflows": "playwright test -c playwright.workflows.config.ts",
     "test:visual": "node scripts/visual.mjs",
-    "test:a11y": "playwright test --project chromium --grep \"@a11y|axe can find\""
+    "test:a11y": "playwright test --project chromium --grep \"@a11y|axe can find\"",
+    "test:perf": "playwright test -c playwright.perf.config.ts --reporter=list"
   },
   "dependencies": {
     "@dagrejs/dagre": "3.1.3",

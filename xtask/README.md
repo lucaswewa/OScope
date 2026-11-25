@@ -3,8 +3,8 @@
 The workspace's own tasks:
 
 - **the layering rules** of [ADR-0005](../docs/adr/0005-layered-crates-and-their-dependency-rules.md), checked by its tests;
-- **`cargo xtask perf`,** plan §5.20's performance budgets, measured and reported (P53);
-- **`cargo xtask soak`,** the soak, which looks for leaks and dropped frames (P53).
+- **`cargo xtask perf`,** plan §5.20's performance budgets, measured and reported (P53), and with `--web` the app's ([ADR-0059](../docs/adr/0059-front-end-budgets.md), W10.3);
+- **`cargo xtask soak`,** the soak, which looks for leaks and dropped frames (P53), and with `--web` keeps the app open as long.
 
 `cargo xtask` is an alias, in [`.cargo/config.toml`](../.cargo/config.toml), for `cargo run --package xtask --`.
 
@@ -35,6 +35,24 @@ It runs, in release builds, the benchmark each budget's phase left:
 - **It fails** if a budget is missed or a benchmark fails.
 - **Where:** §5.20's budgets are the owner's laptop's (an RTX 3070 Ti); the owner's PC stands in for it.
 
+### The app's budgets: `--web`
+
+```sh
+cargo xtask perf --quick --cuda --web
+```
+
+With `--web`, after the server's, it builds the release server, with CUDA if asked, and the app, then runs `web/tests/perf/` in Chromium against them (ADR-0059):
+
+| Budget | Measured |
+|---|---|
+| The live view's rate and latency (W1.5) | 1920 × 1272 in mode `design`, the readout's rate and latency, ten readings a second apart |
+| The first frame (W10.3) | from opening the app on a camera already streaming to the readout's *Live* |
+| A deep-zoomed view never seen (§5.20, W6.4) | 20 jumps by the navigator over an 8192 × 6144 image, full screen, from the click to every tile in view, the median |
+| The bundle (W10.3) | the entry, the largest chunk and the whole, gzipped |
+| The memory (W10.3) | the heap after a collection every 15 s, for 10 minutes, Theil–Sen's slope once warm, in MB an hour; not judged in a quick run |
+
+It needs Node and the app's packages (`npm ci` in `web/`), and Playwright's Chromium. It builds `oscope-server` in release, where a release server may be running: give it a folder of its own, `CARGO_TARGET_DIR=target-perf`.
+
 ## The soak
 
 ```sh
@@ -56,4 +74,6 @@ It runs `oscope-server`'s `soak` test, ignored otherwise, against the server's r
 - **Growth** is Theil–Sen's slope of the series: the median of the slopes between every two samples. Spikes and caches' sawteeth barely move it.
 - **Its report:** `target/soak/soak.json` holds each sample, the rates once warm, the scans, the previews, and the verdicts.
 
-**The nightly soak,** [`.github/workflows/soak.yml`](../.github/workflows/soak.yml), runs it for four hours on Ubuntu, on the CPU. Its schedule is off, to save CI minutes, until the owner turns it on; until then it runs when started by hand.
+**With `--web`,** the app's live view is kept open as long, on a server of its own, and the soak fails too if its memory grows by more than its budget, 10 MB an hour.
+
+**The nightly soak,** [`.github/workflows/soak.yml`](../.github/workflows/soak.yml), runs it for four hours on Ubuntu, on the CPU, with `--web`. Its schedule is off, to save CI minutes, until the owner turns it on; until then it runs when started by hand.

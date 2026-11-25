@@ -59,5 +59,5 @@ One file per phase, written for the reviewer and for whoever works on the code n
 | W8.6 | Accounts | Done | [W8.6-accounts.md](W8.6-accounts.md) |
 | W10.1 | Workflows end to end | Done | [W10.1-workflows.md](W10.1-workflows.md) |
 | W10.2 | Visual baselines and accessibility | Done | [W10.2-baselines-a11y.md](W10.2-baselines-a11y.md) |
-| W10.3 | Front-end budgets | Planned | — |
+| W10.3 | Front-end budgets | In review | [W10.3-front-end-budgets.md](W10.3-front-end-budgets.md) |
 | W10.4 | The app in the packages, and the look back | Planned | — |

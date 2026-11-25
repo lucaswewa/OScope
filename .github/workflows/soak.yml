@@ -2,8 +2,9 @@ name: Soak
 
 # The nightly soak (P53, plan §5.21): the server's release build, the
 # simulator with its scaled sensor, a preview client, and scans and stitches
-# one after another, for four hours on the CPU. It fails on a leak of memory
-# or handles, or on dropped previews, and keeps its report, soak.json.
+# one after another, for four hours on the CPU, and the app's live view kept
+# open as long (W10.3). It fails on a leak of memory or handles, the server's
+# or the page's, or on dropped previews, and keeps its report, soak.json.
 #
 # Its schedule is off, to save CI minutes, until the owner turns it on:
 # uncomment `schedule`. Until then it runs when started by hand.
@@ -31,8 +32,19 @@ jobs:
       - name: Install the pinned toolchain
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
+      # The app, kept open as long (W10.3): its packages and Chromium.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: The app's packages and Chromium
+        working-directory: web
+        run: |
+          npm ci
+          npx --no-install playwright install --with-deps chromium
       - name: The soak
-        run: cargo xtask soak --minutes "${{ inputs.minutes || '240' }}"
+        run: cargo xtask soak --minutes "${{ inputs.minutes || '240' }}" --web
       - name: Its report
         if: always()
         uses: actions/upload-artifact@v7

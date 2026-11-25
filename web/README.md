@@ -39,6 +39,7 @@ Each is an npm script, run from `web/`. The replays and CI run them all ([ADR-00
 | `npm run test:workflows` | The checkpoints G to L, in `tests/workflows/`: the app driven through each checkpoint's demo, run as the end-to-end tests are |
 | `npm run test:visual` | The visual tests alone: every baseline, in Chromium, with `OSCOPE_VISUAL=1` |
 | `npm run test:a11y` | The accessibility tests alone: axe, and a name on every control, on every route and dialog, in Chromium |
+| `npm run test:perf` | The app's budgets, `tests/perf/`, measured against the server given: `cargo xtask perf --web` runs them against its release build, and judges them ([ADR-0059](../docs/adr/0059-front-end-budgets.md)) |
 
 **The end-to-end tests** start a server of their own for each test: its configuration, data and scratch space in a folder of the test's, on a port the system picks, with power actions that only say what they would do. Before them:
 
