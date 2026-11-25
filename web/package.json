@@ -20,7 +20,9 @@
     "api:check": "node scripts/api-types.mjs --check",
     "test:unit": "node scripts/vitest.mjs run",
     "test:e2e": "playwright test",
-    "test:workflows": "playwright test -c playwright.workflows.config.ts"
+    "test:workflows": "playwright test -c playwright.workflows.config.ts",
+    "test:visual": "node scripts/visual.mjs",
+    "test:a11y": "playwright test --project chromium --grep \"@a11y|axe can find\""
   },
   "dependencies": {
     "@dagrejs/dagre": "3.1.3",

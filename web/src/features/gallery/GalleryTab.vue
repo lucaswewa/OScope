@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import { ApiError } from "@/api/errors";
 import { projectPage, projectThumbnail, type ProjectSummary } from "@/api/projects";
@@ -40,6 +40,7 @@ import TextField from "@/ui/TextField.vue";
  */
 const { t } = useI18n();
 const route = useRoute();
+const router = useRouter();
 /** The project whose page is open, as the address says (W6.2). */
 const open = computed(() =>
   typeof route.query.project === "string" ? route.query.project : undefined,
@@ -149,6 +150,13 @@ function walk(event: KeyboardEvent): void {
   const cards = [...(grid.value?.querySelectorAll<HTMLElement>(":scope > li") ?? [])];
   const at = cards.indexOf(event.target as HTMLElement);
   if (at < 0) return;
+  // Enter opens the card's project, as its link does: Safari passes links by Tab.
+  const project = projects.value[at];
+  if (event.key === "Enter" && project) {
+    event.preventDefault();
+    void router.push({ name: "gallery", query: { project: project.id } });
+    return;
+  }
   const columns = columnsOf(cards.map((card) => card.getBoundingClientRect().top));
   const to = nextCard(event.key, at, cards.length, columns);
   if (to === undefined) return;
